@@ -171,6 +171,7 @@ cross-environment isolation, and a required `cannot_show` on every plugin.
 | | |
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | **locked** — the layers and the invariants |
+| [`ROADMAP.md`](ROADMAP.md) | the build order, and how each step can fail |
 | [`VISION.md`](VISION.md) | the thesis, rationale, order of proof, failure modes |
 | [`docs/adr/`](docs/adr/) | why each invariant is what it is, and what it cost |
 | [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) | the plugin specification |
