@@ -8,6 +8,10 @@ built on it.*
 *Inspired by [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (MIT) and the
 [Cordis](https://github.com/cordiverse/cordis) plugin kernel. §20 lists exactly what is borrowed.*
 
+*The layers, and the invariants that follow from them, are frozen in
+[`ARCHITECTURE.md`](ARCHITECTURE.md). **This document argues; that one binds.** Where they
+disagree, that one is right.*
+
 ---
 
 ## 1. The claim

@@ -6,8 +6,10 @@ Decisions are **mounted**, not applied. A filter, a correction, an annotation or
 plugin contributing to a stack over immutable observations — so any of them can be removed, and
 everything downstream knows when one does.
 
-> **Status: design.** This repository currently contains the architecture and its rationale.
-> [`VISION.md`](VISION.md) is the specification; there is no implementation yet.
+> **Status: design.** No implementation yet.
+> [`ARCHITECTURE.md`](ARCHITECTURE.md) is normative and **locked** — the layers and the invariants
+> that may not be broken. [`VISION.md`](VISION.md) is the thesis, written to be argued with.
+> [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) is the contract every plugin conforms to.
 
 ---
 
@@ -166,7 +168,9 @@ cross-environment isolation, and a required `cannot_show` on every plugin.
 
 | | |
 |---|---|
-| [`VISION.md`](VISION.md) | architecture, rationale, order of proof, failure modes |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **locked** — the layers and the invariants |
+| [`VISION.md`](VISION.md) | the thesis, rationale, order of proof, failure modes |
+| [`docs/adr/`](docs/adr/) | why each invariant is what it is, and what it cost |
 | [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) | the plugin specification |
 | [`docs/AUTHORING.md`](docs/AUTHORING.md) | converting a public tool into a plugin |
 | [`skills/plugin-maker/`](skills/plugin-maker/SKILL.md) | an agent skill that performs the conversion |
