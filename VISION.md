@@ -166,6 +166,7 @@ Analysis steps being plugins is the obvious half. The half that matters:
 | **gate** | reversibility, freshness, design confounding, sentinel handling | a gate that is a plugin can be listed, audited and reported. A gate hard-coded in a script is one nobody knows fired |
 | **report** | HTML, notebook, manuscript figures | one dataset, several audiences |
 | **provenance** | the event stream itself | §8 |
+| **probe** | distributions, composition, disagreement, rendered views | how an agent — or a person — looks at data it cannot hold, and the instruments the gates measure with |
 | **decision-maker** | a human at a prompt; an agent proposing the next step | an agent is another plugin, subject to gates it cannot disable — the only safe way to let one near this |
 
 The last row is deliberate. An agent that inspects the mounted tree, proposes a step, and is
@@ -465,16 +466,69 @@ of it.
 - quote a number from scratch
 - mount anything whose `cannot_show` it wrote without a human reading it
 
-### What it sees first
+### How it sees: three tiers
 
-Code is expensive to write and slow to read, so the agent starts from a **designed dataset
-summary** — dimensions, key resolution, composition, QC distributions, the declared design, the
-constraint on use, and the stack itself — and writes code when the summary is not enough.
+An agent cannot read a matrix, and cannot be trusted to a single compressed view either — a
+compression lies by omission and the agent has no way to know where. So perception is tiered and
+the agent escalates, the same shape a coding agent uses going from what is in context, to reading
+a file, to writing a script.
 
-The summary is a compression and therefore lies by omission somewhere. It must state what it
-omits, and an agent that reasons past it should be reaching for code, not for confidence.
+| tier | what it is | cost | when |
+|---|---|---|---|
+| **summary** | a designed, compact description of the dataset and the stack, always present | free | always |
+| **probes** | a library of bounded, declared read-only inspections | cheap | the default way to ask a question |
+| **code** | arbitrary computation in a scratch plugin | expensive | when no probe answers it |
 
----
+The summary carries dimensions, key resolution, composition, QC distributions, the declared design,
+the constraint on use, and the mounted stack. It must state what it omits — and an agent reasoning
+past it should be reaching for a probe, not for confidence.
+
+### Probes: looking at the data indirectly
+
+A probe is a **read-only plugin that answers one question and returns a bounded result**. It never
+returns the matrix. It declares its cost and, like any plugin, what its answer cannot establish.
+
+```
+distribution(col, by=)        quantiles, modality, per group
+composition(label, by=)       counts and shares, with the denominator named
+markers(label, genes)         expression of named genes per population
+neighbourhood(label)          kNN purity and mixing against chance for that population
+disagreement(col_a, col_b)    where two label columns differ, and on which cells
+tail(metric, n)               the actual cells at an extreme, with their identities
+cells(n, where=)              a handful of real rows, not a summary of them
+differential(mask, by=)       removal rate per arm of the design
+render(view)                  DRAWS IT, and returns the image
+```
+
+**`render` is the important one.** A UMAP shows in one glance what no statistic reports: a
+population dispersed rather than aligned, a cluster that is a doublet ridge, a correction that tore
+the manifold. A multimodal agent can look at a figure. Every failure in this project of the form
+*the number said fine and the picture said otherwise* is one a render probe would have caught.
+
+Probes are cheap enough to be the default. Code is for questions no probe answers — and a question
+asked often enough in code becomes a probe.
+
+### Probes and gates are the same instruments
+
+**A gate is a probe plus a threshold plus a verdict.**
+
+`differential(mask, by=design)` is a probe an agent may call to understand what a filter would do.
+The removal gate is that same probe with a threshold, refusing when a removal falls more than 3×
+harder on one arm. One implementation, two consumers.
+
+That matters more than it looks. A gate whose measurement the caller cannot independently run is a
+black box that gets routed around; a probe with no gate behind it is a number nobody acts on.
+Sharing the instrument stops the thing that refuses and the thing that explains from drifting
+apart, and it is why `probe` is a plugin class rather than a built-in.
+
+### What the probe library cannot fix
+
+- **A probe answering the wrong question confidently is the same failure one level up.** Each
+  declares what it cannot establish, for the reason every other plugin does.
+- **The library is a ceiling on what can be noticed.** A property with no probe, that nobody wrote
+  code for, is invisible — and looks exactly like an absence of evidence. New probes must therefore
+  be cheap to add.
+- **Probes are not free at cohort scale.** They declare cost and are budgeted like anything else.
 
 ## 14. Evaluation
 
@@ -534,37 +588,108 @@ three separate efforts.
 
 ## 16. Architecture
 
+**This follows Cordis, deliberately.** Cordis is MIT and open; its plugin model is published and
+can be read, argued with and ported. Where a concept exists there, it is used by its own name
+rather than reinvented under a different one — the value of the convergence in §4 is lost if the
+two cannot be read against each other.
+
+### The layering
+
 ```
-                    ┌────────────────────────────────────────────┐
-                    │  KERNEL                                    │
-                    │   mount · unmount · reconfigure            │
-                    │   dependency graph + reactive invalidation │
-                    │   event stream (append-only, replayable)   │
-                    └────────────────────────────────────────────┘
-                          │ services
-  ┌──────────────┬────────┴───────┬───────────────┬────────────────┐
-  │ observations │ executor       │ storage       │ gates          │
-  │ (immutable)  │ local/PBS/…    │ fs/object/…   │ auditable      │
-  └──────────────┴────────────────┴───────────────┴────────────────┘
-                          │
-        ┌─────────────────┴──────────────────┐
-        │  MOUNTED STACK                      │
-        │   qc@scqc          mask + reason    │
-        │   annotate@scanno  label columns    │
-        │   integrate@…      embeddings       │
-        │   profile@…        per-plugin       │
-        └─────────────────────────────────────┘
-                          │  materialise on demand
-              ┌───────────┴────────────┐
-              │ .h5ad · report · figures · notebook
-              └────────────────────────┘
+  ┌───────────────────────────────────────────────────────────────┐
+  │ CORE        Context · Service · effect/disposer                │  the engine
+  ├───────────────────────────────────────────────────────────────┤
+  │ REGISTRY    plugin registration → a Runtime per plugin         │  orchestration
+  │             lifecycle, cleanup, state transitions              │
+  ├───────────────────────────────────────────────────────────────┤
+  │ SERVICES    dataset · executor · storage · probe · provenance  │  capabilities
+  │             · report · gate                                    │
+  ├───────────────────────────────────────────────────────────────┤
+  │ PLUGINS     methods, probes, gates, executors, reports,        │  everything else
+  │             the decision-maker, the agent loop itself          │
+  └───────────────────────────────────────────────────────────────┘
 ```
 
-**Adapters, not rewrites.** scQC, scAnno, scIntegrate and scProfile keep their own repositories,
-locks, versions and users. The harness mounts each through a thin adapter over the CLI and manifest
-contract it already has. Nothing built so far is discarded, each tool stays independently
-installable, and if an adapter is ever thicker than a rewrite the contract is wrong — which is
-worth finding out early and cheaply.
+### Context
+
+A plugin is a function receiving a **Context**. Services attach to it as properties, so a plugin
+reaches everything it needs through one object rather than through imports — which is what lets the
+same plugin run against a different executor, a different storage backend or a forked dataset with
+no change.
+
+Across a process boundary the Context is **serialised**: `in.json` is the context a subprocess
+plugin receives, and `out.json` is what it contributes back. A plugin in R gets the same Context as
+one in Python, in the only form both can read.
+
+### Service, inject and provide
+
+Dependency injection is **demand-driven**: a plugin declares what it requires rather than being
+handed it.
+
+```yaml
+inject:  [dataset, executor, probe/differential]   # services this plugin requires
+provide: [obs/velocity_confidence, obsm/velocity_*] # what it registers
+```
+
+`inject` is Cordis's word and its mechanism. `provide` covers both services registered on the
+Context and contributions made to the dataset — the second being this project's addition, since
+Cordis plugins contribute behaviour and these contribute claims about data.
+
+A service is named and injectable, so `dataset` may be a real object, a forked one, or a read-only
+materialisation handed to a scratch plugin, and no plugin can tell the difference. **That is how
+the read/write asymmetry of §13 is enforced structurally rather than by inspection.**
+
+### Effect and disposer
+
+Every registration a plugin makes is an **effect**, and Cordis-managed effects are undone when the
+plugin unloads. Across the process boundary the declaration is the effect (§5 of the format): the
+kernel records what a plugin contributed and synthesises the disposer from it.
+
+### Fork and scope
+
+A Context can be **forked** — branched, isolated, intercepted. A forked context is a stack with one
+plugin swapped or removed and everything else identical, which is what makes an ablation a
+configuration rather than a re-analysis, and what makes a decision stack a controlled experiment
+(§12).
+
+```console
+$ sch fork no-qc --without qc@scqc
+```
+
+### The event bus
+
+A typed bus with broadcast dispatch and waterfall short-circuit. Broadcast is how a report,
+provenance and a monitor all observe a mount without knowing about each other; waterfall is how a
+gate refuses — the first plugin to return a refusal short-circuits the chain.
+
+The bus is also the provenance: an append-only, replayable stream, with the invariant that
+anything report-visible is reconstructible from it.
+
+### The plugin tree
+
+A stack is a **declarative plugin tree**, in the shape of `cordis.yml`:
+
+```yaml
+# stack.yml
+plugins:
+  align@celescope:   {version: 2.7.3}
+  ambient@cellbender: {fpr: 0, learning_rate: 5e-5}
+  qc@scqc:           {min_umi: derived}
+  annotate@scanno:   {tree: heart.json}
+  integrate@scintegrate:
+    methods: [none, harmony, bbknn, scvi, scanvi]
+```
+
+Composed by **overlay**: a site layer, a project layer, a run layer, resolved in order. That is how
+one lab configuration serves many projects without each copying it, and how a single run overrides
+one parameter without forking the whole declaration.
+
+### Adapters, not rewrites
+
+scQC, scAnno, scIntegrate and scProfile keep their own repositories, locks, versions and users. The
+harness mounts each through a thin adapter over the CLI and manifest contract it already has.
+Nothing built so far is discarded, each tool stays independently installable, and an adapter
+thicker than a rewrite means the contract is wrong — worth finding out early and cheaply.
 
 ---
 
@@ -587,9 +712,11 @@ Not a roadmap. The sequence in which the thesis is tested, cheapest disproof fir
    not paying for itself and §11 is a claim we have not earned.
 8. **Does a benchmark of our own method survive an adversarial read** by someone told to find the
    asymmetry? Run it against §12's guards before believing any result they produce.
-9. **Can a scratch plugin write to the stack without declaring it?** Try to break the read/write
+9. **Do a gate and its probe give the same answer?** They share an implementation by design;
+   assert it, because the moment they diverge an agent is refused for a reason it cannot reproduce.
+10. **Can a scratch plugin write to the stack without declaring it?** Try to break the read/write
    asymmetry from inside — arbitrary code, hostile intent. If it can, §13 is decoration.
-10. **Does the benchmark suite distinguish a real improvement from a regression?** Score two
+11. **Does the benchmark suite distinguish a real improvement from a regression?** Score two
     deliberately different stacks and check the ranking is the one a person would give.
 
 ---
@@ -662,6 +789,9 @@ below are theirs, and the honest thing is to name which.
 | **"Model-visible ⟺ logged"** | anything reaching a model request must be reconstructible from the session log | **"report-visible ⟺ replayable"** — our evidence rule, made structural |
 | **Monotonic `SCHEMA_VERSION`** | on the session format, with pre-release compatibility explicitly not promised | the same for the stack format; scProfile already does this with `CONTRACT_VERSION` |
 | **Agents as plugins** | other coding agents mount as sub-agent plugins | an agent proposing a step is a plugin, subject to gates it cannot disable |
+| **Temporary in-memory plugins** | the agent inspects the plugin tree, creates a plugin in memory, mounts it, uses it, unmounts it | **scratch plugins** (§13). The agent's ad-hoc code is this mechanism, not a new one |
+| **Context, Service, inject, effect, fork** | the Cordis core: one object carrying services, demand-driven injection, registrations undone on unload, branched contexts | used by their own names (§16). A forked context is a stack ablation |
+| **Typed event bus, broadcast and waterfall** | plugin communication | broadcast for observers, waterfall short-circuit for gates, and the same stream is the provenance |
 
 **Concepts, not code.** DeepSeek Harness is TypeScript/Node organised around an agent loop over a
 session. This is Python organised around a dataset — the scientific stack is Python and that is not
@@ -707,6 +837,8 @@ is theirs.
   therefore the part I trust least.
 - **Is "orchestrate, don't absorb" right long-term**, or does it defer a migration that gets harder
   every month?
-- **Should the kernel be a thin Python port of Cordis** rather than an independent design, so the
-  two stay compatible as Cordis evolves?
+- **How thin should the Cordis port be?** §16 follows its model and uses its names. A literal port
+  would track upstream for free and inherit a TypeScript design's assumptions; an independent
+  implementation of the same model diverges slowly and silently. The current answer is the second,
+  and it is the decision most likely to look wrong in a year.
 - **Which failure mode is missing from §19** — and is it the one that will actually happen?
