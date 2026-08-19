@@ -4,7 +4,7 @@ This project's architecture is inspired by
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (MIT) and the
 [Cordis](https://github.com/cordiverse/cordis) plugin kernel it is built on.
 
-`VISION.md` §12 lists exactly which ideas are borrowed, which are adapted, and which are ours.
+`VISION.md` §17 lists exactly which ideas are borrowed, which are adapted, and which are ours.
 The borrowings are **concepts and contracts, not source code** — DeepSeek Harness is
 TypeScript/Node and organised around an agent loop; this is Python and organised around a dataset.
 

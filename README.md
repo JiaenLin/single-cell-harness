@@ -33,6 +33,23 @@ $ sch unmount qc@scqc --dry-run
 Everything is a plugin: methods, executors, storage, gates, reports, the provenance stream, and
 whoever decides what runs next — human or agent.
 
+## It is also where new methods get built
+
+The four tools below are its first users, not its purpose. A new method is written as a plugin and
+inherits the substrate: object reading and key detection, a pinned environment with a selftest,
+execution placement, provenance, a report with vector figures and source data — and a comparison
+against every existing method on identical data, metrics and figures.
+
+The author writes the method. That is the deal, and it is testable: *if writing a method as a plugin
+is harder than writing it as a script, the platform has failed.*
+
+Our own methods use the same contract as anyone else's, with no private hooks. The moment the
+platform's authors get access a third party does not, everyone else is a second-class citizen and
+the plugin model is decoration.
+
+The evaluation contract exists because **the most dangerous user of a benchmarking platform is the
+author of the method being benchmarked** — see §12.
+
 ## It orchestrates, it does not absorb
 
 [scQC](https://github.com/JiaenLin/scQC) · [scAnno](https://github.com/JiaenLin/scAnno) ·
@@ -52,11 +69,11 @@ one stage to the life cycle.
 
 Vision only. The first thing to build is a **disproof**, not a feature: can a QC decision actually
 be unmounted, cleanly, with downstream views updating? If that is not clean, the thesis is wrong and
-should be abandoned cheaply. See §12, *The order of proof*.
+should be abandoned cheaply. See §14, *The order of proof*.
 
 ## Attribution
 
 Inspired by [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (MIT) and the
-[Cordis](https://github.com/cordiverse/cordis) plugin kernel. §15 of the vision lists exactly what
+[Cordis](https://github.com/cordiverse/cordis) plugin kernel. §17 of the vision lists exactly what
 is borrowed, what is adapted, and what is ours; [`NOTICE.md`](NOTICE.md) carries the licence
 commitment.

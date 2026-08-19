@@ -6,7 +6,7 @@
 built on it.*
 
 *Inspired by [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (MIT) and the
-[Cordis](https://github.com/cordiverse/cordis) plugin kernel. §15 lists exactly what is borrowed.*
+[Cordis](https://github.com/cordiverse/cordis) plugin kernel. §17 lists exactly what is borrowed.*
 
 ---
 
@@ -314,7 +314,114 @@ to be removed later as unhelpful.
 
 ---
 
-## 11. Architecture
+## 11. A platform for methods, not only a runner of them
+
+The four tools it orchestrates are its first users. They are not the point.
+
+The point is that **the next method — one we write — is a plugin, and gets the substrate for
+free.** A platform earns that name only if building on it is less work than not building on it, and
+that is a testable claim, not a slogan: *if writing a new method as a plugin is harder than writing
+it as a script, the platform has failed and should be told so.*
+
+### What a method author should never have to write again
+
+| the substrate provides | which today is re-written every time |
+|---|---|
+| reading and validating an object; detecting label, sample, batch, counts keys; organism and assay | ~200 lines of key-guessing per project, wrong in a new way each time |
+| an isolated, pinned environment with a selftest that runs the real thing | a `requirements.txt` that resolved differently last Tuesday |
+| execution placement — laptop, cluster, cloud — from the same declaration | a hand-written job script per method per site |
+| provenance: what ran, at what version, on what, with which parameters | a run log written afterwards from memory |
+| a report with captions, vector figures at column width, and source data per panel | the week before submission |
+| **comparison against every existing method on identical data, metrics and figures** | a bespoke benchmark, usually written by the person who wants to win it |
+| refusal when the data cannot support the method, naming the fix | a crash, or worse, a number |
+
+What the author writes is the method. That is the whole deal.
+
+### The graduation path
+
+A method should move from idea to published tool without being rewritten at any step. Only its
+manifest changes.
+
+```
+  scratch      a directory with a run.py and a hand-written manifest
+               mounted live, no install, reload on save
+      ↓        (nothing here is quotable; nothing downstream may read it)
+  dev          a lock, a selftest, a cannot_show, a declared reversibility claim
+               now benchmarkable against every shipped method
+      ↓
+  shipped      versioned, its own repository if it deserves one
+               mounted by name like any other plugin
+```
+
+The first row matters most and is the easiest to under-build. **A method under development must be
+mountable without installation**, because the loop between changing a line and seeing its effect on
+real data is where all the time goes. A platform that requires a package build per iteration will be
+abandoned for a notebook, and the work will leave the system that was supposed to hold it.
+
+The third row is where most platforms quietly fail their users: a plugin that graduates should keep
+running. See below.
+
+### What the platform owes, and what that costs it
+
+A platform makes promises a library does not. These are the ones worth making:
+
+- **A versioned contract.** A plugin that mounted a year ago still mounts, or the breakage is
+  announced, dated, and has a migration.
+- **Deprecation with notice**, never silent behaviour change. A parameter that quietly changes
+  meaning is worse than one that is removed loudly.
+- **The substrate is not privileged.** Our own methods use the same contract as anyone else's, with
+  no private hooks. The moment the platform's authors have access a third party does not, everyone
+  else is a second-class citizen and the plugin model is decoration.
+- **The escape hatch stays open.** Any plugin can be run standalone, outside the harness, from its
+  own CLI. If the harness is the only way to run something, it has stopped being a platform and
+  become a dependency.
+
+The cost is real and should be stated: **these promises take away the freedom to change our minds
+cheaply.** That is what it means to be a foundation rather than a project, and it is the reason the
+contract has to be got roughly right before there are plugins depending on it — which is why this
+document exists before the code.
+
+---
+
+## 12. How a platform lets you fool yourself
+
+**The most dangerous user of a benchmarking platform is the author of the method being benchmarked.**
+
+This is not hypothetical. In the integration tool that will mount here, a supervised method ranked
+first on biological-conservation metrics computed against the very label column it was trained on.
+The code was correct, the metrics were correct, the ranking was not like-for-like, and it took a
+deliberate adversarial read to notice. Nobody was being careless.
+
+Once our own methods are developed here, we will make that mistake again in a form we do not
+recognise — because we will be the ones who chose the metric, chose the baseline, and knew what we
+hoped to see. A platform that makes benchmarking easy without making self-deception hard is a
+machine for producing convincing wrong results.
+
+So the evaluation contract ships **guards aimed at the platform's own owners**:
+
+- **The comparison is a plugin, not a script.** Identical data, metrics, figures and weighting for
+  every entrant, ours included. Nobody hand-writes the benchmark their method appears in.
+- **The baseline is mandatory and always runs first.** *Doing nothing* is an entrant. Without it a
+  comparison can only say which method is strongest, never whether any was warranted.
+- **Information asymmetry must be declared.** A method that saw the labels, the design, or the
+  evaluation split says so in its manifest, and the report states it wherever the ranking appears —
+  not in a methods appendix.
+- **The metric is recorded before the result is seen.** The event stream is ordered, so *when* a
+  metric was chosen relative to when a result was looked at is a fact on disk, not a memory.
+- **Held-out by construction.** The platform can withhold a split a method never sees, because it
+  owns the data access layer and the method does not.
+- **Ablation is cheap, so it is expected.** Fork the stack, swap one plugin, hold everything else
+  constant.
+
+That last point is the deepest reason to develop methods here rather than in a notebook. **A decision
+stack is a controlled experiment.** Method development normally spends most of its effort building
+that control by hand — matching preprocessing, matching gene sets, matching seeds — and most
+published comparisons are weaker than their authors believe because some of it silently did not
+match. Here, everything except the swapped plugin is the same object by construction.
+
+---
+
+## 13. Architecture
 
 ```
                     ┌────────────────────────────────────────────┐
@@ -350,7 +457,7 @@ worth finding out early and cheaply.
 
 ---
 
-## 12. The order of proof
+## 14. The order of proof
 
 Not a roadmap. The sequence in which the thesis is tested, cheapest disproof first.
 
@@ -364,14 +471,21 @@ Not a roadmap. The sequence in which the thesis is tested, cheapest disproof fir
 4. **Can the executor be swapped?** Same stack, laptop and cluster, same result.
 5. **Can a stack be shipped and re-materialised** by someone else, from observations plus kilobytes?
 6. **Can an agent be a plugin** that a gate refuses and it cannot disable the gate?
+7. **Is writing a new method here less work than writing it as a script?** Take a real method we
+   want anyway, build it both ways, and count. If the plugin version is longer, the substrate is
+   not paying for itself and §11 is a claim we have not earned.
+8. **Does a benchmark of our own method survive an adversarial read** by someone told to find the
+   asymmetry? Run it against §12's guards before believing any result they produce.
 
 ---
 
-## 13. Non-goals
+## 15. Non-goals
 
 - **Not a new object model.** AnnData and `.h5ad` stay. A harness needing its own format has
   already lost.
-- **Not new methods.** Zero novel algorithms. The value is entirely in composition.
+- **Not new methods — in the harness itself.** The kernel contributes zero algorithms; its value is
+  entirely in composition. Methods we develop live in plugins, on the same contract as everyone
+  else's, with no privileged access.
 - **Not a GUI first.** The event stream makes a UI easy later; building the UI first makes the
   kernel bend around it.
 - **Not a replacement for Nextflow.** If someone wants a DAG runner underneath as an executor
@@ -382,7 +496,7 @@ Not a roadmap. The sequence in which the thesis is tested, cheapest disproof fir
 
 ---
 
-## 14. How this fails
+## 16. How this fails
 
 Stated in advance so it can be checked later.
 
@@ -400,10 +514,17 @@ Stated in advance so it can be checked later.
 - **It becomes a workflow manager with extra words.** If a year in the only thing it does is run
   four tools in order, the thesis was wrong and it should say so plainly rather than accrete
   features.
+- **The platform serves its authors first.** The fastest way to kill the plugin model is a private
+  hook only our own methods use. It will be tempting exactly once, at the moment our method needs
+  something the contract does not offer, and the honest move then is to extend the contract for
+  everyone or do without.
+- **The benchmark becomes a machine for confirming what we hoped.** §12 exists because this is the
+  most likely way this project produces something wrong and convincing, and guards that inconvenience
+  their own authors are the first ones quietly relaxed.
 
 ---
 
-## 15. What is borrowed, and from where
+## 17. What is borrowed, and from where
 
 **Inspired by [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (MIT) and the
 [Cordis](https://github.com/cordiverse/cordis) kernel it is built on.** Several load-bearing ideas
@@ -436,7 +557,7 @@ will publish:**
 
 ---
 
-## 16. The name
+## 18. The name
 
 **`single-cell-harness`.** Decided, not proposed.
 
@@ -447,12 +568,12 @@ and their own identities; the umbrella does not compete with them for that space
 Two costs, recorded so the question is not re-opened by accident. It names the **mechanism** rather
 than the thesis — `scStack` would have put the decision stack, the genuinely new idea, in the name,
 and legibility won that trade. And **"harness"** is DeepSeek's word for this class of system, which
-is deliberate: it *is* that class of system applied to single-cell data, and §15 says how much of it
+is deliberate: it *is* that class of system applied to single-cell data, and §17 says how much of it
 is theirs.
 
 ---
 
-## 17. What I want argued with
+## 19. What I want argued with
 
 - **Reversibility or invalidation?** They are separable. If forced to build one I would build
   invalidation — staleness is the failure that has actually cost this project the most. Reversibility
@@ -465,4 +586,4 @@ is theirs.
   every month?
 - **Should the kernel be a thin Python port of Cordis** rather than an independent design, so the
   two stay compatible as Cordis evolves?
-- **Which fifth failure mode is missing from §14** — and is it the one that will actually happen?
+- **Which failure mode is missing from §16** — and is it the one that will actually happen?
