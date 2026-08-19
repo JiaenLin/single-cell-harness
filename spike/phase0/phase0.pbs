@@ -1,0 +1,42 @@
+#!/bin/bash
+#PBS -N sch_phase0
+#PBS -q workq
+#PBS -l select=1:ncpus=8:mem=48gb
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#
+# Phase 0 of ROADMAP.md — can a decision be unmounted, and is materialisation cheap?
+#
+#   qsub -v REPO=$HOME/tools/single-cell-harness,PY=<interpreter>,OUT=<dir> \
+#        -o <dir>/phase0.log  phase0.pbs
+#
+# Sized for the claim, not for comfort: the test is 100,000 observations because a 5,000-cell
+# spike would pass and prove nothing about the property that matters.
+
+set -euo pipefail
+
+: "${REPO:?pass -v REPO=<path to single-cell-harness>}"
+: "${PY:?pass -v PY=<python with numpy+scipy>}"
+: "${OUT:?pass -v OUT=<output directory>}"
+
+mkdir -p "${OUT}"
+exec > >(tee -a "${OUT}/phase0.out") 2>&1
+
+echo "host      $(hostname)"
+echo "repo      ${REPO}"
+echo "python    ${PY}"
+echo "started   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+"${PY}" -c "import numpy, scipy; print('numpy', numpy.__version__, '| scipy', scipy.__version__)"
+echo
+
+cd "${REPO}/spike/phase0"
+
+echo "=== 1. the claimed scale: 100,000 x 2,000 ==="
+"${PY}" evaluate.py --n 100000 --g 2000 --out "${OUT}/n100k"
+echo
+
+echo "=== 2. ten times the scale, because a claim that holds only at the tested size is not a claim ==="
+"${PY}" evaluate.py --n 1000000 --g 2000 --out "${OUT}/n1m" || echo "  (1M did not pass; recorded)"
+echo
+
+echo "finished  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
