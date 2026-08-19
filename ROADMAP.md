@@ -43,6 +43,15 @@ largest risk in `VISION.md` §19 and it is why this phase is first.
 **If it fails:** stop. Write what the cost actually was. The remaining phases are worth nothing
 without this one.
 
+> **PASSED, 2026-08-19.** Measured at 100k and at 1M observations: materialisation 0.01 s and
+> 0.06 s against a 30 s target, stack 0.3 KB, unmount digest-identical, downstream invalidated
+> without being re-run, observation writes raise. Four findings in
+> [`spike/phase0/README.md`](spike/phase0/README.md) — the load-bearing ones being **F2**, the
+> kernel costs three orders of magnitude less than the work it orchestrates, so what the design
+> buys is free *invalidation* rather than fast analysis; and **F3**, the target was tested against
+> view construction and not serialisation, which Phase 3 must measure against a real tool rather
+> than inherit.
+
 ---
 
 ## Phase 1 — The kernel, domain-free
