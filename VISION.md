@@ -6,7 +6,7 @@
 built on it.*
 
 *Inspired by [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (MIT) and the
-[Cordis](https://github.com/cordiverse/cordis) plugin kernel. §17 lists exactly what is borrowed.*
+[Cordis](https://github.com/cordiverse/cordis) plugin kernel. §20 lists exactly what is borrowed.*
 
 ---
 
@@ -424,7 +424,115 @@ match. Here, everything except the swapped plugin is the same object by construc
 
 ---
 
-## 13. Architecture
+## 13. The agent surface
+
+An agent here **writes and runs code**, as a coding agent does. Sequencing existing plugins is the
+easy part of an analysis and constraining an agent to it buys safety by removing most of the value.
+
+The obvious objection is that ad-hoc code is not a declared plugin, so none of the guarantees hold.
+The resolution is already in the format: **an agent's code is a scratch plugin.**
+
+### Reads are open, writes are not
+
+| | |
+|---|---|
+| **reads** | unconstrained. Arbitrary code, any library, against a materialised view of the stack |
+| **writes** | only through the contribution API, only as a mounted plugin, subject to every gate |
+
+The asymmetry is the whole design. An agent may compute anything it likes and look at the result;
+it cannot alter the dataset except by mounting something that declares what it changed. A scratch
+plugin receives a **read-only** materialisation and returns contributions in `out.json` like any
+other plugin, so reversibility, provenance and the gates hold without the agent cooperating.
+
+### The loop
+
+```
+  propose  →  run as a scratch plugin  →  inspect output  →  iterate
+                                                          ↘  promote to dev
+                                                          ↘  discard
+```
+
+A scratch plugin is mounted live with no install and no lock. **Nothing in it is quotable**: no
+number it produces may enter a report, and nothing in `stages/` or a published stack may read from
+it. Promotion to `dev` — where it becomes quotable — requires a lock, a selftest, a `cannot_show`
+and a human. That rung already exists in the graduation path; the agent simply enters at the bottom
+of it.
+
+### What an agent can never do
+
+- disable a gate, or promote its own work past one
+- unmount a checkpoint, or convert a `checkpoint` declaration to `stack`
+- quote a number from scratch
+- mount anything whose `cannot_show` it wrote without a human reading it
+
+### What it sees first
+
+Code is expensive to write and slow to read, so the agent starts from a **designed dataset
+summary** — dimensions, key resolution, composition, QC distributions, the declared design, the
+constraint on use, and the stack itself — and writes code when the summary is not enough.
+
+The summary is a compression and therefore lies by omission somewhere. It must state what it
+omits, and an agent that reasons past it should be reaching for code, not for confidence.
+
+---
+
+## 14. Evaluation
+
+Everything above is unfalsifiable without a benchmark. "The agent proposed a good analysis" and
+"the new method is better" are the same unverifiable sentence, and a platform that makes
+comparison easy while making verification impossible is a machine for producing convincing wrong
+results.
+
+So a benchmark suite is part of this project rather than assumed to exist elsewhere:
+
+```
+benchmarks/
+  <name>/
+    stack.json          how it is analysed
+    truth.yml           what is established, and by what independent evidence
+    scoring.py          how a result is scored against it
+    LIMITS.md           what this benchmark cannot establish
+```
+
+Three kinds, because they fail differently:
+
+- **Labelled reference data** — populations established independently of transcriptome clustering
+  (sorted, or by a second modality). Scores annotation and integration.
+- **Constructed truth** — known composition shifts, known spike-ins, known perturbations. Scores
+  abundance and differential testing, where nothing else can.
+- **Simulation** — known DE, known batch, known trajectory. The only place a method can be scored
+  against an answer that is exactly known, and the least like real data.
+
+`truth.yml` must name **how each fact was established**. A benchmark whose truth came from the same
+class of method being scored measures agreement, not correctness, and every suite in this field has
+some of that in it.
+
+This is likely a more valuable contribution than the runtime, and it is the thing that makes every
+later claim — about a method, about an agent, about the platform — checkable.
+
+---
+
+## 15. The last mile
+
+The deliverable is not an object. A project ends in three artifacts, all generated from the stack:
+
+| | contains |
+|---|---|
+| **submission bundle** | methods prose with the parameters actually used, figures at journal column width with source data per panel, a reproducibility statement, and the stack that regenerates all of it |
+| **archive deposit** | repository-shaped outputs — cellxgene-schema objects, a checksummed raw manifest, metadata filled from the design table |
+| **published result** | the analysis opened by a collaborator or reviewer without installing anything, every decision visible and every figure regenerable |
+
+Each is a plugin class, not a special case, and each is generated **from the stack** rather than
+assembled by hand at the end — which is when it is currently done, badly, under deadline.
+
+Two of the three are already partly built elsewhere: publication figures with captions and
+per-panel source data exist in the profiling tool, and methods prose generated from an object
+exists in the viewer. The harness is what makes them the end of one continuous chain rather than
+three separate efforts.
+
+---
+
+## 16. Architecture
 
 ```
                     ┌────────────────────────────────────────────┐
@@ -460,7 +568,7 @@ worth finding out early and cheaply.
 
 ---
 
-## 14. The order of proof
+## 17. The order of proof
 
 Not a roadmap. The sequence in which the thesis is tested, cheapest disproof first.
 
@@ -479,10 +587,14 @@ Not a roadmap. The sequence in which the thesis is tested, cheapest disproof fir
    not paying for itself and §11 is a claim we have not earned.
 8. **Does a benchmark of our own method survive an adversarial read** by someone told to find the
    asymmetry? Run it against §12's guards before believing any result they produce.
+9. **Can a scratch plugin write to the stack without declaring it?** Try to break the read/write
+   asymmetry from inside — arbitrary code, hostile intent. If it can, §13 is decoration.
+10. **Does the benchmark suite distinguish a real improvement from a regression?** Score two
+    deliberately different stacks and check the ranking is the one a person would give.
 
 ---
 
-## 15. Non-goals
+## 18. Non-goals
 
 - **Not a new object model.** AnnData and `.h5ad` stay. A harness needing its own format has
   already lost.
@@ -494,12 +606,17 @@ Not a roadmap. The sequence in which the thesis is tested, cheapest disproof fir
 - **Not a replacement for Nextflow.** If someone wants a DAG runner underneath as an executor
   plugin, good.
 - **Not cloud-first, and not cloud-hostile.** The executor is a plugin.
-- **Not an autonomous analyst.** An agent may propose; gates it cannot disable stand between it and
-  the data.
+- **Not an autonomous analyst.** An agent may read freely and write only by mounting something
+  that declares what it changed. It cannot disable a gate, promote past one, or quote a number from
+  scratch.
+- **Not built for a reader who cannot evaluate the evidence.** The audience is computational: an
+  approval assumes someone who can judge a density valley or a mixing statistic. Presenting the
+  same decision to a reader who cannot is a different product, and pretending otherwise makes the
+  approval a rubber stamp and the recorded justification worse than nothing.
 
 ---
 
-## 16. How this fails
+## 19. How this fails
 
 Stated in advance so it can be checked later.
 
@@ -521,13 +638,16 @@ Stated in advance so it can be checked later.
   hook only our own methods use. It will be tempting exactly once, at the moment our method needs
   something the contract does not offer, and the honest move then is to extend the contract for
   everyone or do without.
+- **The agent's scratch work becomes the analysis.** Scratch is unquotable by rule, and rules that
+  slow someone down at 11pm get worked around. If results start arriving that no plugin produced,
+  the promotion path is too heavy and the fix is to lighten it, not to relax the rule.
 - **The benchmark becomes a machine for confirming what we hoped.** §12 exists because this is the
   most likely way this project produces something wrong and convincing, and guards that inconvenience
   their own authors are the first ones quietly relaxed.
 
 ---
 
-## 17. What is borrowed, and from where
+## 20. What is borrowed, and from where
 
 **Inspired by [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (MIT) and the
 [Cordis](https://github.com/cordiverse/cordis) kernel it is built on.** Several load-bearing ideas
@@ -560,7 +680,7 @@ will publish:**
 
 ---
 
-## 18. The name
+## 21. The name
 
 **`single-cell-harness`.** Decided, not proposed.
 
@@ -571,12 +691,12 @@ and their own identities; the umbrella does not compete with them for that space
 Two costs, recorded so the question is not re-opened by accident. It names the **mechanism** rather
 than the thesis — `scStack` would have put the decision stack, the genuinely new idea, in the name,
 and legibility won that trade. And **"harness"** is DeepSeek's word for this class of system, which
-is deliberate: it *is* that class of system applied to single-cell data, and §17 says how much of it
+is deliberate: it *is* that class of system applied to single-cell data, and §20 says how much of it
 is theirs.
 
 ---
 
-## 19. What I want argued with
+## 22. What I want argued with
 
 - **Reversibility or invalidation?** They are separable. If forced to build one I would build
   invalidation — staleness is the failure that has actually cost this project the most. Reversibility
@@ -589,4 +709,4 @@ is theirs.
   every month?
 - **Should the kernel be a thin Python port of Cordis** rather than an independent design, so the
   two stay compatible as Cordis evolves?
-- **Which failure mode is missing from §16** — and is it the one that will actually happen?
+- **Which failure mode is missing from §19** — and is it the one that will actually happen?
