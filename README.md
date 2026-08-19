@@ -100,7 +100,9 @@ cannot_show:
 executor: {cost: high}
 ```
 
-Specified in full in [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md), with
+Specified in full in [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) — which is **domain-free**; what an
+observation is, and the vocabulary of slots, keys, sentinels and probes, live in the
+[single-cell profile](docs/profiles/single-cell.md). With
 [`docs/AUTHORING.md`](docs/AUTHORING.md) for converting a public tool into one and a
 [`plugin-maker`](skills/plugin-maker/SKILL.md) skill that performs the conversion.
 
@@ -172,6 +174,7 @@ cross-environment isolation, and a required `cannot_show` on every plugin.
 | [`VISION.md`](VISION.md) | the thesis, rationale, order of proof, failure modes |
 | [`docs/adr/`](docs/adr/) | why each invariant is what it is, and what it cost |
 | [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) | the plugin specification |
+| [`docs/profiles/single-cell.md`](docs/profiles/single-cell.md) | the single-cell profile: observations, slots, keys, sentinels, probes |
 | [`docs/AUTHORING.md`](docs/AUTHORING.md) | converting a public tool into a plugin |
 | [`skills/plugin-maker/`](skills/plugin-maker/SKILL.md) | an agent skill that performs the conversion |
 | [`GLOSSARY.md`](GLOSSARY.md) | precise definitions of the terms above |
