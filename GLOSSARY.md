@@ -3,6 +3,13 @@
 Terms used precisely in `VISION.md`. Written because most of them already mean something looser in
 everyday use, and the argument depends on the narrow meanings.
 
+**kernel** — the runtime core: the one component that mounts, unmounts, resolves the dependency
+graph and holds the event stream. There is exactly one. Everything else is a plugin.
+
+**plugin** — a directory carrying a manifest and an entry point, mounted on the kernel. The unit of
+extension for every part of the system: methods, executors, storage, gates, reports. Specified in
+[PLUGIN_FORMAT.md](PLUGIN_FORMAT.md).
+
 **observations** — the reads as delivered by an instrument. Immutable, never regenerated. The
 provenance boundary between what was measured and what was computed lives here; once lost it cannot
 be reconstructed.

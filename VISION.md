@@ -222,8 +222,11 @@ The same shape answers other questions that are currently out of reach:
 
 ## 7. The plugin contract
 
-Concrete enough to argue with. A plugin is a directory with a manifest and an entry point; the
-kernel never imports it.
+Specified in full in [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md); the shape of it here.
+
+**Vocabulary.** *Kernel* means the runtime core — the one thing that mounts, unmounts and resolves.
+Everything mounted on it is a **plugin**. A plugin is a directory with a manifest and an entry
+point; the kernel never imports it.
 
 ```yaml
 # plugins/qc/scqc/plugin.yml
@@ -256,7 +259,7 @@ Three fields carry the weight:
 
 `scProfile` already implements a single-stage version of all of this — declared `needs`/`produces`,
 prerequisite resolution before anything is spent, guards with logged escapes, cross-environment
-subprocess isolation, a validated JSON manifest, and `cannot_show` on every kernel. **The harness is
+subprocess isolation, a validated JSON manifest, and `cannot_show` on every plugin. **The harness is
 that contract promoted from one stage to the life cycle.** That it already works is the strongest
 evidence available that this is buildable.
 
@@ -441,7 +444,7 @@ match. Here, everything except the swapped plugin is the same object by construc
         │   qc@scqc          mask + reason    │
         │   annotate@scanno  label columns    │
         │   integrate@…      embeddings       │
-        │   profile@…        per-kernel       │
+        │   profile@…        per-plugin       │
         └─────────────────────────────────────┘
                           │  materialise on demand
               ┌───────────┴────────────┐

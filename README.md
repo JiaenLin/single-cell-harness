@@ -75,7 +75,7 @@ $ sch diff main no-qc --on composition
 Gates are plugins, so they can be listed, audited and reported, and every override is logged. An
 agent is a plugin, so it is subject to gates it cannot disable.
 
-## The contract
+## The plugin format
 
 ```yaml
 name: qc@scqc
@@ -90,6 +90,10 @@ cannot_show:
     statistics fall inside chosen thresholds.
 executor: {cost: high}
 ```
+
+Specified in full in [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md), with
+[`docs/AUTHORING.md`](docs/AUTHORING.md) for converting a public tool into one and a
+[`plugin-maker`](skills/plugin-maker/SKILL.md) skill that performs the conversion.
 
 `needs` and `provides` are capability contracts — *something that provides an embedding*, not
 *harmony* — so implementations are swappable and the runtime can resolve what is runnable, what is
@@ -130,6 +134,8 @@ cross-environment isolation, and a required `cannot_show` on every plugin.
 | | |
 |---|---|
 | [`VISION.md`](VISION.md) | architecture, rationale, order of proof, failure modes |
+| [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) | the plugin specification |
+| [`docs/AUTHORING.md`](docs/AUTHORING.md) | converting a public tool into a plugin |
 | [`GLOSSARY.md`](GLOSSARY.md) | precise definitions of the terms above |
 | [`NOTICE.md`](NOTICE.md) | attribution and licence commitments |
 
