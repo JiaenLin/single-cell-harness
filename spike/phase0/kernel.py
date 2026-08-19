@@ -37,13 +37,26 @@ class Observations:
 
     def __init__(self, X, ids, features):
         import numpy as np
+        # CANONICALISE BEFORE FREEZING. Found in Phase 0 and it is a real finding, not a
+        # workaround: scipy mutates its own internal representation as a SIDE EFFECT OF READING.
+        # `(X > 0)` calls sum_duplicates() -> sort_indices(), which writes to the data array in
+        # place, so freezing an un-canonical matrix breaks readers that never intended to write.
+        #
+        # An immutable layer must therefore be immutable in a CANONICAL FORM. Sorting and summing
+        # first makes the later calls no-ops, and the freeze then costs a legitimate reader
+        # nothing. Enforcing D2 naively would have made the invariant unusable and got it relaxed
+        # — which is exactly how a guarantee erodes.
+        if hasattr(X, "sum_duplicates"):
+            X.sum_duplicates()          # sorts indices and sums duplicates; sets canonical format
         self.X = X
         self.ids = np.asarray(ids)
         self.features = np.asarray(features)
         for a in (self.ids, self.features):
             a.flags.writeable = False
-        if hasattr(X, "data"):
-            X.data.flags.writeable = False
+        for attr in ("data", "indices", "indptr"):
+            arr = getattr(X, attr, None)
+            if arr is not None and hasattr(arr, "flags"):
+                arr.flags.writeable = False
         self.n = len(self.ids)
 
     def digest(self):
