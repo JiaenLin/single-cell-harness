@@ -75,6 +75,13 @@ $ sch diff main no-qc --on composition
 Gates are plugins, so they can be listed, audited and reported, and every override is logged. An
 agent is a plugin, so it is subject to gates it cannot disable.
 
+The model is [Cordis](https://github.com/cordiverse/cordis)'s, by its own names: a plugin is a
+function receiving a **Context**; **Services** attach to it; dependencies are declared with
+**`inject`** rather than passed in; every registration is an **effect** whose **disposer** runs on
+unload; a Context can be **forked**; and a stack is a declarative plugin tree composed by overlay,
+in the shape of `cordis.yml`. Across a process boundary the Context is serialised, so a plugin in
+R receives the same one as a plugin in Python.
+
 ## The plugin format
 
 ```yaml

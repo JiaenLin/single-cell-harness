@@ -8,6 +8,19 @@ interpreter, runs an entry point as a subprocess, and merges what the plugin dec
 That boundary is what lets a plugin pin numpy 1.26 while the host runs 2.4, and what lets one be
 written in R.
 
+**This follows [Cordis](https://github.com/cordiverse/cordis)**, the plugin kernel under DeepSeek
+Harness, and uses its vocabulary wherever a concept already exists there:
+
+| Cordis | here |
+|---|---|
+| a plugin is a function receiving a **Context** | `in.json` is that Context, serialised for a subprocess |
+| **Service**, attached to the Context | `dataset`, `executor`, `storage`, `probe`, `provenance`, `report` |
+| **`inject`** — demand-driven dependency declaration | `inject:` in the manifest |
+| **effect / disposer** — registrations undone on unload | `provides:`, from which the kernel synthesises the undo (§5) |
+| **fork / scope** — branched, isolated contexts | a stack fork: one plugin swapped, everything else identical |
+| typed **event bus**, broadcast + waterfall | observers broadcast; gates short-circuit |
+| **`cordis.yml`** plugin tree, overlay composition | `stack.yml`, layered site → project → run |
+
 > **Vocabulary.** *Kernel* means the runtime core — the one thing that mounts, unmounts and
 > resolves. Everything mounted on it is a **plugin**. scProfile currently calls its units
 > "kernels"; those are plugins in this vocabulary and will be renamed when it is adapted.
@@ -56,7 +69,10 @@ layer: stack                     # stack | checkpoint
 reversible: true                 # tested at mount; see §5
 
 # ─── the dependency graph ────────────────────────────────────────────────────
-needs:
+inject:                          # services required — Cordis's `inject`
+  - dataset
+  - probe/differential
+needs:                           # data capabilities that must be present
   - layers/spliced
   - layers/unspliced
   - obs/{label}                  # {label} resolves through the key map, §4
@@ -106,8 +122,9 @@ cannot_show:
 | `wraps` | if wrapping | the upstream tool, pinned, with licence and citation. §9 |
 | `layer` | ✅ | `stack` (mountable, reversible) or `checkpoint` (rebuild-only). §3 |
 | `reversible` | ✅ | a claim the kernel tests. §5 |
-| `needs` | ✅ | capabilities that MUST be present. Empty list is valid and explicit |
-| `provides` | ✅ | what it contributes. Held to it. §6 |
+| `inject` | | **services** this plugin requires from the Context. Cordis's mechanism, and its name |
+| `needs` | ✅ | **data capabilities** that MUST be present. Empty list is valid and explicit |
+| `provides` | ✅ | what it contributes — services registered, and contributions to the dataset. Held to it. §6 |
 | `optional` | | used if present, never a prerequisite |
 | `sourceable` | | needs it may fetch from beside the object rather than refuse. §7 |
 | `sees` | ✅ | information asymmetry declaration. Empty list is a claim, not an omission. §8 |
@@ -174,10 +191,11 @@ naming a real column has bound itself to one project.
 
 ---
 
-## 5. Reversibility, across a process boundary
+## 5. Effects and disposers, across a process boundary
 
-Cordis makes reversibility structural by having `register()` return a **disposer** — a closure that
-undoes exactly that contribution. A plugin running as a subprocess cannot return a closure.
+In Cordis every registration a plugin makes is an **effect**, and effects are undone automatically
+when the plugin unloads: `register()` returns a **disposer**, a closure reversing exactly that
+contribution. A plugin running as a subprocess cannot return a closure.
 
 **So the declaration IS the disposer.** A plugin states precisely what it contributed; the kernel
 synthesises the undo by removing exactly those contributions, in reverse mount order. This is the
