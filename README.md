@@ -117,6 +117,32 @@ labels, the design or the evaluation split declares it, and that declaration is 
 the ranking appears. Metrics are recorded in the event stream before results are seen, and held-out
 splits are withheld by the data layer rather than by the method's good behaviour.
 
+## Agents
+
+An agent writes and runs code against the data, as a coding agent does — sequencing plugins is the
+easy part of an analysis. The safety comes from an asymmetry rather than from restraint: **reads
+are open, writes are not.** Arbitrary code may compute anything and look at the result; changing
+the dataset requires mounting something that declares what it changed, which puts every gate,
+every provenance record and reversibility itself in the path.
+
+Ad-hoc code runs as a **scratch plugin** — mounted live, no install, nothing quotable. Promotion
+to a plugin whose numbers may appear in a report requires a lock, a selftest, a `cannot_show` and
+a person.
+
+## Evaluation
+
+A benchmark suite ships with the platform, because "the agent proposed a good analysis" and "the
+new method is better" are the same unverifiable sentence without one. Three kinds — independently
+labelled reference data, constructed truth, and simulation — each declaring how its truth was
+established and what it cannot establish.
+
+## The last mile
+
+A project ends in a submission bundle (methods prose, column-width figures, per-panel source data,
+and the stack that regenerates them), an archive-ready deposit, and a published result a
+collaborator opens without installing anything. Each is a plugin, and each is generated from the
+stack rather than assembled by hand under deadline.
+
 ## Orchestration, not absorption
 
 [scQC](https://github.com/JiaenLin/scQC) ·
@@ -136,6 +162,7 @@ cross-environment isolation, and a required `cannot_show` on every plugin.
 | [`VISION.md`](VISION.md) | architecture, rationale, order of proof, failure modes |
 | [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) | the plugin specification |
 | [`docs/AUTHORING.md`](docs/AUTHORING.md) | converting a public tool into a plugin |
+| [`skills/plugin-maker/`](skills/plugin-maker/SKILL.md) | an agent skill that performs the conversion |
 | [`GLOSSARY.md`](GLOSSARY.md) | precise definitions of the terms above |
 | [`NOTICE.md`](NOTICE.md) | attribution and licence commitments |
 
