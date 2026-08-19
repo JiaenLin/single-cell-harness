@@ -1,4 +1,6 @@
-# A harness for the whole life cycle of a single-cell dataset
+# single-cell-harness
+
+*A harness for the whole life cycle of a single-cell dataset.*
 
 *Vision. No code yet, deliberately. This document exists to be argued with.*
 
@@ -356,30 +358,23 @@ additions live:
 
 ---
 
-## 13. Names
+## 13. The name
 
-What the name has to carry: this is an **umbrella over four existing `sc*` tools**; it is a
-**runtime**, not a library; and the thing that distinguishes it is **reversible, composable
-decisions**, not orchestration.
+**`single-cell-harness`.** Decided, not proposed.
 
-| candidate | for | against |
-|---|---|---|
-| **`scHarness`** | instantly legible beside scQC/scAnno/scIntegrate/scProfile; says what it is | "harness" names the mechanism, not the ambition, and borrows DeepSeek's word |
-| **`scKernel`** | accurate — it is a kernel with plugins mounted on it; strong systems connotation | may read as low-level/internal; "kernel" is already used inside scProfile for its own plugins, which is a genuine collision |
-| **`scStack`** | names the actual thesis: a dataset is a stack of mounted decisions; short, memorable | "stack" is overloaded in software |
-| **`Cellophane`** | evocative — transparent, you can see through every layer; memorable and unclaimed in this space | cute; drops the `sc*` family resemblance |
-| **`Reagent`** | a lab word for the thing that makes a reaction happen; also *re-agent*, a pun on the agent-as-plugin idea | possibly too clever; ambiguous |
-| **`scLifecycle`** | literal, descriptive | flat, and long |
+It says what the thing is in the words a biologist would use, and it does not make anyone learn a
+coined term before they can tell a colleague what they are running. The four tools underneath keep
+the `sc*` prefix and their own identities; the umbrella does not need to compete with them for the
+same naming space.
 
-**Recommendation: `scStack`.** It names the thesis rather than the mechanism, keeps the family
-prefix, is short, and survives being said out loud. The decision stack is what is new here — the
-plugin runtime is the means, and every competitor also has a means.
+Two things it gives up, recorded so nobody re-opens the question by accident:
 
-*Second choice `scHarness`*, if legibility beside the existing four matters more than making the
-thesis the name. This document currently sits in a directory called `scHarness/`; that is a
-placeholder and renames on request.
-
----
+- it names the **mechanism** rather than the thesis. `scStack` would have put the decision stack —
+  the genuinely new idea — in the name. The trade is legibility, and legibility wins for something
+  people have to adopt.
+- it uses **"harness"**, which is DeepSeek's word for this class of system. That is deliberate and
+  it is the honest signal: this *is* that class of system, applied to single-cell data, and §12
+  says exactly how much of it is theirs.
 
 ## 14. What I want argued with
 
