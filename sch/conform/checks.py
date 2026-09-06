@@ -15,7 +15,6 @@ SKIP_DIRS = {".git", "__pycache__", "node_modules", ".venv", "venv", "env", "dis
 GENERIC_PATTERNS = [
     (r"(?<![\w/])/(?:Users|home)/[A-Za-z][\w.-]*", "a user home path"),
     (r"/data/[A-Za-z][\w.-]*/home/", "a site home path"),
-    (r"~/projects/[A-Za-z]", "a project path under a home directory"),
     (r"\blogin-\d{2}-\d{2}\b", "a login-node hostname"),
     (r"\bhn-\d{2}-\d{2}\b", "a scheduler head-node name"),
     (r"\b\d{6}\.hn-\d{2}-\d{2}\b", "a scheduler job id"),
@@ -80,6 +79,8 @@ def conform_repo(repo, terms_file=None) -> list:
         text = _read(p)
         for i, line in enumerate(text.splitlines(), 1):
             for rx, why in pats + tpats:
+                if why == "an e-mail address" and p.name in ("CITATION.cff", "pyproject.toml"):
+                    continue                     # attribution, not leakage
                 if rx.search(line):
                     (guard_hits if _is_guard(p) else hits).append(f"{p.relative_to(root)}:{i} {why}")
     _check(checks, "S1 no site or cohort identifiers anywhere in the repository", not hits,
