@@ -152,6 +152,11 @@ for spec in "sch:$REPO:" \
     scqc)        args+=(--point criterion --name fail_umi_floor) ;;
     scanno)      args+=(--point mechanism --name rescue) ;;
   esac
+  # Only the two whose fixture writes numbers; for the others there is nothing to fingerprint and
+  # the tier says so, which is the honest outcome rather than an empty baseline.
+  if [ -n "${RECORD:-}" ] && { [ "$name" = "scintegrate" ] || [ "$name" = "scanno" ]; }; then
+    args+=(--record-baseline)
+  fi
   set +e
   "$PY" -m sch "${args[@]}" > "$RUNDIR/checks/$name.txt" 2>&1
   echo "  exit $?"
