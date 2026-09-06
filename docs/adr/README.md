@@ -10,6 +10,14 @@ NNNN-short-title.md
 Numbered, never renumbered, never deleted. A superseded record is marked superseded and keeps its
 number — the reasoning that was once persuasive is the most useful thing in the file.
 
+A record is forward-looking: it argues, and it names what the decision costs. A **post-mortem** is
+backward-looking: a defect reached somewhere it should not have, and the interesting part is why
+every check missed it. Those live in [`docs/postmortem/`](../postmortem/), and mixing the two loses
+both.
+
+A record may also be `proposed` — decided by nobody yet, written down so the argument is available
+when it is. Nothing in the repository changes until it is accepted.
+
 ## Template
 
 ```markdown

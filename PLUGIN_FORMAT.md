@@ -38,7 +38,10 @@ Harness, and uses its vocabulary wherever a concept already exists there:
   lock.yml          environment specification — REQUIRED if needs_env
   selftest.py|.R    proves the environment works — REQUIRED if needs_env
   guard.py          refuse inputs where the output would mislead — OPTIONAL
+  invariant.py      runtime checks on the relationship it owns — REQUIRED unless declared
+                    absent in the manifest, §16
   references.yml    reference data with checksums — OPTIONAL
+  README.md         REQUIRED — the four sections in §15
   CHANGELOG.md      REQUIRED once published
 ```
 
@@ -59,6 +62,7 @@ when_to_use: >
 class: method                     # method | probe | gate | executor | storage | report | publish
 layer: stack                      # stack | checkpoint
 reversible: true
+state_version: 3                  # bumped when the NUMBERS change; see §3b
 
 wraps:
   tool: scvelo
@@ -84,6 +88,7 @@ entry: run.py
 needs_env: true
 executor: {cost: high, gpu: optional}
 gates: {differential_check: required}
+invariant: invariant.py           # or: no_runtime_invariant: <reason>. §16
 
 cannot_show:
   - Velocity is a DIRECTION, not a rate. Arrow length is not speed, and two
@@ -97,6 +102,7 @@ cannot_show:
 | `name`, `version`, `summary`, `when_to_use` | ✅ | identity. `version` is the plugin's, never the wrapped tool's |
 | `class` | | default `method`. §2b |
 | `layer` | ✅ | `stack` or `checkpoint`. §3 |
+| `state_version` | ✅ if it contributes | integer. What the plugin computes, versioned. §3b |
 | `reversible` | ✅ | a claim the kernel tests. §5 |
 | `wraps` | if wrapping | the upstream tool, pinned, with licence and citation. §9 |
 | `inject` | | services required from the Context |
@@ -108,6 +114,7 @@ cannot_show:
 | `language`, `entry`, `needs_env` | ✅ | how it runs |
 | `executor` | | scheduling hints; advisory |
 | `gates` | | gates it submits to beyond the defaults |
+| `invariant` | ✅ one of the two | the companion, or `no_runtime_invariant:` with a reason. §16 |
 | `cannot_show` | ✅ | non-empty. §10 |
 
 ### 2b. Plugin classes
@@ -123,11 +130,29 @@ data it cannot hold.
 class: gate
 measures_with: probe/differential
 verdict: [PASS, REVIEW, REFUSE]
-escape: --allow                   # logged; never absent
+escape: --allow                   # logged as a pair; never absent
 ```
 
 A gate whose measurement the refused party cannot independently run is a black box that gets routed
 around. One instrument, two consumers.
+
+**A gate is monotonic (G4).** It may REFUSE, or abstain; it may not approve. `PASS` is the
+abstention — *this gate has nothing to refuse on*, never *this is fine, disregard the others* — and
+`REVIEW` is an abstention carrying a note that travels to the report. The verdict of a set of gates
+is the strongest refusal any of them returns, so **order does not change the outcome** and no
+plugin may turn another's refusal into a pass.
+
+The only thing that lifts a refusal is `escape`, and an escape is a **recorded pair**: the ask —
+what was refused, by which gate, with the probe's number — and the decision — who, when, why. An
+escape with no pair in the stream is not an escape, and the mount fails. A refusal is a **result**,
+appended to the stream with the number that caused it, never an exception that unwinds and leaves
+nothing to audit.
+
+**`class: executor`** — decides where work physically runs. Its teardown MUST reach quiescence
+(**E5**): closing the plugin's output registration before signalling, awaiting termination, and
+reporting requested / stopped / timed-out / exit status as **independent facts** — a job can time
+out *and* exit 0 because it trapped the signal, and a flag nested inside another's branch reads a
+cut-short run as a clean one. An executor that cannot confirm termination fails the unmount.
 
 ---
 
@@ -150,6 +175,22 @@ rebuild_from:
 Declaring `stack` for something that is really a checkpoint is the most damaging error in this
 format: the kernel will offer an unmount that silently produces different data. **When in doubt,
 declare `checkpoint`** — that error costs a rebuild; the other costs a wrong answer nobody can see.
+
+### 3b. `state_version`: what the plugin computes, versioned
+
+`version` tracks the wrapper. **`state_version` tracks the numbers.** It is an integer, bumped
+whenever what the plugin computes changes for the same inputs and the same parameters — a new
+upstream version, a corrected formula, a changed default, a different random draw.
+
+The kernel keys every cached materialisation on the exact tuple — observations digest, the ordered
+stack of `(plugin, version, state_version, params)`, profile version — and a tuple that does not
+match is a **miss, never a partial hit** (**D6**). A plugin that changes what it computes without
+bumping `state_version` serves stale numbers that look correct and match their own provenance;
+there is no cheaper place to catch that than here, and the kernel's companion (§16) catches the
+rest by raising when a re-run differs under an unchanged tuple.
+
+Contribute a **whole value, never a delta** — the full mask, the full column. A delta cannot be
+removed from the middle of a stack, which is the operation the entire design is for.
 
 ---
 
@@ -195,6 +236,9 @@ than documented:
 A plugin MAY declare `reversible: false` on the stack layer. It is then mountable, but unmounting
 requires rebuilding everything above it, and the kernel says so first.
 
+A plugin that starts work outliving its own process — a scheduler job, a server, a temporary mount
+— is undone only when that work has **stopped**, not when its stop was requested (**E5**, §2b).
+
 ---
 
 ## 6. The runtime protocol
@@ -227,7 +271,7 @@ contract does not know about.
 
 ```json
 {
-  "contract": "1.0", "plugin": "velocity", "version": "0.1.0",
+  "contract": "1.0", "plugin": "velocity", "version": "0.1.0", "state_version": 3,
   "status": "ok",
   "headline": "fitted on 2,000 features; median confidence 0.84",
   "wrapped_versions": {"scvelo": "0.3.4"},
@@ -358,9 +402,16 @@ result is testing the fixture.
 9. `references.yml` entries carry checksums
 10. the reversibility claim is consistent with the layer
 11. no hard-coded domain identifier where the profile defines a key
+12. a contributing plugin declares an integer `state_version` (§3b)
+13. a gate declares an `escape`, and no verdict outside `PASS` `REVIEW` `REFUSE` — there is
+    no approving verdict to declare (**G4**)
+14. `invariant:` names a file that exists, or `no_runtime_invariant:` gives a reason naming a
+    relationship — an empty companion and an unexplained absence are both rejected (§16)
+15. `README.md` carries all four required sections, none of them empty (§15)
 
 `sch plugin test <dir>` additionally builds the environment, runs the selftest, runs the plugin on
-a synthetic fixture, and — for `reversible: true` — mounts, snapshots, unmounts and compares.
+a synthetic fixture, mounts its companion (§16) against that run, and — for `reversible: true` —
+mounts, snapshots, unmounts and compares.
 
 ---
 
@@ -372,6 +423,11 @@ whose meaning must change gets a new name and the old one is deprecated with not
 
 A **profile** carries its own version. A plugin declares which it was written against, and a kernel
 asked to mount a plugin under an unknown profile refuses rather than guessing at the vocabulary.
+
+Whether those promises should bind *before* an adapter has ever been written against this contract
+is open: [ADR-0012](docs/adr/0012-pre-release-stance-for-the-contract.md) proposes deferring them
+until Phase 5 closes. It is **proposed, not accepted** — until it is, everything above holds as
+written.
 
 ---
 
@@ -396,3 +452,59 @@ different domain without touching the core — and it is the reason a plugin dec
 its first three lines.
 
 **This project's profile:** [`docs/profiles/single-cell.md`](docs/profiles/single-cell.md).
+
+---
+
+## 15. The README
+
+Required, four sections, none of them empty. `when_to_use` and `cannot_show` are for the kernel and
+the report; this is for the person deciding whether to mount the thing.
+
+| section | what goes in it |
+|---|---|
+| **What it does** | the operation, in the terms a user of the wrapped tool would recognise |
+| **Report surface** | what this plugin makes report-visible — every number, table and figure a reader could end up quoting, and the `cannot_show` line each one travels with |
+| **Cost** | what it costs to run and what it costs to *unmount*: the declared `executor` cost, and what invalidates when it is removed |
+| **Known limitations** | what it does badly, what it does not do yet, and the case where its answer should be distrusted |
+
+**Known limitations is the load-bearing one.** A section that is empty, or that reads as marketing,
+is the plugin telling you it has not been used in anger. The convention is borrowed from DeepSeek
+Harness, where every package README carries *Model Experience* — what the model sees, verbatim —
+and *Known Limitations and Deferred Work*, and both are filled in with real admissions. The
+equivalent here is what a *reader of the report* sees, because that is our model: the report is the
+surface where an unstated limit becomes a claim nobody made on purpose.
+
+---
+
+## 16. The invariant companion
+
+A relationship the plugin owns, asserted while it runs — not on a fixture, not in CI, but on the run
+whose results someone will publish
+([ADR-0008](docs/adr/0008-runtime-conformance-companions.md)).
+
+```python
+# invariant.py
+def register(inv):
+    @inv.check("every masked observation is named in the removal record")
+    def _(run):
+        masked   = run.masked_observations()
+        recorded = {row["observation"] for row in run.table("removal_record")}
+        if masked - recorded:
+            inv.fail(f"{len(masked - recorded)} observations masked without a record")
+```
+
+- The kernel provides `service/invariant`. A check that fails raises, naming **this** plugin and
+  the fact that failed. It does not silently degrade.
+- A companion asserts something **observable at runtime** that this plugin **owns**: a conservation
+  law, an ordering, a relationship between what it declared and what it wrote. That a field is
+  present, that an entry point is executable, that a pure function returns a fixed value — those
+  are §12 and selftest concerns, and a companion that checks them is theatre.
+- **Every plugin declares one or the other.** A plugin with no runtime relationship writes
+  `no_runtime_invariant:` with the reason — *pure transformation of a declared input, nothing
+  observable between calls* — and the validator rejects a reason that names no relationship. The
+  point of the exhaustive form is that "we didn't think about it" and "there is nothing to check"
+  stop being indistinguishable.
+- A companion is a plugin like any other: it contributes nothing to the stack, nothing it computes
+  is quotable (**A2**), and it declares its cost.
+- A check only checks if the regression actually fails it. Introduce the regression, watch it fail,
+  revert — and if it cannot be made to fail, the check is decoration.

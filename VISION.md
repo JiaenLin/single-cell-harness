@@ -796,6 +796,10 @@ below are theirs, and the honest thing is to name which.
 | **Temporary in-memory plugins** | the agent inspects the plugin tree, creates a plugin in memory, mounts it, uses it, unmounts it | **scratch plugins** (§13). The agent's ad-hoc code is this mechanism, not a new one |
 | **Context, Service, inject, effect, fork** | the Cordis core: one object carrying services, demand-driven injection, registrations undone on unload, branched contexts | used by their own names (§16). A forked context is a stack ablation |
 | **Typed event bus, broadcast and waterfall** | plugin communication | broadcast for observers, waterfall short-circuit for gates, and the same stream is the provenance |
+| **Monotonic guards** | a guard registered after the policy waterfall may deny or abstain, and no later listener can turn its denial back into permission | **G4.** A gate may refuse or abstain, never approve; the verdict of a set of gates is order-independent |
+| **Package-owned runtime invariants** | every package ships a companion asserting the relationship it owns, or states why it has none; the registry fails with the owner's name | the third conformance tier: the suite tests the defence, the **companion** asserts the property, on the run whose results get published |
+| **Projections: the framework drives, the domain computes** | pure `init`/`apply`/`view` folded over the session log, with `stateVersion` as the cache's invalidation anchor and whole values rather than deltas | **D6.** Materialisation is a fold; a plugin declares `state_version`, contributes whole values, and the cache is keyed on the exact tuple |
+| **Dispose reaches quiescence** | teardown awaits the children's exit rather than requesting it, and closes the notification registries first | **E5.** An unmount is not complete until the work it started has stopped — the invariant that makes E3 real across a scheduler |
 
 **Concepts, not code.** DeepSeek Harness is TypeScript/Node organised around an agent loop over a
 session. This is Python organised around a dataset — the scientific stack is Python and that is not

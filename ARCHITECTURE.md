@@ -1,4 +1,4 @@
-# Architecture — LOCKED, v1.0
+# Architecture — LOCKED, v1.1
 
 **This document is normative and frozen.** Everything else in this repository may be revised
 freely; the invariants below may not be changed by writing a different document. They change only
@@ -78,6 +78,11 @@ convention.
 **E4** — `reversible: true` is **tested at mount** — mount, snapshot, unmount, compare — never
 trusted at unmount, when everything depends on it.
 
+**E5** — A disposer **reaches quiescence**, it does not merely request it. An unmount is not
+complete until the work it started has stopped; a disposer that cannot confirm termination fails
+the unmount rather than reporting success.
+([ADR-0011](docs/adr/0011-disposal-reaches-quiescence.md))
+
 ---
 
 ## 4. The data layers
@@ -103,6 +108,12 @@ change the kernel cannot reverse, and is in breach of E1 and E2.
 `checkpoint`: the cost of that error is a rebuild, and the cost of the opposite is an unmount that
 silently produces a different dataset.
 
+**D6** — **Materialisation is a fold over the stack, keyed by declared semantics.** A plugin
+contributes a whole value, never a delta. Every contributing plugin declares `state_version`, and a
+cached materialisation is valid only for the exact tuple — observations digest, ordered stack of
+`(plugin, version, state_version, params)`, profile version. Anything else is a miss, never a
+partial hit. ([ADR-0010](docs/adr/0010-materialisation-is-a-versioned-fold.md))
+
 ---
 
 ## 5. Provenance and gates
@@ -124,6 +135,12 @@ a gate whose escapes are all recorded does not.
 **G3** — A gate **measures with a probe the caller can independently run**. One implementation, two
 consumers. A gate whose measurement cannot be reproduced by the party it refuses is a black box
 that will be routed around.
+
+**G4** — A gate is **monotonic**: it may refuse or abstain, never approve. The verdict of a set of
+gates is the strongest refusal any of them returns, so order does not change the outcome, and no
+plugin may convert a refusal into a pass. Only the declared escape lifts one, and a refusal is a
+result in the stream rather than an exception.
+([ADR-0009](docs/adr/0009-gates-are-monotonic.md))
 
 ---
 
@@ -179,10 +196,32 @@ architecture erodes.
 | C2 | every plugin dependency is declared in a manifest |
 | C4 | the boundary carries JSON only |
 | D2 | nothing opens an observation path for writing |
+| D6 | every contributing plugin declares `state_version` |
 | E4 | every `reversible: true` plugin passes mount/unmount/compare |
 | G1 | every gate resolves to a plugin |
 | G3 | every gate names a probe that exists |
+| G4 | every gate declares an escape, and no verdict outside `PASS` `REVIEW` `REFUSE` |
 | X1 | the version comparison reads the major only |
 
-A1, A2, D4 and P2 are not statically checkable and are covered by the adversarial suite: code
-written to break them, not code written to confirm them.
+A1, A2, D4, E5 and P2 are not statically checkable. They are covered twice over, and the division
+is deliberate: **the adversarial suite tests the defence; the companion asserts the property.**
+
+### Runtime companions
+
+`sch doctor --runtime` mounts `service/invariant` with every companion the stack provides. Every
+plugin either ships one or states in its manifest why it has none
+([ADR-0008](docs/adr/0008-runtime-conformance-companions.md)). The kernel ships these:
+
+| | |
+|---|---|
+| A1 | no write reaches the dataset outside a declared contribution |
+| A2 | nothing carrying a scratch provenance tag is promoted, or quoted into a report |
+| D4 | the observation count never decreases across a mount |
+| D6 | a result differing from a cached one under an unchanged tuple raises |
+| E5 | no disposer returns while work it started is still running |
+| G2 G4 | every gate escape has an ask and a decision recorded against it |
+| P2 | every number in a rendered report resolves to an event in the stream |
+
+The adversarial suite is unchanged in kind: code written to break these, not code written to
+confirm them. A companion is held to the same standard — a check only checks if the regression
+actually fails it.
