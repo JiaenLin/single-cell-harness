@@ -1,0 +1,153 @@
+#!/bin/bash
+#PBS -N sch_dev_suite
+#PBS -q short
+#PBS -l select=1:ncpus=8:mem=32gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#
+# ============================================================================================
+# DOES THE DEVELOPMENT SUITE WORK ON THE MACHINE THE DEVELOPMENT HAPPENS ON?
+# ============================================================================================
+#
+# `sch dev` was written on a workstation with no anndata, so every tier that needs a real
+# object - the fixture, both shapes, the baseline - has never executed. Shipping a suite whose
+# central mechanism has only been reasoned about would be the exact failure the suite exists to
+# prevent, one level up.
+#
+# THE PREDICTION, WRITTEN BEFORE THE RUN:
+#   the fixture writes two shapes whose digests are EQUAL and whose column names differ in all
+#     seven roles. If the digests differ, the two-shape comparison is worthless and every
+#     conclusion drawn from it must be withdrawn.
+#   all sixteen hazards are present in the written object, not only in the in-memory build.
+#   `sch dev check` runs to completion on all five repositories. Tiers may FAIL - these fixture
+#     commands have never been executed and the point of the run is to find out - but the suite
+#     must not crash, and every failure must name the command it ran and its exit code.
+#   nothing outside this run directory is written.
+#
+# NOT A REPRODUCTION and nothing here is about the biology. No result from this run may be
+# quoted: the cohort is synthetic and says so in its own manifest.
+#
+# rule-one: no-removal. Reads five checkouts, writes only inside $RUNDIR.
+# Authored on the workstation and pushed (rule H1). No `git` runs below.
+#
+#   qsub -v RUNDIR=...,TOOLS=...,REPO=...,PY=... jobs/dev_suite.pbs
+
+set -euo pipefail
+cd "$PBS_O_WORKDIR"
+
+RUNDIR="${RUNDIR:?pass -v RUNDIR=<run directory>}"
+REPO="${REPO:?pass -v REPO=<the harness checkout>}"
+TOOLS="${TOOLS:?pass -v TOOLS=<the directory holding scQC scAnno scIntegrate scProfile>}"
+PY="${PY:?pass -v PY=<a python with anndata>}"
+
+mkdir -p "$RUNDIR/logs" "$RUNDIR/fixture" "$RUNDIR/checks"
+
+finish() { s=$?
+  set +e
+  missing=""
+  for p in fixture/FIXTURE_a.json fixture/FIXTURE_b.json hazards.json; do
+    [ -s "$RUNDIR/$p" ] || missing="$missing $p"
+  done
+  if [ "$s" -eq 0 ] && [ -z "$missing" ]; then seal="$RUNDIR/SEALED.txt"; else seal="$RUNDIR/FAILED.txt"; [ "$s" -eq 0 ] && s=1; fi
+  { echo "exit=$s"; echo "jobid=${PBS_JOBID:-none}"; echo "host=$(hostname -s)"
+    echo "finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "purpose=exercise sch dev on a machine that has anndata"
+    echo "NOT PROMOTABLE, synthetic cohort, no number here is about the biology"
+    [ -n "$missing" ] && echo "missing=$missing"
+    ls "$RUNDIR/checks"/*.txt 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' '
+  } > "$seal"
+  rm -f "$RUNDIR/RUNNING.txt"
+  exit $s; }
+trap finish EXIT
+{ echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)"; echo "host=$(hostname -s)"; } > "$RUNDIR/RUNNING.txt"
+
+export PYTHONNOUSERSITE=1 PYTHONPATH="$REPO"
+export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
+export OMP_NUM_THREADS="${NCPUS:-1}" MKL_NUM_THREADS="${NCPUS:-1}" OPENBLAS_NUM_THREADS="${NCPUS:-1}"
+mkdir -p "$RUNDIR/cache"
+echo "node $(hostname -s)  cores ${NCPUS:-unset}  $(date -u)"
+"$PY" -c "import anndata, numpy, pandas; print('anndata', anndata.__version__, '| numpy', numpy.__version__)"
+
+# ------------------------------------------------------------------ 1. the fixture, both shapes
+echo; echo "=== fixture"
+"$PY" -m sch dev fixture "$RUNDIR/fixture" > "$RUNDIR/logs/fixture.txt" 2>&1 || {
+  echo "fixture FAILED:"; cat "$RUNDIR/logs/fixture.txt"; exit 1; }
+cat "$RUNDIR/logs/fixture.txt"
+
+# ---------------------------------------------- 2. the invariant the two-shape trick rests on
+echo; echo "=== the two shapes are the same cohort"
+"$PY" - "$RUNDIR" <<'PYCODE' | tee "$RUNDIR/hazards.txt"
+import json, sys
+from pathlib import Path
+import anndata as ad, numpy as np
+from sch.dev import fixture as F
+
+out = Path(sys.argv[1]); fx = out / "fixture"
+a = json.loads((fx / "FIXTURE_a.json").read_text())
+b = json.loads((fx / "FIXTURE_b.json").read_text())
+A = ad.read_h5ad(fx / "fixture_a.h5ad"); B = ad.read_h5ad(fx / "fixture_b.h5ad")
+R = {r: (n["a"], n["b"]) for r, n in F.ROLES.items()}
+
+checks = {
+  "digests are equal":        a["digest"] == b["digest"],
+  "counts are identical":     bool(np.array_equal(np.asarray(A.X), np.asarray(B.X))),
+  "embeddings are identical": bool(np.array_equal(A.obsm["X_pca"], B.obsm["X_pca"])),
+  "every role is renamed":    all(x != y for x, y in R.values()),
+  "shape a carries a names":  all(x in A.obs for x, _ in R.values() if x != "counts"),
+  "shape b carries b names":  all(y in B.obs for _, y in R.values() if y != "raw_counts"),
+  "a's names absent from b":  not any(x in B.obs for x, y in R.values() if x != y and x != "counts"),
+  "counts layer renamed":     "counts" in A.layers and "raw_counts" in B.layers,
+}
+o = A.obs; X = np.asarray(A.X); g = list(A.var_names)
+haz = {
+  "tiny_sample": int((o["sample"] == "S12").sum()) == 7,
+  "arm_exclusive_type": "Type_zeta" not in set(o.loc[o["condition"] == "ctrl", "cell_type"]),
+  "singleton_type": int((o["cell_type"] == "Type_eta").sum()) == 1,
+  "nan_in_numeric_obs": bool(o["pct_counts_mt_like"].isna().any()),
+  "unused_category": int((o["sample"] == "S99").sum()) == 0 and "S99" in list(o["sample"].cat.categories),
+  "duplicate_barcodes": bool(o["barcode"].duplicated().any()),
+  "empty_cell": float(X[0].sum()) == 0.0,
+  "empty_gene": float(X[:, -1].sum()) == 0.0,
+  "constant_gene": len(set(X[1:, -2].tolist())) == 1 and X[1, -2] != 0,
+  "gene_named_like_obs": "condition" in g,
+  "prefix_sample_names": {"S1", "S10"} <= set(map(str, o["sample"].unique())),
+  "awkward_label": any(" " in t and "/" in t for t in map(str, o["cell_type"].unique())),
+  "mixed_object_obs": bool(o["free_note"].isna().any()) and bool(o["free_note"].notna().any()),
+  "design_row_without_cells": int((o["sample"] == "S98").sum()) == 0,
+  "mito_genes": int(A.var["mt"].sum()) >= 3,
+  "constant_covariate_in_arm": float(o.loc[o["condition"] == "treated", "age_weeks"].std()) == 0.0,
+}
+for k, v in {**checks, **haz}.items():
+    print(("  ok   " if v else "  FAIL ") + k)
+rec = {"invariants": checks, "hazards": haz, "declared": sorted(F.HAZARDS),
+       "obs_names_unique": bool(A.obs_names.is_unique),
+       "all_pass": all(checks.values()) and all(haz.values()) and sorted(haz) == sorted(F.HAZARDS)}
+(out / "hazards.json").write_text(json.dumps(rec, indent=1) + "\n")
+print("\nALL PASS:", rec["all_pass"])
+sys.exit(0 if rec["all_pass"] else 1)
+PYCODE
+
+# ------------------------------------------------------- 3. the ladder, on all five checkouts
+echo; echo "=== sch dev check"
+for spec in "sch:$REPO:" \
+            "scqc:$TOOLS/scQC:criterion" \
+            "scanno:$TOOLS/scAnno:mechanism" \
+            "scintegrate:$TOOLS/scIntegrate:method" \
+            "scprofile:$TOOLS/scProfile:kernel"; do
+  name="${spec%%:*}"; rest="${spec#*:}"; root="${rest%%:*}"; point="${rest#*:}"
+  echo; echo "--- $name  ($root)"
+  args=(dev check --root "$root" --keep-going --fixture-dir "$RUNDIR/fixture")
+  case "$name" in
+    scintegrate) args+=(--point method --name harmony) ;;
+    scprofile)   args+=(--point kernel --name abundance) ;;
+    scqc)        args+=(--point criterion --name fail_umi_floor) ;;
+    scanno)      args+=(--point mechanism --name rescue) ;;
+  esac
+  set +e
+  "$PY" -m sch "${args[@]}" > "$RUNDIR/checks/$name.txt" 2>&1
+  echo "  exit $?"
+  set -e
+  tail -n 40 "$RUNDIR/checks/$name.txt"
+done
+
+echo; echo "finished $(date -u)"
