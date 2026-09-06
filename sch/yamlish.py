@@ -108,14 +108,57 @@ def _strip_comment(line: str) -> str:
     return line.rstrip()
 
 
+def _depth(s: str, start: int = 0) -> int:
+    """Net bracket depth of a line, ignoring anything inside quotes."""
+    d, q = start, None
+    for ch in s:
+        if q:
+            if ch == q:
+                q = None
+        elif ch in "\"'":
+            q = ch
+        elif ch in "[{":
+            d += 1
+        elif ch in "]}":
+            d -= 1
+    return d
+
+
 def loads(text: str):
     lines = []
+    pending = None          # (line-number, indent, accumulated text, raw) while brackets are open
     for i, raw in enumerate(text.splitlines(), 1):
         if "\t" in raw[: len(raw) - len(raw.lstrip())]:
             raise YamlError(f"line {i}: tabs are not indentation")
         s = _strip_comment(raw)
-        if s.strip():
-            lines.append((i, len(s) - len(s.lstrip()), s.strip(), raw))
+        if pending is not None:
+            # AN INLINE LIST OR MAP MAY SPAN LINES. A three-command fixture declaration on one
+            # line is unreadable, and unreadable is how a declaration stops being checked by the
+            # person it is meant to inform. Continuation is joined here, before indentation is
+            # measured, so the parser below never sees it.
+            ln, ind, acc, rawacc = pending
+            acc = acc + " " + s.strip()
+            rawacc = rawacc + "\n" + raw
+            if _depth(acc) > 0:
+                pending = (ln, ind, acc, rawacc)
+                continue
+            if _depth(acc) < 0:
+                raise YamlError(f"line {i}: more closing brackets than opening")
+            lines.append((ln, ind, acc, rawacc))
+            pending = None
+            continue
+        if not s.strip():
+            continue
+        stripped = s.strip()
+        d = _depth(stripped)
+        if d > 0:
+            pending = (i, len(s) - len(s.lstrip()), stripped, raw)
+            continue
+        if d < 0:
+            raise YamlError(f"line {i}: more closing brackets than opening")
+        lines.append((i, len(s) - len(s.lstrip()), stripped, raw))
+    if pending is not None:
+        raise YamlError(f"line {pending[0]}: inline list or map is never closed")
     if not lines:
         return None
     val, idx = _parse_block(lines, 0, lines[0][1])

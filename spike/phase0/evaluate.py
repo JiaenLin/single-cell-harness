@@ -68,7 +68,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=100_000)
     ap.add_argument("--g", type=int, default=2_000)
-    ap.add_argument("--out", default=".")
+    # No default. A tool that picks its own output directory has decided where a project's
+    # results live, and the project is the only thing that can decide that (rule A2).
+    ap.add_argument("--out", required=True)
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)

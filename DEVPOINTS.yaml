@@ -1,0 +1,58 @@
+# What can be added to the harness, and how a reader can tell whether it was added correctly.
+# `sch dev map` reads this. See sch/dev/points.py for why the suite reads a declaration rather
+# than knowing about plugins: five repositories extend in five ways, and a suite that knows one
+# of them is a suite for one repository.
+tool: sch
+devpoints: 1
+
+tests:
+  command: ["{python}", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"]
+
+# The harness is a kernel, not a per-cohort tool: its end-to-end exercise is to build a stack
+# over the fixture and materialise it. Shape b hands it the SAME cohort under different column
+# names, which is precisely the thing profile key resolution exists to absorb - so shape b
+# failing here would mean the resolution is not doing its job.
+fixture:
+  command:
+    - ["{python}", "-m", "sch", "init", "{out}/stack", "--profile", "single-cell",
+       "--observations", "{observations}", "--design", "{design}",
+       "--key", "sample={role_sample}", "--key", "label={role_cell_type}",
+       "--key", "condition={role_condition}"]
+    - ["{python}", "-m", "sch", "--json", "stack", "--stack", "{out}/stack", "--dump"]
+  products: ["stack/stack.yml"]
+
+baseline_dir: tests/baselines
+
+points:
+  plugin:
+    what: a unit of work the kernel can mount, unmount and fold into a materialisation
+    lives: plugins
+    must_declare: [contract, profile, name, version, state_version, class, layer, reversible,
+                   inject, needs, provides, sees, cannot_show, entry]
+    example: plugins/single-cell/mask_floor
+    tests: [tests/test_validator.py, tests/test_kernel_table.py]
+    proves: "it validates against its profile, mounts, unmounts to quiescence, and folds"
+    cannot_prove: "that what it computes is correct - a plugin's selftest is its own claim"
+    notes: >
+      `sch plugin new NAME --profile P` is the scaffolder that knows the profile and writes a
+      valid plugin.yml; run it first. `sch dev new plugin NAME` adds the SPEC and the test
+      around it, and `sch plugin validate` is what T0 defers to.
+
+  profile:
+    what: a domain vocabulary - the keys plugins name and the kernel resolves per dataset
+    lives: sch/profile
+    must_declare: [contract, profile, keys, roles]
+    example: sch/profile/single-cell.yml
+    tests: [tests/test_single_cell_profile.py]
+    proves: "the vocabulary loads, its keys resolve, and a plugin naming them validates"
+    cannot_prove: "that the vocabulary is the right one for the domain - that is a judgement"
+    notes: a profile also needs its prose in docs/profiles/<name>.md; the yml alone is half of it.
+
+  companion:
+    what: a runtime conformance companion - an invariant checked while the stack is live
+    lives: sch/services/invariant.py
+    must_declare: [invariant_id, what_it_checks, what_it_cannot_check]
+    example: E5 (disposal reaches quiescence)
+    tests: [tests/test_companions.py]
+    proves: "it runs against a live stack and reports rather than raising"
+    cannot_prove: "that the invariant it checks is the one the architecture needs"

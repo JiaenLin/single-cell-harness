@@ -26,7 +26,7 @@ a crash leaves a file that says *partial*, not silence — and rewritten **last*
   "status": "ok",
   "headline": "masked 6,851 of 39,037 observations on six criteria",
   "started": "2026-09-06T08:41:12Z", "finished": "2026-09-06T09:09:40Z",
-  "job": {"scheduler": "pbs", "id": "684955", "host": "compute1006"},
+  "job": {"scheduler": "pbs", "id": "684955", "host": "node-a"},
   "inputs":   [{"path": "objects/cohort.h5ad", "sha256": "…", "relative_to": "run"}],
   "products": [{"path": "tables/masks.csv", "sha256": "…"}, {"path": "reports/report.json", "sha256": "…"}],
   "absent":   [{"what": "latent_time", "why": "only the dynamical mode fits it"}],
@@ -66,7 +66,7 @@ jobid=684955
 commit=51dc1a429f88
 started=2026-09-06T08:41:12Z
 finished=2026-09-06T09:09:40Z
-host=compute1006
+host=node-a
 products=tables/masks.csv reports/report.json
 ```
 
@@ -89,7 +89,7 @@ as above needs no translation to become a plugin; the adapter copies the fields.
 "environment": {
   "threads": {"OMP_NUM_THREADS": "24", "MKL_NUM_THREADS": "24", "torch": 24},
   "imported": ["numpy 2.4.6", "scipy 1.18.0", "torch 2.13.0", "harmonypy 0.0.10"],
-  "host": "compute1007", "cpu": "..."
+  "host": "node-b", "cpu": "..."
 }
 ```
 

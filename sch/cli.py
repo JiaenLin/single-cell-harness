@@ -16,6 +16,13 @@
     sch plugin validate|test|new
     sch doctor --architecture | --runtime DIR
     sch conform REPO [--terms FILE] | --run RUNDIR [--against REFRUN]
+
+    sch dev map [--json]                what can be added to this repository, and how
+    sch dev new POINT NAME              a conformant skeleton, its SPEC and its test
+    sch dev fixture DIR [--shape a|b]   the two-shape synthetic cohort to develop against
+    sch dev check [--point P --name N]  the ladder: contract, unit, both shapes, leak, baseline
+    sch dev baseline record|check RUNDIR --path FILE
+    sch dev job --ref REFRUN --rundir DIR --tool DIR --queue Q --select S --predict TEXT
 """
 from __future__ import annotations
 
@@ -25,6 +32,7 @@ import sys
 from pathlib import Path
 
 from . import __version__, CONTRACT
+from .dev.ladder import TIERS as _TIERS
 
 
 def _kv(pairs) -> dict:
@@ -282,6 +290,136 @@ def cmd_conform(a):
     return 0 if all(c["ok"] or c["level"] == "warn" for c in checks) else 2
 
 
+def cmd_dev(a):
+    from . import dev as D
+    from .dev import ladder, points as P
+
+    if a.sub == "map":
+        try:
+            doc = P.load(a.root)
+        except D.DevpointsError as e:
+            print(e, file=sys.stderr)
+            return 2
+        pts = doc.get("points") or {}
+        if a.json:
+            print(json.dumps({"tool": doc["tool"], "path": doc["_path"],
+                              "points": {k: dict(v, registered=P.existing(doc, k))
+                                         for k, v in pts.items()}}, indent=1, default=str))
+            return 0
+        print(f"{doc['tool']}  ({doc['_path']})")
+        for k, v in pts.items():
+            reg = P.existing(doc, k)
+            print(f"\n  {k}: {v['what']}")
+            print(f"    lives      {v['lives']}")
+            if v.get("example"):
+                print(f"    example    {v['example']}")
+            if reg:
+                print(f"    registered {len(reg)}: {', '.join(map(str, reg[:10]))}")
+            for r in v.get("register") or []:
+                print(f"    register   {r['table']} in {r['file']}")
+            if v.get("must_declare"):
+                print(f"    declare    {', '.join(v['must_declare'])}")
+            print(f"    proves     {v['proves']}")
+            print(f"    CANNOT     {v['cannot_prove']}")
+        print(f"\n  sch dev new POINT NAME     starts one")
+        return 0
+
+    if a.sub == "new":
+        try:
+            info = D.new(a.root, a.point, a.name, force=a.force)
+        except (D.DevpointsError, ValueError) as e:
+            print(e, file=sys.stderr)
+            return 2
+        if a.json:
+            print(json.dumps(info, indent=1))
+            return 0
+        for f in info["written"]:
+            print(f"  wrote   {f}")
+        for f in info["skipped"]:
+            print(f"  kept    {f}  (exists; --force to overwrite)")
+        print(f"\n  it must declare: {', '.join(info['must_declare']) or 'nothing beyond the point'}")
+        print(f"  a green ladder proves: {info['proves']}")
+        print(f"  and does NOT prove:    {info['cannot_prove']}")
+        print("\n  next:")
+        for n in info["next"]:
+            print(f"    - {n}")
+        return 0
+
+    if a.sub == "fixture":
+        from .dev import fixture as F
+        try:
+            recs = ([F.write(a.dir, shape=a.shape, seed=a.seed)] if a.shape
+                    else F.write_both(a.dir, seed=a.seed))
+        except ImportError as e:
+            print(f"the fixture needs anndata, numpy and pandas: {e}", file=sys.stderr)
+            return 3
+        if a.json:
+            print(json.dumps(recs, indent=1))
+            return 0
+        for r in recs:
+            print(f"  shape {r['shape']}  {r['cells']} cells x {r['genes']} genes  digest {r['digest']}")
+            print(f"    {r['observations']}")
+            print(f"    {r['design']}")
+            print("    roles: " + ", ".join(f"{k}={v}" for k, v in r["roles"].items()))
+        print(f"\n  {len(F.HAZARDS)} structural hazards are built in; see FIXTURE_<shape>.json")
+        print("  SYNTHETIC. No number here is quotable and no result on it is evidence about biology.")
+        return 0
+
+    if a.sub == "check":
+        try:
+            rep = ladder.run(a.root, point_name=a.point, name=a.name,
+                             only=set(a.only or []) or None, skip=set(a.skip or []),
+                             keep_going=a.keep_going, record_baseline=a.record_baseline,
+                             terms=a.terms, fixdir=a.fixture_dir, seed=a.seed)
+        except D.DevpointsError as e:
+            print(e, file=sys.stderr)
+            return 2
+        print(ladder.format_run(rep))
+        if a.json:
+            print(json.dumps(rep, indent=1, default=str))
+        return 0 if rep["ok"] else 2
+
+    if a.sub == "baseline":
+        from .dev import baseline as B
+        if a.action == "record":
+            fp = B.record(a.rundir, a.path)
+            print(f"  recorded {len(fp['products'])} products to {a.path}")
+            print(f"  covers {len(fp['covers'])} readable, {len(fp['does_not_cover'])} opaque (bytes only)")
+            return 0
+        try:
+            diffs, ref = B.check(a.rundir, a.path)
+        except FileNotFoundError as e:
+            print(e, file=sys.stderr)
+            return 2
+        for d in diffs[:40]:
+            print(f"  {d['product']}: {d['what']}  {d['detail']}")
+        print(f"  {len(diffs)} difference(s) against {a.path} at rtol {ref.get('rtol')}")
+        if diffs:
+            print("  a deliberate change bumps state_version and re-records; anything else is a defect")
+        return 0 if not diffs else 2
+
+    if a.sub == "job":
+        from .dev import job as J
+        try:
+            info = J.write(a.out, ref_dir=a.ref, rundir=a.rundir, tooldir=a.tool,
+                           prediction=a.predict, queue=a.queue, select=a.select,
+                           walltime=a.walltime, name=a.name or "reproduce")
+        except (ValueError, OSError) as e:
+            print(e, file=sys.stderr)
+            return 2
+        if a.json:
+            print(json.dumps(info, indent=1))
+            return 0
+        print(f"  wrote {info['path']}")
+        print(f"  command taken from  {info['argv_source']}  ({info['reference']})")
+        print(f"  reference commit    {info['ref_commit']}")
+        print(f"  tool frozen at      {info['tool_commit']}")
+        print(f"  products expected   {info['products']}")
+        print(f"\n  {info['submit']}")
+        return 0
+    raise SystemExit(f"unknown dev subcommand {a.sub!r}")
+
+
 # --------------------------------------------------------------------------- parser
 def build_parser():
     ap = argparse.ArgumentParser(prog="sch", description=f"single-cell-harness {__version__}, contract {CONTRACT}")
@@ -324,6 +462,27 @@ def build_parser():
     p.set_defaults(fn=cmd_plugin)
     p = sub.add_parser("doctor"); p.add_argument("--architecture", action="store_true"); p.add_argument("--runtime", metavar="STACK")
     p.set_defaults(fn=cmd_doctor)
+    p = sub.add_parser("dev", help="the development suite: map, new, fixture, check, baseline, job")
+    p.add_argument("--root", default=".", help="repository (default .; DEVPOINTS.yaml is found upwards)")
+    ds = p.add_subparsers(dest="sub", required=True)
+    q = ds.add_parser("map"); q.set_defaults(fn=cmd_dev)
+    q = ds.add_parser("new"); q.add_argument("point"); q.add_argument("name")
+    q.add_argument("--force", action="store_true"); q.set_defaults(fn=cmd_dev)
+    q = ds.add_parser("fixture"); q.add_argument("dir"); q.add_argument("--shape", choices=["a", "b"])
+    q.add_argument("--seed", type=int, default=20260906); q.set_defaults(fn=cmd_dev)
+    q = ds.add_parser("check"); q.add_argument("--point"); q.add_argument("--name")
+    q.add_argument("--only", action="append", choices=list(_TIERS)); q.add_argument("--skip", action="append", choices=list(_TIERS))
+    q.add_argument("--keep-going", action="store_true"); q.add_argument("--record-baseline", action="store_true")
+    q.add_argument("--terms"); q.add_argument("--fixture-dir"); q.add_argument("--seed", type=int, default=20260906)
+    q.set_defaults(fn=cmd_dev)
+    q = ds.add_parser("baseline"); q.add_argument("action", choices=["record", "check"])
+    q.add_argument("rundir"); q.add_argument("--path", required=True); q.set_defaults(fn=cmd_dev)
+    q = ds.add_parser("job"); q.add_argument("--ref", required=True); q.add_argument("--rundir", required=True)
+    q.add_argument("--tool", required=True); q.add_argument("--queue", required=True)
+    q.add_argument("--select", required=True); q.add_argument("--predict", required=True)
+    q.add_argument("--out", required=True); q.add_argument("--walltime", default="04:00:00")
+    q.add_argument("--name"); q.set_defaults(fn=cmd_dev)
+
     p = sub.add_parser("conform"); p.add_argument("repo", nargs="?"); p.add_argument("--terms"); p.add_argument("--run", action="append")
     p.add_argument("--against", metavar="REFRUN", help="a reference run: is a comparison with --run meaningful?")
     p.set_defaults(fn=cmd_conform)
