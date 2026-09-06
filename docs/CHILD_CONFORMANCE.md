@@ -29,6 +29,22 @@ in a file **outside** the repository (`--terms FILE`, `$SCH_SITE_TERMS`, or
 
 Bold rows fail the scan; the others warn.
 
+## A gap between `sch conform` and `sch dev check`, found 2026-09-06
+
+`sch conform`'s S1 exempts any file named `test_portability*` or `test_leak*` from the leak scan.
+It has to: such a file spells the shapes it searches for — a home-path regex, a hostname pattern
+— and would otherwise report itself on every run.
+
+That exemption is right for **shapes** and wrong for **terms**. Terms are supplied from outside
+the repository precisely so that no file inside it needs to contain one, and three of the four
+children contain none. `sch dev check`'s leak tier searches only supplied terms, never shapes, so
+it grants no exemption — and the first time it ran with the real word list it found a cohort's
+name in a comment inside the one file whose job is to prove that name is absent. `sch conform`
+structurally could not see it, which is why it survived the September round.
+
+The rule, stated so neither check drifts: **a guard file may spell a shape; it may never spell a
+term.**
+
 ## Run-directory checks
 
 | id | the run… | fix |

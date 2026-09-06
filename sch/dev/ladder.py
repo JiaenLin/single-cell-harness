@@ -225,7 +225,17 @@ def t5_leak(doc, fixdir, results, terms=None):
     thing and both are defects, which is why the whole tree is scanned here. In a run's output
     they are opposites, and no word list distinguishes them. So this tier asks its question of
     the repository, where the answer is unambiguous, and says below what it therefore does not
-    look at."""
+    look at.
+
+    THE GUARD FILE IS NOT EXEMPT HERE, AND THAT IS DELIBERATE. `sch conform`'s S1 exempts a file
+    named test_portability or test_leak from its own scan, because such a file must SPELL the
+    shapes it searches for - a home-path regex, a hostname pattern - and would otherwise report
+    itself. That exemption is right for shapes and wrong for terms: terms are supplied from
+    outside precisely so that no file in the repository has to contain one, which three of the
+    four children demonstrate by containing none. This tier searches only supplied terms, never
+    shapes, so it needs no exemption and grants none - and on 2026-09-06 it found a cohort's name
+    in the comment of the one file whose job is to prove the cohort's name is absent, sitting in
+    the blind spot the wholesale exemption creates."""
     from ..conform.checks import _load_terms, _read, _text_files
     t0 = time.time()
     root = Path(doc["_root"])
