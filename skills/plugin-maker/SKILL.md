@@ -13,7 +13,7 @@ procedure; that file is the contract.
 
 ```
 <name>/
-  plugin.yml   run.py|run.R   lock.yml   selftest.py   README.md
+  plugin.yml   run.py|run.R   lock.yml   selftest.py   README.md   UPSTREAM.md
   guard.py?    invariant.py?  references.yml?
 ```
 
@@ -22,7 +22,23 @@ procedure; that file is the contract.
 **Do not start with the manifest.** Start by finding out what the tool actually is, because three
 manifest fields cannot be written without that and they are the three that matter.
 
-### 1. Measure the tool, do not remember it
+### 1. Read the tool's own documentation, and SAVE it
+
+Write `UPSTREAM.md` in the plugin directory before anything else: the documented signature with
+every default, where results are written, the licence and the citation, and links to each page you
+read.
+
+Then, in the same file, the section that earns it: **every default that is wrong for this
+contract, and why.** A default that errors is harmless. A default that silently produces a
+plausible wrong answer is what this file exists to catch — LIANA+ defaults to a human
+ligand-receptor resource, and run against mouse symbols it does not fail, it returns a small
+believable table of almost nothing.
+
+Also record **what the tool can do that you are not using**, so under-use is deliberate and
+visible rather than accidental. Wrapping a framework as though it were one function is the
+commonest way to waste one.
+
+### 2. Measure the tool, do not remember it
 
 Read the **installed** signatures, not the documentation and not your own recollection:
 
@@ -37,7 +53,7 @@ repository and read the source of the entry points you intend to call.
 Record: the exact version, the entry points, their real signatures, the **recommended settings from
 the tool's own tutorial**, and the licence.
 
-### 2. Decide the layer, and bias toward `checkpoint`
+### 3. Decide the layer, and bias toward `checkpoint`
 
 Does it produce a view of existing data, or new numbers? A wrong `stack` declaration means the
 kernel will offer an unmount that silently produces a different dataset. A wrong `checkpoint` costs
@@ -47,7 +63,7 @@ Set `state_version: 1` at the same time. It versions *the numbers*, not the wrap
 whenever the plugin would compute something different for the same inputs, and the pinned tool's
 version moving is the ordinary reason. Every cached view is keyed on it.
 
-### 3. Write `cannot_show` before writing any code
+### 4. Write `cannot_show` before writing any code
 
 This is the field that takes the longest and the one that makes the plugin worth having. Sources,
 in order: the tool's paper (stated limits), its issue tracker (limits its users found), and
@@ -56,12 +72,12 @@ benchmark papers that included it (limits its authors did not mention).
 Write what the output does **not** establish, in the terms a reader will use. If the list has fewer
 than three entries, you have not finished.
 
-### 4. Capabilities, never column names
+### 5. Capabilities, never column names
 
 `{label}`, `{sample}`, `{batch}`, `{counts}` resolve per dataset. A plugin naming a real column has
 bound itself to one project. Prefer `capability:embedding` over `obsm/X_scanvi`.
 
-### 5. Pin hard, and prove it
+### 6. Pin hard, and prove it
 
 Take the tool's declared requirements and **ignore the lower bounds** — they say what it was written
 against, not what it still works with. Pin the stack it was released alongside, with `==` on every
@@ -72,7 +88,7 @@ model, the outputs the plugin will merge. Assert shapes and finiteness, never a 
 Importing the package proves nothing — every failure worth catching imports cleanly and dies inside
 the first real call.
 
-### 6. Implement the protocol
+### 7. Implement the protocol
 
 Read `in.json`, do the work, write declared outputs and `out.json`. Import nothing from the host
 except its stdlib-only manifest helper.
@@ -84,12 +100,12 @@ except its stdlib-only manifest helper.
 - refuse with a reason and a fix rather than producing a number on unsuitable input
 - record the wrapped tool's version **at runtime**, read from the tool
 
-### 7. Guard only where the output could mislead
+### 8. Guard only where the output could mislead
 
 Not a prerequisite check. A guard is for a run that would succeed and produce numbers that do not
 support the sentence a reader will write.
 
-### 8. The companion, or the reason there is none
+### 9. The companion, or the reason there is none
 
 Name one relationship this plugin **owns** that could break silently while it runs — a conservation
 law, an ordering, an agreement between what it declared and what it wrote — and assert it in
@@ -103,7 +119,7 @@ and "nobody thought about it" have to be distinguishable.
 Then prove it: break the plugin so the check fails, watch it fail, revert. A check that cannot be
 made to fail is decoration.
 
-### 9. Write the README, then validate
+### 10. Write the README, then validate
 
 `README.md` carries four sections — what it does, **report surface** (every number, table and
 figure a reader could quote, with the `cannot_show` line each travels with), **cost** (to run, and
