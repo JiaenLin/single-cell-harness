@@ -291,6 +291,157 @@ def conform_run(run_dir) -> list:
     return checks
 
 
+# ---------------------------------------------------------------------------------------------
+# Are two runs comparable at all?
+#
+# A difference between the outputs of two runs made with DIFFERENT INPUTS is evidence about
+# nothing, and it reads exactly like the most serious finding this project can make: that a
+# change moved the numbers. Post-mortem 0001 is that mistake, made and caught.
+#
+# This reads what each run RECORDED about itself and says whether comparing them means anything.
+# It cannot read what a run did not write down: a tool that records no parameters fails A1 here,
+# which is the same finding S7 and S9 make about the tool.
+
+_PARAMISH = {"seed", "k", "n_pcs", "n_latent", "w_bio", "resolution", "resolutions", "methods",
+             "organism", "assay", "timeout", "min_dist", "mode", "label_key", "batch_key",
+             "sample_key", "l1_key", "cluster_key", "state_version", "unit_by", "min_tier",
+             "gap_min", "dbr", "dbr_sd", "light_floor", "species", "tissue"}
+_PARAM_DICTS = ("keys", "controls", "params", "parameters", "settings")
+_NOT_A_PARAM = {"generated", "version", "commit", "tool_commit", "seconds", "timings", "started",
+                "finished", "host", "job", "jobid", "products", "argv", "python", "elapsed"}
+
+
+def _flatten(prefix, value, into):
+    if isinstance(value, dict):
+        for k, v in value.items():
+            _flatten(f"{prefix}.{k}" if prefix else str(k), v, into)
+    elif isinstance(value, (list, tuple)):
+        into[prefix] = ",".join(str(x) for x in value)
+    elif value is not None:
+        into[prefix] = str(value)
+
+
+def _json(path):
+    try:
+        return json.loads(_read(path))
+    except (ValueError, OSError):
+        return None
+
+
+def run_record(d) -> dict:
+    """What a run says about itself, gathered from wherever it put it, with the sources named."""
+    d = Path(d)
+    rec = {"dir": str(d), "sources": [], "params": {}, "input": None, "commit": None,
+           "state_version": None, "argv": None, "status": None, "reused": None}
+
+    for name in ["STATUS.json"] + sorted(p.name for p in d.glob("STATUS.*.json")):
+        j = _json(d / name)
+        if not isinstance(j, dict):
+            continue
+        rec["sources"].append(name)
+        rec["commit"] = rec["commit"] or j.get("commit")
+        rec["state_version"] = j.get("state_version", rec["state_version"])
+        rec["argv"] = rec["argv"] or j.get("argv")
+        rec["status"] = rec["status"] or j.get("status")
+
+    for name in ("report.json", "reports/report.json", "reports/payload.json"):
+        j = _json(d / name)
+        if not isinstance(j, dict):
+            continue
+        rec["sources"].append(name)
+        rec["input"] = rec["input"] or j.get("input") or j.get("h5ad")
+        prov_block = j.get("provenance") if isinstance(j.get("provenance"), dict) else {}
+        rec["commit"] = rec["commit"] or j.get("tool_commit") or prov_block.get("commit")
+        if rec["state_version"] is None:
+            rec["state_version"] = j.get("state_version")
+        if j.get("reused") is not None:
+            rec["reused"] = j.get("reused")
+        for k, v in j.items():
+            if k in _NOT_A_PARAM:
+                continue
+            if k in _PARAM_DICTS and isinstance(v, dict):
+                _flatten(k, v, rec["params"])
+            elif k in _PARAMISH or k.endswith(("_key", "_layer")):
+                _flatten(k, v, rec["params"])
+
+    j = _json(d / "INPUTS.json")
+    if isinstance(j, dict):
+        rec["sources"].append("INPUTS.json")
+        desc = j.get("described") or {}
+        _flatten("parameters", desc.get("parameters") or {}, rec["params"])
+        if desc.get("mode"):
+            rec["params"]["mode"] = str(desc["mode"])
+        code = desc.get("code") or {}
+        rec["commit"] = rec["commit"] or code.get("commit")
+        if desc.get("samples"):
+            rec["params"]["samples"] = ",".join(str(x) for x in desc["samples"])
+
+    prov = d / "PROVENANCE.txt"
+    if prov.exists():
+        rec["sources"].append("PROVENANCE.txt")
+        for line in _read(prov).splitlines():
+            if "=" in line and not line.startswith("PBS_"):
+                k, v = line.split("=", 1)
+                k = k.strip()
+                if k and k not in _NOT_A_PARAM and not k.startswith("PBS_"):
+                    rec["params"].setdefault("provenance." + k, v.strip())
+
+    for n in ("TOOL_HEAD.txt", "HEAD.txt"):
+        f = d / n
+        if f.exists() and not rec["commit"]:
+            t = _read(f).strip().split()
+            rec["commit"] = t[0] if t else None
+    return rec
+
+
+def conform_against(new_dir, ref_dir) -> list:
+    """Whether comparing these two runs means anything. Post-mortem 0001."""
+    checks: list = []
+    a, b = run_record(new_dir), run_record(ref_dir)
+
+    _check(checks, "A1 both runs recorded what they were given", bool(a["params"]) and bool(b["params"]),
+           {"new": a["sources"] or "nothing readable", "ref": b["sources"] or "nothing readable",
+            "new_params": len(a["params"]), "ref_params": len(b["params"])},
+           "a run that records no parameters cannot be reproduced or compared; see S7 and S9")
+
+    shared = sorted(set(a["params"]) & set(b["params"]))
+    differ = {k: {"new": a["params"][k], "ref": b["params"][k]} for k in shared
+              if a["params"][k] != b["params"][k]}
+    only_new = sorted(set(a["params"]) - set(b["params"]))
+    only_ref = sorted(set(b["params"]) - set(a["params"]))
+    _check(checks, "A2 every parameter both runs recorded agrees", not differ,
+           [f"{k}: new={v['new']!r} ref={v['ref']!r}" for k, v in list(differ.items())[:12]],
+           "take the reproduction's parameters from the reference run's own record, not from a "
+           "script that happens to run the same tool")
+    _check(checks, "A2b each run recorded parameters the other did not", not (only_new or only_ref),
+           {"only in new": only_new[:8], "only in ref": only_ref[:8]},
+           "not necessarily a difference in what ran; it is a difference in what was written down",
+           level="warn")
+
+    same_input = (a["input"] or "") == (b["input"] or "") if (a["input"] or b["input"]) else None
+    _check(checks, "A3 both runs read the same input", bool(same_input),
+           {"new": a["input"], "ref": b["input"]},
+           "a comparison across two inputs is a comparison of the inputs" if same_input is False
+           else "neither run recorded the input it read; record it (S7)")
+
+    _check(checks, "A4 the numbers were not DECLARED to move (same state_version)",
+           a["state_version"] == b["state_version"],
+           {"new": a["state_version"], "ref": b["state_version"]},
+           "a bumped state_version is the tool saying the numbers change for the same inputs; "
+           "demanding identity is then the wrong test, and the right one is to explain the move")
+
+    _check(checks, "A5 the two runs are of DIFFERENT code", (a["commit"] or "?") != (b["commit"] or "!"),
+           {"new": (a["commit"] or "")[:12], "ref": (b["commit"] or "")[:12]},
+           "comparing a run against itself proves nothing about a change", level="warn")
+
+    adopted = [n for n, r in (("new", a), ("ref", b)) if r["reused"]]
+    _check(checks, "A6 neither run adopted a result instead of computing it", not adopted,
+           {n: (a if n == "new" else b)["reused"] for n in adopted},
+           "an adopted instance is the earlier run's own output; comparing it to that run "
+           "compares nothing. Re-run with reuse off")
+    return checks
+
+
 def format_checks(checks: list) -> str:
     lines = []
     for c in checks:

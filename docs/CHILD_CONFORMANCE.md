@@ -53,6 +53,17 @@ A change to a child's interface is accepted when all three hold:
    *before* submission, and the comparison reads the tool's own output layout with no reshaping
    script in between.
 
+**The reproduction takes its parameters from the reference run's own record**, never from a
+script that happens to run the same tool: two entry points into one tool can pass different keys,
+and a comparison across two parameter sets reports a difference that reads exactly like a change
+that moved the numbers. `sch conform --run NEW --against REF` says whether a comparison means
+anything at all — same input, same declared parameters, same `state_version`, different code,
+nothing adopted — and it is run **before** the outputs are compared. The cost of skipping it is
+[post-mortem 0001](postmortem/0001-a-reproduction-that-was-not-like-for-like.md).
+
+And nothing updates the tool's checkout while a run using it is queued or running. A tool that
+notices is a tool with a drift guard; the rest report a run made by two versions.
+
 The third is a reproduction, not a validation: one cohort cannot validate anything. It proves that
 an interface change changed no number.
 

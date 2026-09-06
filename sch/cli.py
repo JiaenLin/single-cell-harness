@@ -15,7 +15,7 @@
     sch events [--kind K]
     sch plugin validate|test|new
     sch doctor --architecture | --runtime DIR
-    sch conform REPO [--terms FILE] | --run RUNDIR
+    sch conform REPO [--terms FILE] | --run RUNDIR [--against REFRUN]
 """
 from __future__ import annotations
 
@@ -256,7 +256,16 @@ def cmd_doctor(a):
 
 
 def cmd_conform(a):
-    from .conform import conform_repo, conform_run, format_checks
+    from .conform import conform_against, conform_repo, conform_run, format_checks
+    if a.against:
+        if not a.run or len(a.run) != 1:
+            raise SystemExit("--against needs exactly one --run RUNDIR to compare")
+        checks = conform_against(a.run[0], a.against)
+        print(f"{a.run[0]}\n  against {a.against}:")
+        print(format_checks(checks))
+        if a.json:
+            print(json.dumps(checks, indent=1, default=str))
+        return 0 if all(c["ok"] or c["level"] == "warn" for c in checks) else 2
     if a.run:
         checks = []
         for r in a.run:
@@ -316,6 +325,7 @@ def build_parser():
     p = sub.add_parser("doctor"); p.add_argument("--architecture", action="store_true"); p.add_argument("--runtime", metavar="STACK")
     p.set_defaults(fn=cmd_doctor)
     p = sub.add_parser("conform"); p.add_argument("repo", nargs="?"); p.add_argument("--terms"); p.add_argument("--run", action="append")
+    p.add_argument("--against", metavar="REFRUN", help="a reference run: is a comparison with --run meaningful?")
     p.set_defaults(fn=cmd_conform)
     return ap
 
@@ -323,7 +333,7 @@ def build_parser():
 def main(argv=None) -> int:
     ap = build_parser()
     a = ap.parse_args(argv)
-    if a.cmd == "conform" and not a.repo and not a.run:
+    if a.cmd == "conform" and not a.repo and not a.run and not a.against:
         ap.error("conform needs a repository path or --run RUNDIR")
     return a.fn(a)
 

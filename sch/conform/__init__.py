@@ -8,4 +8,4 @@ Nothing here names a project, a cohort, a site or a host. Site-specific forbidde
 from a file OUTSIDE the repository (`--terms`, `$SCH_SITE_TERMS`, or `$SCH_SITE/forbidden_terms.txt`)
 so that the guard itself never spells what it guards against.
 """
-from .checks import conform_repo, conform_run, format_checks  # noqa: F401
+from .checks import conform_repo, conform_run, conform_against, run_record, format_checks  # noqa: F401

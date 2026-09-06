@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from helpers import ROOT
-from sch.conform import conform_repo, conform_run
+from sch.conform import conform_against, conform_repo, conform_run
 from sch.doctor import check_architecture
 
 
@@ -103,3 +103,76 @@ class TestDoctor(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestConformAgainst(unittest.TestCase):
+    """Post-mortem 0001: a difference between two runs given different inputs is evidence about
+    nothing, and it reads exactly like a change that moved the numbers."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="sch-against-"))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _run(self, name, *, label="cell_type", commit="a" * 40, state_version=1, seed=0,
+             inp="/data/object.h5ad", reused=None, argv=None):
+        d = self.tmp / name
+        d.mkdir(parents=True)
+        (d / "STATUS.json").write_text(json.dumps({
+            "status": "ok", "commit": commit, "state_version": state_version,
+            "argv": argv or ["run", "--label-key", label]}))
+        (d / "report.json").write_text(json.dumps({
+            "input": inp, "label_key": label, "seed": seed, "version": "1.2.3",
+            "keys": {"label": label, "sample": "sample"}, "reused": reused,
+            "seconds": {"a": 12.5}}))
+        return d
+
+    def test_two_runs_of_the_same_thing_on_different_code_are_comparable(self):
+        a = self._run("new", commit="b" * 40)
+        b = self._run("ref", commit="c" * 40)
+        checks = conform_against(a, b)
+        self.assertTrue(all(c["ok"] for c in checks), [c for c in checks if not c["ok"]])
+
+    def test_a_different_label_column_is_named_before_any_output_is_compared(self):
+        # the exact defect of post-mortem 0001
+        a = self._run("new", label="cell_type", commit="b" * 40)
+        b = self._run("ref", label="cell_type_forced", commit="c" * 40)
+        checks = conform_against(a, b)
+        a2 = by_id(checks, "A2 ")[0]
+        self.assertFalse(a2["ok"])
+        self.assertTrue(any("label_key" in e for e in a2["evidence"]), a2["evidence"])
+        self.assertTrue(any("keys.label" in e for e in a2["evidence"]), a2["evidence"])
+        self.assertIn("reference run's own record", a2["fix"])
+
+    def test_a_different_input_is_a_comparison_of_the_inputs(self):
+        a = self._run("new", inp="/data/one.h5ad", commit="b" * 40)
+        b = self._run("ref", inp="/data/two.h5ad", commit="c" * 40)
+        self.assertFalse(by_id(conform_against(a, b), "A3")[0]["ok"])
+
+    def test_a_bumped_state_version_makes_a_reproduction_the_wrong_test(self):
+        a = self._run("new", state_version=2, commit="b" * 40)
+        b = self._run("ref", state_version=1, commit="c" * 40)
+        c = by_id(conform_against(a, b), "A4")[0]
+        self.assertFalse(c["ok"])
+        self.assertIn("wrong test", c["fix"])
+
+    def test_an_adopted_result_compares_nothing(self):
+        a = self._run("new", commit="b" * 40, reused=["cellchat[unit1]"])
+        b = self._run("ref", commit="c" * 40)
+        self.assertFalse(by_id(conform_against(a, b), "A6")[0]["ok"])
+
+    def test_comparing_a_run_against_itself_warns(self):
+        a = self._run("new", commit="b" * 40)
+        b = self._run("ref", commit="b" * 40)
+        c = by_id(conform_against(a, b), "A5")[0]
+        self.assertFalse(c["ok"])
+        self.assertEqual(c["level"], "warn")
+
+    def test_a_run_that_recorded_nothing_is_a_finding_about_the_tool(self):
+        a = self._run("new", commit="b" * 40)
+        b = self.tmp / "silent"
+        (b / "logs").mkdir(parents=True)
+        c = by_id(conform_against(a, b), "A1")[0]
+        self.assertFalse(c["ok"])
+        self.assertIn("S7", c["fix"])

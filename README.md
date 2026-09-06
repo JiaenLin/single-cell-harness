@@ -184,6 +184,7 @@ $ sch unmount filter_threshold --dry-run      # the cost before it is paid
 $ sch report                                  # numbers that resolve to events, or no report
 $ sch doctor --architecture                   # L1 L2 L3 C4 D2 X1 G1 G3 and every shipped plugin
 $ sch conform ../scQC --terms ~/site/forbidden_terms.txt
+$ sch conform --run runs/new --against runs/reference   # is a comparison between them meaningful?
 $ python -m unittest discover -s tests        # 66 tests, all synthetic
 ```
 
