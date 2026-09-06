@@ -10,7 +10,9 @@ everything downstream knows when one does.
 > profile), Phase 2 (the profile and the 15-check validator, every rule tripped by a broken
 > plugin), the gate-is-a-probe machinery of Phase 4, and the agent surface of Phase 10 with its
 > adversarial suite. Phases 3, 5–9 and 11 are not built. `sch conform` checks a child tool
-> against [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it.
+> against [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it; the four
+> tools now pass it with no failing row, each change proved by a pre-declared reproduction
+> (ADR-0013).
 > [`ARCHITECTURE.md`](ARCHITECTURE.md) is normative and **locked** — the layers and the invariants
 > that may not be broken. [`VISION.md`](VISION.md) is the thesis, written to be argued with.
 > [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) is the contract every plugin conforms to.

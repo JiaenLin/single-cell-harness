@@ -62,3 +62,24 @@ A tool that passes every row above can still be wrong. Conformance makes *died*,
 *partial* distinguishable, makes the commit and the person part of the record, and makes the
 leak checkable. It does not make the biology right, and it says nothing about whether the tool's
 defaults transfer to a second dataset — that needs a second dataset.
+
+## State of the four children, 2026-09-06
+
+Each child gained the status contract, `describe`, and a leak guard reading its terms from a
+file outside the repository, on a branch named `interface`, accepted by the rule above. The
+reproduction jobs live in the reference project's `stages/NN/jobs/` with the prediction in the
+header and a `COMPARISON.txt` verdict in the run.
+
+| tool | commit | own suite on the cluster | `sch conform` | pre-declared reproduction |
+|---|---|---|---|---|
+| scQC | `9b3793b`, merged | 33 passed, 1 skip (needs a cohort dir) | 0 failing, 2 warnings | PBS 706147 **IDENTICAL**: 100,713 kept barcodes and every criterion column, vs the promoted run |
+| scAnno | `deb48ad`, merged | 29 suites green, 0 skips | 0 failing, 2 warnings | PBS 706249 **IDENTICAL**: every label at every rung and the rescue, vs the sealed run at the branch's base |
+| scProfile | `b8a4488`, merged | 65 suites green | 0 failing, 6 warnings | PBS 706253 **IDENTICAL**: 90 of 90 numeric per-unit tables on the same cells, nothing adopted; the unseeded network layout reported, not judged |
+| scIntegrate | `b423718`, branch `interface` | 7 passed incl. the CLI fixture | 0 failing, 2 warnings | PBS 706190 running; deterministic parts predicted identical, torch totals within 0.02 |
+
+Two of the first submissions sealed FAILED for reasons that were the job's, not the tool's, and
+both are recorded in the stage RUNLOGs: a product looked for in the wrong directory, and a
+reproduction that did not use the reference run's own label key while the tool's checkout was
+updated underneath it — which scProfile's tool-drift guard refused, correctly. The lesson is the
+layout document's: a decision recorded does not reach a process already running, and a
+reproduction copies the reference run's flags from its own `report.json`, not from a stage script.
