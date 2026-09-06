@@ -62,7 +62,23 @@ nothing adopted — and it is run **before** the outputs are compared. The cost 
 [post-mortem 0001](postmortem/0001-a-reproduction-that-was-not-like-for-like.md).
 
 And nothing updates the tool's checkout while a run using it is queued or running. A tool that
-notices is a tool with a drift guard; the rest report a run made by two versions.
+notices is a tool with a drift guard; the rest report a run made by two versions. Before a pull,
+one line: `qstat -u $USER` and a look at whether any queued or running job names that tool.
+
+The reproduction job gates on the comparability check before it compares anything, so the rule
+is a mechanism rather than a sentence in this file:
+
+```bash
+# BEFORE the outputs are compared. Exit 2 if the two runs are not comparable, and the message
+# names which parameter differs — which is the whole of post-mortem 0001.
+"$PY" -m sch conform --run "$RUNDIR" --against "$REF" | tee "$RUNDIR/COMPARABLE.txt"
+
+# then, and only then, compare the outputs the prediction named
+```
+
+Under `set -e` a failing check ends the job before it can produce a verdict that reads like a
+finding about the code. The check is advisory only where it says `WARN`: an older reference run
+that predates a field, or a resource limit that differs, are named and not fatal.
 
 The third is a reproduction, not a validation: one cohort cannot validate anything. It proves that
 an interface change changed no number.
