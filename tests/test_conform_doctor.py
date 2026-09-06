@@ -176,3 +176,28 @@ class TestConformAgainst(unittest.TestCase):
         c = by_id(conform_against(a, b), "A1")[0]
         self.assertFalse(c["ok"])
         self.assertIn("S7", c["fix"])
+
+    def test_a_check_that_fires_on_correct_behaviour_gets_switched_off(self):
+        """Both misfires found by running it against the real pair, within a minute of writing it.
+
+        A reference run made before the tool declared `state_version` records none, and a
+        resource limit is not a parameter: reading either as a disagreement fails a comparison
+        that is sound. Each is reported, as a warning, and neither fails the check.
+        """
+        a = self._run("new", commit="b" * 40, state_version=1)
+        b = self._run("ref", commit="c" * 40, state_version=None)
+        (b / "report.json").write_text(json.dumps({
+            "input": "/data/object.h5ad", "label_key": "cell_type", "seed": 0,
+            "keys": {"label": "cell_type", "sample": "sample"}, "timeout": 7200}))
+        (a / "report.json").write_text(json.dumps({
+            "input": "/data/object.h5ad", "label_key": "cell_type", "seed": 0,
+            "keys": {"label": "cell_type", "sample": "sample"}, "timeout": 21600}))
+        checks = conform_against(a, b)
+        self.assertEqual([c["id"] for c in checks if not c["ok"] and c["level"] == "error"], [])
+        sv = by_id(checks, "A4")[0]
+        self.assertEqual(sv["level"], "warn")
+        self.assertIn("predates the declaration", sv["fix"])
+        res = by_id(checks, "A2c")[0]
+        self.assertEqual(res["level"], "warn")
+        self.assertTrue(any("timeout" in e for e in res["evidence"]))
+        self.assertTrue(by_id(checks, "A2 ")[0]["ok"], by_id(checks, "A2 ")[0]["evidence"])

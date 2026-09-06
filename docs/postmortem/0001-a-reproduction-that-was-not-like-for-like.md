@@ -93,6 +93,23 @@ The second submission (PBS 706253), with the reference run's own label column an
 left alone, reported `identical: 90 of 90 numeric per-unit tables` on identical cell counts, and
 the change was merged on that evidence.
 
+## The guardrail misfired twice in its first minute, and that is part of the record
+
+Run against the real pair, `--against` named `label_key: new='cell_type' ref='cell_type_forced'`
+before any output was compared — which is the whole point. It also failed the pair that was
+*accepted*, on two counts that were the check's fault:
+
+- the reference run predates `state_version`, and reading its `None` as *different* fails a
+  sound comparison. **Absence is not disagreement**; it is now a warning that says the older run
+  is governed by its commit alone.
+- `timeout` differed, and a limit changes a result only by *firing* — a killed instance says so
+  in its own status. Resource limits are now separated from result parameters and warned about,
+  not failed on.
+
+Both are the same lesson the site layout already records twice: **a check that fires on correct
+behaviour is a check somebody switches off**, and the checks that would have caught something go
+with it.
+
 ## What this record does not claim
 
 That the guardrail would have caught it unaided. `--against` compares what the runs recorded; a

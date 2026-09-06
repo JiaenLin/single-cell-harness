@@ -309,6 +309,13 @@ _PARAMISH = {"seed", "k", "n_pcs", "n_latent", "w_bio", "resolution", "resolutio
 _PARAM_DICTS = ("keys", "controls", "params", "parameters", "settings")
 _NOT_A_PARAM = {"generated", "version", "commit", "tool_commit", "seconds", "timings", "started",
                 "finished", "host", "job", "jobid", "products", "argv", "python", "elapsed"}
+#: Recorded, compared, but a difference here does not make two runs incomparable: a limit only
+#: changes a result by FIRING, and a run whose instance was killed says so in its own status.
+#: Reported as a warning rather than a failure, because a check that fires on correct behaviour
+#: is a check somebody switches off — and then the checks that would have caught something go
+#: with it.
+_RESOURCE = {"timeout", "cores", "n_cores", "jobs", "n_jobs", "prefix", "out", "out_dir",
+             "threads", "memory", "mem", "queue", "executor", "lisi_subsample"}
 
 
 def _flatten(prefix, value, into):
@@ -407,12 +414,18 @@ def conform_against(new_dir, ref_dir) -> list:
     shared = sorted(set(a["params"]) & set(b["params"]))
     differ = {k: {"new": a["params"][k], "ref": b["params"][k]} for k in shared
               if a["params"][k] != b["params"][k]}
+    resource = {k: v for k, v in differ.items() if k.split(".")[-1] in _RESOURCE}
+    result = {k: v for k, v in differ.items() if k not in resource}
     only_new = sorted(set(a["params"]) - set(b["params"]))
     only_ref = sorted(set(b["params"]) - set(a["params"]))
-    _check(checks, "A2 every parameter both runs recorded agrees", not differ,
-           [f"{k}: new={v['new']!r} ref={v['ref']!r}" for k, v in list(differ.items())[:12]],
+    _check(checks, "A2 every parameter both runs recorded agrees", not result,
+           [f"{k}: new={v['new']!r} ref={v['ref']!r}" for k, v in list(result.items())[:12]],
            "take the reproduction's parameters from the reference run's own record, not from a "
            "script that happens to run the same tool")
+    _check(checks, "A2c the resource limits differ", not resource,
+           [f"{k}: new={v['new']!r} ref={v['ref']!r}" for k, v in list(resource.items())[:8]],
+           "a limit changes a result only by FIRING, and a run whose instance was killed says so "
+           "in its own status; named here so it is not mistaken for a parameter", level="warn")
     _check(checks, "A2b each run recorded parameters the other did not", not (only_new or only_ref),
            {"only in new": only_new[:8], "only in ref": only_ref[:8]},
            "not necessarily a difference in what ran; it is a difference in what was written down",
@@ -424,11 +437,20 @@ def conform_against(new_dir, ref_dir) -> list:
            "a comparison across two inputs is a comparison of the inputs" if same_input is False
            else "neither run recorded the input it read; record it (S7)")
 
-    _check(checks, "A4 the numbers were not DECLARED to move (same state_version)",
-           a["state_version"] == b["state_version"],
-           {"new": a["state_version"], "ref": b["state_version"]},
-           "a bumped state_version is the tool saying the numbers change for the same inputs; "
-           "demanding identity is then the wrong test, and the right one is to explain the move")
+    # ABSENCE IS NOT DISAGREEMENT. A reference run made before the tool declared `state_version`
+    # recorded none, and reading `None` as "different" fails a comparison that is perfectly
+    # sound — the shape of check that gets switched off, taking the useful ones with it.
+    sv_new, sv_ref = a["state_version"], b["state_version"]
+    if sv_new is None or sv_ref is None:
+        _check(checks, "A4 the numbers were not DECLARED to move (same state_version)", False,
+               {"new": sv_new, "ref": sv_ref},
+               "one run predates the declaration, so this cannot be checked; the older run's "
+               "numbers are governed by its commit alone", level="warn")
+    else:
+        _check(checks, "A4 the numbers were not DECLARED to move (same state_version)",
+               sv_new == sv_ref, {"new": sv_new, "ref": sv_ref},
+               "a bumped state_version is the tool saying the numbers change for the same inputs; "
+               "demanding identity is then the wrong test, and the right one is to explain the move")
 
     _check(checks, "A5 the two runs are of DIFFERENT code", (a["commit"] or "?") != (b["commit"] or "!"),
            {"new": (a["commit"] or "")[:12], "ref": (b["commit"] or "")[:12]},
