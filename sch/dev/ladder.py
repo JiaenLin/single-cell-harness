@@ -68,7 +68,21 @@ def _run(cmd, cwd, env=None, timeout=1800) -> dict:
 
 
 def _fill(template, **kw):
-    return [str(x).format(**kw) for x in template]
+    """Substitute the declared placeholders and NOTHING else.
+
+    `str.format` was the obvious implementation and it is wrong here: a fixture command may
+    legitimately contain braces that are not placeholders - a JSON argument, a shell expansion,
+    a `python -c` body - and format raises KeyError on them, naming a "missing key" the author
+    never wrote. Explicit replacement has no escaping rules to learn and leaves everything it
+    does not recognise exactly as written.
+    """
+    out = []
+    for x in template:
+        t = str(x)
+        for k, v in kw.items():
+            t = t.replace("{" + k + "}", str(v))
+        out.append(t)
+    return out
 
 
 def _commands(spec):
@@ -146,7 +160,14 @@ def t2_unit(doc, results, skip=False):
               seconds=r["seconds"])
 
 
-def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier):
+_FIRST: dict = {}
+
+
+def _first(fixdir):
+    return _FIRST.get(str(fixdir), {})
+
+
+def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=None):
     spec = _fixture_spec(doc, point_name)
     if not spec.get("command"):
         return _t(results, tier, True, ["no `fixture.command` declared - nothing to run"], skipped=True)
@@ -154,7 +175,7 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier):
     dsn = Path(fixdir) / f"design_{shape}.csv"
     if not obs.is_file():
         return _t(results, tier, False, [f"{obs} was not generated - is anndata installed?"], skipped=True)
-    out = Path(fixdir) / f"run_{shape}"
+    out = Path(fixdir) / (out_name or f"run_{shape}")
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
@@ -199,6 +220,10 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier):
             ok = False
     elif spec.get("products"):
         ev.append("no STATUS.json - the status contract is not being written by this command")
+    if shape == "a" and tier == "fixture_a":
+        # Kept so `--record-baseline` can compare this execution with the next one without
+        # running the fixture a third time.
+        _FIRST[str(fixdir)] = bl.fingerprint(out)["products"]
     missing = [p for p in (spec.get("products") or []) if not (out / str(p).format(name=name)).exists()]
     if missing:
         ev.append("missing products: " + ", ".join(missing))
@@ -273,19 +298,61 @@ def t5_leak(doc, fixdir, results, terms=None):
               seconds=time.time() - t0)
 
 
-def t6_baseline(doc, fixdir, results, name, record=False):
-    spec = _fixture_spec(doc, "")
+def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
+    """A baseline records only what two executions agreed on.
+
+    Recording a fingerprint of one run and calling it "unchanged" assumes every number in it is
+    execution-stable, and this family has measured that it is not: harmony's embedding moved
+    0.214 between two machines of the same model on 2026-09-06, and its benchmark total moves
+    ~0.013 between executions on one. A baseline that includes such a field fails on the next
+    machine, for a reason that is never the change - and a check that cries wolf is switched off
+    within a week, which costs more than never having had it.
+
+    So recording RUNS THE FIXTURE TWICE and keeps only the fields that agreed. The rest are
+    excluded and NAMED in the file as `not_execution_stable`, which turns an assumption nobody
+    stated into a measurement anybody can read. It is the same rule the reproduction discipline
+    reached from the other direction: a prediction is per output, and an output that is not
+    execution-stable is named with its spread rather than predicted identical.
+    """
+    spec = _fixture_spec(doc, point_name or "")
     bdir = Path(doc["_root"]) / (doc.get("baseline_dir") or "tests/baselines")
     path = bdir / f"{name}.baseline.json"
     run = Path(fixdir) / "run_a"
     if not run.is_dir():
         return _t(results, "baseline", True, ["no fixture run to fingerprint"], skipped=True)
     if record:
-        fp = bl.record(run, path)
-        return _t(results, "baseline", True,
-                  [f"recorded {len(fp['products'])} products to {path}",
-                   f"covers {len(fp['covers'])}, opaque {len(fp['does_not_cover'])}"],
-                  cannot="anything - recording is not checking")
+        second = []
+        # THE SECOND EXECUTION WRITES SOMEWHERE ELSE, on purpose. Two runs into one directory
+        # cannot tell a stable value from one that merely embeds its own output path - and a
+        # baseline full of paths fails the first time anybody runs the check from a different
+        # directory, which is every time. Running elsewhere makes path-dependence show up as
+        # what it is: not execution-stable.
+        _fixture_tier(doc, point_name or "", name, "a", fixdir, second, "_rerun", out_name="run_a2")
+        again = Path(fixdir) / "run_a2"
+        if not second or not second[0]["ok"]:
+            return _t(results, "baseline", False,
+                      ["the second execution did not succeed, so nothing can be shown to be "
+                       "stable; refusing to record a baseline from one run"]
+                      + (second[0]["evidence"][:6] if second else []))
+        fp = bl.fingerprint(again)
+        drift = bl.compare(fp, {"rtol": bl.RTOL, "atol": bl.ATOL, "products": _first(fixdir)})
+        unstable = sorted({f"{d['product']}::{d['what']}" for d in drift})
+        for key in unstable:
+            rel, what = key.split("::", 1)
+            item = fp["products"].get(rel) or {}
+            (item.get("numbers") or {}).pop(what, None)
+        fp["not_execution_stable"] = unstable
+        fp["measured_over"] = 2
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_text(json.dumps(fp, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        ev = [f"recorded {len(fp['products'])} products to {path}, over two executions",
+              f"covers {len(fp['covers'])}, opaque {len(fp['does_not_cover'])}"]
+        ev += ([f"NOT execution-stable, excluded and named in the file: {len(unstable)}"]
+               + [f"  {u}" for u in unstable[:8]] if unstable else
+               ["every recorded field agreed between the two executions"])
+        return _t(results, "baseline", True, ev,
+                  cannot="anything about a THIRD execution, or about another machine - two runs "
+                         "on one node is the weakest evidence of stability that is still evidence")
     if not path.is_file():
         return _t(results, "baseline", True,
                   [f"no baseline at {path}; record one with `sch dev check --record-baseline`"],
@@ -329,7 +396,7 @@ def run(root=".", point_name=None, name=None, only=None, skip=(), keep_going=Fal
     if not stop() and want("leak"):
         t5_leak(doc, tmp, results, terms)
     if not stop() and want("baseline") and name:
-        t6_baseline(doc, tmp, results, name, record=record_baseline)
+        t6_baseline(doc, tmp, results, name, record=record_baseline, point_name=point_name)
 
     ran = [r["tier"] for r in results if not r["skipped"]]
     failed = [r["tier"] for r in results if not r["ok"] and not r["skipped"]]

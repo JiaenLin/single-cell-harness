@@ -156,6 +156,20 @@ ids, paths, commits) excluded. Floats compare with a relative tolerance rather t
 because bit-equality across machines is not a property this family has — 0.214 was measured
 between two nodes of the same model on 2026-09-06.
 
+**Recording runs the fixture twice, and keeps only what the two executions agreed on.** Anything
+that moved is excluded and *named* in the file under `not_execution_stable`. The second execution
+writes to a different directory on purpose: two runs into one directory cannot tell a value the
+tool computed from a value that is really its own output path, and a baseline full of paths fails
+the first time anyone checks from somewhere else. This is the same rule the reproduction
+discipline reached from the other side — a prediction is per output, and an output that is not
+execution-stable is named with its spread rather than predicted identical.
+
+Two limits, stated because they are easy to forget. Two runs on one node is the weakest evidence
+of stability that is still evidence: it says nothing about a third execution and nothing about
+another machine, so a baseline recorded where harmony is stable may still fail where it is not.
+And a baseline is worth recording only for a tool whose fixture output carries numbers; for one
+that writes nothing to `{out}`, the tier correctly reports that there is nothing to fingerprint.
+
 A difference is a **stop**, not a verdict. Either the number should not have moved, or
 `state_version` must be bumped to say it did, on purpose, and the baseline re-recorded.
 

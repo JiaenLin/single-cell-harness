@@ -364,6 +364,87 @@ class RefusalIsNotFailure(unittest.TestCase):
         self.assertTrue(any("without refusal_says" in e for e in r["evidence"]))
 
 
+class BaselineRecordsOnlyWhatTwoRunsAgreedOn(unittest.TestCase):
+    """The rule the harmony finding forced: a field that moves between executions is excluded and
+    named, not silently baked into a baseline that will fail on the next machine."""
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "pkg").mkdir()
+        (self.d / "pkg" / "reg.py").write_text("WIDGETS = {'alpha': 1}\n")
+        (self.d / "DEVPOINTS.yaml").write_text(DECL)
+        self.fx = self.d / "fx"
+        self.fx.mkdir()
+        for shape in ("a", "b"):
+            (self.fx / f"fixture_{shape}.h5ad").write_text("x")
+            (self.fx / f"design_{shape}.csv").write_text("x\n1\n")
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _record(self, body):
+        from sch.dev import ladder as L
+        doc = P.load(self.d)
+        doc["fixture"] = {"command": ["python3", "-c", body, "{out}"], "products": ["out.json"]}
+        res = []
+        L._fixture_tier(doc, "widget", "alpha", "a", self.fx, res, "fixture_a")
+        self.assertTrue(res[0]["ok"], res[0]["evidence"])
+        L.t6_baseline(doc, self.fx, res, "alpha", record=True, point_name="widget")
+        path = self.d / "tests" / "baselines" / "alpha.baseline.json"
+        return res[-1], json.loads(path.read_text())
+
+    def test_a_moving_field_is_excluded_and_named(self):
+        # The counter lives OUTSIDE run_a, which the tier wipes before each execution, so the two
+        # runs genuinely disagree.
+        body = ("import json, pathlib, sys\n"
+                "seen = pathlib.Path(MARK)\n"
+                "n = len(list(seen.glob('seen.*')))\n"
+                "(seen / ('seen.%d' % n)).write_text('')\n"
+                "json.dump({'stable': 2.0, 'moves': float(n)}, open(pathlib.Path(sys.argv[1])/'out.json', 'w'))\n")
+        body = body.replace("MARK", repr(str(self.fx)))
+        tier, fp = self._record(body)
+        self.assertTrue(tier["ok"], tier["evidence"])
+        self.assertIn("out.json::moves", fp["not_execution_stable"])
+        self.assertNotIn("moves", fp["products"]["out.json"]["numbers"])
+        self.assertIn("stable", fp["products"]["out.json"]["numbers"])
+        self.assertEqual(fp["measured_over"], 2)
+        self.assertTrue(any("NOT execution-stable" in e for e in tier["evidence"]))
+
+    def test_content_that_embeds_its_own_output_path_is_not_stable(self):
+        """The second execution writes elsewhere, so a value that is really the destination
+        cannot be mistaken for a value the tool computed."""
+        body = ("import json, pathlib, sys\n"
+                "out = pathlib.Path(sys.argv[1])\n"
+                "json.dump({'where': str(out), 'n': 3.0}, open(out/'out.json', 'w'))\n")
+        from sch.dev import ladder as L
+        doc = P.load(self.d)
+        doc["fixture"] = {"command": ["python3", "-c", body, "{out}"], "products": ["out.json"]}
+        res = []
+        L._fixture_tier(doc, "widget", "alpha", "a", self.fx, res, "fixture_a")
+        L.t6_baseline(doc, self.fx, res, "alpha", record=True, point_name="widget")
+        fp = json.loads((self.d / "tests" / "baselines" / "alpha.baseline.json").read_text())
+        self.assertEqual(fp["not_execution_stable"], [])   # a string path is not a number leaf
+        self.assertIn("n", fp["products"]["out.json"]["numbers"])
+
+    def test_it_refuses_to_record_when_the_second_run_fails(self):
+        from sch.dev import ladder as L
+        body = ("import json, pathlib, sys\n"
+                "seen = pathlib.Path(MARK)\n"
+                "n = len(list(seen.glob('seen.*')))\n"
+                "(seen / ('seen.%d' % n)).write_text('')\n"
+                "sys.exit(1) if n else json.dump({'k': 1}, open(pathlib.Path(sys.argv[1])/'out.json', 'w'))\n")
+        body = body.replace("MARK", repr(str(self.fx)))
+        doc = P.load(self.d)
+        doc["fixture"] = {"command": ["python3", "-c", body, "{out}"], "products": ["out.json"]}
+        res = []
+        L._fixture_tier(doc, "widget", "alpha", "a", self.fx, res, "fixture_a")
+        self.assertTrue(res[0]["ok"], res[0]["evidence"])
+        L.t6_baseline(doc, self.fx, res, "alpha", record=True, point_name="widget")
+        self.assertFalse(res[-1]["ok"])
+        self.assertTrue(any("one run" in e for e in res[-1]["evidence"]))
+        self.assertFalse((self.d / "tests" / "baselines" / "alpha.baseline.json").exists())
+
+
 class HarnessDeclaresItsOwnPoints(unittest.TestCase):
     def test_the_harness_devpoints_is_valid(self):
         doc = P.load(ROOT)

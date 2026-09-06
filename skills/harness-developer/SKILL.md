@@ -131,7 +131,10 @@ the first five mechanically; you still have to hold the sixth.
 - [ ] registered in every table the point declares — `sch dev check` says so by parsing
 - [ ] `sch dev check` green, and you have read what it says it did not prove
 - [ ] shape b passes for the right reason (the mechanism is told, not that you special-cased it)
-- [ ] a baseline recorded and committed, if the mechanism produces numbers
+- [ ] a baseline recorded and committed, if the mechanism produces numbers — `sch dev check
+      --record-baseline` runs the fixture twice and keeps only what both runs agreed on,
+      naming the rest as `not_execution_stable`. Read that list: it is telling you which of
+      your outputs a reproduction must not predict identical
 - [ ] if numbers a run has quoted could move: a reproduction, predicted in writing beforehand,
       and `sch conform --run … --against …` saying the comparison was meaningful
 - [ ] anything the fixture could not establish, said out loud in the PR rather than left implied
