@@ -71,14 +71,19 @@ is a mechanism rather than a sentence in this file:
 ```bash
 # BEFORE the outputs are compared. Exit 2 if the two runs are not comparable, and the message
 # names which parameter differs — which is the whole of post-mortem 0001.
+#
+# `| tee` DISCARDS THAT EXIT CODE unless `set -o pipefail` is in force: the pipeline reports
+# tee's status, which is always 0. The site template sets `set -euo pipefail` for exactly this
+# reason, and this repository has already paid twice for a failure swallowed by a pipeline or an
+# `&&` chain. Measured: with pipefail the form below exits 2; without it, 0.
 "$PY" -m sch conform --run "$RUNDIR" --against "$REF" | tee "$RUNDIR/COMPARABLE.txt"
 
 # then, and only then, compare the outputs the prediction named
 ```
 
-Under `set -e` a failing check ends the job before it can produce a verdict that reads like a
-finding about the code. The check is advisory only where it says `WARN`: an older reference run
-that predates a field, or a resource limit that differs, are named and not fatal.
+Under `set -euo pipefail` a failing check ends the job before it can produce a verdict that reads
+like a finding about the code. The check is advisory only where it says `WARN`: an older
+reference run that predates a field, or a resource limit that differs, are named and not fatal.
 
 The third is a reproduction, not a validation: one cohort cannot validate anything. It proves that
 an interface change changed no number.
