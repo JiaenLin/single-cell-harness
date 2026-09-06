@@ -76,7 +76,7 @@ tool — which means a tool whose declaration is thin gets thin guidance, and th
 notice. A tool-aware suite would have caught that; this one cannot, and the price is paid in
 every repository where the declaration is not kept honest.
 
-**Also given up: a green ladder is weaker than it feels.** Six tiers pass in seconds on synthetic
+**Also given up: a green ladder is weaker than it feels.** Seven tiers pass in seconds on synthetic
 data, and the temptation is to read that as a merge. Every tier therefore prints what it does not
 prove, and the run ends by saying that only a reproduction against the real cohort establishes
 the thing anyone actually cares about. That is a mitigation, not a fix; the risk is structural to

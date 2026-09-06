@@ -1,4 +1,4 @@
-"""Six tiers between an idea and a queue, in the order that makes the cheapest failure the first.
+"""Seven tiers between an idea and a queue, in the order that makes the cheapest failure first.
 
 WHAT THIS IS FOR. The proof that a change is sound has, until now, cost a cluster run against the
 real cohort: an hour, a queue slot, and a reproduction that either matches or does not. That is

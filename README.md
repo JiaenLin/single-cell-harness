@@ -146,6 +146,31 @@ Ad-hoc code runs as a **scratch plugin** — mounted live, no install, nothing q
 to a plugin whose numbers may appear in a report requires a lock, a selftest, a `cannot_show` and
 a person.
 
+## Extending it
+
+Operating these tools and changing them are different jobs, and the second one has its own
+suite. `sch dev` serves all five repositories in the family without knowing what any of them
+extends with: each declares its own extension points in `DEVPOINTS.yaml`, and every command
+reads the declaration.
+
+```
+sch dev map                          where a new thing plugs in here, and what it must declare
+sch dev new POINT NAME               a skeleton, a SPEC written before the code, and a test
+sch dev fixture DIR                  a synthetic cohort in two shapes (below)
+sch dev check --point P --name N     seven tiers, cheapest first, each saying what it cannot prove
+sch dev baseline record|check RUN    a numeric fingerprint: "the numbers did not move", in seconds
+sch dev job --ref REF --predict ...  a reproduction written from the reference run's own argv
+```
+
+**The fixture is one cohort written twice** — identical numbers, every role renamed
+(`sample`→`library_id`, `cell_type`→`celltype_final`, the counts layer `counts`→`raw_counts`).
+Code that resolves a role passes both shapes; code that knows a name passes one. Overfitting
+becomes a test failure rather than a reviewer's opinion. Sixteen structural hazards are built in,
+each drawn from a defect this family has had. Nothing measured on it is quotable.
+
+[`docs/DEVELOPING.md`](docs/DEVELOPING.md) is the reference;
+[`skills/harness-developer/`](skills/harness-developer/SKILL.md) is the procedure.
+
 ## Evaluation
 
 A benchmark suite ships with the platform, because "the agent proposed a good analysis" and "the
@@ -202,7 +227,9 @@ $ python -m unittest discover -s tests        # 66 tests, all synthetic
 | [`docs/AUTHORING.md`](docs/AUTHORING.md) | converting a public tool into a plugin |
 | [`docs/STATUS_CONTRACT.md`](docs/STATUS_CONTRACT.md) | what every run leaves behind: status, seal, commit |
 | [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) | what a child tool exposes before an adapter is written; `sch conform` |
+| [`docs/DEVELOPING.md`](docs/DEVELOPING.md) | how the five repositories are extended: `sch dev`, the two-shape fixture, the ladder |
 | [`skills/harness-agent/`](skills/harness-agent/SKILL.md) | how a working agent operates inside the harness or a child |
+| [`skills/harness-developer/`](skills/harness-developer/SKILL.md) | how a working agent **extends** the family, as opposed to operating it |
 | [`skills/plugin-maker/`](skills/plugin-maker/SKILL.md) | an agent skill that performs the conversion |
 | [`GLOSSARY.md`](GLOSSARY.md) | precise definitions of the terms above |
 | [`NOTICE.md`](NOTICE.md) | attribution and licence commitments |

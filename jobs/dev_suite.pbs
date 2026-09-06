@@ -62,6 +62,9 @@ trap finish EXIT
 { echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)"; echo "host=$(hostname -s)"; } > "$RUNDIR/RUNNING.txt"
 
 export PYTHONNOUSERSITE=1 PYTHONPATH="$REPO"
+# The leak tier's word list. It lives in the PROJECT, never in a tool - $SCH_FORBIDDEN_TERMS is
+# the fallback every tool's variable falls back to, so one export covers all five.
+[ -n "${TERMS:-}" ] && export SCH_FORBIDDEN_TERMS="$TERMS"
 export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
 export OMP_NUM_THREADS="${NCPUS:-1}" MKL_NUM_THREADS="${NCPUS:-1}" OPENBLAS_NUM_THREADS="${NCPUS:-1}"
 mkdir -p "$RUNDIR/cache"

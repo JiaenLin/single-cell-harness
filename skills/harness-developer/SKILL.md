@@ -50,7 +50,7 @@ it landed. The writer is not the checker, on purpose.
 sch dev check --root <repo> --point <point> --name <name>
 ```
 
-Six tiers, cheapest first, stopping at the first failure (`--keep-going` runs them all):
+Seven tiers, cheapest first, stopping at the first failure (`--keep-going` runs them all):
 
 | tier | what fails here |
 |---|---|
