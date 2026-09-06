@@ -89,6 +89,22 @@ comparing their outputs.**
    not be updated while a job using it is queued or running, and the tool-drift guard that caught
    this is the only thing that currently notices.
 
+   **It happened again an hour later, to the same hand, in this document's own repository.**
+   Ignoring `HEAD.txt` in the four tools — a change that cannot alter a number — meant a `git
+   pull` into each checkout, and one of them was mid-run. Measured immediately: `git diff
+   b423718 HEAD -- "*.py"` was empty, the two Python files carried mtimes three seconds *before*
+   the job started (the deployment), and only `.gitignore` and `HEAD.txt` moved during it, so
+   that run is substantively untouched. It was still the forbidden act, and the run's recorded
+   commit now names a checkout that has moved on.
+
+   Two occurrences in one afternoon is not carelessness twice; it is the absence of a mechanism.
+   **The rule needs one thing before a pull: `qstat -u $USER` and a look at whether any queued or
+   running job names that tool.** Until something does that automatically, this rule is a
+   prediction of where the mess will go — the layout document's own phrase for a rule nothing
+   enforces. Nothing in `sch conform` can see a queue, and a run's own record cannot notice that
+   the checkout beneath it changed after the run began: `R3` compares the run key to
+   `TOOL_HEAD.txt`, and both were captured at submission.
+
 The second submission (PBS 706253), with the reference run's own label column and the checkout
 left alone, reported `identical: 90 of 90 numeric per-unit tables` on identical cell counts, and
 the change was merged on that evidence.
