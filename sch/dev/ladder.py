@@ -360,6 +360,12 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
                   skipped=True)
     diffs, ref = bl.check(run, path)
     ev = [f"{d['product']}: {d['what']} {d['detail']}" for d in diffs[:15]]
+    note = bl.elsewhere(ref)
+    if diffs and note:
+        ev.append("NOTE: " + note)
+    if ref.get("not_execution_stable"):
+        ev.append(f"{len(ref['not_execution_stable'])} field(s) were excluded when this baseline "
+                  f"was recorded, for moving between two executions; they are named in the file")
     return _t(results, "baseline", not diffs,
               ev or [f"{len(ref.get('products', {}))} products agree within rtol {ref.get('rtol')}"],
               cannot="that a difference is wrong - a deliberate change bumps state_version and re-records")

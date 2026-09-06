@@ -28,6 +28,9 @@ import csv
 import hashlib
 import json
 import math
+import platform
+import socket
+import sys
 from pathlib import Path
 
 RTOL = 1e-9
@@ -38,6 +41,18 @@ READABLE = (".json", ".csv", ".tsv")
 VOLATILE = {"started", "finished", "seconds", "elapsed", "timings", "commit", "tool_commit",
             "jobid", "job", "host", "argv", "python", "generated", "date", "out", "out_dir",
             "path", "paths", "run", "rundir", "pid", "hostname", "wrapped_versions", "version"}
+
+
+def elsewhere(ref: dict) -> str | None:
+    """A sentence to print beside a difference when the baseline came from another machine, and
+    nothing when it did not. Not a verdict - the difference may still be the change - but a
+    reader who is not told will spend the afternoon on the wrong question."""
+    was = (ref.get("recorded_on") or {}).get("host")
+    now = socket.gethostname()
+    if not was or was == now:
+        return None
+    return (f"this baseline was recorded on {was} and you are on {now}; a numeric difference here "
+            f"may be the machine, which two runs on one node cannot rule out")
 
 
 def _numbers(obj, prefix="", into=None):
@@ -110,6 +125,12 @@ def fingerprint(run_dir) -> dict:
             items[rel] = {"kind": "opaque", "bytes": p.stat().st_size,
                           "sha256": hashlib.sha256(p.read_bytes()).hexdigest()[:16]}
     return {"baseline": 1, "rtol": RTOL, "atol": ATOL, "products": items,
+            # WHERE IT WAS RECORDED, because two runs on one machine cannot rule out the machine.
+            # This family measured 0.214 between two nodes of the same model on 2026-09-06; a
+            # baseline that does not say where it came from turns that into a mystery failure
+            # somewhere else, and a mystery failure is how a check gets switched off.
+            "recorded_on": {"host": socket.gethostname(), "python": sys.version.split()[0],
+                            "platform": platform.platform(), "machine": platform.machine()},
             "covers": sorted(k for k, v in items.items() if v["kind"] != "opaque"),
             "does_not_cover": sorted(k for k, v in items.items() if v["kind"] == "opaque")}
 
