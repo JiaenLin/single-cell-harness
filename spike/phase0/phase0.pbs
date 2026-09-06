@@ -1,29 +1,71 @@
 #!/bin/bash
 #PBS -N sch_phase0
-#PBS -q workq
 #PBS -l select=1:ncpus=8:mem=48gb
 #PBS -l walltime=01:00:00
 #PBS -j oe
 #
 # Phase 0 of ROADMAP.md — can a decision be unmounted, and is materialisation cheap?
 #
-#   qsub -v REPO=$HOME/tools/single-cell-harness,PY=<interpreter>,OUT=<dir> \
-#        -o <dir>/phase0.log  phase0.pbs
+# NO `#PBS -q` AND NO `#PBS -o`. The queue is the caller's — a queue name in a portable tool is
+# site-specific, and this repository is portable by construction. `-o` resolves on the submitting
+# host at submission time, so it names the run's own logs/ on the qsub line:
+#
+#   RUNDIR=<project>/runs/sch/00_phase0/<UTCSTAMP>__sch-<commit>__00_phase0
+#   mkdir "$RUNDIR" && mkdir "$RUNDIR/logs"     # bare mkdir: a run-key collision must ABORT
+#   qsub -q <queue> -o "$RUNDIR/logs/pbs.log" \
+#        -v REPO=<harness checkout>,PY=<python with numpy+scipy>,RUNDIR="$RUNDIR" phase0.pbs
 #
 # Sized for the claim, not for comfort: the test is 100,000 observations because a 5,000-cell
-# spike would pass and prove nothing about the property that matters.
+# spike would pass and prove nothing about the property that matters, and it runs 1M as well
+# because a claim that holds only at the tested size is not a claim.
+#
+# WHY THIS JOB SEALS. The first Phase 0 run wrote its evidence into a project's scratch tree —
+# a directory the site layout says anyone may delete without asking — and ROADMAP.md then cited
+# those numbers as the phase's PASS. A claim whose evidence is disposable is a claim nobody can
+# check twice. This writes a sealed run instead: STATUS.json, SEALED.txt or FAILED.txt, and the
+# products named, so the roadmap can cite a run key.
 
 set -euo pipefail
 
-: "${REPO:?pass -v REPO=<path to single-cell-harness>}"
+: "${REPO:?pass -v REPO=<path to the single-cell-harness checkout>}"
 : "${PY:?pass -v PY=<python with numpy+scipy>}"
-: "${OUT:?pass -v OUT=<output directory>}"
+: "${RUNDIR:?pass -v RUNDIR=<run directory the submitter created>}"
+[ -d "$RUNDIR/logs" ] || { echo "$RUNDIR/logs does not exist; the submitter creates it" >&2; exit 3; }
 
-mkdir -p "${OUT}"
-exec > >(tee -a "${OUT}/phase0.out") 2>&1
+# THE SEAL CHECKS THE PRODUCTS, NOT THE EXIT STATUS, and runs as an EXIT trap so a crash seals
+# too. `if`, never an `&&` chain: under `set -e` a chain that returns non-zero kills the trap in
+# exactly the case the seal exists for.
+finish() { s=$?
+  set +e
+  miss=""
+  for w in "$RUNDIR/n100k/phase0.json" "$RUNDIR/n100k/stack.json" "$RUNDIR/STATUS.json"; do
+    [ -s "$w" ] || miss="$miss ${w#$RUNDIR/}"
+  done
+  if [ -n "$miss" ] && [ "$s" -eq 0 ]; then s=97; fi
+  { echo "exit=$s"; echo "jobid=${PBS_JOBID:-none}"; echo "commit=$(cat "$RUNDIR/TOOL_HEAD.txt" 2>/dev/null || echo unknown)"
+    echo "phase=0"; echo "claims=unmount restores | downstream invalidates | materialisation < 30 s | stack < 1 MB"
+    hostname; date -u +%Y-%m-%dT%H:%M:%SZ
+    echo "products=n100k/phase0.json n100k/stack.json n1m/phase0.json STATUS.json"
+    [ -n "$miss" ] && echo "missing:$miss"
+  } > "$RUNDIR/$([ "$s" -eq 0 ] && echo SEALED.txt || echo FAILED.txt)"
+  rm -f "$RUNDIR/RUNNING.txt"
+  find "$RUNDIR" -type f -not -path "$RUNDIR/logs/*" -exec chmod a-w {} + 2>/dev/null
+  return 0; }
+trap finish EXIT
+
+mkdir -p "$RUNDIR/cache"
+export PYTHONNOUSERSITE=1 XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl" \
+       OMP_NUM_THREADS="${NCPUS:-1}" OPENBLAS_NUM_THREADS="${NCPUS:-1}" MKL_NUM_THREADS="${NCPUS:-1}"
+exec > >(tee -a "$RUNDIR/logs/phase0.out") 2>&1
+
+# The commit, read from the checkout by FILE: a compute node has no git binary.
+if [ -f "$REPO/HEAD.txt" ]; then cp "$REPO/HEAD.txt" "$RUNDIR/TOOL_HEAD.txt"; else echo unknown > "$RUNDIR/TOOL_HEAD.txt"; fi
+echo "${PBS_JOBID:-none}" > "$RUNDIR/PBS_JOBID"
+echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$RUNDIR/RUNNING.txt"
 
 echo "host      $(hostname)"
 echo "repo      ${REPO}"
+echo "commit    $(cat "$RUNDIR/TOOL_HEAD.txt")"
 echo "python    ${PY}"
 echo "started   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 "${PY}" -c "import numpy, scipy; print('numpy', numpy.__version__, '| scipy', scipy.__version__)"
@@ -32,11 +74,44 @@ echo
 cd "${REPO}/spike/phase0"
 
 echo "=== 1. the claimed scale: 100,000 x 2,000 ==="
-"${PY}" evaluate.py --n 100000 --g 2000 --out "${OUT}/n100k"
+"${PY}" evaluate.py --n 100000 --g 2000 --out "${RUNDIR}/n100k"
 echo
 
 echo "=== 2. ten times the scale, because a claim that holds only at the tested size is not a claim ==="
-"${PY}" evaluate.py --n 1000000 --g 2000 --out "${OUT}/n1m" || echo "  (1M did not pass; recorded)"
+"${PY}" evaluate.py --n 1000000 --g 2000 --out "${RUNDIR}/n1m" || echo "  (1M did not pass; recorded)"
 echo
+
+# THE RUN'S OWN RECORD, in the shape docs/STATUS_CONTRACT.md prescribes, so a reader who did not
+# watch it can tell ok from partial from failed without reading the log.
+"${PY}" - "$RUNDIR" <<'PY'
+import json, os, socket, sys, time
+d = sys.argv[1]
+res = {}
+for scale in ("n100k", "n1m"):
+    p = os.path.join(d, scale, "phase0.json")
+    if os.path.exists(p):
+        res[scale] = json.load(open(p))["results"]
+failed = [r["claim"] for rs in res.values() for r in rs if not r["pass"]]
+rec = {"contract": "1.0", "tool": "single-cell-harness", "command": "spike/phase0",
+       "commit": open(os.path.join(d, "TOOL_HEAD.txt")).read().split()[0],
+       "state_version": 0, "status": "ok" if not failed else "failed",
+       "headline": ("Phase 0 passes at both scales" if not failed
+                    else f"{len(failed)} claim(s) failed: {failed}"),
+       "finished": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+       "job": {"scheduler": "pbs", "id": os.environ.get("PBS_JOBID"), "host": socket.gethostname()},
+       "python": sys.version.split()[0],
+       "claims": {s: {r["claim"]: {"value": r["value"], "pass": r["pass"]} for r in rs}
+                  for s, rs in res.items()},
+       "cannot_show": [
+           "Materialisation here means CONSTRUCTING the view, not serialising it; a consumer that "
+           "needs a file pays a cost this phase does not measure (finding F3).",
+           "The kernel's overhead is three orders of magnitude below the work it orchestrates, so "
+           "what the design buys is free INVALIDATION, not fast analysis (finding F2).",
+           "In-process, one hard-coded profile, synthetic data: nothing here establishes that any "
+           "of it survives the subprocess boundary a real plugin needs.",
+       ]}
+json.dump(rec, open(os.path.join(d, "STATUS.json"), "w"), indent=1)
+print(rec["headline"])
+PY
 
 echo "finished  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
