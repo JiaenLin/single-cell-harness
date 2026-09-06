@@ -211,9 +211,21 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier):
 
 
 def t5_leak(doc, fixdir, results, terms=None):
-    """Cohort and site terms, in the SOURCE and in what the fixture run produced. The second half
-    matters more than it looks: a tool can be clean in its source and still write a cohort's
-    vocabulary into an output because it carries a default it was given once."""
+    """Cohort and site terms in the REPOSITORY. Not in what a run produced, and that boundary
+    took two passes on the cluster to get right.
+
+    The first version also scanned the fixture run's output, on the reasoning that a tool can be
+    clean in its source and still write a cohort's vocabulary into a result. True, but the site
+    list that catches a cohort also contains the site: the cluster's user, its group, its
+    scheduler head node. A run record is SUPPOSED to say where it ran - that is provenance, and
+    every STATUS.json and every seal carries it correctly. Scanning them reported three of five
+    repositories as leaking because their runs recorded the machine they ran on.
+
+    PATHS AND JOB IDS ARE PROVENANCE; A DEFAULT IS VOCABULARY. In a repository they are the same
+    thing and both are defects, which is why the whole tree is scanned here. In a run's output
+    they are opposites, and no word list distinguishes them. So this tier asks its question of
+    the repository, where the answer is unambiguous, and says below what it therefore does not
+    look at."""
     from ..conform.checks import _load_terms, _read, _text_files
     t0 = time.time()
     root = Path(doc["_root"])
@@ -238,21 +250,16 @@ def t5_leak(doc, fixdir, results, terms=None):
     # reported all five repositories as leaking because of where the run directory sat. What is
     # being asked here is whether the TOOL wrote a cohort's vocabulary into its output, so the
     # caller's path is redacted before the search and the redaction is reported.
-    fixroot = str(Path(fixdir).resolve())
-    hits, redacted = [], 0
-    for p in list(_text_files(root)) + [q for q in Path(fixdir).rglob("*")
-                                        if q.is_file() and q.suffix in (".json", ".csv", ".md", ".txt")]:
+    hits = []
+    for p in _text_files(root):
         low = _read(p).lower()
-        if fixroot.lower() in low:
-            low = low.replace(fixroot.lower(), "<fixture>")
-            redacted += 1
         for w in words:
             if w.lower() in low:
-                hits.append(f"{p}: {w}")
+                hits.append(f"{p.relative_to(root)}: {w}")
     return _t(results, "leak", not hits,
-              hits[:20] or [f"{len(words)} terms from {tf}, none present in source or output",
-                            f"the caller's own path was redacted from {redacted} file(s) before searching"],
-              cannot="that a term nobody listed is absent - the list is the limit of this check",
+              hits[:20] or [f"{len(words)} terms from {tf}, none present anywhere in the tree"],
+              cannot="that a term nobody listed is absent - the list is the limit of this check; "
+                     "and nothing about a RUN's output, which records where it ran on purpose",
               seconds=time.time() - t0)
 
 

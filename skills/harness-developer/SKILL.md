@@ -59,7 +59,7 @@ Seven tiers, cheapest first, stopping at the first failure (`--keep-going` runs 
 | `unit` | the repository's own suite, run the way the repository runs it |
 | `fixture_a` | it does not run end to end on a synthetic cohort |
 | `fixture_b` | **it runs on shape a and not on shape b — you hard-coded a column name** |
-| `leak` | a cohort or site term reached the source, the tests, or the output |
+| `leak` | a cohort or site term reached the repository — source, tests, docs, jobs |
 | `baseline` | a number moved that was not supposed to move |
 
 **3. Read what it says it did not prove.** Every tier prints that, and the run ends with the

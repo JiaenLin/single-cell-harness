@@ -132,7 +132,7 @@ it cannot prove.
 | `unit` | the repository's own suite, run the way the repository runs it | seconds |
 | `fixture_a` | does it run end to end and leave a valid status behind? | seconds |
 | `fixture_b` | does it still, with every role renamed? | seconds |
-| `leak` | any cohort or site term in the source, the tests, or the output? | ms |
+| `leak` | any cohort or site term anywhere in the repository? | ms |
 | `baseline` | did a number move that was not supposed to? | ms |
 
 Every tier prints what it does **not** prove, and the run ends with the union of those plus the
@@ -140,6 +140,15 @@ line that matters most: *a green ladder does not establish that the tool reprodu
 cohort — only a cluster run against the reference does that.* Stating it on every passing run is
 the difference between a gate and a rubber stamp. The whole risk of a fast local check is that
 it starts to feel like the answer.
+
+The `leak` tier asks its question of the **repository**, not of what a run produced. The first
+version scanned both, on the reasoning that a tool can be clean in its source and still write a
+cohort's vocabulary into a result — true, but the site list that catches a cohort also contains
+the site: the cluster's user, its group, its scheduler head node. A run record is *supposed* to
+say where it ran. Scanning run output reported three of five repositories as leaking because
+their runs recorded the machine they ran on. Paths and job ids are provenance in an output and
+defects in a repository, and no word list tells them apart; the tier therefore asks where the
+answer is unambiguous, and says so in its `cannot_prove`.
 
 A **baseline** is the numeric fingerprint of a fixture run: numeric leaves of every JSON,
 per-column statistics of every CSV, bytes of everything else, with volatile fields (times, job
