@@ -393,6 +393,23 @@ class BaselineRecordsOnlyWhatTwoRunsAgreedOn(unittest.TestCase):
         path = self.d / "tests" / "baselines" / "alpha.baseline.json"
         return res[-1], json.loads(path.read_text())
 
+    def test_the_runs_account_of_itself_is_not_fingerprinted(self):
+        """A seal records the job id, the host and the times. Every field in it is supposed to
+        differ between runs, so baselining one produces a check that can never pass - and no
+        redaction fixes it, because stripping a job id and a hostname leaves nothing."""
+        d = Path(tempfile.mkdtemp())
+        try:
+            for sub, jid in (("a", "706331.hn-10-03"), ("b", "706999.hn-10-03")):
+                (d / sub).mkdir()
+                (d / sub / "SEALED.txt").write_text(f"exit=0\njobid={jid}\nhost=node-{sub}\n")
+                (d / sub / "SEALED.cluster.txt").write_text(f"exit=0\njobid={jid}\n")
+                (d / sub / "report.json").write_text('{"score": 0.5}')
+            fa = B.fingerprint(d / "a")
+            self.assertEqual(sorted(fa["products"]), ["report.json"])
+            self.assertEqual(B.compare(fa, B.fingerprint(d / "b")), [])
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
     def test_a_documents_timestamp_is_provenance_not_content(self):
         """A report that embeds when it was written must not fail a baseline for having been
         written twice. The two-execution probe cannot catch this on its own: back-to-back runs

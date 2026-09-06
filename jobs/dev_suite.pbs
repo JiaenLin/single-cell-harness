@@ -160,6 +160,16 @@ for spec in "sch:$REPO:" \
   set +e
   "$PY" -m sch "${args[@]}" > "$RUNDIR/checks/$name.txt" 2>&1
   echo "  exit $?"
+  # RECORD THEN CHECK, IN ONE JOB. Recording and checking kept disagreeing - three times, each
+  # found a run later than the change that caused it. The round trip is the thing that has to
+  # work, so it is exercised here rather than inferred from two jobs an hour apart.
+  if [ -n "${RECORD:-}" ] && { [ "$name" = "scintegrate" ] || [ "$name" = "scanno" ]; }; then
+    verify=()
+    for a in "${args[@]}"; do [ "$a" = "--record-baseline" ] || verify+=("$a"); done
+    "$PY" -m sch "${verify[@]}" > "$RUNDIR/checks/$name.recheck.txt" 2>&1
+    echo "  recheck exit $?"
+    grep -E "^  (ok|FAIL) baseline|tier\(s\) ran" "$RUNDIR/checks/$name.recheck.txt" || true
+  fi
   set -e
   tail -n 40 "$RUNDIR/checks/$name.txt"
 done

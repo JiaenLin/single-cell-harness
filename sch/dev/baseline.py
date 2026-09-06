@@ -135,6 +135,21 @@ def _csv_fingerprint(path: Path) -> dict:
     return {"kind": "csv", "rows": len(body), "header": header, "numbers": nums}
 
 
+# THE RUN'S ACCOUNT OF ITSELF IS NOT A RESULT. The status contract's own files exist to say what
+# happened, when, where and under which commit - they are provenance end to end, and every field
+# in them is supposed to differ between runs. Fingerprinting them means a baseline that can never
+# pass, and no amount of redaction fixes that: a job id and a hostname are not timestamps, and
+# stripping them would leave a file with nothing in it. They are named here because the status
+# contract names them, so this is a rule about a known shape rather than a guess about a filename.
+SELF_ACCOUNT = ("RUNNING.txt", "SEALED.txt", "FAILED.txt")
+
+
+def _is_self_account(rel: str) -> bool:
+    name = Path(rel).name
+    return name in SELF_ACCOUNT or (
+        (name.startswith("SEALED.") or name.startswith("FAILED.")) and name.endswith(".txt"))
+
+
 def fingerprint(run_dir) -> dict:
     """Every readable product, summarised. Unreadable products are LISTED with their size, not
     skipped: a baseline that quietly ignores the h5ad is a baseline that says nothing about the
@@ -145,6 +160,8 @@ def fingerprint(run_dir) -> dict:
         if not p.is_file() or any(x.startswith(".") for x in p.relative_to(run).parts):
             continue
         rel = str(p.relative_to(run))
+        if _is_self_account(rel):
+            continue
         if p.suffix == ".json":
             try:
                 items[rel] = {"kind": "json", "numbers": _numbers(json.loads(p.read_text(encoding="utf-8")))}
