@@ -29,6 +29,7 @@ import hashlib
 import json
 import math
 import platform
+import re
 import socket
 import sys
 from pathlib import Path
@@ -53,6 +54,39 @@ def elsewhere(ref: dict) -> str | None:
         return None
     return ("this baseline was recorded on a DIFFERENT machine from the one you are on; a numeric "
             "difference here may be the machine, which two runs on one node cannot rule out")
+
+
+# A generated document embeds the moment it was generated and the directory it was written to.
+# Both are provenance and neither is a result, but both change the bytes - so a content hash of
+# a report fails on the next run for a reason that is never the numbers. This is the third time
+# the same distinction has had to be drawn today: paths and times are provenance; values are
+# content. Redact the first before hashing the second.
+#
+# The redaction is deliberately narrow - ISO timestamps, clock times, absolute paths - because
+# everything it removes is something no reader would call a result, and everything it leaves is
+# something they might.
+_PROVENANCE = [
+    (re.compile(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?(\.\d+)?Z?"), "<when>"),
+    (re.compile(r"\d{4}-\d{2}-\d{2}"), "<date>"),
+    (re.compile(r"\b\d{2}:\d{2}:\d{2}\b"), "<time>"),
+    (re.compile(r"(?<![\w.])/(?:[\w.+@~-]+/)+[\w.+@~-]*"), "<path>"),
+    (re.compile(r"\b\d+(\.\d+)?\s?(seconds|secs|s)\b"), "<elapsed>"),
+]
+# Suffixes read as text for that redaction. Anything else is hashed as bytes: a .npy or an .h5ad
+# has no prose to redact, and mangling it would make the digest meaningless.
+_TEXTISH = {".md", ".html", ".htm", ".txt", ".log", ".yml", ".yaml", ".rst"}
+
+
+def _opaque_digest(p: Path) -> str:
+    if p.suffix.lower() in _TEXTISH:
+        try:
+            t = p.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return hashlib.sha256(b"").hexdigest()[:16]
+        for rx, sub in _PROVENANCE:
+            t = rx.sub(sub, t)
+        return hashlib.sha256(t.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(p.read_bytes()).hexdigest()[:16]
 
 
 def _numbers(obj, prefix="", into=None):
@@ -123,7 +157,7 @@ def fingerprint(run_dir) -> dict:
                 items[rel] = {"kind": "csv", "unreadable": str(e)}
         else:
             items[rel] = {"kind": "opaque", "bytes": p.stat().st_size,
-                          "sha256": hashlib.sha256(p.read_bytes()).hexdigest()[:16]}
+                          "sha256": _opaque_digest(p)}
     return {"baseline": 1, "rtol": RTOL, "atol": ATOL, "products": items,
             # WHERE IT WAS RECORDED, because two runs on one machine cannot rule out the machine.
             # This family measured 0.214 between two nodes of the same model on 2026-09-06; a
@@ -187,9 +221,16 @@ def compare(new: dict, ref: dict) -> list:
             out.append({"product": rel, "what": "kind", "detail": f"{b.get('kind')} -> {a.get('kind')}"})
             continue
         if a["kind"] == "opaque":
-            if a.get("sha256") != b.get("sha256") and keep(rel, "bytes"):
-                out.append({"product": rel, "what": "bytes",
-                            "detail": f"{b.get('bytes')}b {b.get('sha256')} -> {a.get('bytes')}b {a.get('sha256')}"})
+            # SIZE AND CONTENT ARE SEPARATE FACTS. Reported together, an exclusion for one
+            # silently excludes the other, and a figure that vanished would hide behind a
+            # timestamp that moved.
+            if a.get("bytes") != b.get("bytes") and keep(rel, "size"):
+                out.append({"product": rel, "what": "size",
+                            "detail": f"{b.get('bytes')}b -> {a.get('bytes')}b"})
+            if a.get("sha256") != b.get("sha256") and keep(rel, "content"):
+                out.append({"product": rel, "what": "content",
+                            "detail": f"{b.get('sha256')} -> {a.get('sha256')} "
+                                      f"(timestamps and paths already redacted)"})
             continue
         if a["kind"] == "csv":
             if a.get("header") != b.get("header") and keep(rel, "header"):

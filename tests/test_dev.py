@@ -393,6 +393,24 @@ class BaselineRecordsOnlyWhatTwoRunsAgreedOn(unittest.TestCase):
         path = self.d / "tests" / "baselines" / "alpha.baseline.json"
         return res[-1], json.loads(path.read_text())
 
+    def test_a_documents_timestamp_is_provenance_not_content(self):
+        """A report that embeds when it was written must not fail a baseline for having been
+        written twice. The two-execution probe cannot catch this on its own: back-to-back runs
+        share a timestamp, and the difference only appears hours later."""
+        d = Path(tempfile.mkdtemp())
+        try:
+            (d / "a").mkdir(); (d / "b").mkdir()
+            for sub, when in (("a", "2026-09-06T15:12:08Z"), ("b", "2026-09-06T19:44:01Z")):
+                (d / sub / "report.md").write_text(
+                    f"# Result\n\ngenerated {when} in /data/some/where/run_{sub}\n\nscore: 0.5\n")
+            self.assertEqual(B.compare(B.fingerprint(d / "a"), B.fingerprint(d / "b")), [])
+            (d / "b" / "report.md").write_text(
+                "# Result\n\ngenerated 2026-09-06T19:44:01Z in /data/some/where/run_b\n\nscore: 0.9\n")
+            diffs = B.compare(B.fingerprint(d / "a"), B.fingerprint(d / "b"))
+            self.assertEqual([x["what"] for x in diffs], ["content"])
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
     def test_a_moving_field_is_excluded_and_named(self):
         # The counter lives OUTSIDE run_a, which the tier wipes before each execution, so the two
         # runs genuinely disagree.
@@ -425,7 +443,7 @@ class BaselineRecordsOnlyWhatTwoRunsAgreedOn(unittest.TestCase):
         body = body.replace("MARK", repr(str(self.fx)))
         tier, fp = self._record(body)
         self.assertTrue(tier["ok"], tier["evidence"])
-        for expect in ("out.json::moves", "blob.bin::bytes", "t.csv::b.sum"):
+        for expect in ("out.json::moves", "blob.bin::content", "t.csv::b.sum"):
             self.assertIn(expect, fp["not_execution_stable"])
         # now CHECK, on a third execution, and only the stable fields must be compared
         doc = P.load(self.d)
