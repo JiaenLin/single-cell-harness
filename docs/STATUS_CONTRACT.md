@@ -81,7 +81,31 @@ Inside the harness, `out.json` **is** `STATUS.json` for one plugin run: `status`
 distinguishable outcomes (no file · empty file · entries). A child tool that writes `STATUS.json`
 as above needs no translation to become a plugin; the adapter copies the fields.
 
-## 4. What this contract does not do
+## 4. The numeric environment, and why it belongs here
+
+**Proposed, not yet required.** A run should record the environment its arithmetic happened in:
+
+```json
+"environment": {
+  "threads": {"OMP_NUM_THREADS": "24", "MKL_NUM_THREADS": "24", "torch": 24},
+  "imported": ["numpy 2.4.6", "scipy 1.18.0", "torch 2.13.0", "harmonypy 0.0.10"],
+  "host": "compute1007", "cpu": "..."
+}
+```
+
+The reason is a real diagnosis that the records could not support. Two runs of one tool, with a
+bit-identical input, identical recorded parameters, identical wrapped versions and a method that
+seeds itself, produced embeddings differing by 0.06 on a scale of 16.7 — and the only way to find
+out why was to read the wrapped library's source and submit two probes. `wrapped_versions` was
+identical in both; what differed was **which packages had been imported before the method ran**,
+and therefore what threading and which OpenMP runtime were in force.
+
+A version is not an environment. Two processes running the same versions compute different
+floating-point results when their thread pools differ, and an iterative method amplifies that.
+Recording the environment turns *why did this number move* from a source read into a diff, and
+`sch conform --against` can then compare it the way it compares parameters.
+
+## 5. What this contract does not do
 
 It does not make a run correct. It makes *died*, *refused* and *partial* three different facts, and
 it makes the commit, the person and the fix part of the record rather than part of the memory
