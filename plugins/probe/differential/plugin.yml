@@ -1,0 +1,24 @@
+contract: "1.0"
+profile: table/1.0
+name: differential
+version: 0.1.0
+summary: removal rate of a mask per arm of the declared design, and the ratio between arms
+when_to_use: before accepting any removal — a filter taking 53% of one arm and 6% of another has converted a technical property into an apparent difference
+
+class: probe
+layer: stack
+reversible: true
+inject: [dataset]
+needs: []
+provides: []
+sees: [design]
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: low}
+
+cannot_show:
+  - An equal removal rate across arms does not mean the removal was harmless; it means it was not differential.
+  - When the removal magnitude exceeds one third, a 3x ratio between arms cannot occur, and the test is inert; the answer says so rather than reporting a pass.
+  - The arm assignment comes from the design table as declared; a confounded design gives a clean ratio for a contrast that is not identifiable.

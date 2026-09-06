@@ -6,7 +6,11 @@ Decisions are **mounted**, not applied. A filter, a correction, an annotation or
 plugin contributing to a stack over immutable observations — so any of them can be removed, and
 everything downstream knows when one does.
 
-> **Status: design.** No implementation yet.
+> **Status: the kernel exists.** `sch` implements Phase 1 (the domain-free core, proved on a toy
+> profile), Phase 2 (the profile and the 15-check validator, every rule tripped by a broken
+> plugin), the gate-is-a-probe machinery of Phase 4, and the agent surface of Phase 10 with its
+> adversarial suite. Phases 3, 5–9 and 11 are not built. `sch conform` checks a child tool
+> against [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it.
 > [`ARCHITECTURE.md`](ARCHITECTURE.md) is normative and **locked** — the layers and the invariants
 > that may not be broken. [`VISION.md`](VISION.md) is the thesis, written to be argued with.
 > [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) is the contract every plugin conforms to.
@@ -166,6 +170,21 @@ contract it already has. scProfile implements a single-stage version of the mode
 `needs`/`provides`, prerequisite resolution before compute is spent, guards with logged escapes,
 cross-environment isolation, and a required `cannot_show` on every plugin.
 
+## Running it
+
+```console
+$ pip install -e .                       # stdlib kernel; add [single-cell] for h5py/anndata
+$ sch init stack --profile table/1.0 --observations rows.csv --design design.csv \
+      --key value=score --key group=arm --key unit=unit
+$ sch plan filter_threshold --param min=5     # what would run; every missing prerequisite named
+$ sch mount filter_threshold --param min=5    # materialise → gate → run → merge → companion
+$ sch unmount filter_threshold --dry-run      # the cost before it is paid
+$ sch report                                  # numbers that resolve to events, or no report
+$ sch doctor --architecture                   # L1 L2 L3 C4 D2 X1 G1 G3 and every shipped plugin
+$ sch conform ../scQC --terms ~/site/forbidden_terms.txt
+$ python -m unittest discover -s tests        # 66 tests, all synthetic
+```
+
 ## Documentation
 
 | | |
@@ -174,9 +193,13 @@ cross-environment isolation, and a required `cannot_show` on every plugin.
 | [`ROADMAP.md`](ROADMAP.md) | the build order, and how each step can fail |
 | [`VISION.md`](VISION.md) | the thesis, rationale, order of proof, failure modes |
 | [`docs/adr/`](docs/adr/) | why each invariant is what it is, and what it cost |
+| [`docs/postmortem/`](docs/postmortem/) | defects that got through, and why every check missed them |
 | [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) | the plugin specification |
 | [`docs/profiles/single-cell.md`](docs/profiles/single-cell.md) | the single-cell profile: observations, slots, keys, sentinels, probes |
 | [`docs/AUTHORING.md`](docs/AUTHORING.md) | converting a public tool into a plugin |
+| [`docs/STATUS_CONTRACT.md`](docs/STATUS_CONTRACT.md) | what every run leaves behind: status, seal, commit |
+| [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) | what a child tool exposes before an adapter is written; `sch conform` |
+| [`skills/harness-agent/`](skills/harness-agent/SKILL.md) | how a working agent operates inside the harness or a child |
 | [`skills/plugin-maker/`](skills/plugin-maker/SKILL.md) | an agent skill that performs the conversion |
 | [`GLOSSARY.md`](GLOSSARY.md) | precise definitions of the terms above |
 | [`NOTICE.md`](NOTICE.md) | attribution and licence commitments |

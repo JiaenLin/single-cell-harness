@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "single-cell-harness"
+version = "0.1.0"
+description = "A plugin runtime for the whole life cycle of a single-cell dataset: decisions are mounted, not applied."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+dependencies = []          # the kernel is stdlib-only; profiles that read .h5ad need h5py / anndata
+
+[project.optional-dependencies]
+single-cell = ["h5py", "anndata>=0.10", "numpy"]
+
+[project.scripts]
+sch = "sch.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["sch", "sch.*"]
+
+[tool.setuptools.package-data]
+sch = ["profile/*.yml"]

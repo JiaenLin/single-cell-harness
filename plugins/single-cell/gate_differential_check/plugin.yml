@@ -1,0 +1,28 @@
+contract: "1.0"
+profile: single-cell/1.0
+name: differential_check
+version: 0.1.0
+summary: refuse a removal whose rate differs too much between arms of the design
+when_to_use: required by the profile on every plugin that provides a mask
+
+class: gate
+layer: stack
+reversible: true
+measures_with: differential
+verdict: [PASS, REVIEW, REFUSE]
+escape: --escape differential_check
+params: {refuse_ratio: 3.0, review_ratio: 2.0}
+inject: [probe]
+needs: []
+provides: []
+sees: [design]
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: low}
+
+cannot_show:
+  - PASS means this gate had nothing to refuse on; it does not mean the removal was sound.
+  - The ratio is between the extreme arms only.
+  - When the probe reports the test inert, this gate abstains with a REVIEW rather than pretending the number is evidence.

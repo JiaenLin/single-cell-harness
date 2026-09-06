@@ -1,0 +1,23 @@
+contract: "1.0"
+profile: table/1.0
+name: composition
+version: 0.1.0
+summary: counts and shares of a column's values, per group, with the denominator named
+when_to_use: to see what a stack is made of before and after a decision, without writing code
+
+class: probe
+layer: stack
+reversible: true
+inject: [dataset]
+needs: []
+provides: []
+sees: []
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: low}
+
+cannot_show:
+  - A share is relative to the rows kept when the probe ran; it moves with every mask.
+  - A change in share between two stacks is a change in presence, not a change in magnitude.

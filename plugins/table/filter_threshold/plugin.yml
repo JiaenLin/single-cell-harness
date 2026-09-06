@@ -1,0 +1,32 @@
+contract: "1.0"
+profile: table/1.0
+name: filter_threshold
+version: 0.1.0
+summary: mask rows whose {value} falls below a floor — a reversible removal
+when_to_use: >
+  you want to exclude rows below a threshold and be able to remove that decision later, with
+  everything downstream knowing when you do
+
+class: method
+layer: stack
+reversible: true
+state_version: 1
+
+inject: [dataset]
+needs: ["column/{value}"]
+provides: [mask/threshold, table/removal_record]
+optional: []
+sourceable: []
+sees: []
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: low}
+gates: {differential_check: required}
+invariant: invariant.py
+
+cannot_show:
+  - A row passing the floor is not a row that is good; it is one whose {value} fell above a number.
+  - The floor is a parameter, not a finding. Nothing here derived it from the data.
+  - A removal rate that differs across arms of the design is a technical property converted into an apparent difference; the gate measures it, this plugin does not correct it.

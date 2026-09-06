@@ -1,0 +1,23 @@
+contract: "1.0"
+profile: table/1.0
+name: freshness
+version: 0.1.0
+summary: whether an artifact is older than the inputs it claims to describe
+when_to_use: before presenting any file produced by a run — a report newer than nothing and older than its inputs reads exactly like a correct one
+
+class: probe
+layer: stack
+reversible: true
+inject: [dataset]
+needs: []
+provides: []
+sees: []
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: low}
+
+cannot_show:
+  - A fresh artifact is one written after its inputs; it is not one computed from them.
+  - Modification times are what the filesystem reports; a copy that preserved them says nothing about content.
