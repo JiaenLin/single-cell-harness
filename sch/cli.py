@@ -293,6 +293,7 @@ def cmd_conform(a):
 def cmd_dev(a):
     from . import dev as D
     from .dev import ladder, points as P
+    a.root = getattr(a, "root", None) or "."
 
     if a.sub == "map":
         try:
@@ -465,19 +466,27 @@ def build_parser():
     p = sub.add_parser("dev", help="the development suite: map, new, fixture, check, baseline, job")
     p.add_argument("--root", default=".", help="repository (default .; DEVPOINTS.yaml is found upwards)")
     ds = p.add_subparsers(dest="sub", required=True)
-    q = ds.add_parser("map"); q.set_defaults(fn=cmd_dev)
-    q = ds.add_parser("new"); q.add_argument("point"); q.add_argument("name")
+
+    def rooted(q):
+        # Also on the subcommand, so `sch dev map --root X` works as readily as
+        # `sch dev --root X map`. Argparse accepts a parent option only before the subcommand,
+        # and an agent that has to remember which side it goes on will put it on the wrong one.
+        q.add_argument("--root", default=None, help="repository (default .)")
+        return q
+
+    q = rooted(ds.add_parser("map")); q.set_defaults(fn=cmd_dev)
+    q = rooted(ds.add_parser("new")); q.add_argument("point"); q.add_argument("name")
     q.add_argument("--force", action="store_true"); q.set_defaults(fn=cmd_dev)
-    q = ds.add_parser("fixture"); q.add_argument("dir"); q.add_argument("--shape", choices=["a", "b"])
+    q = rooted(ds.add_parser("fixture")); q.add_argument("dir"); q.add_argument("--shape", choices=["a", "b"])
     q.add_argument("--seed", type=int, default=20260906); q.set_defaults(fn=cmd_dev)
-    q = ds.add_parser("check"); q.add_argument("--point"); q.add_argument("--name")
+    q = rooted(ds.add_parser("check")); q.add_argument("--point"); q.add_argument("--name")
     q.add_argument("--only", action="append", choices=list(_TIERS)); q.add_argument("--skip", action="append", choices=list(_TIERS))
     q.add_argument("--keep-going", action="store_true"); q.add_argument("--record-baseline", action="store_true")
     q.add_argument("--terms"); q.add_argument("--fixture-dir"); q.add_argument("--seed", type=int, default=20260906)
     q.set_defaults(fn=cmd_dev)
-    q = ds.add_parser("baseline"); q.add_argument("action", choices=["record", "check"])
+    q = rooted(ds.add_parser("baseline")); q.add_argument("action", choices=["record", "check"])
     q.add_argument("rundir"); q.add_argument("--path", required=True); q.set_defaults(fn=cmd_dev)
-    q = ds.add_parser("job"); q.add_argument("--ref", required=True); q.add_argument("--rundir", required=True)
+    q = rooted(ds.add_parser("job")); q.add_argument("--ref", required=True); q.add_argument("--rundir", required=True)
     q.add_argument("--tool", required=True); q.add_argument("--queue", required=True)
     q.add_argument("--select", required=True); q.add_argument("--predict", required=True)
     q.add_argument("--out", required=True); q.add_argument("--walltime", default="04:00:00")
