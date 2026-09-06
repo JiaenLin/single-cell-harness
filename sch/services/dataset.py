@@ -93,7 +93,7 @@ class H5adReader(Reader):
         import h5py
         if isinstance(node, h5py.Group):
             if "categories" in node and "codes" in node:
-                cats = [c.decode() if isinstance(c, bytes) else str(c) for c in node["categories"][()]]
+                cats = H5adReader.read_strings(node["categories"])     # categories may be a group too
                 return [cats[c] if c >= 0 else None for c in node["codes"][()]]
             if "values" in node:
                 raw = node["values"][()]
