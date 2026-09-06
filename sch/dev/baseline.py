@@ -47,12 +47,12 @@ def elsewhere(ref: dict) -> str | None:
     """A sentence to print beside a difference when the baseline came from another machine, and
     nothing when it did not. Not a verdict - the difference may still be the change - but a
     reader who is not told will spend the afternoon on the wrong question."""
-    was = (ref.get("recorded_on") or {}).get("host")
-    now = socket.gethostname()
+    was = (ref.get("recorded_on") or {}).get("host_id")
+    now = hashlib.sha256(socket.gethostname().encode()).hexdigest()[:12]
     if not was or was == now:
         return None
-    return (f"this baseline was recorded on {was} and you are on {now}; a numeric difference here "
-            f"may be the machine, which two runs on one node cannot rule out")
+    return ("this baseline was recorded on a DIFFERENT machine from the one you are on; a numeric "
+            "difference here may be the machine, which two runs on one node cannot rule out")
 
 
 def _numbers(obj, prefix="", into=None):
@@ -129,7 +129,15 @@ def fingerprint(run_dir) -> dict:
             # This family measured 0.214 between two nodes of the same model on 2026-09-06; a
             # baseline that does not say where it came from turns that into a mystery failure
             # somewhere else, and a mystery failure is how a check gets switched off.
-            "recorded_on": {"host": socket.gethostname(), "python": sys.version.split()[0],
+            #
+            # THE HOST IS HASHED, NOT NAMED. A baseline is committed INTO a tool repository, and
+            # a repository in this family carries no site identifier - the guards that enforce
+            # that would reject a node name, correctly. All the check needs is "the same machine
+            # or a different one", which an opaque id answers without telling a reader whose
+            # cluster this was. The platform string stays readable: it is a property of the
+            # software, not of the site.
+            "recorded_on": {"host_id": hashlib.sha256(socket.gethostname().encode()).hexdigest()[:12],
+                            "python": sys.version.split()[0],
                             "platform": platform.platform(), "machine": platform.machine()},
             "covers": sorted(k for k, v in items.items() if v["kind"] != "opaque"),
             "does_not_cover": sorted(k for k, v in items.items() if v["kind"] == "opaque")}
