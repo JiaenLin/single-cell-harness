@@ -78,15 +78,16 @@ echo "commit    $(cat "$RUNDIR/TOOL_HEAD.txt")"
 echo
 
 echo "=== 1. unit suite (toy profile, validator regressions, companions, adversarial, single-cell) ==="
-( cd "$REPO/tests" && "$PY" -m unittest discover -s . -p 'test_*.py' -v ) 2>&1 | tee "$RUNDIR/unit.txt" | tail -25
+( cd "$REPO/tests" && "$PY" -m unittest discover -s . -p 'test_*.py' -v ) > "$RUNDIR/unit.txt" 2>&1 || true
+tail -25 "$RUNDIR/unit.txt"
 
 echo; echo "=== 2. doctor --architecture ==="
-( cd "$REPO" && "$PY" -m sch --json doctor --architecture ) > "$RUNDIR/doctor.json"
-( cd "$REPO" && "$PY" -m sch doctor --architecture )
+( cd "$REPO" && "$PY" -m sch --json doctor --architecture ) > "$RUNDIR/doctor.json" || true
+( cd "$REPO" && "$PY" -m sch doctor --architecture ) || true
 
 echo; echo "=== 3. plugin test on the shipped single-cell mask (selftest + fixture) ==="
-( cd "$REPO" && "$PY" -m sch plugin validate plugins/single-cell/mask_floor plugins/single-cell/probe_differential plugins/single-cell/gate_differential_check )
-( cd "$REPO" && SCH_INTERP_MASK_FLOOR="$PY" "$PY" plugins/single-cell/mask_floor/selftest.py )
+( cd "$REPO" && "$PY" -m sch plugin validate plugins/single-cell/mask_floor plugins/single-cell/probe_differential plugins/single-cell/gate_differential_check ) || true
+( cd "$REPO" && "$PY" plugins/single-cell/mask_floor/selftest.py ) || true
 
 if [ -n "$TOOLS" ]; then
   echo; echo "=== 4. conform: the four tools as installed here (static) ==="

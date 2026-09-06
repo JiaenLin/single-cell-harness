@@ -86,14 +86,30 @@ class H5adReader(Reader):
         import h5py
         return h5py.File(path, "r")
 
+    @staticmethod
+    def read_strings(node):
+        """A string array however this anndata encoding wrote it: a dataset, a nullable-string
+        group with `values`, or a categorical group with `categories` and `codes`."""
+        import h5py
+        if isinstance(node, h5py.Group):
+            if "categories" in node and "codes" in node:
+                cats = [c.decode() if isinstance(c, bytes) else str(c) for c in node["categories"][()]]
+                return [cats[c] if c >= 0 else None for c in node["codes"][()]]
+            if "values" in node:
+                raw = node["values"][()]
+            else:
+                raise DatasetError(f"unreadable string encoding: group with keys {list(node.keys())}")
+        else:
+            raw = node[()]
+        return [x.decode() if isinstance(x, bytes) else str(x) for x in raw]
+
     def identities(self, path):
         with self._open(path) as f:
             obs = f["obs"]
             idx = obs.attrs.get("_index", "_index")
             if isinstance(idx, bytes):
                 idx = idx.decode()
-            raw = obs[idx][()]
-        ids = [x.decode() if isinstance(x, bytes) else str(x) for x in raw]
+            ids = self.read_strings(obs[str(idx)])
         if len(set(ids)) != len(ids):
             raise DatasetError(f"{path}: obs identities are not unique; make them unique within "
                                f"the identity scope before mounting")

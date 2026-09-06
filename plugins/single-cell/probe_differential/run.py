@@ -51,7 +51,8 @@ with h5py.File(run.data, "r") as f:
     obs = f["obs"]
     idx = obs.attrs.get("_index", "_index")
     idx = _decode(idx)
-    ids = [_decode(x) for x in obs[idx][()]]
+    node = obs[str(idx)]
+    ids = obs_column(f, str(idx)) if isinstance(node, h5py.Group) else [_decode(x) for x in node[()]]
     sample = obs_column(f, sample_key) if sample_key else None
 
 arm_of = {}
