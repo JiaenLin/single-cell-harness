@@ -60,10 +60,12 @@ class TestSingleCellProfile(unittest.TestCase):
     def test_mask_plugin_mounts_gates_and_unmounts_by_digest(self):
         st = self.st
         base = st.materialise()[0].digest()
-        p = st.plan("mask_floor", {"min": 60})
+        totals = np.asarray(ad.read_h5ad(self.obj).layers["counts"].sum(axis=1)).ravel()
+        floor = float(np.median(totals))            # a floor that removes about half, whatever the draw
+        p = st.plan("mask_floor", {"min": floor})
         self.assertTrue(p["admitted"], p)
         self.assertEqual(p["gates"], ["differential_check"])
-        r = st.mount("mask_floor", {"min": 60})
+        r = st.mount("mask_floor", {"min": floor})
         self.assertTrue(r.ok, r.reason + " " + r.fix)
         self.assertEqual(r.gates[0]["gate"], "differential_check")
         self.assertIn(r.gates[0]["verdict"], ("PASS", "REVIEW"))
