@@ -104,7 +104,7 @@ header and a `COMPARISON.txt` verdict in the run.
 
 | tool | commit | own suite on the cluster | `sch conform` | pre-declared reproduction |
 |---|---|---|---|---|
-| scQC | `9b3793b`, merged | 33 passed, 1 skip (needs a cohort dir) | 0 failing, 2 warnings | PBS 706147 **IDENTICAL**: 100,713 kept barcodes and every criterion column, vs the promoted run |
+| scQC | `9b3793b`, merged | 33 passed, 1 skip (needs a cohort dir) | 0 failing, 2 warnings | PBS 706147 **IDENTICAL**: every kept barcode and every criterion column, vs the promoted run |
 | scAnno | `deb48ad`, merged | 29 suites green, 0 skips | 0 failing, 2 warnings | PBS 706249 **IDENTICAL**: every label at every rung and the rescue, vs the sealed run at the branch's base |
 | scProfile | `b8a4488`, merged | 65 suites green | 0 failing, 6 warnings | PBS 706253 **IDENTICAL**: 90 of 90 numeric per-unit tables on the same cells, nothing adopted; the unseeded network layout reported, not judged |
 | scIntegrate | `14ad5e2`, merged | 7 passed incl. the CLI fixture | 0 failing, 2 warnings | PBS 706190 **DIFFERENT on one method**, merged on four measurements attributing it to harmony's own arithmetic — below |

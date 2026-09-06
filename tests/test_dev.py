@@ -320,6 +320,50 @@ class LeakTierFindsItsWordList(unittest.TestCase):
             shutil.rmtree(d, ignore_errors=True)
 
 
+class RefusalIsNotFailure(unittest.TestCase):
+    """A tool that correctly declines on the fixture must not be reported as broken - and a tool
+    that crashed must not be reported as having declined."""
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "pkg").mkdir()
+        (self.d / "pkg" / "reg.py").write_text("WIDGETS = {'alpha': 1}\n")
+        (self.d / "fx").mkdir()
+        for shape in ("a", "b"):
+            (self.d / "fx" / f"fixture_{shape}.h5ad").write_text("not really an object")
+            (self.d / "fx" / f"design_{shape}.csv").write_text("x\n1\n")
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _tier(self, spec):
+        from sch.dev import ladder as L
+        decl = DECL + "".join(f"\n    {k}: {v}" for k, v in [])
+        (self.d / "DEVPOINTS.yaml").write_text(DECL)
+        doc = P.load(self.d)
+        doc["fixture"] = spec
+        res = []
+        L._fixture_tier(doc, "widget", "alpha", "a", self.d / "fx", res, "fixture_a")
+        return res[0]
+
+    def test_a_declared_refusal_passes(self):
+        r = self._tier({"command": ["python3", "-c", "import sys; print('DESIGN IS CONFOUNDED'); sys.exit(2)"],
+                        "accepts_refusal": True, "refusal_says": "DESIGN IS CONFOUNDED"})
+        self.assertTrue(r["ok"], r["evidence"])
+        self.assertTrue(any("refused, as this point declares" in e for e in r["evidence"]))
+
+    def test_a_crash_does_not_pass_as_a_refusal(self):
+        r = self._tier({"command": ["python3", "-c", "raise SystemExit(2)"],
+                        "accepts_refusal": True, "refusal_says": "DESIGN IS CONFOUNDED"})
+        self.assertFalse(r["ok"])
+
+    def test_accepts_refusal_without_a_phrase_is_refused(self):
+        """Otherwise the tier is switched off by a single key, and every crash becomes a pass."""
+        r = self._tier({"command": ["python3", "-c", "raise SystemExit(2)"], "accepts_refusal": True})
+        self.assertFalse(r["ok"])
+        self.assertTrue(any("without refusal_says" in e for e in r["evidence"]))
+
+
 class HarnessDeclaresItsOwnPoints(unittest.TestCase):
     def test_the_harness_devpoints_is_valid(self):
         doc = P.load(ROOT)

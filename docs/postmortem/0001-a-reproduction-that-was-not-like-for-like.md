@@ -25,10 +25,12 @@ same object and design as the sealed reference run `20260902T150608Z__scprofile-
 ```
 units 21 new vs 21 ref
 identical: 16 of 96 per-unit tables
-aged_chow/ccc_edges.csv: 954 rows differ (of 1195 / 1193)
-young_HFD: table set differs [] vs ['ccc_edges.csv', ...]
+<arm-1>/ccc_edges.csv: 954 rows differ (of 1195 / 1193)
+<arm-2>: table set differs [] vs ['ccc_edges.csv', ...]
 VERDICT: DIFFERENT
 ```
+
+*(The arm names are redacted to `<arm-1>` and `<arm-2>`. This repository is a general tool and carries no cohort's vocabulary — the same rule its own leak guard applies to the four children. Nothing else in the transcript is changed.)*
 
 Believed, on a first reading: the interface change altered the numbers, and ADR-0013 forbids
 merging it. Actually true: the numbers were untouched, and every table computed **on the same

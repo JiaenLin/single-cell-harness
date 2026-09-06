@@ -160,6 +160,14 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier):
     out.mkdir(parents=True)
     env = dict(os.environ, PYTHONNOUSERSITE="1", SCH_DEV_FIXTURE=shape)
     ev, ok, secs = [], True, 0.0
+    # A CORRECT REFUSAL IS NOT A FAILURE. The fixture carries a covariate deliberately confounded
+    # with the condition, and a tool that plans an analysis on it anyway is the one with the
+    # defect. scProfile refuses, exits non-zero, and the first version of this tier read that as
+    # the tool breaking - which would have taught an agent to remove the hazard. A point may
+    # therefore declare `accepts_refusal`, and must then also declare `refusal_says`: a phrase
+    # the refusal itself contains, so that a crash - which says nothing in particular - still
+    # fails. Accepting every non-zero exit would turn this tier off.
+    says = str(spec.get("refusal_says") or "")
     for raw in _commands(spec):
         cmd = _fill(raw, python=sys.executable, observations=obs, design=dsn, out=out,
                     name=name, shape=shape, root=doc["_root"], **_roles(shape))
@@ -167,6 +175,12 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier):
         secs += r["seconds"]
         ev.append(f"exit {r['code']} in {r['seconds']:.1f}s: {' '.join(r['cmd'])}")
         if r["code"] != 0:
+            if spec.get("accepts_refusal") and says and says in r["out"]:
+                ev.append(f"refused, as this point declares it should: {says!r} is in the output")
+                continue
+            if spec.get("accepts_refusal") and not says:
+                ev.append("accepts_refusal is declared without refusal_says, so a crash would "
+                          "pass as a refusal; refusing to accept it")
             ev += [ln for ln in r["out"].splitlines() if ln.strip()][-14:]
             ok = False
             break
@@ -218,15 +232,26 @@ def t5_leak(doc, fixdir, results, terms=None):
                   [f"no word list: pass --terms, or set ${env_var} to a file of terms this "
                    f"repository must not contain. The list belongs outside the repository."],
                   skipped=True)
-    hits = []
+    # THE FIXTURE DIRECTORY'S OWN PATH IS NOT A LEAK. It is where the caller asked for the run
+    # to be written, and on this cluster that is inside the project that owns the cohort - so
+    # every manifest and every STATUS.json records it, and the first version of this tier
+    # reported all five repositories as leaking because of where the run directory sat. What is
+    # being asked here is whether the TOOL wrote a cohort's vocabulary into its output, so the
+    # caller's path is redacted before the search and the redaction is reported.
+    fixroot = str(Path(fixdir).resolve())
+    hits, redacted = [], 0
     for p in list(_text_files(root)) + [q for q in Path(fixdir).rglob("*")
                                         if q.is_file() and q.suffix in (".json", ".csv", ".md", ".txt")]:
         low = _read(p).lower()
+        if fixroot.lower() in low:
+            low = low.replace(fixroot.lower(), "<fixture>")
+            redacted += 1
         for w in words:
             if w.lower() in low:
                 hits.append(f"{p}: {w}")
     return _t(results, "leak", not hits,
-              hits[:20] or [f"{len(words)} terms from {tf}, none present in source or output"],
+              hits[:20] or [f"{len(words)} terms from {tf}, none present in source or output",
+                            f"the caller's own path was redacted from {redacted} file(s) before searching"],
               cannot="that a term nobody listed is absent - the list is the limit of this check",
               seconds=time.time() - t0)
 

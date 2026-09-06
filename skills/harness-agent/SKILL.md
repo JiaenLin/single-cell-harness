@@ -86,7 +86,7 @@ changed no number.
 
 ## Where compute runs and where files land
 
-Not decided here. The site skill decides it (for this project's cluster, `duke-nus-hpc`), and the
+Not decided here. The site skill decides it — whichever one is installed for the cluster in use — and the
 kernel refuses `executor: pbs` until Phase 9 rather than pretending. Inside a scheduler job the
 kernel runs with `executor: local`, which is the compliant form there. Never author code on the
 cluster; never let a tool choose its own output location; never run a matrix on a login node.
