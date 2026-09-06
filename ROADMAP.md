@@ -83,9 +83,12 @@ assumptions are load-bearing in the engine. Fix it here; it never gets cheaper.
 > services and `sch/kernel.py`. The toy profile is `sch/profile/table.yml`; every kernel test in
 > `tests/test_kernel_table.py` runs on it, and `sch doctor --architecture` asserts L1, L2 and L3
 > over the source. The four kernel companions and the plugin companion each fail on a planted
-> violation in `tests/test_companions.py`. A 63-test suite passes on the workstation; the cluster
-> run is recorded under the project's `runs/single-cell-harness/00_kernel/`. Declared finished
-> only when that run is sealed — passing tests are evidence, not the decision.
+> violation in `tests/test_companions.py`. 66 tests pass on the workstation (three skip without
+> anndata) and on the cluster: run key `20260906T100104Z__sch-62a08a5__00_kernel`, PBS job
+> 706136, sealed `exit=0`, `STATUS.json` `ok`, after three sealed FAILED runs that each found a
+> real defect in the h5ad reader. `sch conform --run` over the three promoted stage runs of the
+> reference project reported one gap each — no `STATUS.json` — and nothing else, which is the
+> gap `docs/STATUS_CONTRACT.md` exists to close. Phase 1 is declared finished on that evidence.
 
 ---
 
