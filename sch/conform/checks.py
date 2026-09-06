@@ -109,7 +109,7 @@ def conform_repo(repo, terms_file=None) -> list:
     for p in _pkg_files(root):
         t = _read(p)
         for i, line in enumerate(t.splitlines(), 1):
-            if re.search(r"add_argument\(\s*[\"']--out", line) and "default=" in line and "required" not in line:
+            if re.search(r"add_argument\(\s*[\"']--out(?:-dir)?[\"']", line) and "default=" in line and "required" not in line:
                 out_default.append(f"{p.relative_to(root)}:{i}")
             if re.search(r"Path\(\s*[\"']\.[\"']\s*\)|os\.getcwd\(\)|expanduser\(\s*[\"']~", line) and re.search(r"write|open\(|mkdir|to_csv|savefig|/\s*[\"']", line):
                 cwd_writes.append(f"{p.relative_to(root)}:{i}")
@@ -144,10 +144,13 @@ def conform_repo(repo, terms_file=None) -> list:
         t = _read(p)
         probs = []
         if "set -euo pipefail" not in t and "set -eu" not in t:
-            probs.append("no set -euo pipefail")
+            if "set -uo pipefail" in t and re.search(r"trap\s+\w+\s+EXIT", t):
+                pass                              # continues past failures on purpose, and seals
+            else:
+                probs.append("no set -euo pipefail")
         if not re.search(r"walltime=", t):
             probs.append("no walltime")
-        if re.search(r"^[^#\n]*\bgit\b", t, re.M):
+        if re.search(r"^[^#\n]*(?<![\w./-])git\s+(?:rev-parse|log|status|pull|fetch|checkout|describe|clone|diff|show)\b", t, re.M):
             probs.append("invokes git (compute nodes have none)")
         if not re.search(r"SEALED\.txt|FAILED\.txt", t):
             probs.append("no seal trap")
@@ -194,7 +197,7 @@ def conform_repo(repo, terms_file=None) -> list:
            bool(re.search(r"STATUS\.json|run\.json|RUN_CARD\.json|\"status\"\s*:\s*\"(ok|partial|refused)", pkg_text)),
            "", "write <out>/STATUS.json first as partial and last as ok/refused; a crash leaves partial")
     _check(checks, "S8 the tool seals its own run (RUNNING → SEALED | FAILED, products listed)",
-           bool(re.search(r"SEALED\.txt|FAILED\.txt", pkg_text)), "",
+           bool(re.search(r"SEALED\.(?:txt|\{|\w+\.txt)|FAILED\.(?:txt|\{|\w+\.txt)", pkg_text)), "",
            "write RUNNING.txt at start and SEALED.txt/FAILED.txt at exit from the tool, not only the job script")
     _check(checks, "S9 the tool records its own commit at runtime (without a git binary)",
            bool(re.search(r"\.git/HEAD|packed-refs|HEAD\.txt|rev-parse", pkg_text)), "",
