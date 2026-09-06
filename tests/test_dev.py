@@ -399,7 +399,9 @@ class BaselineRecordsOnlyWhatTwoRunsAgreedOn(unittest.TestCase):
         redaction fixes it, because stripping a job id and a hostname leaves nothing."""
         d = Path(tempfile.mkdtemp())
         try:
-            for sub, jid in (("a", "706331.hn-10-03"), ("b", "706999.hn-10-03")):
+            # An invented scheduler id, not this site's. The leak guard caught the real one
+            # when it was first written here, which is the guard doing its job on its own repo.
+            for sub, jid in (("a", "11.sched-00"), ("b", "12.sched-00")):
                 (d / sub).mkdir()
                 (d / sub / "SEALED.txt").write_text(f"exit=0\njobid={jid}\nhost=node-{sub}\n")
                 (d / sub / "SEALED.cluster.txt").write_text(f"exit=0\njobid={jid}\n")
