@@ -44,6 +44,8 @@ from pathlib import Path
 from .. import yamlish
 
 FILENAME = "DEVPOINTS.yaml"
+# Top-level keys the loader understands beyond `points`; anything else is the author's note.
+TOP = ("tool", "devpoints", "tests", "fixture", "terms", "terms_env", "baseline_dir", "points")
 SCHEMA = 1
 
 # Every point must answer these. `proves`/`cannot_prove` are not documentation: the ladder prints

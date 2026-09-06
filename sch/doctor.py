@@ -24,8 +24,11 @@ from .profile import known_profiles, load_profile
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
+# `dev` is named here rather than left to the default so the decision is visible: the
+# development suite sits at the outermost layer and may import everything below it, which is why
+# it can read the conform rules and the profile without inverting anything.
 LAYER = {"core": 1, "registry": 2, "services": 3, "profile": 2.5, "stack": 3, "plugin": 4,
-         "kernel": 4, "doctor": 4, "cli": 4, "conform": 4, "yamlish": 0}
+         "kernel": 4, "doctor": 4, "cli": 4, "conform": 4, "dev": 4, "yamlish": 0}
 
 
 def _layer_of(path: Path) -> float:

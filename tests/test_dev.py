@@ -209,6 +209,117 @@ class Job(unittest.TestCase):
         self.assertIn("Insufficient amount", text)
 
 
+class Scaffold(unittest.TestCase):
+    """`sch dev new` is the one command that WRITES into a repository, so what it declines to do
+    matters as much as what it does."""
+
+    def setUp(self):
+        from sch.dev import scaffold as S
+        self.S = S
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "pkg").mkdir()
+        (self.d / "tests").mkdir()
+        (self.d / "pkg" / "reg.py").write_text("WIDGETS = {'alpha': 1}\n")
+        (self.d / "DEVPOINTS.yaml").write_text(DECL.replace("lives: pkg", "lives: pkg"))
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def test_writes_the_mechanism_its_spec_and_its_test(self):
+        info = self.S.new(self.d, "widget", "gamma")
+        self.assertTrue((self.d / "pkg" / "gamma.py").is_file())
+        self.assertTrue((self.d / "pkg" / "SPEC.gamma.md").is_file())
+        self.assertTrue((self.d / "tests" / "test_widget_gamma.py").is_file())
+        self.assertEqual(len(info["written"]), 3)
+
+    def test_the_spec_asks_for_what_the_code_cannot_say(self):
+        self.S.new(self.d, "widget", "gamma")
+        spec = (self.d / "pkg" / "SPEC.gamma.md").read_text()
+        for heading in ("What it SEES", "What it CANNOT SHOW", "What would make it wrong",
+                        "state_version"):
+            self.assertIn(heading, spec)
+
+    def test_the_scaffolded_test_fails_until_it_is_written(self):
+        self.S.new(self.d, "widget", "gamma")
+        t = (self.d / "tests" / "test_widget_gamma.py").read_text()
+        self.assertIn("raise AssertionError", t)
+        self.assertNotIn("import sch", t)      # children vendor; they do not import the harness
+
+    def test_it_prints_the_registration_rather_than_performing_it(self):
+        info = self.S.new(self.d, "widget", "gamma")
+        self.assertTrue(any("WIDGETS" in e for e in info["register"]))
+        self.assertNotIn("gamma", (self.d / "pkg" / "reg.py").read_text())
+
+    def test_refuses_a_name_already_registered(self):
+        with self.assertRaises(ValueError):
+            self.S.new(self.d, "widget", "alpha")
+
+    def test_refuses_a_point_that_is_not_declared(self):
+        from sch.dev import points as PP
+        with self.assertRaises(PP.DevpointsError):
+            self.S.new(self.d, "sprocket", "gamma")
+
+    def test_does_not_overwrite_without_force(self):
+        self.S.new(self.d, "widget", "gamma")
+        (self.d / "pkg" / "gamma.py").write_text("mine\n")
+        info = self.S.new(self.d, "widget", "gamma", force=False)
+        self.assertEqual((self.d / "pkg" / "gamma.py").read_text(), "mine\n")
+        self.assertIn("pkg/gamma.py", info["skipped"])
+
+
+class BaselineRoundTrip(unittest.TestCase):
+    def test_record_then_check_agrees_then_disagrees(self):
+        d = Path(tempfile.mkdtemp())
+        try:
+            run = d / "run"
+            run.mkdir()
+            (run / "report.json").write_text(json.dumps({"score": 0.5}))
+            path = d / "b.json"
+            B.record(run, path)
+            self.assertEqual(B.check(run, path)[0], [])
+            (run / "report.json").write_text(json.dumps({"score": 0.6}))
+            diffs, _ = B.check(run, path)
+            self.assertEqual([x["what"] for x in diffs], ["score"])
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_a_difference_within_tolerance_is_not_a_difference(self):
+        d = Path(tempfile.mkdtemp())
+        try:
+            run = d / "run"
+            run.mkdir()
+            (run / "report.json").write_text(json.dumps({"score": 1.0}))
+            path = d / "b.json"
+            B.record(run, path)
+            (run / "report.json").write_text(json.dumps({"score": 1.0 + 1e-13}))
+            self.assertEqual(B.check(run, path)[0], [])
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+
+class LeakTierFindsItsWordList(unittest.TestCase):
+    def test_the_environment_variable_is_consulted_before_the_repository(self):
+        import os
+        from sch.dev import ladder as L
+        d = Path(tempfile.mkdtemp())
+        try:
+            (d / "pkg").mkdir()
+            (d / "pkg" / "reg.py").write_text("WIDGETS = {}\nNAME = 'Belvedere'\n")
+            (d / "DEVPOINTS.yaml").write_text(DECL)
+            words = d / "words.txt"
+            words.write_text("# a comment\nBelvedere\n")
+            os.environ["DEMO_FORBIDDEN_TERMS"] = str(words)
+            try:
+                res = []
+                L.t5_leak(P.load(d), d, res)
+            finally:
+                del os.environ["DEMO_FORBIDDEN_TERMS"]
+            self.assertFalse(res[0]["ok"], res[0]["evidence"])
+            self.assertTrue(any("Belvedere" in e for e in res[0]["evidence"]))
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+
 class HarnessDeclaresItsOwnPoints(unittest.TestCase):
     def test_the_harness_devpoints_is_valid(self):
         doc = P.load(ROOT)

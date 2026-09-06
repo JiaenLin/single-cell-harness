@@ -203,10 +203,21 @@ def t5_leak(doc, fixdir, results, terms=None):
     from ..conform.checks import _load_terms, _read, _text_files
     t0 = time.time()
     root = Path(doc["_root"])
-    tf = terms or (root / doc["terms"] if doc.get("terms") else None)
-    words = _load_terms(str(tf)) if tf and Path(tf).is_file() else []
+    # THE WORD LIST LIVES OUTSIDE THE REPOSITORY, ALWAYS. A tool that ships the cohort's
+    # vocabulary in order to check that it does not ship the cohort's vocabulary has shipped it.
+    # Each child already established the convention - $SCQC_FORBIDDEN_TERMS and its siblings -
+    # so this looks there before anywhere else, and says which source it used.
+    env_var = doc.get("terms_env") or f"{str(doc.get('tool') or 'SCH').upper()}_FORBIDDEN_TERMS"
+    candidates = [terms, os.environ.get(env_var), os.environ.get("SCH_FORBIDDEN_TERMS")]
+    if doc.get("terms"):
+        candidates.append(root / doc["terms"])
+    tf = next((c for c in candidates if c and Path(c).is_file()), None)
+    words = _load_terms(str(tf)) if tf else []
     if not words:
-        return _t(results, "leak", True, ["no terms file declared - nothing to search for"], skipped=True)
+        return _t(results, "leak", True,
+                  [f"no word list: pass --terms, or set ${env_var} to a file of terms this "
+                   f"repository must not contain. The list belongs outside the repository."],
+                  skipped=True)
     hits = []
     for p in list(_text_files(root)) + [q for q in Path(fixdir).rglob("*")
                                         if q.is_file() and q.suffix in (".json", ".csv", ".md", ".txt")]:
@@ -214,7 +225,8 @@ def t5_leak(doc, fixdir, results, terms=None):
         for w in words:
             if w.lower() in low:
                 hits.append(f"{p}: {w}")
-    return _t(results, "leak", not hits, hits[:20] or [f"{len(words)} terms, none present"],
+    return _t(results, "leak", not hits,
+              hits[:20] or [f"{len(words)} terms from {tf}, none present in source or output"],
               cannot="that a term nobody listed is absent - the list is the limit of this check",
               seconds=time.time() - t0)
 
