@@ -107,7 +107,22 @@ header and a `COMPARISON.txt` verdict in the run.
 | scQC | `9b3793b`, merged | 33 passed, 1 skip (needs a cohort dir) | 0 failing, 2 warnings | PBS 706147 **IDENTICAL**: 100,713 kept barcodes and every criterion column, vs the promoted run |
 | scAnno | `deb48ad`, merged | 29 suites green, 0 skips | 0 failing, 2 warnings | PBS 706249 **IDENTICAL**: every label at every rung and the rescue, vs the sealed run at the branch's base |
 | scProfile | `b8a4488`, merged | 65 suites green | 0 failing, 6 warnings | PBS 706253 **IDENTICAL**: 90 of 90 numeric per-unit tables on the same cells, nothing adopted; the unseeded network layout reported, not judged |
-| scIntegrate | `b423718`, branch `interface` | 7 passed incl. the CLI fixture | 0 failing, 2 warnings | PBS 706190 running; deterministic parts predicted identical, torch totals within 0.02 |
+| scIntegrate | `14ad5e2`, merged | 7 passed incl. the CLI fixture | 0 failing, 2 warnings | PBS 706190 **DIFFERENT on one method**, merged on four measurements attributing it to harmony's own arithmetic — below |
+
+**A reproduction may report a difference and the change still be sound — but only when the
+difference is measured to something else, never argued away.** scIntegrate's reproduction found
+four of five methods identical and harmony moved 0.060 on an embedding scale of 16.7. Four probes
+with the tool removed from the picture established that harmonypy agrees with itself to 1.6e-12
+in one process, to 0.0 single-threaded, to 2.2e-12 after importing torch first, and differs by
+**0.214 between two nodes** — three and a half times the difference under investigation. The
+change was merged on that evidence with the reproduction's verdict left standing as DIFFERENT,
+which is the honest record: it was right about what it measured and wrong only about what it
+implied.
+
+Two consequences for the rule above. A prediction is **per output**: an output that is not
+execution-stable is named as such, with its measured spread, rather than predicted identical.
+And each of those four numbers cost one short job — together far less than a wrong merge, in
+either direction.
 
 Two of the first submissions sealed FAILED for reasons that were the job's, not the tool's, and
 both are recorded in the stage RUNLOGs: a product looked for in the wrong directory, and a
