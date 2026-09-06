@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Removal rate per arm of the design for every mask in the subject, on an .h5ad view.
-Reads only obs (through h5py), never the matrix."""
+Reads only obs (through h5py), never the matrix. G3: this is the instrument; the gate reads
+this answer and adds a threshold, it does not measure again."""
 import importlib.util
 import os
 import sys
@@ -20,51 +21,50 @@ def _protocol():
 
 protocol = _protocol()
 
-import csv
+import csv  # noqa: E402
 
-import h5py
+import h5py  # noqa: E402
 
 run = protocol.Run.from_argv()
 idc = run.inp.get("identity", {}).get("column", "barcode")
 subject = run.inp.get("subject") or {}
 masks = subject.get("masks") or {}
 sample_key = run.keys.get("sample")
-batch_key = run.keys.get("batch")
 
 
 def _decode(x):
     return x.decode() if isinstance(x, bytes) else str(x)
 
 
-def obs_column(f, key):
-    obs = f["obs"]
-    if key not in obs:
+def read_strings(node):
+    """A string array however this anndata encoding wrote it: a dataset, a nullable-string
+    group with `values`, or a categorical group whose `categories` may itself be a group."""
+    if isinstance(node, h5py.Group):
+        if "categories" in node and "codes" in node:
+            cats = read_strings(node["categories"])
+            return [cats[c] if c >= 0 else None for c in node["codes"][()]]
+        if "values" in node:
+            return [_decode(v) for v in node["values"][()]]
         return None
-    node = obs[key]
-    if isinstance(node, h5py.Group) and "categories" in node and "codes" in node:
-        cats = [_decode(c) for c in node["categories"][()]]
-        return [cats[c] if c >= 0 else None for c in node["codes"][()]]
     return [_decode(v) for v in node[()]]
 
 
 with h5py.File(run.data, "r") as f:
     obs = f["obs"]
-    idx = obs.attrs.get("_index", "_index")
-    idx = _decode(idx)
-    node = obs[str(idx)]
-    ids = obs_column(f, str(idx)) if isinstance(node, h5py.Group) else [_decode(x) for x in node[()]]
-    sample = obs_column(f, sample_key) if sample_key else None
+    idx = _decode(obs.attrs.get("_index", "_index"))
+    ids = read_strings(obs[idx])
+    sample = read_strings(obs[sample_key]) if sample_key and sample_key in obs else None
 
 arm_of = {}
+factor = run.params.get("factor")
 if sample is not None and run.design:
     design = run.read_design()
     cols = [c for c in (design[0].keys() if design else []) if c != sample_key]
-    factor = run.params.get("factor") or (cols[0] if cols else None)
+    factor = factor or (cols[0] if cols else None)
     unit_arm = {d[sample_key]: d.get(factor) for d in design} if factor else {}
     for i, s in zip(ids, sample):
         arm_of[i] = unit_arm.get(s)
-answer = {"masks": {}, "max_ratio": None, "arms_known": bool(arm_of),
-          "factor": (run.params.get("factor") or None)}
+answer = {"masks": {}, "max_ratio": None, "arms_known": bool(arm_of), "factor": factor}
 for name, path in masks.items():
     with open(path, newline="", encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh))
@@ -85,8 +85,10 @@ for name, path in masks.items():
     elif vals and max(vals) > 0:
         ratio = float("inf")
     inert = overall > 1 / 3
-    answer["masks"][name] = {"rates": rates, "removed": rem, "total": tot, "ratio": ratio, "overall": overall,
-                             "inert": inert, "inert_reason": ("removal magnitude above one third: the ratio test cannot fail" if inert else "")}
+    answer["masks"][name] = {"rates": rates, "removed": rem, "total": tot, "ratio": ratio,
+                             "overall": overall, "inert": inert,
+                             "inert_reason": ("removal magnitude above one third: the ratio test "
+                                              "cannot fail" if inert else "")}
     if ratio is not None and (answer["max_ratio"] is None or ratio > answer["max_ratio"]):
         answer["max_ratio"] = ratio
 run.answer(**answer)
