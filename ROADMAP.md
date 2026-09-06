@@ -43,9 +43,13 @@ largest risk in `VISION.md` §19 and it is why this phase is first.
 **If it fails:** stop. Write what the cost actually was. The remaining phases are worth nothing
 without this one.
 
-> **PASSED, 2026-08-19.** Measured at 100k and at 1M observations: materialisation 0.01 s and
-> 0.06 s against a 30 s target, stack 0.3 KB, unmount digest-identical, downstream invalidated
-> without being re-run, observation writes raise. Four findings in
+> **PASSED, 2026-08-19; re-run as a SEALED run 2026-09-06.** Measured at 100k and at 1M
+> observations: materialisation 0.01 s and 0.06 s against a 30 s target, stack 0.3 KB, unmount
+> digest-identical, downstream invalidated without being re-run, observation writes raise. The
+> first run wrote its evidence into a project's scratch tree — a directory the site layout says
+> anyone may delete without asking — so this phase cited numbers nobody could check twice. It is
+> now run key `20260906T124032Z__sch-2138f75__00_phase0`, sealed `exit=0`, with a
+> `STATUS.json` carrying every claim and what the phase **cannot** show. Four findings in
 > [`spike/phase0/README.md`](spike/phase0/README.md) — the load-bearing ones being **F2**, the
 > kernel costs three orders of magnitude less than the work it orchestrates, so what the design
 > buys is free *invalidation* rather than fast analysis; and **F3**, the target was tested against

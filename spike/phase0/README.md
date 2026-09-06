@@ -39,7 +39,10 @@ masked observation has no embedding and a zero would sort, average and plot as t
 
 ## Results
 
-Measured on a compute node, numpy 2.4.6 / scipy 1.18.0, 1m33s walltime, 4.5 GB peak.
+Measured on a compute node, numpy 2.4.6 / scipy 1.18.0, 1m33s walltime, 4.5 GB peak, and
+re-measured 2026-09-06 as a sealed run — `20260906T124032Z__sch-2138f75__00_phase0` —
+because the first run's evidence lived in a disposable scratch directory. The numbers below
+are the first run's; the sealed run reproduces them and carries its own `STATUS.json`.
 
 | | 100,000 obs | 1,000,000 obs |
 |---|---|---|
