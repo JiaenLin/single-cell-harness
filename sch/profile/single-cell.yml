@@ -1,0 +1,69 @@
+# Profile: single-cell — binds the contract to single-cell and single-nucleus data.
+# Prose specification: docs/profiles/single-cell.md. This file is what the kernel reads.
+profile: single-cell/1.0
+observation: one barcode, a cell or a nucleus
+identity:
+  column: barcode
+  scope: "{sample}"           # barcodes are unique only within a sample
+materialiser: h5ad
+missing: NaN
+
+slots:
+  column:         {dir: columns,    format: csv, fields: [barcode, value],        binds: obs}
+  feature_column: {dir: features,   format: csv, fields: [feature, value],        binds: var}
+  embedding:      {dir: embeddings, format: npy, identity: barcodes.txt,          binds: obsm}
+  matrix:         {dir: matrices,   format: npz,                                  binds: layers}
+  graph:          {dir: graphs,     format: npz,                                  binds: obsp}
+  mask:           {dir: masks,      format: csv, fields: [barcode, keep, reason]}
+  object:         {dir: objects,    format: h5ad}
+  table:          {dir: tables}
+  figure:         {dir: figures}
+  answer:         {dir: answers}
+
+keys: [label, sample, batch, counts, lognorm, embedding, compartment]
+
+capabilities:
+  "capability:embedding": embedding/*
+  "capability:labels":    column/{label}
+  "capability:mask":      mask/*
+  "capability:counts":    matrix/{counts}
+
+sentinels: [EXCLUDED, UNRESOLVED]
+checkpoint_kinds: [align, ambient, impute, "integrate:corrected-counts"]
+
+required:
+  mask:
+    gates: {differential_check: required}
+
+reserved_identifiers:
+  - cell_type
+  - cell_type_forced
+  - sample
+  - batch
+  - leiden
+  - louvain
+  - X_umap
+  - X_pca
+  - X_scanvi
+  - counts
+  - lognorm
+  - scanno_cell_type
+
+# Terms sch doctor forbids under sch/core and sch/registry (L2).
+domain_terms:
+  - cell
+  - gene
+  - barcode
+  - assay
+  - nucleus
+  - nuclei
+  - umi
+  - obs_names
+  - anndata
+  - h5ad
+  - scanpy
+  - seurat
+  - transcript
+  - mitochond
+  - ribosom
+  - doublet

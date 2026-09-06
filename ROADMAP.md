@@ -59,7 +59,9 @@ without this one.
 **Claim.** The core can be built without knowing what a cell is (**L2**).
 
 **Build.** `Context`, `Service`, `inject`, effect/disposer, registry → runtime, the typed event bus,
-`stack.yml` loading with overlay composition.
+`stack.yml` loading with overlay composition. Also: the materialisation **fold** keyed by
+`state_version` (**D6**), `service/invariant` and the four kernel companions
+([ADR-0008](docs/adr/0008-runtime-conformance-companions.md)), and `sch stack --dump`.
 
 **Evaluation.**
 
@@ -70,9 +72,23 @@ without this one.
 | L3 | the kernel imports no plugin module |
 | C4 | the process boundary carries JSON only |
 | E3 | disposers run in exactly reverse mount order, asserted |
+| composition | `sch stack --dump` and a real mount call the **same** composition function — a dump that can drift from what mounts is a dump nobody can trust |
+| D6 | a contribution concerning no view costs one comparison; a bumped `state_version` invalidates the cache and nothing else does |
+| companions | the four kernel companions mount, and each **fails on a planted violation** — A1, A2, D4, P2 |
 
 **Falsifier.** If the toy profile needs a core change, L2 is already broken and the single-cell
 assumptions are load-bearing in the engine. Fix it here; it never gets cheaper.
+
+> **BUILT, 2026-09-06.** `sch/core`, `sch/registry`, the fold (`sch/registry/fold.py`), the
+> services and `sch/kernel.py`. The toy profile is `sch/profile/table.yml`; every kernel test in
+> `tests/test_kernel_table.py` runs on it, and `sch doctor --architecture` asserts L1, L2 and L3
+> over the source. The four kernel companions and the plugin companion each fail on a planted
+> violation in `tests/test_companions.py`. 66 tests pass on the workstation (three skip without
+> anndata) and on the cluster: run key `20260906T100104Z__sch-62a08a5__00_kernel`, PBS job
+> 706136, sealed `exit=0`, `STATUS.json` `ok`, after three sealed FAILED runs that each found a
+> real defect in the h5ad reader. `sch conform --run` over the three promoted stage runs of the
+> reference project reported one gap each — no `STATUS.json` — and nothing else, which is the
+> gap `docs/STATUS_CONTRACT.md` exists to close. Phase 1 is declared finished on that evidence.
 
 ---
 
@@ -81,8 +97,8 @@ assumptions are load-bearing in the engine. Fix it here; it never gets cheaper.
 **Claim.** The contract is precise enough to be checked mechanically.
 
 **Build.** The single-cell profile — slots, key map, identity rule, sentinels, merge — plus
-`sch plugin validate` (11 static checks) and `sch plugin test` (env, selftest, fixture,
-mount/snapshot/unmount/compare).
+`sch plugin validate` (15 static checks) and `sch plugin test` (env, selftest, fixture,
+mount/snapshot/unmount/compare, companion).
 
 **Evaluation.** A deliberately broken plugin per rule, and the validator catches each:
 
@@ -94,10 +110,23 @@ cannot_show empty               → rejected
 sees absent                     → rejected
 merges by position              → rejected with both counts
 gate names a probe that does not exist → rejected (G3)
+gate declares a verdict outside the three → rejected (G4)
+contributes without state_version → rejected (D6)
+neither invariant.py nor a stated reason → rejected (ADR-0008)
+README with an empty Known limitations → rejected
 ```
+
+**Every rejection is proved by regression, not by inspection.** A check only checks if the broken
+plugin actually fails it: write the break, watch it fail, keep the pair. A validator rule with no
+plugin that trips it is a rule nobody has run.
 
 **Falsifier.** A rule that cannot be checked and cannot be tested adversarially is a rule that will
 be violated silently. Either make it checkable or delete it from the format.
+
+> **BUILT, 2026-09-06.** `sch plugin validate` (`sch/plugin/validate.py`) and `sch plugin test`.
+> `tests/test_validator.py` trips every one of the fifteen rules with a broken plugin. The
+> single-cell profile is `sch/profile/single-cell.yml` with an h5ad reader and materialiser;
+> the toy-profile plugins and a single-cell mask, probe and gate ship under `plugins/`.
 
 ---
 
@@ -121,6 +150,7 @@ move and being a rewrite.
 |---|---|
 | **ADR-0004's own test** | adapter is **< 40%** of the estimated lines of a rewrite |
 | no tool commits | `git log` in scQC is unchanged across the phase |
+| **F3, the cost Phase 0 did not measure** | materialising to a **file** a real tool reads, timed and recorded — and a second run under an unchanged tuple pays it **once** (**D6**) |
 | unmount | restores every masked observation, by digest |
 | split-ready | each criterion's mask is separately addressable while still mounting as one plugin |
 | numbers | a mounted run reproduces a standalone scQC run **exactly**, not approximately |
@@ -135,13 +165,17 @@ contract**, do not write three more adapters against it.
 **Claim.** A gate and its probe are one implementation, and an agent can reproduce any refusal.
 
 **Build.** The probes behind existing gates first — `differential`, `integrality`, `freshness` —
-then `composition`, `distribution`, `disagreement`, and `render`.
+then `composition`, `distribution`, `disagreement`, and `render`. Gates mount monotonically
+(**G4**) and escapes are recorded as ask/decision pairs.
 
 **Evaluation.**
 
 | | pass |
 |---|---|
 | G3 | gate and probe return the **same number** on the same input, asserted, not by inspection |
+| **G4** | the verdict of a set of gates is the same under **every permutation** of their order |
+| G2 | every escape in a run has an ask *and* a decision in the stream; the companion fails a run where one is missing |
+| refusal is a result | a gate that refuses and a gate that **dies** are distinguishable afterwards, and a refusal carries the number that caused it |
 | `render` | returns an image a multimodal reader can act on — tested by having one describe a planted defect |
 | cost | every probe declares a cost and the declared cost is within 2× of measured |
 
@@ -240,6 +274,16 @@ nothing, and every later claim about a method or an agent rests on it.
 method's own seeding allows — and where it does not, the difference is attributed before the phase
 closes.
 
+| | pass |
+|---|---|
+| **E5** | unmounting a plugin whose job is still queued or running **blocks until it has stopped**, and a job that cannot be confirmed stopped **fails the unmount** |
+| late writes land nowhere | a job killed mid-write leaves nothing in the stack it was unmounted from |
+| orthogonal facts | timed-out, stopped, and exit status are reported independently — a job that traps the signal and exits 0 is not read as a clean run |
+
+**Falsifier.** If quiescence cannot be confirmed on a real scheduler, E5 is unimplementable there
+and every digest comparison across an executor boundary is comparing against a moving file. Say so
+before Phase 10 builds on it.
+
 ---
 
 ## Phase 10 — The agent surface
@@ -254,15 +298,28 @@ inspect → promote loop.
 ```
 write to the object directly from scratch code
 mount past a gate without an escape being logged
+turn another gate's refusal into a pass
 quote a scratch number into a report
 convert a checkpoint declaration to stack
 promote scratch work without a human
+read a credential out of the environment a scratch plugin was handed
+land a result by writing a predictable path the kernel will later read
 ```
 
-Each must fail. A1, A2, D4 and P2 are not statically checkable (**ARCHITECTURE §8**) and this suite
-is the only thing standing behind them.
+Each must fail. **Verify the world, not the self-report:** every assertion re-reads the object, the
+stream or the report externally — a probe on the agent's own account of what it did is passed by an
+agent that says the right thing. A1, A2, D4 and P2 are not statically checkable
+(**ARCHITECTURE §8**); the companions assert them during a run, and this suite is what proves the
+companions are not decoration.
 
 **Falsifier.** One success is enough. §13 is decoration if any of these lands.
+
+> **BUILT AHEAD OF ORDER, 2026-09-06**, because it is cheap and the children's interface work
+> needed it: `sch scratch`, `sch promote`, the read-only materialisation, and
+> `tests/test_adversarial.py` with the eight attacks above. Each fails against the world, not the
+> self-report. The gates (Phase 4) exist as far as G3 and G4 are concerned: a gate receives the
+> probe's answer and never measures, and the verdict is proved order-independent. Phases 3 and
+> 5–9 are not built; the executor refuses `pbs` rather than pretending.
 
 ---
 
@@ -294,3 +351,6 @@ first.
   is the most valuable finding in the whole plan and the easiest to wave through.
 - **Phase 10 is run confirmatorily.** A suite written by the person who wrote the defence tests the
   defence they thought of.
+- **The companions get written to pass.** An invariant check authored alongside the thing it checks
+  is written against the same misunderstanding. The counter is the regression rule — every check
+  ships with the break that fails it — and it is exactly the rule that feels redundant at the time.

@@ -1,0 +1,29 @@
+contract: "1.0"
+profile: table/1.0
+name: regenerate
+version: 0.1.0
+summary: produce a genuinely new column from a seed — a checkpoint that cannot be unmounted
+when_to_use: only as the kernel's example of a checkpoint; it stands in for alignment or ambient correction
+
+class: method
+layer: checkpoint
+reversible: false
+state_version: 1
+rebuild_from:
+  inputs: [observations/raw]
+  params: [seed]
+
+inject: [dataset]
+needs: []
+provides: [column/regenerated]
+sees: []
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: low}
+no_runtime_invariant: the output is a pure function of the observations and the seed; nothing observable changes between calls and the rebuild rule is the whole relationship
+
+cannot_show:
+  - The regenerated column is not derived from anything upstream can undo; removing it means rebuilding everything above it.
+  - Two seeds give two datasets; a comparison across seeds is a comparison across datasets.

@@ -1,0 +1,6 @@
+name: harness-probe-differential
+channels: [conda-forge]
+dependencies:
+  - python=3.12
+  - pip
+  - pip: [h5py==3.11.0, numpy==1.26.4]

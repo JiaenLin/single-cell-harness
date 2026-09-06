@@ -1,0 +1,27 @@
+contract: "1.0"
+profile: table/1.0
+name: score
+version: 0.1.0
+summary: rank of {value} among the kept rows, as a fraction — a derived column
+when_to_use: you want a scale-free position of each row among those currently kept
+
+class: method
+layer: stack
+reversible: true
+state_version: 1
+
+inject: [dataset]
+needs: ["column/{value}"]
+provides: [column/rank_fraction]
+optional: [mask/*]
+sees: []
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: low}
+no_runtime_invariant: the column is a pure transformation of the declared input, one value per kept row; nothing observable changes between calls
+
+cannot_show:
+  - A rank is relative to the rows kept at mount time; unmounting a mask changes every value.
+  - Ties share a rank; the fraction is not a probability.

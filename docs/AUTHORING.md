@@ -23,7 +23,7 @@ full path.
 A manifest containing `TODO` fails `sch plugin validate`. The scaffold is deliberately not
 runnable.
 
-## 2. Answer the six questions
+## 2. Answer the seven questions
 
 These are the admission gate, and their answers become manifest fields. A tool that cannot answer
 them is not ready to be a plugin.
@@ -36,6 +36,7 @@ them is not ready to be a plugin.
 | What can its output **not** show? | `cannot_show` |
 | Is there independent evidence it works on data like this? | `CHANGELOG`, and whether to ship at all |
 | What breaks silently if the input is wrong? | `guard.py` |
+| What relationship does this plugin own that could break silently **while it runs**? | `invariant.py`, or `no_runtime_invariant:` with the reason |
 
 The fourth is the one that takes an afternoon and the one worth it. Read the tool's own paper for
 its stated limits, then its issue tracker for the limits its users found, then decide which of
@@ -50,6 +51,10 @@ Does the tool produce a **view** of data that already exists, or **new numbers**
 
 **When in doubt, declare `checkpoint`.** The cost of that mistake is an unnecessary rebuild; the
 cost of the other is an unmount that silently produces a different dataset.
+
+Then set `state_version: 1`, and treat it as part of releasing: it goes up whenever the plugin
+computes something different for the same inputs — including when the wrapped tool's version moves.
+`version` is the wrapper; `state_version` is the numbers, and every cached view is keyed on it.
 
 ## 4. Map capabilities
 
@@ -80,22 +85,40 @@ nuclei and whole cells and every caveat it writes depends on knowing which. Abun
 refuses when the tested factor is nested in the batch key, because the test returns clean p-values
 for a contrast that is not identifiable.
 
-Every override is logged. A gate with no escape gets switched off; a gate whose escapes are all
-recorded does not.
+Every override is logged, as a pair — what was refused and with what number, then who lifted it and
+why. A gate with no escape gets switched off; a gate whose escapes are all recorded does not. A
+guard refuses or abstains; it never approves on another guard's behalf.
 
-## 7. Validate, then test
+## 7. Assert what you own, while it runs
+
+The guard runs before. The companion runs *during*, on real work, and asserts a relationship this
+plugin owns: every removed observation appears in the removal record, every barcode written back
+was one that came in, the count of masked cells matches the mask.
+
+Write it in `invariant.py`, or write `no_runtime_invariant:` in the manifest with the reason there
+is nothing observable to assert. Both are answers; leaving it out is not, because *nothing to
+check* and *nobody thought about it* have to be distinguishable. Then break the plugin until the
+check fails and put it back — a check that cannot be made to fail is decoration.
+
+## 8. Validate, then test
 
 ```bash
 sch plugin validate .      # static: manifest, lock, capabilities, claims
-sch plugin test .          # builds the env, runs the selftest, runs on a fixture,
-                           # and for reversible:true mounts / snapshots / unmounts / compares
+sch plugin test .          # builds the env, runs the selftest, runs on a fixture, mounts the
+                           # companion, and for reversible:true mounts / snapshots / unmounts /
+                           # compares
 ```
 
-## 8. Ship
+## 9. Ship
 
-Add `CHANGELOG.md`. Publish in your own repository or point `$SCH_PLUGINS` at a directory. Site
-plugins override shipped ones by name, and `doctor` reports when that happens rather than letting a
-run silently use code nobody mentioned.
+Add `README.md` with its four sections — what it does, report surface, cost, known limitations
+([`PLUGIN_FORMAT.md`](../PLUGIN_FORMAT.md) §15) — and `CHANGELOG.md`. **Known limitations is the
+one to write last and honestly**; an empty one is the plugin telling a reader it has not been used
+in anger, and the validator rejects it.
+
+Publish in your own repository or point `$SCH_PLUGINS` at a directory. Site plugins override
+shipped ones by name, and `doctor` reports when that happens rather than letting a run silently use
+code nobody mentioned.
 
 ---
 

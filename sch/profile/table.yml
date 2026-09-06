@@ -1,0 +1,40 @@
+# Profile: table — rows in a CSV. No biology anywhere.
+#
+# This is the L2 test (ARCHITECTURE §1, ROADMAP Phase 1): the same kernel that hosts the
+# single-cell profile hosts this one with no change to sch/core or sch/registry. Every kernel
+# test that can run here does, so the domain never becomes load-bearing by accident.
+profile: table/1.0
+observation: one row of a CSV, identified by its first column
+identity:
+  column: id
+  scope: null                 # ids are unique across the whole file
+materialiser: csv
+missing: null
+
+slots:
+  column:    {dir: columns,    format: csv, fields: [id, value]}
+  mask:      {dir: masks,      format: csv, fields: [id, keep, reason]}
+  embedding: {dir: embeddings, format: csv, fields: [id, "*"]}
+  table:     {dir: tables}
+  figure:    {dir: figures}
+  object:    {dir: objects}
+  answer:    {dir: answers}
+
+keys: [value, group, unit]
+
+capabilities:
+  "capability:score":  column/*
+  "capability:filter": mask/*
+
+sentinels: []
+checkpoint_kinds: [regenerate]
+
+required:
+  mask:
+    gates: {differential_check: required}
+
+# A manifest naming one of these where a key exists has bound itself to one file (§4).
+reserved_identifiers: [score, arm]
+
+# Terms sch doctor forbids under sch/core and sch/registry. Empty: this profile has no domain.
+domain_terms: []

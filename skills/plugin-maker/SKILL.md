@@ -13,7 +13,8 @@ procedure; that file is the contract.
 
 ```
 <name>/
-  plugin.yml   run.py|run.R   lock.yml   selftest.py   guard.py?   references.yml?
+  plugin.yml   run.py|run.R   lock.yml   selftest.py   README.md
+  guard.py?    invariant.py?  references.yml?
 ```
 
 ## Order of work
@@ -41,6 +42,10 @@ the tool's own tutorial**, and the licence.
 Does it produce a view of existing data, or new numbers? A wrong `stack` declaration means the
 kernel will offer an unmount that silently produces a different dataset. A wrong `checkpoint` costs
 a rebuild. These are not symmetric.
+
+Set `state_version: 1` at the same time. It versions *the numbers*, not the wrapper: it goes up
+whenever the plugin would compute something different for the same inputs, and the pinned tool's
+version moving is the ordinary reason. Every cached view is keyed on it.
 
 ### 3. Write `cannot_show` before writing any code
 
@@ -84,7 +89,26 @@ except its stdlib-only manifest helper.
 Not a prerequisite check. A guard is for a run that would succeed and produce numbers that do not
 support the sentence a reader will write.
 
-### 8. Validate
+### 8. The companion, or the reason there is none
+
+Name one relationship this plugin **owns** that could break silently while it runs — a conservation
+law, an ordering, an agreement between what it declared and what it wrote — and assert it in
+`invariant.py`. Every removed observation appears in the removal record. Every barcode written back
+was one that came in. The count of masked cells matches the mask.
+
+If there is genuinely nothing observable between calls, write `no_runtime_invariant:` in the
+manifest with the reason. Both are accepted; silence is not, because "there is nothing to check"
+and "nobody thought about it" have to be distinguishable.
+
+Then prove it: break the plugin so the check fails, watch it fail, revert. A check that cannot be
+made to fail is decoration.
+
+### 9. Write the README, then validate
+
+`README.md` carries four sections — what it does, **report surface** (every number, table and
+figure a reader could quote, with the `cannot_show` line each travels with), **cost** (to run, and
+to unmount), **known limitations**. Known limitations is written last and honestly; an empty one is
+rejected, and a marketing one should be.
 
 ```bash
 sch plugin validate <dir> && sch plugin test <dir>
@@ -107,5 +131,6 @@ A tool that is not ready is a finding. Report it with what is missing.
 - copy the tool's source into the plugin — wrap it, pin it, cite it
 - silently repair the tool's output
 - hard-code a column name, an organism, a species or a design
-- write `cannot_show: []`
+- write `cannot_show: []`, or a README whose known limitations are empty
+- ship an `invariant.py` that cannot fail, or an absent one with no reason given
 - claim `reversible: true` without knowing what would be removed to undo it
