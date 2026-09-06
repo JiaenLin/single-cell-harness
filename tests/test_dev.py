@@ -405,10 +405,35 @@ class BaselineRecordsOnlyWhatTwoRunsAgreedOn(unittest.TestCase):
         tier, fp = self._record(body)
         self.assertTrue(tier["ok"], tier["evidence"])
         self.assertIn("out.json::moves", fp["not_execution_stable"])
-        self.assertNotIn("moves", fp["products"]["out.json"]["numbers"])
         self.assertIn("stable", fp["products"]["out.json"]["numbers"])
         self.assertEqual(fp["measured_over"], 2)
         self.assertTrue(any("NOT execution-stable" in e for e in tier["evidence"]))
+
+    def test_the_check_immediately_after_recording_is_clean(self):
+        """The round trip the cluster caught: recording excluded three kinds of field and the
+        very next check failed on all three, because exclusion deleted them and a deleted
+        reference key reads as a NEW field."""
+        from sch.dev import ladder as L
+        body = ("import json, pathlib, sys\n"
+                "seen = pathlib.Path(MARK)\n"
+                "n = len(list(seen.glob('seen.*')))\n"
+                "(seen / ('seen.%d' % n)).write_text('')\n"
+                "out = pathlib.Path(sys.argv[1])\n"
+                "json.dump({'stable': 2.0, 'moves': float(n)}, open(out/'out.json', 'w'))\n"
+                "(out/'blob.bin').write_bytes(bytes([n]))\n"
+                "open(out/'t.csv','w').write('a,b\\n1,%d\\n' % n)\n")
+        body = body.replace("MARK", repr(str(self.fx)))
+        tier, fp = self._record(body)
+        self.assertTrue(tier["ok"], tier["evidence"])
+        for expect in ("out.json::moves", "blob.bin::bytes", "t.csv::b.sum"):
+            self.assertIn(expect, fp["not_execution_stable"])
+        # now CHECK, on a third execution, and only the stable fields must be compared
+        doc = P.load(self.d)
+        doc["fixture"] = {"command": ["python3", "-c", body, "{out}"], "products": ["out.json"]}
+        res = []
+        L._fixture_tier(doc, "widget", "alpha", "a", self.fx, res, "fixture_a")
+        L.t6_baseline(doc, self.fx, res, "alpha", record=False, point_name="widget")
+        self.assertTrue(res[-1]["ok"], res[-1]["evidence"])
 
     def test_content_that_embeds_its_own_output_path_is_not_stable(self):
         """The second execution writes elsewhere, so a value that is really the destination

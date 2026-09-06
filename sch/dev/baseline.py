@@ -161,9 +161,22 @@ def _close(a, b, rtol, atol) -> bool:
 
 
 def compare(new: dict, ref: dict) -> list:
-    """Differences, most structural first. Empty means the fingerprints agree."""
+    """Differences, most structural first. Empty means the fingerprints agree.
+
+    FIELDS THE BASELINE MEASURED AS NOT EXECUTION-STABLE ARE SKIPPED HERE, not deleted at
+    recording time. Deleting was the first implementation and it was wrong twice: an opaque
+    file's identity is a `sha256`, not a number, so nothing was removed for those at all; and
+    removing a key from the reference makes the very next comparison report it as NEW. The first
+    check after recording therefore failed on precisely the fields the recording had just
+    excluded. Keeping the values and filtering the comparison handles numbers, column statistics
+    and bytes uniformly, and leaves a reader able to see what the unstable value actually was.
+    """
     rtol, atol = float(ref.get("rtol", RTOL)), float(ref.get("atol", ATOL))
+    unstable = set(ref.get("not_execution_stable") or [])
     out, np_, rp = [], new.get("products", {}), ref.get("products", {})
+
+    def keep(product, what):
+        return f"{product}::{what}" not in unstable
     for rel in sorted(set(rp) - set(np_)):
         out.append({"product": rel, "what": "absent", "detail": "the baseline has it; this run does not"})
     for rel in sorted(set(np_) - set(rp)):
@@ -174,29 +187,32 @@ def compare(new: dict, ref: dict) -> list:
             out.append({"product": rel, "what": "kind", "detail": f"{b.get('kind')} -> {a.get('kind')}"})
             continue
         if a["kind"] == "opaque":
-            if a.get("sha256") != b.get("sha256"):
+            if a.get("sha256") != b.get("sha256") and keep(rel, "bytes"):
                 out.append({"product": rel, "what": "bytes",
                             "detail": f"{b.get('bytes')}b {b.get('sha256')} -> {a.get('bytes')}b {a.get('sha256')}"})
             continue
         if a["kind"] == "csv":
-            if a.get("header") != b.get("header"):
+            if a.get("header") != b.get("header") and keep(rel, "header"):
                 out.append({"product": rel, "what": "header", "detail": f"{b.get('header')} -> {a.get('header')}"})
-            if a.get("rows") != b.get("rows"):
+            if a.get("rows") != b.get("rows") and keep(rel, "rows"):
                 out.append({"product": rel, "what": "rows", "detail": f"{b.get('rows')} -> {a.get('rows')}"})
             an, bn = a.get("numbers", {}), b.get("numbers", {})
             for col in sorted(set(an) & set(bn)):
                 for stat in ("n", "nan", "sum", "min", "max"):
-                    if not _close(an[col].get(stat), bn[col].get(stat), rtol, atol):
+                    if not _close(an[col].get(stat), bn[col].get(stat), rtol, atol) \
+                            and keep(rel, f"{col}.{stat}"):
                         out.append({"product": rel, "what": f"{col}.{stat}",
                                     "detail": f"{bn[col].get(stat)} -> {an[col].get(stat)}"})
             continue
         an, bn = a.get("numbers", {}), b.get("numbers", {})
         for k in sorted(set(bn) - set(an)):
-            out.append({"product": rel, "what": f"{k} absent", "detail": f"was {bn[k]}"})
+            if keep(rel, k):
+                out.append({"product": rel, "what": f"{k} absent", "detail": f"was {bn[k]}"})
         for k in sorted(set(an) - set(bn)):
-            out.append({"product": rel, "what": f"{k} new", "detail": f"now {an[k]}"})
+            if keep(rel, k):
+                out.append({"product": rel, "what": f"{k} new", "detail": f"now {an[k]}"})
         for k in sorted(set(an) & set(bn)):
-            if not _close(an[k], bn[k], rtol, atol):
+            if not _close(an[k], bn[k], rtol, atol) and keep(rel, k):
                 out.append({"product": rel, "what": k, "detail": f"{bn[k]} -> {an[k]}"})
     return out
 

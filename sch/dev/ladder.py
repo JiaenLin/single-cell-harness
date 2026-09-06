@@ -336,12 +336,11 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
                       + (second[0]["evidence"][:6] if second else []))
         fp = bl.fingerprint(again)
         drift = bl.compare(fp, {"rtol": bl.RTOL, "atol": bl.ATOL, "products": _first(fixdir)})
-        unstable = sorted({f"{d['product']}::{d['what']}" for d in drift})
-        for key in unstable:
-            rel, what = key.split("::", 1)
-            item = fp["products"].get(rel) or {}
-            (item.get("numbers") or {}).pop(what, None)
-        fp["not_execution_stable"] = unstable
+        # NAMED, NOT DELETED. `compare` skips these; removing them from the record would make the
+        # next check report each one as a NEW field, and would miss opaque files entirely, whose
+        # identity is a sha256 rather than a number.
+        fp["not_execution_stable"] = sorted({f"{d['product']}::{d['what']}" for d in drift})
+        unstable = fp["not_execution_stable"]
         fp["measured_over"] = 2
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         Path(path).write_text(json.dumps(fp, indent=1, sort_keys=True) + "\n", encoding="utf-8")
