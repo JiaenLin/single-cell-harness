@@ -73,6 +73,14 @@ class TestConform(unittest.TestCase):
         (good / "STATUS.json").write_text(json.dumps({"status": "ok"}))
         checks = conform_run(good)
         self.assertTrue(all(c["ok"] for c in checks), [c for c in checks if not c["ok"]])
+        percmd = self.tmp / "20260101T000000Z__tool-abc1234__02_stage"
+        (percmd / "logs").mkdir(parents=True)
+        (percmd / "logs" / "x.log").write_text("x")
+        (percmd / "SEALED.annotate.txt").write_text("exit=0\njobid=1\nproducts=a\n")
+        (percmd / "TOOL_HEAD.txt").write_text("abc1234\n")
+        (percmd / "STATUS.annotate.json").write_text(json.dumps({"status": "ok"}))
+        checks = conform_run(percmd)
+        self.assertTrue(all(c["ok"] for c in checks), [c for c in checks if not c["ok"]])
         bad = self.tmp / "out"
         bad.mkdir()
         checks = conform_run(bad)

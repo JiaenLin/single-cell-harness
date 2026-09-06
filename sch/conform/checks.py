@@ -226,11 +226,10 @@ def conform_run(run_dir) -> list:
     checks: list = []
     _check(checks, "R1 the directory name is a run key <UTCSTAMP>__<tool>-<commit>__<stage>[__purpose]",
            bool(RUNKEY.match(d.name)), d.name, "let the submitting script create the directory under the run-key rule")
-    seal = None
-    for n in ("SEALED.txt", "FAILED.txt"):
-        if (d / n).exists():
-            seal = n
-    text = _read(d / seal) if seal else ""
+    # A tool of several commands may seal per command: SEALED.<cmd>.txt beside STATUS.<cmd>.json.
+    seals = sorted(p.name for p in d.glob("SEALED*.txt")) + sorted(p.name for p in d.glob("FAILED*.txt"))
+    seal = seals[0] if seals else None
+    text = "\n".join(_read(d / n) for n in seals) if seals else ""
     _check(checks, "R2 the run is sealed (SEALED.txt or FAILED.txt)", seal is not None, seal or "unsealed",
            "the job's EXIT trap writes the seal; the tool should write one too")
     if seal:
@@ -248,7 +247,8 @@ def conform_run(run_dir) -> list:
     _check(checks, "R3 the recorded commit matches the run key", bool(head) and bool(commit) and (head.startswith(commit) or commit.startswith(head)),
            {"recorded": head, "run_key": commit}, "copy the tool's HEAD into the run (TOOL_HEAD.txt) and key the directory on it")
     status = None
-    for n in ("STATUS.json", "RUN_CARD.json", "run.json", "report.json", "reports/report.json", "reports/run.json"):
+    per_cmd = sorted(p.name for p in d.glob("STATUS.*.json"))
+    for n in ["STATUS.json", *per_cmd, "RUN_CARD.json", "run.json", "report.json", "reports/report.json", "reports/run.json"]:
         if (d / n).exists():
             try:
                 j = json.loads(_read(d / n))
@@ -264,7 +264,7 @@ def conform_run(run_dir) -> list:
            "point -o/-e and the driver log at <RUNDIR>/logs/")
     home = os.path.expanduser("~")
     baked = []
-    for n in ("STATUS.json", "RUN_CARD.json", "report.json", "reports/report.json", "INPUTS.json"):
+    for n in ["STATUS.json", *sorted(p.name for p in d.glob("STATUS.*.json")), "RUN_CARD.json", "report.json", "reports/report.json", "INPUTS.json"]:
         f = d / n
         if f.exists():
             t = _read(f)
