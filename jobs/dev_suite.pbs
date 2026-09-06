@@ -66,7 +66,7 @@ export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
 export OMP_NUM_THREADS="${NCPUS:-1}" MKL_NUM_THREADS="${NCPUS:-1}" OPENBLAS_NUM_THREADS="${NCPUS:-1}"
 mkdir -p "$RUNDIR/cache"
 echo "node $(hostname -s)  cores ${NCPUS:-unset}  $(date -u)"
-"$PY" -c "import anndata, numpy, pandas; print('anndata', anndata.__version__, '| numpy', numpy.__version__)"
+"$PY" -c "from importlib.metadata import version; print('anndata', version('anndata'), '| numpy', version('numpy'), '| pandas', version('pandas'))"
 
 # ------------------------------------------------------------------ 1. the fixture, both shapes
 echo; echo "=== fixture"
@@ -76,7 +76,10 @@ cat "$RUNDIR/logs/fixture.txt"
 
 # ---------------------------------------------- 2. the invariant the two-shape trick rests on
 echo; echo "=== the two shapes are the same cohort"
-"$PY" - "$RUNDIR" <<'PYCODE' | tee "$RUNDIR/hazards.txt"
+# NOT PIPED. `set -o pipefail` would make a pipe correct here, and that is exactly why it is
+# tempting; a job whose subject is the pipeline-exit-code trap should not depend on remembering
+# the flag that disarms it. Redirect, then print.
+"$PY" - "$RUNDIR" > "$RUNDIR/hazards.txt" 2>&1 <<'PYCODE' || { cat "$RUNDIR/hazards.txt"; exit 1; }
 import json, sys
 from pathlib import Path
 import anndata as ad, numpy as np
@@ -119,6 +122,8 @@ haz = {
 }
 for k, v in {**checks, **haz}.items():
     print(("  ok   " if v else "  FAIL ") + k)
+checks = {k: bool(v) for k, v in checks.items()}      # numpy.bool_ is not JSON-serialisable,
+haz = {k: bool(v) for k, v in haz.items()}            # and every numpy comparison yields one
 rec = {"invariants": checks, "hazards": haz, "declared": sorted(F.HAZARDS),
        "obs_names_unique": bool(A.obs_names.is_unique),
        "all_pass": all(checks.values()) and all(haz.values()) and sorted(haz) == sorted(F.HAZARDS)}
@@ -126,6 +131,7 @@ rec = {"invariants": checks, "hazards": haz, "declared": sorted(F.HAZARDS),
 print("\nALL PASS:", rec["all_pass"])
 sys.exit(0 if rec["all_pass"] else 1)
 PYCODE
+cat "$RUNDIR/hazards.txt"
 
 # ------------------------------------------------------- 3. the ladder, on all five checkouts
 echo; echo "=== sch dev check"
