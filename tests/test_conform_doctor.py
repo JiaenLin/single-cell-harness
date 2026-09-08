@@ -1,5 +1,8 @@
 import json
+import os
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -201,3 +204,60 @@ class TestConformAgainst(unittest.TestCase):
         self.assertEqual(res["level"], "warn")
         self.assertTrue(any("timeout" in e for e in res["evidence"]))
         self.assertTrue(by_id(checks, "A2 ")[0]["ok"], by_id(checks, "A2 ")[0]["evidence"])
+
+
+class PrefilterLosesNothing(unittest.TestCase):
+    """`sch conform` skips work it can prove is unnecessary. This asserts the proof.
+
+    Every rule that walks lines now asks a cheap question of the whole file first and walks only
+    when the answer is yes, which took the scan from 2.5s to 0.5s across the family. A fast path
+    is worth exactly as much as the evidence that it loses nothing, so the prefilters can all be
+    switched off with SCH_CONFORM_NO_PREFILTER and this compares the two on a real tree.
+    """
+
+    def _run(self, root, env_extra):
+        code = ("import json,sys;from sch.conform import conform_repo;"
+                "print(json.dumps(conform_repo(sys.argv[1]), default=str, sort_keys=True))")
+        r = subprocess.run([sys.executable, "-c", code, str(root)], capture_output=True, text=True,
+                           cwd=str(ROOT), env={**os.environ, "PYTHONPATH": str(ROOT), **env_extra})
+        self.assertEqual(r.returncode, 0, r.stderr[-800:])
+        return r.stdout
+
+    def test_the_fast_path_and_the_slow_path_agree(self):
+        self.assertEqual(json.loads(self._run(ROOT, {})),
+                         json.loads(self._run(ROOT, {"SCH_CONFORM_NO_PREFILTER": "1"})))
+
+    def test_every_generic_shape_carries_a_literal_it_cannot_match_without(self):
+        """The gate is exact only while the literal really is required. A shape added without one,
+        or with the wrong one, silently stops being checked."""
+        from sch.conform.checks import GENERIC_PATTERNS
+        for pat, why, lits in GENERIC_PATTERNS:
+            self.assertTrue(lits, f"{why} has no required literal")
+            bare = pat.replace("\\", "")
+            for lit in lits:
+                self.assertIn(lit.strip("/."), bare, f"{why}: {lit!r} is not in its own pattern")
+
+    def test_a_planted_leak_of_every_shape_is_still_found(self):
+        """The end-to-end guarantee: one file carrying an example of every shape, and the
+        prefiltered scan must report all seven.
+
+        The examples are ASSEMBLED AT RUN TIME rather than written out. Spelling them here would
+        put seven site identifiers into this repository, and S1 would report this very file -
+        which it did, on the first attempt.
+        """
+        from sch.conform.checks import GENERIC_PATTERNS
+        sl = chr(47)
+        planted = [f"{sl}home{sl}someone{sl}x", f"{sl}data{sl}grp{sl}home{sl}",
+                   "login" + "-01-02", "hn" + "-01-02", "123456." + "hn" + "-01-02",
+                   "a" + chr(64) + "b.edu", f"scratch{sl}20260101__x"]
+        self.assertEqual(len(planted), len(GENERIC_PATTERNS))
+        d = Path(tempfile.mkdtemp())
+        try:
+            (d / "pkg").mkdir()
+            (d / "pkg" / "m.py").write_text("\n".join(f"x = {q!r}" for q in planted) + "\n")
+            s1 = [c for c in conform_repo(d) if c["id"].startswith("S1 ")][0]
+            self.assertFalse(s1["ok"])
+            for _, why, _ in GENERIC_PATTERNS:
+                self.assertTrue(any(why in e for e in s1["evidence"]), f"{why} was not reported")
+        finally:
+            shutil.rmtree(d, ignore_errors=True)

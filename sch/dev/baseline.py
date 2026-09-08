@@ -150,7 +150,7 @@ def _is_self_account(rel: str) -> bool:
         (name.startswith("SEALED.") or name.startswith("FAILED.")) and name.endswith(".txt"))
 
 
-def fingerprint(run_dir) -> dict:
+def fingerprint(run_dir, skip_content=()) -> dict:
     """Every readable product, summarised. Unreadable products are LISTED with their size, not
     skipped: a baseline that quietly ignores the h5ad is a baseline that says nothing about the
     object, and a reader should be able to see that from the file."""
@@ -173,8 +173,12 @@ def fingerprint(run_dir) -> dict:
             except (OSError, ValueError) as e:
                 items[rel] = {"kind": "csv", "unreadable": str(e)}
         else:
+            # A FILE THE BASELINE ALREADY CALLS UNSTABLE IS NOT WORTH HASHING. Its content is
+            # excluded from the comparison, so reading it - a 40 MB object, three PDFs - buys
+            # nothing. Size is still recorded, and still compared, because a product that
+            # vanished or doubled is a finding whatever its bytes do.
             items[rel] = {"kind": "opaque", "bytes": p.stat().st_size,
-                          "sha256": _opaque_digest(p)}
+                          "sha256": None if rel in skip_content else _opaque_digest(p)}
     return {"baseline": 1, "rtol": RTOL, "atol": ATOL, "products": items,
             # WHERE IT WAS RECORDED, because two runs on one machine cannot rule out the machine.
             # This family measured 0.214 between two nodes of the same model on 2026-09-06; a
@@ -285,4 +289,6 @@ def check(run_dir, path) -> tuple:
             f"no baseline at {p}. Record one from a run you believe - `sch dev baseline record "
             f"RUNDIR` - and commit it. A missing baseline is not a passing baseline.")
     ref = json.loads(p.read_text(encoding="utf-8"))
-    return compare(fingerprint(run_dir), ref), ref
+    skip = {k.split("::", 1)[0] for k in (ref.get("not_execution_stable") or [])
+            if k.endswith("::content")}
+    return compare(fingerprint(run_dir, skip_content=skip), ref), ref

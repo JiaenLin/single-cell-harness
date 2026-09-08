@@ -1,0 +1,90 @@
+#!/bin/bash
+#PBS -N sch_dev_perf
+#PBS -q short
+#PBS -l select=1:ncpus=8:mem=32gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#
+# ============================================================================================
+# IS THE DEVELOPMENT SUITE FAST, AND DOES MAKING IT FASTER CHANGE WHAT IT SAYS?
+# ============================================================================================
+#
+# Two questions, and the second one decides whether the first matters.
+#
+# THE PREDICTION, WRITTEN BEFORE THE RUN:
+#   serial and parallel test runs produce the SAME report for every child, byte for byte. If any
+#     differs, that repository's suites share state and its DEVPOINTS must stay serial - the
+#     finding belongs to the tool, not to the runner.
+#   parallel is faster on every child, most on the one with the most suites (scProfile, 65).
+#   the whole ladder over five repositories drops well below the 297s it took serially, with
+#     every tier reporting exactly what it reported before.
+#
+# NOT A REPRODUCTION and nothing here is about the biology. Synthetic fixture; nothing quotable.
+#
+# rule-one: no-removal. Reads five checkouts, writes only inside $RUNDIR.
+# Authored off-cluster and pushed (rule H1). No `git` runs below.
+
+set -euo pipefail
+cd "$PBS_O_WORKDIR"
+RUNDIR="${RUNDIR:?}"; REPO="${REPO:?}"; TOOLS="${TOOLS:?}"; PY="${PY:?}"
+TERMS="${TERMS:-}"
+mkdir -p "$RUNDIR/logs" "$RUNDIR/suites"
+
+finish() { s=$?
+  set +e
+  [ -s "$RUNDIR/timings.json" ] || s=$([ "$s" -eq 0 ] && echo 1 || echo "$s")
+  seal=$([ "$s" -eq 0 ] && echo SEALED.txt || echo FAILED.txt)
+  { echo "exit=$s"; echo "jobid=${PBS_JOBID:-none}"; echo "host=$(hostname -s)"
+    echo "finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "purpose=measure sch dev, and prove parallel test runs say the same thing as serial"
+    echo "NOT PROMOTABLE, synthetic fixture, no number here is about the biology"
+  } > "$RUNDIR/$seal"
+  rm -f "$RUNDIR/RUNNING.txt"; exit $s; }
+trap finish EXIT
+echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$RUNDIR/RUNNING.txt"
+
+export PYTHONNOUSERSITE=1 PYTHONPATH="$REPO"
+export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
+mkdir -p "$RUNDIR/cache"
+echo "node $(hostname -s)  cores ${NCPUS:-unset}"
+
+# ------------------------------------------- 1. serial vs parallel, per child: same report?
+echo; echo "=== test runners: does --jobs change what they say?"
+for t in scAnno scIntegrate scProfile; do
+  cd "$TOOLS/$t"
+  s0=$(date +%s.%N); "$PY" tests/run_all.py            > "$RUNDIR/suites/$t.serial.txt"   2>&1 || true; s1=$(date +%s.%N)
+  p0=$(date +%s.%N); "$PY" tests/run_all.py --jobs 8   > "$RUNDIR/suites/$t.parallel.txt" 2>&1 || true; p1=$(date +%s.%N)
+  ser=$(echo "$s1 - $s0" | bc); par=$(echo "$p1 - $p0" | bc)
+  if diff -q "$RUNDIR/suites/$t.serial.txt" "$RUNDIR/suites/$t.parallel.txt" >/dev/null; then same=IDENTICAL; else same=DIFFERS; fi
+  printf "  %-12s serial %6.1fs   jobs=8 %6.1fs   %s\n" "$t" "$ser" "$par" "$same"
+  echo "$t $ser $par $same" >> "$RUNDIR/runners.txt"
+  [ "$same" = "DIFFERS" ] && diff "$RUNDIR/suites/$t.serial.txt" "$RUNDIR/suites/$t.parallel.txt" | head -20
+done
+cd "$PBS_O_WORKDIR"
+
+# --------------------------------------------------- 2. the whole ladder, timed per tier
+echo; echo "=== the ladder"
+"$PY" - "$RUNDIR" "$REPO" "$TOOLS" "$TERMS" <<'PYCODE'
+import json, sys, time
+sys.path.insert(0, sys.argv[2])
+from sch.dev import ladder
+out, repo, tools = sys.argv[1], sys.argv[2], sys.argv[3]
+terms = sys.argv[4] or None
+plan = [("sch", repo, None, None), ("scqc", f"{tools}/scQC", "criterion", "fail_umi_floor"),
+        ("scanno", f"{tools}/scAnno", "mechanism", "rescue"),
+        ("scintegrate", f"{tools}/scIntegrate", "method", "harmony"),
+        ("scprofile", f"{tools}/scProfile", "kernel", "abundance")]
+rec, total = {}, 0.0
+for name, root, pt, nm in plan:
+    a = time.time()
+    rep = ladder.run(root, point_name=pt, name=nm, keep_going=True,
+                     fixdir=f"{out}/fixture", terms=terms)
+    el = time.time() - a; total += el
+    rec[name] = {"seconds": round(el, 1), "failing": rep["failed"],
+                 "tiers": {r["tier"]: r["seconds"] for r in rep["results"]}}
+    print(f"  {name:12s} {el:6.1f}s   failing: {rep['failed'] or 'none'}")
+rec["_total_seconds"] = round(total, 1)
+json.dump(rec, open(f"{out}/timings.json", "w"), indent=1)
+print(f"  {'TOTAL':12s} {total:6.1f}s")
+PYCODE
+echo "finished $(date -u)"

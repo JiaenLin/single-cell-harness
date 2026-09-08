@@ -30,6 +30,7 @@ has not removed the failure - it has only moved it.
 """
 from __future__ import annotations
 
+import concurrent.futures as cf
 import json
 import os
 import shutil
@@ -83,6 +84,21 @@ def _fill(template, **kw):
             t = t.replace("{" + k + "}", str(v))
         out.append(t)
     return out
+
+
+def _jobs() -> int:
+    """How many suites or shapes this machine should run at once.
+
+    From the scheduler's allocation where there is one - a PBS job that asked for 8 cores gets 8,
+    not the 128 the node happens to have - and from the CPU count otherwise. Capped, because past
+    a handful of concurrent subprocesses the limit is the filesystem rather than the cores, and a
+    developer's laptop should not be brought to its knees by a check.
+    """
+    n = os.environ.get("NCPUS") or os.environ.get("SCH_DEV_JOBS") or os.cpu_count() or 1
+    try:
+        return max(1, min(8, int(n)))
+    except (TypeError, ValueError):
+        return 1
 
 
 def _commands(spec):
@@ -153,18 +169,11 @@ def t2_unit(doc, results, skip=False):
     if skip or not cmd:
         return _t(results, "unit", True, ["no `tests.command` declared" if not cmd else "skipped by request"],
                   skipped=True)
-    r = _run(_fill(cmd, python=sys.executable, root=doc["_root"]), doc["_root"])
+    r = _run(_fill(cmd, python=sys.executable, root=doc["_root"], jobs=_jobs()), doc["_root"])
     tail = [ln for ln in r["out"].splitlines() if ln.strip()][-12:]
     return _t(results, "unit", r["code"] == 0, [f"exit {r['code']}: {' '.join(r['cmd'])}"] + tail,
               cannot="anything about data the suite does not carry",
               seconds=r["seconds"])
-
-
-_FIRST: dict = {}
-
-
-def _first(fixdir):
-    return _FIRST.get(str(fixdir), {})
 
 
 def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=None):
@@ -191,7 +200,7 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=
     says = str(spec.get("refusal_says") or "")
     for raw in _commands(spec):
         cmd = _fill(raw, python=sys.executable, observations=obs, design=dsn, out=out,
-                    name=name, shape=shape, root=doc["_root"], **_roles(shape))
+                    name=name, shape=shape, root=doc["_root"], jobs=_jobs(), **_roles(shape))
         r = _run(cmd, doc["_root"], env=env, timeout=int(spec.get("timeout") or 1800))
         secs += r["seconds"]
         ev.append(f"exit {r['code']} in {r['seconds']:.1f}s: {' '.join(r['cmd'])}")
@@ -220,10 +229,6 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=
             ok = False
     elif spec.get("products"):
         ev.append("no STATUS.json - the status contract is not being written by this command")
-    if shape == "a" and tier == "fixture_a":
-        # Kept so `--record-baseline` can compare this execution with the next one without
-        # running the fixture a third time.
-        _FIRST[str(fixdir)] = bl.fingerprint(out)["products"]
     missing = [p for p in (spec.get("products") or []) if not (out / str(p).format(name=name)).exists()]
     if missing:
         ev.append("missing products: " + ", ".join(missing))
@@ -321,6 +326,12 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
     if not run.is_dir():
         return _t(results, "baseline", True, ["no fixture run to fingerprint"], skipped=True)
     if record:
+        # THE FIRST EXECUTION IS STILL ON DISK. Its fingerprint used to be taken at the end of
+        # every fixture_a and stashed in case a recording followed - reading and hashing every
+        # product, including a 40 MB object, on every check, and throwing it away. The re-run
+        # below writes to run_a2, so run_a is untouched and can be read here instead: the same
+        # comparison, paid for only by the runs that actually record it.
+        first = bl.fingerprint(run)["products"]
         second = []
         # THE SECOND EXECUTION WRITES SOMEWHERE ELSE, on purpose. Two runs into one directory
         # cannot tell a stable value from one that merely embeds its own output path - and a
@@ -335,7 +346,7 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
                        "stable; refusing to record a baseline from one run"]
                       + (second[0]["evidence"][:6] if second else []))
         fp = bl.fingerprint(again)
-        drift = bl.compare(fp, {"rtol": bl.RTOL, "atol": bl.ATOL, "products": _first(fixdir)})
+        drift = bl.compare(fp, {"rtol": bl.RTOL, "atol": bl.ATOL, "products": first})
         # NAMED, NOT DELETED. `compare` skips these; removing them from the record would make the
         # next check report each one as a NEW field, and would miss opaque files entirely, whose
         # identity is a sha256 rather than a number.
@@ -372,7 +383,8 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
 
 # ------------------------------------------------------------------------------------ driver
 def run(root=".", point_name=None, name=None, only=None, skip=(), keep_going=False,
-        record_baseline=False, terms=None, fixdir=None, seed=20260906) -> dict:
+        record_baseline=False, terms=None, fixdir=None, seed=20260906,
+        parallel=True) -> dict:
     doc = pts.load(root)
     results: list = []
     want = (lambda t: (not only or t in only) and t not in skip)
@@ -394,10 +406,28 @@ def run(root=".", point_name=None, name=None, only=None, skip=(), keep_going=Fal
             made_fixture = True
         except ImportError as e:
             _t(results, "fixture_a", False, [f"cannot build the fixture: {e}"], skipped=True)
-    if made_fixture and not stop() and want("fixture_a"):
-        _fixture_tier(doc, point_name or "", name or "", "a", tmp, results, "fixture_a")
-    if made_fixture and not stop() and want("fixture_b"):
-        _fixture_tier(doc, point_name or "", name or "", "b", tmp, results, "fixture_b")
+    if made_fixture and not stop():
+        shapes = [sh for sh in ("a", "b") if want(f"fixture_{sh}")]
+        # THE TWO SHAPES ARE INDEPENDENT, so they run at the same time. They read the same
+        # read-only fixture and write to different directories, and on this family they are the
+        # longest tier - 24.5s twice for scIntegrate, 18.2s twice for scAnno, half of it spent
+        # waiting for the other one to finish.
+        #
+        # Running both even when the first fails is deliberate. The wall clock is the same, and
+        # "a passes, b fails" is a different finding from "both fail" - the first says a column
+        # name is assumed, the second says the mechanism is broken. Stopping early would have
+        # hidden which.
+        if parallel and len(shapes) == 2:
+            with cf.ThreadPoolExecutor(max_workers=2) as pool:
+                got = list(pool.map(
+                    lambda sh: _fixture_tier(doc, point_name or "", name or "", sh, tmp, [],
+                                             f"fixture_{sh}"), shapes))
+            results.extend(got)                      # in declared order, not completion order
+        else:
+            for sh in shapes:
+                if stop():
+                    break
+                _fixture_tier(doc, point_name or "", name or "", sh, tmp, results, f"fixture_{sh}")
     if not stop() and want("leak"):
         t5_leak(doc, tmp, results, terms)
     if not stop() and want("baseline") and name:

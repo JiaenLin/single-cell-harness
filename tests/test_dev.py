@@ -412,6 +412,30 @@ class BaselineRecordsOnlyWhatTwoRunsAgreedOn(unittest.TestCase):
         finally:
             shutil.rmtree(d, ignore_errors=True)
 
+    def test_a_file_the_baseline_calls_unstable_is_not_hashed_again(self):
+        """Its content is excluded from the comparison, so reading it buys nothing - and on a
+        real run it is a 40 MB object plus three PDFs, read on every check."""
+        d = Path(tempfile.mkdtemp())
+        try:
+            run = d / "run"; run.mkdir()
+            (run / "big.bin").write_bytes(b"x" * 4096)
+            (run / "r.json").write_text('{"k": 1.0}')
+            path = d / "b.json"
+            B.record(run, path)
+            ref = json.loads(path.read_text())
+            ref["not_execution_stable"] = ["big.bin::content"]
+            path.write_text(json.dumps(ref))
+            (run / "big.bin").write_bytes(b"y" * 4096)      # same size, different bytes
+            diffs, _ = B.check(run, path)
+            self.assertEqual(diffs, [])                      # excluded, and never read
+            fp = B.fingerprint(run, skip_content={"big.bin"})
+            self.assertIsNone(fp["products"]["big.bin"]["sha256"])
+            self.assertEqual(fp["products"]["big.bin"]["bytes"], 4096)
+            (run / "big.bin").write_bytes(b"y" * 8192)      # size still compared
+            self.assertEqual([x["what"] for x in B.check(run, path)[0]], ["size"])
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
     def test_a_documents_timestamp_is_provenance_not_content(self):
         """A report that embeds when it was written must not fail a baseline for having been
         written twice. The two-execution probe cannot catch this on its own: back-to-back runs
