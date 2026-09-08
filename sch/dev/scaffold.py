@@ -63,6 +63,25 @@ def test_the_claim_in_its_spec():
     raise AssertionError(
         "write this before writing the mechanism. A test added afterwards tests what the code "
         "does; a test written first tests what it was for.")
+
+
+# RUNS AS A SCRIPT AS WELL AS UNDER A COLLECTOR, because not every repository here uses one.
+# scProfile, scAnno and scIntegrate execute each suite as a script, and report a file that
+# printed nothing and exited 0 as "not a suite, it is a library" - which is exactly what the
+# first version of this stub was, in the very repository whose runner says so.
+if __name__ == "__main__":
+    import sys as _sys
+    _failed = 0
+    for _n, _f in sorted(globals().items()):
+        if _n.startswith("test_") and callable(_f):
+            try:
+                _f()
+                print("ok   " + _n)
+            except AssertionError as _e:
+                _failed += 1
+                print("FAIL " + _n + ": " + str(_e))
+    print(str(_failed) + " failing")
+    _sys.exit(1 if _failed else 0)
 '''
 
 
@@ -107,7 +126,7 @@ def new(root, point_name: str, name: str, *, force: bool = False) -> dict:
         put(target, tpl.read_text(encoding="utf-8").replace("{name}", name).replace("{NAME}", name.upper()))
     elif (base / lives).is_dir():
         put(target, f'"""{name}: <one line>. Started from {pt.get("example") or "the point declaration"};\n'
-                    f'see SPEC.md beside it before writing anything here."""\n')
+                    f'see SPEC.{name}.md beside it before writing anything here."""\n')
 
     spec_dir = target.parent if target.suffix else base / lives
     put(spec_dir / f"SPEC.{name}.md", SPEC.format(point=point_name, name=name))

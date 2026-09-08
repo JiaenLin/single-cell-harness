@@ -86,6 +86,21 @@ def _fill(template, **kw):
     return out
 
 
+def _excerpt(out: str, head: int = 6, tail: int = 14) -> list:
+    """The beginning AND the end of a runner's output.
+
+    This took only the last twelve lines, and a test runner prints its verdict FIRST: "4 FAILING
+    of 66 suite(s):" followed by the names. A newcomer was shown one failure, fixed it, re-ran,
+    was shown the next, and never once saw the count - four round trips through a tier that takes
+    a quarter of a minute. The comment twenty lines above this one is about a pipe hiding exactly
+    this kind of information.
+    """
+    lines = [ln for ln in out.splitlines() if ln.strip()]
+    if len(lines) <= head + tail:
+        return lines
+    return lines[:head] + [f"        … {len(lines) - head - tail} line(s) not shown …"] + lines[-tail:]
+
+
 def _jobs() -> int:
     """How many suites or shapes this machine should run at once.
 
@@ -194,8 +209,8 @@ def t2_unit(doc, results, skip=False):
         return _t(results, "unit", True, ["no `tests.command` declared" if not cmd else "skipped by request"],
                   skipped=True)
     r = _run(_fill(cmd, python=sys.executable, root=doc["_root"], jobs=_jobs()), doc["_root"])
-    tail = [ln for ln in r["out"].splitlines() if ln.strip()][-12:]
-    return _t(results, "unit", r["code"] == 0, [f"exit {r['code']}: {' '.join(r['cmd'])}"] + tail,
+    return _t(results, "unit", r["code"] == 0,
+              [f"exit {r['code']}: {' '.join(r['cmd'])}"] + _excerpt(r["out"]),
               cannot="anything about data the suite does not carry",
               seconds=r["seconds"])
 
@@ -433,7 +448,14 @@ def run(root=".", point_name=None, name=None, only=None, skip=(), keep_going=Fal
             fx.write_both(tmp, seed=seed)
             made_fixture = True
         except ImportError as e:
-            _t(results, "fixture_a", False, [f"cannot build the fixture: {e}"], skipped=True)
+            # BOTH SHAPES, NOT JUST THE FIRST. Only a fixture_a row was appended, so fixture_b -
+            # the tier this suite calls the one you will be tempted to skip - was absent from the
+            # report entirely, and absent from the union of what a green ladder did not prove. A
+            # tier that vanishes when it cannot run is worse than one that fails.
+            for sh in ("a", "b"):
+                if want(f"fixture_{sh}"):
+                    _t(results, f"fixture_{sh}", False,
+                       [f"cannot build the fixture: {e}"], skipped=True)
     if made_fixture and not stop():
         shapes = [sh for sh in ("a", "b") if want(f"fixture_{sh}")]
         # THE TWO SHAPES ARE INDEPENDENT, so they run at the same time. They read the same
@@ -463,10 +485,22 @@ def run(root=".", point_name=None, name=None, only=None, skip=(), keep_going=Fal
 
     ran = [r["tier"] for r in results if not r["skipped"]]
     failed = [r["tier"] for r in results if not r["ok"] and not r["skipped"]]
+    # WHAT WAS ASKED FOR, AND WHAT ACTUALLY HAPPENED. A run of three tiers out of seven used to
+    # be indistinguishable from a run of seven, because the exit code was computed from failures
+    # alone. The skill says a green that established nothing must never be read as permission -
+    # and the one thing an agent branches on could not tell the two apart.
+    asked = [t for t in TIERS if (not only or t in only) and t not in skip]
+    if not (point_name and name):
+        asked = [t for t in asked if t not in ("declaration", "baseline")]
+    unrun = [t for t in asked if t not in ran]
     return {"tool": doc.get("tool"), "point": point_name, "name": name, "fixture_dir": tmp,
             "results": results, "ran": ran, "failed": failed,
-            "not_run": [t for t in TIERS if t not in ran],
+            "asked": asked, "not_run": unrun,
             "ok": not failed,
+            # `ran` must be non-empty too: asking only for a tier that needs a --name, without
+            # one, leaves nothing asked AND nothing done, and "no tiers were requested" is not a
+            # pass either.
+            "complete": bool(ran) and not failed and not unrun,
             "cannot_prove": _unproven(results)}
 
 
@@ -493,6 +527,9 @@ def format_run(rep: dict) -> str:
     for c in rep["cannot_prove"]:
         lines.append(f"  - {c}")
     lines.append("")
-    lines.append(f"{len(rep['ran'])} tier(s) ran, {len(rep['failed'])} failing"
+    lines.append(f"{len(rep['ran'])} of {len(rep.get('asked') or rep['ran'])} tier(s) ran, "
+                 f"{len(rep['failed'])} failing"
                  + (f": {', '.join(rep['failed'])}" if rep["failed"] else ""))
+    if rep.get("not_run"):
+        lines.append(f"  did NOT run: {', '.join(rep['not_run'])} - so this is not a full check")
     return "\n".join(lines)

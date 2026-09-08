@@ -11,6 +11,19 @@ allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 
 ## Start by asking the repository, not by reading it
 
+**First, make `sch` runnable.** It is a stdlib-only package with no dependencies, so it needs no
+install — but it is not on `PATH` by default, and every command below is written as bare `sch`.
+From inside the tool you are extending:
+
+```
+PYTHONPATH=/path/to/single-cell-harness python3 -m sch dev map
+```
+
+Set `PYTHONPATH` once for the session and read `sch` as `python3 -m sch` throughout. Testing with
+`python3 -c "import sch"` is misleading: it succeeds while your shell happens to sit in the
+harness directory and fails the moment you change into the tool.
+
+
 ```
 sch dev map --root <repo>            # what can be added here, and how it is registered
 sch dev map --root <repo> --json     # the same, for you
@@ -60,9 +73,9 @@ Seven tiers, cheapest first, stopping at the first failure (`--keep-going` runs 
 | `fixture_a` | it does not run end to end on a synthetic cohort |
 | `fixture_b` | **it runs on shape a and not on shape b — you hard-coded a column name** |
 | `leak` | a cohort or site term reached the repository — source, tests, docs, jobs |
+| `baseline` | a number moved that was not supposed to move |
 
 The word list and the shape list both live **outside** the repository being checked — `$<TOOL>_FORBIDDEN_TERMS` for names, `$SCH_SITE_SHAPES` for hostname and job-id patterns. A tool that ships the cohort's vocabulary in order to prove it does not ship the cohort's vocabulary has shipped it, and a tool that knows one cluster's hostnames is blind to every other cluster's. Both checks say plainly when they were given nothing.
-| `baseline` | a number moved that was not supposed to move |
 
 **What the exit code means.** Three outcomes, and the third is the one worth branching on:
 

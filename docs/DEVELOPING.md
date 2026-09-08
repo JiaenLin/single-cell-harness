@@ -50,7 +50,7 @@ terms: docs/forbidden_terms.txt          # optional: the leak tier's word list
 baseline_dir: tests/baselines            # optional: default tests/baselines
 
 tests:
-  command: ["{python}", "-m", "pytest", "-q", "tests"]
+  command: ["{python}", "tests/run_all.py", "--jobs", "{jobs}"]   # whatever THIS repo uses
 
 fixture:                     # may also be given per point, overriding this
   command: ["{python}", "-m", "scintegrate.cli", "integrate",

@@ -435,11 +435,16 @@ def cmd_dev(a):
         print(ladder.format_run(rep))
         if a.json:
             print(json.dumps(rep, indent=1, default=str))
-        if not rep["ran"]:
-            print("\nNOTHING RAN. Every tier was skipped, so nothing was established - which is "
-                  "not the same as passing, and exits 3 rather than 0.", file=sys.stderr)
+        if rep["failed"]:
+            return FAILED
+        if not rep["complete"]:
+            missing = ", ".join(rep["not_run"])
+            print(f"\nINCOMPLETE. {len(rep['ran'])} of {len(rep['asked'])} tiers ran; "
+                  f"{missing} could not. Nothing that did run failed, but a check that skipped "
+                  f"{'every' if not rep['ran'] else 'part of'} its ladder has not established "
+                  f"what a full one would - so this exits 3, not 0.", file=sys.stderr)
             return CANNOT_RUN
-        return OK if rep["ok"] else FAILED
+        return OK
 
     if a.sub == "baseline":
         from .dev import baseline as B

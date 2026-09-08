@@ -126,7 +126,7 @@ devpoints: 1
 # `{{jobs}}` is how many things this machine should do at once - use it if your runner takes a
 # concurrency flag.
 tests:
-  command: ["{{python}}", "-m", "pytest", "-q", "tests"]
+  command: ["{{python}}", "tests/run_all.py"]   # whatever THIS repo already uses
 
 # The end-to-end exercise, run twice: once on a synthetic cohort, once on the SAME cohort with
 # every column renamed. Anything that resolves a role passes both; anything that knows a column
