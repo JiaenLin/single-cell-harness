@@ -227,3 +227,33 @@ class Worksheet(unittest.TestCase):
         w = C.worksheet("t", ["a", "b", "c"], {"a": {"use": "x"}}, "TODO")
         self.assertIn("3 function(s)", w)
         self.assertIn("1 already decided, 2 to rule on", w)
+
+
+class ActionsAreReachable(unittest.TestCase):
+    """EVERY ACTION MUST BE ABLE TO RUN. `account` was unreachable for a commit: the inventory
+    block above it had no `if` and returned unconditionally, so `convert account` printed an
+    inventory and said nothing about it. Dead code behind a return says nothing when it happens,
+    which is the same shape as a test defined below the runner that collects it."""
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "widgets").mkdir()
+        (self.d / "DEVPOINTS.yaml").write_text(DECL)
+        (self.d / "widgets" / "half.py").write_text(
+            'PLUGIN = {"wraps": {"tool": "matplotlib.pyplot"}, "inject": {"required": ["x"]}}\n')
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _run(self, action):
+        return subprocess.run([sys.executable, "-m", "sch", "dev", "convert", action,
+                               "--root", str(self.d), "--point", "widget"],
+                              capture_output=True, text=True, cwd=ROOT)
+
+    def test_each_action_produces_its_own_output(self):
+        seen = {a: self._run(a).stdout for a in ("status", "inventory", "account")}
+        self.assertIn("stage(s) complete", seen["status"])
+        self.assertIn("function(s)", seen["inventory"])
+        self.assertIn('"native_plots"', seen["account"],
+                      "account printed something that is not a worksheet")
+        self.assertNotEqual(seen["inventory"], seen["account"])

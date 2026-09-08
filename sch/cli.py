@@ -496,29 +496,33 @@ def cmd_dev(a):
                 out.append(CV.format_status(CV.status(spec, doc, point), nm, point))
             print("\n\n".join(out))
             return OK
-        # inventory
-        bad = 0
-        for nm, spec in specs:
-            tool = a.tool or CV._dotted(spec, up_path)
-            if not tool:
-                print(f"{nm}: declares no `{up_path}`, so there is no upstream to inventory. A "
-                      f"plugin that wraps nothing owes no accounting.")
-                continue
-            print(f"\n{nm}  wraps {tool}")
-            looked = False
-            for ext, inv in CV.inventory(tool, python=a.python, rscript=a.rscript):
-                if inv.complete:
-                    looked = True
-                    print(f"  {ext}: {len(inv)} function(s) - {inv.how}")
-                    for fn in inv.names:
-                        print(f"      {fn}")
-                else:
-                    print(f"  {ext}: could not look - {inv.why_not}")
-            if not looked:
-                bad += 1
-                print(f"  NO EXTRACTOR COULD LOOK AT {tool}. That is not an empty inventory and "
-                      f"must not be recorded as one.")
-        return FAILED if bad else OK
+        # GUARDED, because it was not. This block had no `if` on it and returned at the end, so
+        # the `account` branch below was unreachable and `convert account` silently printed an
+        # inventory. Dead code behind an unconditional return, which is the same shape as a test
+        # defined below the runner that collects it - and neither says anything when it happens.
+        if a.action == "inventory":
+            bad = 0
+            for nm, spec in specs:
+                tool = a.tool or CV._dotted(spec, up_path)
+                if not tool:
+                    print(f"{nm}: declares no `{up_path}`, so there is no upstream to inventory. A "
+                          f"plugin that wraps nothing owes no accounting.")
+                    continue
+                print(f"\n{nm}  wraps {tool}")
+                looked = False
+                for ext, inv in CV.inventory(tool, python=a.python, rscript=a.rscript):
+                    if inv.complete:
+                        looked = True
+                        print(f"  {ext}: {len(inv)} function(s) - {inv.how}")
+                        for fn in inv.names:
+                            print(f"      {fn}")
+                    else:
+                        print(f"  {ext}: could not look - {inv.why_not}")
+                if not looked:
+                    bad += 1
+                    print(f"  NO EXTRACTOR COULD LOOK AT {tool}. That is not an empty inventory and "
+                          f"must not be recorded as one.")
+            return FAILED if bad else OK
 
     if a.action == "account":
         # THE INVENTORY TURNED INTO A DECISION. Printed to paste, which is this tool's existing
