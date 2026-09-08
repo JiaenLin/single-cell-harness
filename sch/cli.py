@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -486,10 +487,17 @@ def cmd_dev(a):
         except CV.ConvertError as e:
             print(f"sch dev convert: {e}", file=sys.stderr)
             return CANNOT_RUN
-        specs = _convert_specs(doc, point, a.root, a.name)
-        if not specs:
-            print(f"sch dev convert: no {point} named {a.name!r} under {a.root}", file=sys.stderr)
-            return CANNOT_RUN
+        # THE SPECS ARE FOR THE ACTIONS THAT READ A DECLARATION, and `measure` is not one of
+        # them: it runs the child's own command against a completed run and never opens a plugin.
+        # Requiring them first made it refuse with "no widget named None" - an error about the
+        # wrong thing entirely, on a repository where nothing was wrong.
+        specs = []
+        if a.action in ("status", "inventory", "account"):
+            specs = _convert_specs(doc, point, a.root, a.name)
+            if not specs:
+                print(f"sch dev convert: no {point} named {a.name!r} under {a.root}",
+                      file=sys.stderr)
+                return CANNOT_RUN
         if a.action == "status":
             out = []
             for nm, spec in specs:
@@ -545,6 +553,26 @@ def cmd_dev(a):
             print(f"#      {best.how}")
             print(CV.worksheet(tool, best.names, spec.get("native_plots"), _ph))
         return FAILED if bad else OK
+
+    if a.action == "measure":
+        # THE STAGE DECLARES ITS OWN COMMAND, the way `tests` and `fixture` already do. The
+        # harness does not know what a run directory of this tool looks like and must not learn.
+        cmd = CV.stage_command(doc, point, "measure")
+        if not cmd:
+            print(f"sch dev convert: point {point!r} declares no command for the measure stage, "
+                  f"so there is nothing to run. Add `command:` to that stage in DEVPOINTS.yaml.",
+                  file=sys.stderr)
+            return CANNOT_RUN
+        if not a.run:
+            print("sch dev convert measure: pass --run RUNDIR, a completed run of this plugin. "
+                  "The measurement is fitted from what a real run cost; nothing here can invent "
+                  "it.", file=sys.stderr)
+            return CANNOT_RUN
+        argv = CV.fill(cmd, {"python": sys.executable, "run": str(a.run), "root": str(a.root)})
+        print("  " + " ".join(argv))
+        return subprocess.run(argv, cwd=a.root).returncode
+
+
 
     if a.sub == "baseline":
         from .dev import baseline as B
@@ -659,12 +687,13 @@ def build_parser():
     # same one, and it is computed from the file rather than remembered.
     q = rooted(ds.add_parser("convert"))
     q.add_argument("action", nargs="?", default="status",
-                   choices=["status", "inventory", "account"])
+                   choices=["status", "inventory", "account", "measure"])
     q.add_argument("--point", default=None)
     q.add_argument("--name", default=None, help="the plugin being converted; omit for all of them")
     q.add_argument("--tool", default=None, help="override the upstream named in the declaration")
     q.add_argument("--python", default=None, help="the interpreter the plugin's own env uses")
     q.add_argument("--rscript", default=None)
+    q.add_argument("--run", default=None, help="a completed run, for `measure`")
     q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("baseline")); q.add_argument("action", choices=["record", "check"])
     q.add_argument("rundir"); q.add_argument("--path", required=True); q.set_defaults(fn=cmd_dev)

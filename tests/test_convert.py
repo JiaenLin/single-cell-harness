@@ -257,3 +257,50 @@ class ActionsAreReachable(unittest.TestCase):
         self.assertIn('"native_plots"', seen["account"],
                       "account printed something that is not a worksheet")
         self.assertNotEqual(seen["inventory"], seen["account"])
+
+
+class StageCommands(unittest.TestCase):
+    """A stage that is a command declares it, the way `tests` and `fixture` already do.
+
+    THE HARNESS MUST NOT LEARN WHAT A RUN DIRECTORY LOOKS LIKE. Memory is fitted from what a real
+    run cost, the shape of that record is the child tool's, and a measure stage implemented here
+    would be scProfile's report.json format compiled into a suite that serves five repositories.
+    """
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "widgets").mkdir()
+        (self.d / "DEVPOINTS.yaml").write_text(DECL.replace(
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}",
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}\n"
+            '        - {name: measure, fills: [mem], command: ["{python}", "-c", "print(1)", "{run}"]}'))
+        self.doc = P.load(self.d)
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def test_a_stage_with_a_command_declares_it_and_others_do_not(self):
+        self.assertEqual(C.stage_command(self.doc, "widget", "measure")[:3],
+                         ["{python}", "-c", "print(1)"])
+        self.assertEqual(C.stage_command(self.doc, "widget", "inventory"), [])
+
+    def test_placeholders_are_substituted_by_name_not_by_format(self):
+        """EXPLICIT SUBSTITUTION. A declaration is somebody else's text and may hold a brace for
+        its own reasons; `str.format` would raise on it or, worse, substitute something."""
+        got = C.fill(["{python}", "-x", "{run}", "a{b}c"], {"python": "P", "run": "R"})
+        self.assertEqual(got, ["P", "-x", "R", "a{b}c"])
+
+    def test_measure_refuses_without_a_run_rather_than_inventing_one(self):
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "measure",
+                            "--root", str(self.d), "--point", "widget"],
+                           capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
+        self.assertIn("--run", p.stderr)
+
+    def test_a_stage_declaring_no_command_says_so_rather_than_guessing(self):
+        (self.d / "DEVPOINTS.yaml").write_text(DECL)
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "measure",
+                            "--root", str(self.d), "--point", "widget", "--run", str(self.d)],
+                           capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
+        self.assertIn("no command", p.stderr)

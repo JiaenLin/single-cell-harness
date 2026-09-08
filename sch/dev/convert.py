@@ -214,3 +214,27 @@ def worksheet(tool, names, declared, placeholder="TODO", width=96):
         L.append(f"    # Either the upstream dropped them or the inventory pattern stopped")
         L.append(f"    # matching. Both are worth knowing; neither is fixed by deleting the line.")
     return "\n".join(L)
+
+
+def stage_command(doc, point_name, stage_name):
+    """The argv a stage declares, or []. Stages that are a command say so; the rest are not."""
+    _ph, _up, stages = plan(doc, point_name)
+    for st in stages:
+        if st["name"] == stage_name:
+            return list(st.get("command") or [])
+    return []
+
+
+def fill(argv, values):
+    """`{python}` and `{run}` substituted by name. EXPLICIT, never `str.format`.
+
+    A declaration is somebody else's text and may contain a brace for its own reasons; `format`
+    would raise on it, or worse, substitute something. The same rule the ladder already follows.
+    """
+    out = []
+    for tok in argv:
+        s = str(tok)
+        for k, v in values.items():
+            s = s.replace("{" + k + "}", str(v))
+        out.append(s)
+    return out
