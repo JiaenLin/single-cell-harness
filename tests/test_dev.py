@@ -65,7 +65,7 @@ class Devpoints(unittest.TestCase):
         """A gate without its command sends a newcomer to hand-edit a generated document.
 
         scProfile's Tier 0 table is rendered from the kernel declarations, so the way to get a
-        name into it is `scprofile roadmap --write` and never an edit. The registry entry carries
+        name into it is `scprofile generated --write` and never an edit. The registry entry carries
         that, `sch dev map` announces it before anyone hits the gate, and the declaration tier
         repeats it in the failure.
         """

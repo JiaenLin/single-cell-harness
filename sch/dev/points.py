@@ -207,7 +207,7 @@ def registration(doc: dict, point_name: str, name: str) -> list:
     `fix` IS THE DIFFERENCE BETWEEN A GATE AND A CHORE. A registry entry says a name must appear
     somewhere; whether getting it there is an edit or a command is the whole cost to whoever hits
     it. scProfile's Tier 0 table is now rendered from the declarations, so the answer is
-    `scprofile roadmap --write` - and a tier that reports the gate without the command sends a
+    `scprofile generated --write` - and a tier that reports the gate without the command sends a
     newcomer to hand-edit a generated document.
     """
     root = Path(doc["_root"])
