@@ -34,6 +34,11 @@ import socket
 import sys
 from pathlib import Path
 
+# The fingerprint's own version. Bumped whenever what is recorded changes shape - format 2 split
+# renderings out of opaque files. A baseline written by an older format cannot be compared field
+# by field against a newer one, and saying "kind opaque -> rendering" fourteen times is not an
+# answer a reader can act on.
+FORMAT = 2
 RTOL = 1e-9
 ATOL = 1e-12
 READABLE = (".json", ".csv", ".tsv")
@@ -103,6 +108,11 @@ def _opaque_digest(p: Path) -> str:
             t = rx.sub(sub, t)
         return hashlib.sha256(t.encode("utf-8")).hexdigest()[:16]
     return hashlib.sha256(p.read_bytes()).hexdigest()[:16]
+
+
+class StaleBaseline(ValueError):
+    """The baseline was written by a different fingerprint format. Not a difference in the
+    numbers, and reporting it as one wastes the reader's afternoon."""
 
 
 def _numbers(obj, prefix="", into=None):
@@ -197,7 +207,7 @@ def fingerprint(run_dir, skip_content=()) -> dict:
             # whatever its bytes do.
             items[rel] = {"kind": "opaque", "bytes": p.stat().st_size,
                           "sha256": None if rel in skip_content else _opaque_digest(p)}
-    return {"baseline": 1, "rtol": RTOL, "atol": ATOL, "products": items,
+    return {"baseline": FORMAT, "rtol": RTOL, "atol": ATOL, "products": items,
             # WHERE IT WAS RECORDED, because two runs on one machine cannot rule out the machine.
             # This family measured 0.214 between two nodes of the same model on 2026-09-06; a
             # baseline that does not say where it came from turns that into a mystery failure
@@ -310,6 +320,12 @@ def check(run_dir, path) -> tuple:
             f"no baseline at {p}. Record one from a run you believe - `sch dev baseline record "
             f"RUNDIR` - and commit it. A missing baseline is not a passing baseline.")
     ref = json.loads(p.read_text(encoding="utf-8"))
+    if int(ref.get("baseline") or 1) != FORMAT:
+        raise StaleBaseline(
+            f"{p} was recorded by fingerprint format {ref.get('baseline')}, and this is format "
+            f"{FORMAT}. What is recorded has changed shape, so the two cannot be compared field "
+            f"by field. Re-record it - `sch dev check --record-baseline` - and say in the commit "
+            f"that the format moved, not the numbers.")
     skip = {k.split("::", 1)[0] for k in (ref.get("not_execution_stable") or [])
             if k.endswith("::content")}
     return compare(fingerprint(run_dir, skip_content=skip), ref), ref

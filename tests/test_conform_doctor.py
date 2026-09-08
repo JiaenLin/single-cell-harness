@@ -19,9 +19,17 @@ def by_id(checks, prefix):
 class TestConform(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="sch-conf-"))
+        # `conform_repo` reads $SCH_SITE_SHAPES and $SCH_FORBIDDEN_TERMS when none is passed,
+        # which is right for a caller and wrong for a test: on the cluster the job exports both,
+        # so a test asserting "the tool does not know this site" passed here and failed there.
+        self._saved = {k: os.environ.pop(k, None)
+                       for k in ("SCH_SITE_SHAPES", "SCH_FORBIDDEN_TERMS")}
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
+        for k, v in self._saved.items():
+            if v is not None:
+                os.environ[k] = v
 
     def _repo(self, leaky=True):
         r = self.tmp / "tool"

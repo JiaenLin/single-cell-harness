@@ -368,7 +368,11 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
                   [f"no baseline at {path}; record one with `sch dev check --record-baseline`"],
                   cannot="that the numbers are unchanged - there is nothing to compare with",
                   skipped=True)
-    diffs, ref = bl.check(run, path)
+    try:
+        diffs, ref = bl.check(run, path)
+    except bl.StaleBaseline as e:
+        return _t(results, "baseline", False, [str(e)],
+                  cannot="anything about the numbers until the baseline is re-recorded")
     ev = [f"{d['product']}: {d['what']} {d['detail']}" for d in diffs[:15]]
     note = bl.elsewhere(ref)
     if diffs and note:
