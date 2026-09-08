@@ -161,7 +161,8 @@ def t0_declaration(doc, point_name, name, results):
             where = f"{r['table']} in {r['file']}" if r["keys"] or "{name}" not in str(r["table"]) \
                 else f"{r['file']} (no line matching {r['table']})"
             ev.append(f"{name!r} is not registered: {where}"
-                      + (f" — it has {len(r['keys'])} entries" if r["keys"] else ""))
+                      + (f" — it has {len(r['keys'])} entries" if r["keys"] else "")
+                      + (f". Run `{r['fix']}`" if r.get("fix") else ""))
             ok = False
         else:
             how = f"in {r['table']}" if r["keys"] else "as a line in"

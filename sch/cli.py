@@ -362,7 +362,8 @@ def cmd_dev(a):
                 print(f"    registered {len(reg)}: {', '.join(map(str, reg[:10]))}")
             for r in v.get("register") or []:
                 what = r.get("table") or f"a line matching {r['pattern']}"
-                print(f"    register   {what} in {r['file']}")
+                fix = f"   — `{r['fix']}` writes it" if r.get("fix") else ""
+                print(f"    register   {what} in {r['file']}{fix}")
             keys = [k for k in (v.get("must_declare") or []) if P._KEYISH.match(str(k))]
             prose = [k for k in (v.get("must_declare") or []) if not P._KEYISH.match(str(k))]
             if keys:

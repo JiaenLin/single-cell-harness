@@ -20,6 +20,7 @@ from pathlib import Path
 from sch.dev import baseline as B
 from sch.dev import fixture as F
 from sch.dev import job as J
+from sch.dev import ladder as L
 from sch.dev import points as P
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +60,34 @@ class Devpoints(unittest.TestCase):
         self.assertTrue(P.registration(doc, "widget", "alpha")[0]["present"])
         self.assertFalse(P.registration(doc, "widget", "gamma")[0]["present"])
         self.assertEqual(sorted(P.existing(doc, "widget")), ["alpha", "beta"])
+
+    def test_a_registry_can_name_the_command_that_satisfies_it(self):
+        """A gate without its command sends a newcomer to hand-edit a generated document.
+
+        scProfile's Tier 0 table is rendered from the kernel declarations, so the way to get a
+        name into it is `scprofile roadmap --write` and never an edit. The registry entry carries
+        that, `sch dev map` announces it before anyone hits the gate, and the declaration tier
+        repeats it in the failure.
+        """
+        (self.d / "REG.md").write_text("| `alpha` | x |\n")
+        (self.d / "DEVPOINTS.yaml").write_text(DECL.replace(
+            "      - {file: pkg/reg.py, table: WIDGETS}",
+            "      - {file: REG.md, pattern: \"^\\\\| `{name}` \\\\|\", fix: make reg}"))
+        doc = P.load(self.d)
+        hit = P.registration(doc, "widget", "alpha")[0]
+        miss = P.registration(doc, "widget", "gamma")[0]
+        self.assertTrue(hit["present"])
+        self.assertFalse(miss["present"])
+        self.assertEqual(miss["fix"], "make reg")
+        row = L.t0_declaration(doc, "widget", "gamma", [])
+        self.assertIn("make reg", " ".join(row["evidence"]))
+
+    def test_a_registry_without_a_fix_says_nothing_about_one(self):
+        """The field is optional, and an absent one must not print an empty backtick pair."""
+        doc = P.load(self.d)
+        self.assertEqual(P.registration(doc, "widget", "gamma")[0]["fix"], "")
+        row = L.t0_declaration(doc, "widget", "gamma", [])
+        self.assertNotIn("Run ``", " ".join(row["evidence"]))
 
     def test_unreadable_registry_is_not_reported_as_empty(self):
         """A registry built by a comprehension cannot be read; saying so is the point. Reporting

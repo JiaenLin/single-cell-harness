@@ -202,7 +202,14 @@ def _table_keys(path: Path, table: str) -> list | None:
 
 
 def registration(doc: dict, point_name: str, name: str) -> list:
-    """One row per declared registry: {table, file, present, keys, readable}."""
+    """One row per declared registry: {table, file, present, keys, readable, fix}.
+
+    `fix` IS THE DIFFERENCE BETWEEN A GATE AND A CHORE. A registry entry says a name must appear
+    somewhere; whether getting it there is an edit or a command is the whole cost to whoever hits
+    it. scProfile's Tier 0 table is now rendered from the declarations, so the answer is
+    `scprofile roadmap --write` - and a tier that reports the gate without the command sends a
+    newcomer to hand-edit a generated document.
+    """
     root = Path(doc["_root"])
     rows = []
     for reg in point(doc, point_name).get("register") or []:
@@ -216,17 +223,19 @@ def registration(doc: dict, point_name: str, name: str) -> list:
                 text = f.read_text(encoding="utf-8")
             except OSError:
                 rows.append({"file": reg["file"], "table": reg["pattern"], "readable": False,
-                             "keys": [], "present": False})
+                             "keys": [], "present": False, "fix": reg.get("fix", "")})
                 continue
             rx = re.compile(reg["pattern"].replace("{name}", re.escape(name)), re.M)
             rows.append({"file": reg["file"], "table": reg["pattern"], "readable": True,
-                         "keys": [], "present": bool(rx.search(text))})
+                         "keys": [], "present": bool(rx.search(text)),
+                         "fix": reg.get("fix", "")})
             continue
         keys = _table_keys(f, reg["table"])
         rows.append({"file": reg["file"], "table": reg["table"],
                      "readable": keys is not None,
                      "keys": keys or [],
-                     "present": bool(keys) and name in keys})
+                     "present": bool(keys) and name in keys,
+                     "fix": reg.get("fix", "")})
     return rows
 
 
