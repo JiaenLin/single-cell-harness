@@ -19,9 +19,11 @@
 #     seven roles. If the digests differ, the two-shape comparison is worthless and every
 #     conclusion drawn from it must be withdrawn.
 #   all sixteen hazards are present in the written object, not only in the in-memory build.
-#   `sch dev check` runs to completion on all five repositories. Tiers may FAIL - these fixture
-#     commands have never been executed and the point of the run is to find out - but the suite
-#     must not crash, and every failure must name the command it ran and its exit code.
+#   `sch dev check` runs to completion on all five repositories and NO TIER FAILS. When this was
+#     first written a failing tier was expected - these fixture commands had never been executed
+#     and the point of the run was to find out - so the loop printed each exit code and threw it
+#     away. They work now, so a failing tier is a regression and seals FAILED; the run still visits
+#     all five rather than stopping at the first, and every failure names its command and code.
 #   nothing outside this run directory is written.
 #
 # NOT A REPRODUCTION and nothing here is about the biology. No result from this run may be
@@ -48,12 +50,17 @@ finish() { s=$?
   for p in fixture/FIXTURE_a.json fixture/FIXTURE_b.json hazards.json; do
     [ -s "$RUNDIR/$p" ] || missing="$missing $p"
   done
-  if [ "$s" -eq 0 ] && [ -z "$missing" ]; then seal="$RUNDIR/SEALED.txt"; else seal="$RUNDIR/FAILED.txt"; [ "$s" -eq 0 ] && s=1; fi
+  if [ "$s" -eq 0 ] && [ -z "$missing" ] && [ -z "${FAILED_CHECKS:-}" ]; then
+    seal="$RUNDIR/SEALED.txt"
+  else
+    seal="$RUNDIR/FAILED.txt"; [ "$s" -eq 0 ] && s=1
+  fi
   { echo "exit=$s"; echo "jobid=${PBS_JOBID:-none}"; echo "host=$(hostname -s)"
     echo "finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "purpose=exercise sch dev on a machine that has anndata"
     echo "NOT PROMOTABLE, synthetic cohort, no number here is about the biology"
     [ -n "$missing" ] && echo "missing=$missing"
+    [ -n "${FAILED_CHECKS:-}" ] && echo "failed_checks=$FAILED_CHECKS"
     ls "$RUNDIR/checks"/*.txt 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' '
   } > "$seal"
   rm -f "$RUNDIR/RUNNING.txt"
@@ -61,6 +68,7 @@ finish() { s=$?
 trap finish EXIT
 { echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)"; echo "host=$(hostname -s)"; } > "$RUNDIR/RUNNING.txt"
 
+FAILED_CHECKS=""
 export PYTHONNOUSERSITE=1 PYTHONPATH="$REPO"
 # The leak tier's word list. It lives in the PROJECT, never in a tool - $SCH_FORBIDDEN_TERMS is
 # the fallback every tool's variable falls back to, so one export covers all five.
@@ -160,7 +168,17 @@ for spec in "sch:$REPO:" \
   fi
   set +e
   "$PY" -m sch "${args[@]}" > "$RUNDIR/checks/$name.txt" 2>&1
-  echo "  exit $?"
+  rc=$?
+  echo "  exit $rc"
+  # AND THE EXIT CODE IS KEPT. It was captured into an echo and discarded, so a failing tier was
+  # printed into the log and the job sealed SEALED anyway. PBS 708048 did exactly that: the
+  # harness's own unit tier failed, every summary line said so, and the seal said exit=0. A
+  # validation job that can report success while a check failed is not a validation job.
+  #
+  # This was deliberate ONCE, and the header above still says so: the first run existed to find
+  # out whether these fixture commands worked at all, and a crash was the only interesting
+  # failure. They work now, and a failing tier is a regression.
+  if [ "$rc" -ne 0 ]; then FAILED_CHECKS="$FAILED_CHECKS $name"; fi
   # RECORD THEN CHECK, IN ONE JOB. Recording and checking kept disagreeing - three times, each
   # found a run later than the change that caused it. The round trip is the thing that has to
   # work, so it is exercised here rather than inferred from two jobs an hour apart.
@@ -168,7 +186,9 @@ for spec in "sch:$REPO:" \
     verify=()
     for a in "${args[@]}"; do [ "$a" = "--record-baseline" ] || verify+=("$a"); done
     "$PY" -m sch "${verify[@]}" > "$RUNDIR/checks/$name.recheck.txt" 2>&1
-    echo "  recheck exit $?"
+    rc=$?
+    echo "  recheck exit $rc"
+    if [ "$rc" -ne 0 ]; then FAILED_CHECKS="$FAILED_CHECKS $name(recheck)"; fi
     grep -E "^  (ok|FAIL) baseline|tier\(s\) ran" "$RUNDIR/checks/$name.recheck.txt" || true
   fi
   set -e

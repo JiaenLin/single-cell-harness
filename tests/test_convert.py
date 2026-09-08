@@ -8,7 +8,9 @@ inventory, has been domain-free and shipped the whole time.
 """
 from __future__ import annotations
 
-import json
+import contextlib
+import os
+import re
 import shutil
 import subprocess
 import sys
@@ -43,6 +45,35 @@ points:
 """
 
 
+@contextlib.contextmanager
+def _fake_package(pl):
+    """A throwaway importable package, so extraction is tested without depending on a site.
+
+    Yields an interpreter that can import `fakepkg`: the real `sys.executable` with the temporary
+    directory on its PYTHONPATH, which the extractor's subprocess inherits.
+    """
+    d = Path(tempfile.mkdtemp())
+    pkg = d / "fakepkg"
+    pkg.mkdir()
+    if pl:
+        (pkg / "__init__.py").write_text("from . import pl\n")
+        (pkg / "pl.py").write_text("def umap(x=None): pass\ndef dotplot(x=None): pass\n"
+                                   "def _hidden(): pass\n")
+    else:
+        (pkg / "__init__.py").write_text("def plot_thing(x=None): pass\n"
+                                         "def compute_thing(x=None): pass\n")
+    prev = os.environ.get("PYTHONPATH")
+    os.environ["PYTHONPATH"] = os.pathsep.join([str(d)] + ([prev] if prev else []))
+    try:
+        yield sys.executable
+    finally:
+        if prev is None:
+            os.environ.pop("PYTHONPATH", None)
+        else:
+            os.environ["PYTHONPATH"] = prev
+        shutil.rmtree(d, ignore_errors=True)
+
+
 class Extractors(unittest.TestCase):
     def test_the_built_ins_load(self):
         """STRICT, because the first version of the loader returned an empty dict.
@@ -74,11 +105,31 @@ class Extractors(unittest.TestCase):
         self.assertIn("nosuchpackage_zzz", inv.why_not)
 
     def test_a_real_package_is_inventoried_and_says_how(self):
+        """AGAINST A PACKAGE THIS TEST WRITES, not one that happens to be installed.
+
+        This asked for `matplotlib.pyplot` and passed on the workstation and failed on the cluster,
+        because the extractor spawns the interpreter it is GIVEN - correctly, since a wrapped tool
+        pins versions the harness does not have - and the default is bare `python3`, which is not
+        the interpreter running the suite and had no matplotlib. A test of the extraction should
+        not also be a test of what somebody installed.
+        """
         from sch.dev.extract import python_package as PP
-        inv = PP.inventory("matplotlib.pyplot")
+        with _fake_package(pl=True) as py:
+            inv = PP.inventory("fakepkg", python=py)
         self.assertTrue(inv.complete, inv.why_not)
-        self.assertIn("plot", inv.names)
-        self.assertTrue(inv.how, "an inventory nobody can argue with is one nobody reads")
+        self.assertIn("pl.umap", inv.names)
+        self.assertIn("plotting submodule", inv.how,
+                      "an inventory nobody can argue with is one nobody reads")
+
+    def test_a_package_with_no_plotting_submodule_falls_back_to_names_and_says_so(self):
+        """THE HEURISTIC PATH, marked as one. cellchat's R extractor is this shape and the
+        difference between the two answers is what a maintainer needs to weigh them."""
+        from sch.dev.extract import python_package as PP
+        with _fake_package(pl=False) as py:
+            inv = PP.inventory("fakepkg", python=py)
+        self.assertTrue(inv.complete, inv.why_not)
+        self.assertIn("plot_thing", inv.names)
+        self.assertIn("HEURISTIC", inv.how)
 
     @unittest.skipUnless(shutil.which("Rscript") or shutil.which("R"), "no R here")
     def test_the_r_extractor_finds_r_plots(self):
@@ -240,18 +291,21 @@ class ActionsAreReachable(unittest.TestCase):
         (self.d / "widgets").mkdir()
         (self.d / "DEVPOINTS.yaml").write_text(DECL)
         (self.d / "widgets" / "half.py").write_text(
-            'PLUGIN = {"wraps": {"tool": "matplotlib.pyplot"}, "inject": {"required": ["x"]}}\n')
+            'PLUGIN = {"wraps": {"tool": "fakepkg"}, "inject": {"required": ["x"]}}\n')
 
     def tearDown(self):
         shutil.rmtree(self.d, ignore_errors=True)
 
-    def _run(self, action):
-        return subprocess.run([sys.executable, "-m", "sch", "dev", "convert", action,
-                               "--root", str(self.d), "--point", "widget"],
-                              capture_output=True, text=True, cwd=ROOT)
+    def _run(self, action, python=None):
+        argv = [sys.executable, "-m", "sch", "dev", "convert", action,
+                "--root", str(self.d), "--point", "widget"]
+        if python:
+            argv += ["--python", python]
+        return subprocess.run(argv, capture_output=True, text=True, cwd=ROOT)
 
     def test_each_action_produces_its_own_output(self):
-        seen = {a: self._run(a).stdout for a in ("status", "inventory", "account")}
+        with _fake_package(pl=True) as py:
+            seen = {a: self._run(a, py).stdout for a in ("status", "inventory", "account")}
         self.assertIn("stage(s) complete", seen["status"])
         self.assertIn("function(s)", seen["inventory"])
         self.assertIn('"native_plots"', seen["account"],
@@ -304,3 +358,52 @@ class StageCommands(unittest.TestCase):
                            capture_output=True, text=True, cwd=ROOT)
         self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
         self.assertIn("no command", p.stderr)
+
+
+class JobScriptsKeepTheirExitCodes(unittest.TestCase):
+    """A validation job that can report success while a check failed is not a validation job.
+
+    PBS 708048 sealed `exit=0` with the harness's own unit tier failing. Every summary line in it
+    said "1 failing" and the seal said nothing. The cause was one line: the check's exit was
+    captured into `echo "  exit $?"` and discarded, so it never reached the trap that decides which
+    seal to write.
+
+    THIS FAMILY HAS LOST AN EXIT CODE BEFORE, through `| tee` without `pipefail`, and it is written
+    down in docs/CHILD_CONFORMANCE.md. Two different mechanisms, one defect: a command whose status
+    is displayed rather than kept.
+    """
+
+    JOBS = sorted((ROOT / "jobs").glob("*.pbs")) if (ROOT / "jobs").is_dir() else []
+
+    def test_there_are_job_scripts_to_check(self):
+        self.assertTrue(self.JOBS, "no jobs/*.pbs found, so this suite proves nothing")
+
+    def test_no_job_displays_an_exit_code_without_keeping_it(self):
+        """`echo "... $?"` is the shape: it READS the status, which resets it, and stores nothing.
+
+        Assigning it first - `rc=$?; echo "  exit $rc"` - keeps it available to test.
+        """
+        bad = []
+        for f in self.JOBS:
+            for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+                s = line.strip()
+                if s.startswith("#"):
+                    continue
+                if re.search(r'^echo\s+.*\$\?', s):
+                    bad.append(f"{f.name}:{i}: {s}")
+        self.assertEqual(bad, [], "an exit code displayed and not kept:\n  " + "\n  ".join(bad))
+
+    def test_a_pipeline_that_matters_sets_pipefail(self):
+        """`cmd | tee log` exits with tee's status, so a failing cmd reads as success. Named in
+        docs/CHILD_CONFORMANCE.md after it happened."""
+        for f in self.JOBS:
+            text = f.read_text(encoding="utf-8")
+            if re.search(r"^\s*[^#\n]*\|\s*tee\b", text, re.M):
+                self.assertIn("pipefail", text,
+                              f"{f.name} pipes into tee without setting pipefail")
+
+    def test_every_job_writes_one_seal_or_the_other(self):
+        for f in self.JOBS:
+            text = f.read_text(encoding="utf-8")
+            self.assertIn("SEALED.txt", text, f"{f.name} writes no seal")
+            self.assertIn("FAILED.txt", text, f"{f.name} can only succeed")
