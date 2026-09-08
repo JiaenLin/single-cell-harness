@@ -141,6 +141,17 @@ cohort — only a cluster run against the reference does that.* Stating it on ev
 the difference between a gate and a rubber stamp. The whole risk of a fast local check is that
 it starts to feel like the answer.
 
+**Site shapes come from the site, not from the tool.** `sch conform` carried three patterns it
+called generic — one cluster's login node, one scheduler's head node, and that scheduler's job-id
+format. A general instrument that knows the naming of the site it happened to be written at is
+overfitted twice over: it reports a leak the next site does not have, and it stays silent on the
+leak that site does have. The built-in list now holds only what is true anywhere (a user home
+path, an address, this family's dated-scratch convention), and the rest arrives through
+`--shapes FILE` or `$SCH_SITE_SHAPES`, one `<regex> :: <what it is> :: <literal>` per line, from
+the project that owns the cluster. When no file is supplied the scan says so (`S1d`) rather than
+implying it looked; when a line will not load, that is reported too (`S1e`), because a shape that
+silently fails to load is a check that silently does not run.
+
 The `leak` tier asks its question of the **repository**, not of what a run produced. The first
 version scanned both, on the reasoning that a tool can be clean in its source and still write a
 cohort's vocabulary into a result — true, but the site list that catches a cohort also contains

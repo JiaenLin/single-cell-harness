@@ -44,6 +44,9 @@ trap finish EXIT
 echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$RUNDIR/RUNNING.txt"
 
 export PYTHONNOUSERSITE=1 PYTHONPATH="$REPO"
+# The site supplies its own shapes and terms; the tools carry neither.
+[ -n "${TERMS:-}" ] && export SCH_FORBIDDEN_TERMS="$TERMS"
+[ -n "${SHAPES:-}" ] && export SCH_SITE_SHAPES="$SHAPES"
 export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
 mkdir -p "$RUNDIR/cache"
 echo "node $(hostname -s)  cores ${NCPUS:-unset}"

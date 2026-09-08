@@ -74,7 +74,23 @@ _PROVENANCE = [
 ]
 # Suffixes read as text for that redaction. Anything else is hashed as bytes: a .npy or an .h5ad
 # has no prose to redact, and mangling it would make the digest meaningless.
-_TEXTISH = {".md", ".html", ".htm", ".txt", ".log", ".yml", ".yaml", ".rst"}
+_TEXTISH = {".yml", ".yaml", ".cfg", ".ini", ".toml"}
+
+# THE BASELINE COMPARES DATA. A RENDERING IS CHECKED FOR PRESENCE.
+#
+# A report, a README and a figure are DERIVED from the run's data, and their bytes move for
+# reasons that are not the numbers: an embedded path, a font, a summary of a product's size. One
+# of scIntegrate's runs writes a README whose table reports "13.0 MB" for an object the baseline
+# has already measured as not execution-stable - so the document inherited an instability that
+# was already recorded against the object it describes, and reported it a second time as if it
+# were news.
+#
+# Comparing them adds no independent signal: a change that moves a number moves report.json and
+# the CSVs, which are parsed and compared field by field. So a rendering is recorded as present
+# and nothing more - a rendering that VANISHES is still a finding, and that is the part worth
+# keeping. Real data artefacts (.h5ad, .npy, anything unrecognised) keep size and content.
+_RENDERING = {".md", ".html", ".htm", ".rst", ".txt", ".log",
+              ".pdf", ".png", ".svg", ".jpg", ".jpeg"}
 
 
 def _opaque_digest(p: Path) -> str:
@@ -172,11 +188,13 @@ def fingerprint(run_dir, skip_content=()) -> dict:
                 items[rel] = _csv_fingerprint(p)
             except (OSError, ValueError) as e:
                 items[rel] = {"kind": "csv", "unreadable": str(e)}
+        elif p.suffix.lower() in _RENDERING:
+            items[rel] = {"kind": "rendering", "bytes": p.stat().st_size}
         else:
             # A FILE THE BASELINE ALREADY CALLS UNSTABLE IS NOT WORTH HASHING. Its content is
-            # excluded from the comparison, so reading it - a 40 MB object, three PDFs - buys
-            # nothing. Size is still recorded, and still compared, because a product that
-            # vanished or doubled is a finding whatever its bytes do.
+            # excluded from the comparison, so reading it buys nothing. Size is still recorded,
+            # and still compared, because a product that vanished or doubled is a finding
+            # whatever its bytes do.
             items[rel] = {"kind": "opaque", "bytes": p.stat().st_size,
                           "sha256": None if rel in skip_content else _opaque_digest(p)}
     return {"baseline": 1, "rtol": RTOL, "atol": ATOL, "products": items,
@@ -194,7 +212,8 @@ def fingerprint(run_dir, skip_content=()) -> dict:
             "recorded_on": {"host_id": hashlib.sha256(socket.gethostname().encode()).hexdigest()[:12],
                             "python": sys.version.split()[0],
                             "platform": platform.platform(), "machine": platform.machine()},
-            "covers": sorted(k for k, v in items.items() if v["kind"] != "opaque"),
+            "covers": sorted(k for k, v in items.items() if v["kind"] in ("json", "csv")),
+            "presence_only": sorted(k for k, v in items.items() if v["kind"] == "rendering"),
             "does_not_cover": sorted(k for k, v in items.items() if v["kind"] == "opaque")}
 
 
@@ -241,6 +260,8 @@ def compare(new: dict, ref: dict) -> list:
         if a.get("kind") != b.get("kind"):
             out.append({"product": rel, "what": "kind", "detail": f"{b.get('kind')} -> {a.get('kind')}"})
             continue
+        if a["kind"] == "rendering":
+            continue                     # present in both; its bytes are not a measurement
         if a["kind"] == "opaque":
             # SIZE AND CONTENT ARE SEPARATE FACTS. Reported together, an exclusion for one
             # silently excludes the other, and a figure that vanished would hide behind a

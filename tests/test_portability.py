@@ -26,16 +26,33 @@ ROOT = Path(__file__).resolve().parents[1]
 TEXT_EXT = {".py", ".R", ".r", ".sh", ".pbs", ".md", ".yml", ".yaml", ".toml", ".cfg", ".txt",
             ".json", ".csv", ".tsv", ".cff", ".template", ".in"}
 SKIP_DIRS = {".git", "__pycache__", ".egg-info", ".pytest_cache", "baselines"}
+# UNIVERSAL SHAPES ONLY - they hold on any machine. This list used to carry a login-node
+# pattern, a head-node pattern, a job-id pattern and a compute-node pattern, all of them the
+# naming of the one cluster this was written at. A general kernel that knows one site's names is
+# overfitted to it twice over: it reports a leak the next site does not have and misses the one
+# it does. Those now arrive through $SCH_SITE_SHAPES, from the project that owns the cluster,
+# exactly as the cohort's names arrive through $SCH_FORBIDDEN_TERMS.
 SHAPES = [
     (r"(?<![\w/])/(?:Users|home)/[A-Za-z][\w.-]*", "a user home path"),
-    (r"/data/[A-Za-z][\w.-]*/home/", "a site home path"),
-    (r"\blogin-\d{2}-\d{2}\b", "a login-node hostname"),
-    (r"\bhn-\d{2}-\d{2}\b", "a scheduler head-node name"),
-    (r"\bcompute\d{3,5}\b", "a compute-node hostname"),
-    (r"\b\d{6}\.hn-\d{2}-\d{2}\b", "a scheduler job id"),
     (r"[\w.+-]+@[\w-]+\.(?:edu|com|org|sg|ac\.uk)\b", "an e-mail address"),
     (r"scratch/\d{8}__", "a dated scratch directory"),
 ]
+
+
+def site_shapes() -> list:
+    """`<regex> :: <what it is> :: <literal>` per line, from the site's own file."""
+    f = os.environ.get("SCH_SITE_SHAPES")
+    if not f or not Path(f).exists():
+        return []
+    out = []
+    for line in Path(f).read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [x.strip() for x in line.split("::")]
+        if len(parts) >= 2:
+            out.append((parts[0], parts[1]))
+    return out
 # Attribution is not leakage: an address in the citation file names who to cite. A postmortem and
 # a known-issues entry name the machines a measurement was taken on, and a measurement that does
 # not say where it was taken is not a measurement - the harmony finding of 2026-09-06 is exactly
@@ -63,7 +80,7 @@ def terms() -> list:
 
 
 def scan() -> tuple:
-    pats = [(re.compile(p), why) for p, why in SHAPES]
+    pats = [(re.compile(p), why) for p, why in SHAPES + site_shapes()]
     site = terms()
     pats += [(re.compile(re.escape(t), re.I), f"site term {t!r}") for t in site]
     hits, n = [], 0
@@ -90,8 +107,11 @@ def scan() -> tuple:
 def main() -> int:
     hits, n, site = scan()
     where = os.environ.get("SCH_FORBIDDEN_TERMS")
+    shapes = site_shapes()
     print(f"scanned {n} files; {len(site)} site term(s) "
-          + (f"from {where}" if site else "(none supplied: set SCH_FORBIDDEN_TERMS to prove more)"))
+          + (f"from {where}" if site else "(none supplied: set SCH_FORBIDDEN_TERMS to prove more)")
+          + f"; {len(shapes)} site shape(s) "
+          + ("" if shapes else "(none supplied: set SCH_SITE_SHAPES to prove more)"))
     for h in hits:
         print("  LEAK " + h)
     if hits:

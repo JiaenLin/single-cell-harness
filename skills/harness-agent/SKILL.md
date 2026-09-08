@@ -24,13 +24,13 @@ name** — `--by` with an agent's name is refused, and the refusal is in the str
 ## The loop
 
 ```
-sch plan PLUGIN [--param k=v]          what would run; every missing prerequisite with its fix
-sch mount PLUGIN [--param k=v]         materialise → gates → run → merge → companions
-sch stack                              what is mounted, what is invalid, what each contributed
-sch ask PROBE [--param k=v] [--upto P] a bounded, read-only answer — the default way to look
-sch unmount NAME --dry-run             what would be restored and what would be invalidated
-sch unmount NAME                       the declaration is the disposer; dependents go invalid
-sch report                             numbers that resolve to events, or no report
+sch plan PLUGIN [--param k=v]           what would run; every missing prerequisite with its fix
+sch mount PLUGIN [--param k=v]          materialise → gates → run → merge → companions
+sch stack                               what is mounted, what is invalid, what each contributed
+sch ask PROBE [--param k=v] [--upto P]  a bounded, read-only answer — the default way to look
+sch unmount NAME --dry-run              what would be restored and what would be invalidated
+sch unmount NAME                        the declaration is the disposer; dependents go invalid
+sch report                              numbers that resolve to events, or no report
 ```
 
 Ask before you code: `composition`, `differential`, `freshness` ship with the kernel; the

@@ -282,7 +282,7 @@ def cmd_conform(a):
             print(format_checks(cs))
             checks += cs
     else:
-        checks = conform_repo(a.repo, a.terms)
+        checks = conform_repo(a.repo, a.terms, getattr(a, "shapes", None))
         print(f"{a.repo}:")
         print(format_checks(checks))
     if a.json:
@@ -303,9 +303,34 @@ def cmd_dev(a):
             return 2
         pts = doc.get("points") or {}
         if a.json:
-            print(json.dumps({"tool": doc["tool"], "path": doc["_path"],
-                              "points": {k: dict(v, registered=P.existing(doc, k))
-                                         for k, v in pts.items()}}, indent=1, default=str))
+            # EVERYTHING NEEDED TO FORM THE NEXT COMMAND, so an agent never has to read prose to
+            # act. It used to return the points alone, which left the fixture command, the test
+            # command and the meaning of `{role_sample}` to be looked up in docs/DEVELOPING.md -
+            # three lookups between "what can I add here" and "what do I run".
+            from .dev.ladder import TIERS, _jobs, _roles
+            print(json.dumps({
+                "tool": doc["tool"], "path": doc["_path"], "root": doc["_root"],
+                "points": {k: dict(v, registered=P.existing(doc, k)) for k, v in pts.items()},
+                "tests": doc.get("tests") or {},
+                "fixture": doc.get("fixture") or {},
+                "tiers": list(TIERS),
+                "placeholders": {
+                    "{python}": "the interpreter running the check",
+                    "{root}": doc["_root"], "{out}": "the run directory for this shape",
+                    "{observations}": "the fixture object for this shape",
+                    "{design}": "the fixture design table for this shape",
+                    "{name}": "the name passed to --name", "{shape}": "a or b",
+                    "{jobs}": _jobs(),
+                    **{"{" + k + "}": f"shape a: {va}, shape b: {vb}"
+                       for (k, va), (_, vb) in zip(_roles("a").items(), _roles("b").items())},
+                },
+                "next": {
+                    "start one": f"sch dev new POINT NAME --root {doc['_root']}",
+                    "check one": f"sch dev check --root {doc['_root']} --point POINT --name NAME",
+                    "reproduce": "sch dev job --ref REFRUN --rundir NEWRUN --tool TOOLDIR "
+                                 "--queue Q --select S --predict TEXT --out FILE",
+                },
+            }, indent=1, default=str))
             return 0
         print(f"{doc['tool']}  ({doc['_path']})")
         for k, v in pts.items():
@@ -492,15 +517,44 @@ def build_parser():
     q.add_argument("--out", required=True); q.add_argument("--walltime", default="04:00:00")
     q.add_argument("--name"); q.set_defaults(fn=cmd_dev)
 
-    p = sub.add_parser("conform"); p.add_argument("repo", nargs="?"); p.add_argument("--terms"); p.add_argument("--run", action="append")
+    p = sub.add_parser("conform"); p.add_argument("repo", nargs="?"); p.add_argument("--terms")
+    p.add_argument("--shapes", metavar="FILE",
+                   help="site shapes (hostnames, job ids, filesystem roots) - the file belongs to "
+                        "the site, not to the tool; $SCH_SITE_SHAPES is the fallback")
+    p.add_argument("--run", action="append")
     p.add_argument("--against", metavar="REFRUN", help="a reference run: is a comparison with --run meaningful?")
     p.set_defaults(fn=cmd_conform)
+
+    # `--json` IS GLOBAL, SO IT IS ACCEPTED IN BOTH PLACES. It was declared only on the top-level
+    # parser, which made `sch dev map --json` - the form the skill, the README and DEVELOPING all
+    # give an agent - exit 2 with "unrecognized arguments". An agent following the documentation
+    # failed on its first machine-readable call, and the working form was undocumented.
+    #
+    # SUPPRESS is what makes this safe: without it the subcommand's default of False would
+    # overwrite a True set before the subcommand, so `sch --json dev map` would silently stop
+    # emitting JSON. With it the attribute is simply not set when the flag is absent.
+    for name, child in sub.choices.items():
+        if not any(a.dest == "json" for a in child._actions):
+            child.add_argument("--json", action="store_true", default=argparse.SUPPRESS,
+                               help="machine-readable output (accepted here or before the subcommand)")
+        for gname, grand in getattr(child, "_subparsers", None) and _grandchildren(child) or []:
+            if not any(a.dest == "json" for a in grand._actions):
+                grand.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
     return ap
+
+
+def _grandchildren(parser):
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            return list(action.choices.items())
+    return []
 
 
 def main(argv=None) -> int:
     ap = build_parser()
     a = ap.parse_args(argv)
+    if not hasattr(a, "json"):
+        a.json = False
     if a.cmd == "conform" and not a.repo and not a.run and not a.against:
         ap.error("conform needs a repository path or --run RUNDIR")
     return a.fn(a)

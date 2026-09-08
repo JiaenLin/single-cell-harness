@@ -60,6 +60,8 @@ Seven tiers, cheapest first, stopping at the first failure (`--keep-going` runs 
 | `fixture_a` | it does not run end to end on a synthetic cohort |
 | `fixture_b` | **it runs on shape a and not on shape b — you hard-coded a column name** |
 | `leak` | a cohort or site term reached the repository — source, tests, docs, jobs |
+
+The word list and the shape list both live **outside** the repository being checked — `$<TOOL>_FORBIDDEN_TERMS` for names, `$SCH_SITE_SHAPES` for hostname and job-id patterns. A tool that ships the cohort's vocabulary in order to prove it does not ship the cohort's vocabulary has shipped it, and a tool that knows one cluster's hostnames is blind to every other cluster's. Both checks say plainly when they were given nothing.
 | `baseline` | a number moved that was not supposed to move |
 
 **3. Read what it says it did not prove.** Every tier prints that, and the run ends with the

@@ -20,15 +20,52 @@ SKIP_DIRS = {".git", "__pycache__", "node_modules", ".venv", "venv", "env", "dis
 # engine try to extend a run of word characters at every position and then look for an `@`, so a
 # file of ordinary prose - no `@` anywhere - costs O(n²). Over one repository's 4 MB that single
 # pattern was most of `sch conform`'s runtime.
+# UNIVERSAL SHAPES ONLY. These hold on any machine: a user's home directory, an address, and this
+# family's own dated-scratch convention.
+#
+# WHAT USED TO BE HERE AND SHOULD NOT HAVE BEEN. This list also carried `login-\d{2}-\d{2}`,
+# `hn-\d{2}-\d{2}` and `\d{6}\.hn-\d{2}-\d{2}` - one cluster's login node, one scheduler's head
+# node, one scheduler's job id. A general instrument that knows the naming of the site it happened
+# to be written at is overfitted to that site twice over: it reports a leak the next site does not
+# have, and it stays silent on the leak that site does have. Site shapes now come from OUTSIDE, by
+# the same route as the site terms, and the file that supplies them lives in the project that owns
+# the cluster.
 GENERIC_PATTERNS = [
     (r"(?<![\w/])/(?:Users|home)/[A-Za-z][\w.-]*", "a user home path", ("/Users/", "/home/")),
-    (r"/data/[A-Za-z][\w.-]*/home/", "a site home path", ("/data/",)),
-    (r"\blogin-\d{2}-\d{2}\b", "a login-node hostname", ("login-",)),
-    (r"\bhn-\d{2}-\d{2}\b", "a scheduler head-node name", ("hn-",)),
-    (r"\b\d{6}\.hn-\d{2}-\d{2}\b", "a scheduler job id", (".hn-",)),
     (r"[\w.+-]+@[\w-]+\.(?:edu|com|org|sg|ac\.uk)\b", "an e-mail address", ("@",)),
     (r"scratch/\d{8}__", "a dated scratch directory", ("scratch/",)),
 ]
+
+
+def _load_shapes(shapes_file) -> list:
+    """Site shapes, from a file the SITE supplies. One per line:
+
+        <regex> :: <what it is> :: <literal>[,<literal>]
+
+    The literals are optional and are only a speed gate - a shape without one is still checked,
+    just without the cheap skip. A malformed line is REPORTED rather than ignored: a site shape
+    that silently does not load is a check that silently does not run.
+    """
+    path = shapes_file or os.environ.get("SCH_SITE_SHAPES")
+    if not path or not Path(path).is_file():
+        return []
+    out = []
+    for n, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [x.strip() for x in line.split("::")]
+        if len(parts) < 2:
+            out.append((None, f"{path}:{n} is not `<regex> :: <what it is>`", ()))
+            continue
+        lits = tuple(x for x in (parts[2].split(",") if len(parts) > 2 else []) if x)
+        try:
+            re.compile(parts[0])
+        except re.error as e:
+            out.append((None, f"{path}:{n} is not a regular expression: {e}", ()))
+            continue
+        out.append((parts[0], parts[1], lits))
+    return out
 
 # A FAST PATH IS ONLY AS GOOD AS THE PROOF THAT IT LOSES NOTHING. Setting SCH_CONFORM_NO_PREFILTER
 # runs every rule the slow way, and a test compares the two over every repository in the family -
@@ -152,18 +189,22 @@ def _check(checks, cid, ok, evidence, fix, level="error"):
                    "evidence": evidence, "fix": fix})
 
 
-def conform_repo(repo, terms_file=None) -> list:
+def conform_repo(repo, terms_file=None, shapes_file=None) -> list:
     _forget_listing()
     root = Path(repo).resolve()
     checks: list = []
     terms = _load_terms(terms_file)
+    site_shapes = _load_shapes(shapes_file)
+    broken = [why for pat, why, _ in site_shapes if pat is None]
+    site_shapes = [x for x in site_shapes if x[0] is not None]
     # S1 leak guard, generic shapes + site terms
     hits, guard_hits = [], []
     # ONE LIST, BUILT ONCE. It used to be `pats + tpats` evaluated inside the per-line loop, so a
     # 29-element list was rebuilt for every line of every file.
-    all_pats = ([(re.compile(p), why) for p, why, _ in GENERIC_PATTERNS]
+    shapes = GENERIC_PATTERNS + site_shapes
+    all_pats = ([(re.compile(p), why) for p, why, _ in shapes]
                 + [(re.compile(re.escape(t), re.I), f"site term {t!r}") for t in terms])
-    gate = [(lits, re.compile(pat)) for pat, _, lits in GENERIC_PATTERNS]
+    gate = [(lits or ("",), re.compile(pat)) for pat, _, lits in shapes]
     low_terms = [t.lower() for t in terms]
 
     def interesting(text: str) -> bool:
@@ -214,6 +255,16 @@ def conform_repo(repo, terms_file=None) -> list:
     _check(checks, "S1c site terms were supplied to this scan", bool(terms),
            f"{len(terms)} term(s)" if terms else "none: only generic shapes were scanned",
            "pass --terms FILE or set SCH_SITE_TERMS; without it S1 proves less", level="warn")
+    _check(checks, "S1d site shapes were supplied to this scan", bool(site_shapes),
+           f"{len(site_shapes)} shape(s)" if site_shapes else
+           "none: only the universal shapes were scanned, so this site's hostnames, job ids and "
+           "filesystem roots were not looked for",
+           "pass --shapes FILE or set SCH_SITE_SHAPES; the file belongs to the site, not to the tool",
+           level="warn")
+    if broken:
+        _check(checks, "S1e every supplied site shape loaded", False, broken,
+               "each line is `<regex> :: <what it is> :: <literal>`; a shape that does not load "
+               "is a check that does not run")
     # S2 a leak-guard test exists and scans the whole tree
     guards = [p for p in _text_files(root) if _is_guard(p)]
     whole = []

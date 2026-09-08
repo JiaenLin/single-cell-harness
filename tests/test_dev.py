@@ -436,21 +436,43 @@ class BaselineRecordsOnlyWhatTwoRunsAgreedOn(unittest.TestCase):
         finally:
             shutil.rmtree(d, ignore_errors=True)
 
-    def test_a_documents_timestamp_is_provenance_not_content(self):
-        """A report that embeds when it was written must not fail a baseline for having been
-        written twice. The two-execution probe cannot catch this on its own: back-to-back runs
-        share a timestamp, and the difference only appears hours later."""
+    def test_a_rendering_is_checked_for_presence_and_not_for_bytes(self):
+        """A report is derived from the data, and its bytes move for reasons that are not the
+        numbers - an embedded path, a timestamp, a table reporting the size of an object the
+        baseline has already measured as unstable. Comparing them reported the same instability
+        twice, the second time as if it were news."""
         d = Path(tempfile.mkdtemp())
         try:
-            (d / "a").mkdir(); (d / "b").mkdir()
-            for sub, when in (("a", "2026-09-06T15:12:08Z"), ("b", "2026-09-06T19:44:01Z")):
+            for sub, mb in (("a", "13.0"), ("b", "13.4")):
+                (d / sub).mkdir()
                 (d / sub / "report.md").write_text(
-                    f"# Result\n\ngenerated {when} in /data/some/where/run_{sub}\n\nscore: 0.5\n")
+                    f"generated 2026-09-06T15:12:08Z\n\n| objects/*.h5ad | 1 | {mb} MB |\n")
+                (d / sub / "fig.pdf").write_bytes(b"%PDF" + sub.encode() * 40)
+                (d / sub / "r.json").write_text('{"score": 0.5}')
+            fa, fb = B.fingerprint(d / "a"), B.fingerprint(d / "b")
+            self.assertEqual(B.compare(fa, fb), [])
+            self.assertEqual(fa["covers"], ["r.json"])
+            self.assertEqual(fa["presence_only"], ["fig.pdf", "report.md"])
+            # what it must still catch
+            (d / "b" / "r.json").write_text('{"score": 0.9}')
+            self.assertEqual([x["what"] for x in B.compare(B.fingerprint(d / "b"), fa)], ["score"])
+            (d / "b" / "fig.pdf").unlink()
+            self.assertIn("fig.pdf", [x["product"] for x in B.compare(B.fingerprint(d / "b"), fa)])
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_provenance_is_still_redacted_from_a_text_artefact_that_is_compared(self):
+        """A config the run wrote is data, not a rendering, so it keeps a content hash - and the
+        timestamp inside it still must not count."""
+        d = Path(tempfile.mkdtemp())
+        try:
+            for sub, when in (("a", "2026-09-06T15:12:08Z"), ("b", "2026-09-06T19:44:01Z")):
+                (d / sub).mkdir()
+                (d / sub / "settings.yml").write_text(f"written: {when}\nseed: 0\n")
             self.assertEqual(B.compare(B.fingerprint(d / "a"), B.fingerprint(d / "b")), [])
-            (d / "b" / "report.md").write_text(
-                "# Result\n\ngenerated 2026-09-06T19:44:01Z in /data/some/where/run_b\n\nscore: 0.9\n")
-            diffs = B.compare(B.fingerprint(d / "a"), B.fingerprint(d / "b"))
-            self.assertEqual([x["what"] for x in diffs], ["content"])
+            (d / "b" / "settings.yml").write_text("written: 2026-09-06T19:44:01Z\nseed: 1\n")
+            self.assertEqual([x["what"] for x in B.compare(B.fingerprint(d / "b"),
+                                                           B.fingerprint(d / "a"))], ["content"])
         finally:
             shutil.rmtree(d, ignore_errors=True)
 

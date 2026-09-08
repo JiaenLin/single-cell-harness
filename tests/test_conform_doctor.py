@@ -43,8 +43,33 @@ class TestConform(unittest.TestCase):
         s1 = by_id(checks, "S1 ")[0]
         self.assertFalse(s1["ok"])
         self.assertTrue(any("home path" in e for e in s1["evidence"]))
+        # The login node and the job id are THIS SITE's naming, so the tool no longer knows them
+        # and says so instead of pretending. The next test supplies them and finds both.
+        self.assertFalse(any("login-node" in e for e in s1["evidence"]))
+        self.assertFalse(by_id(checks, "S1d")[0]["ok"])
+
+    def test_a_site_that_supplies_its_shapes_gets_them_checked(self):
+        """The overfit this replaced: one cluster's hostnames were built into a general tool, so
+        it reported a leak the next site does not have and missed the one it does."""
+        r = self._repo()
+        shapes = r / ".." / "shapes.txt"
+        shapes.write_text("\n".join([
+            r"\blo" + r"gin-\d{2}-\d{2}\b :: a login-node hostname :: lo" + "gin-",
+            r"\b\d{6}\.hn" + r"-\d{2}-\d{2}\b :: a scheduler job id :: .hn" + "-",
+        ]) + "\n")
+        s1 = by_id(conform_repo(r, shapes_file=str(shapes)), "S1 ")[0]
+        self.assertFalse(s1["ok"])
         self.assertTrue(any("login-node" in e for e in s1["evidence"]))
         self.assertTrue(any("job id" in e for e in s1["evidence"]))
+
+    def test_a_site_shape_that_does_not_load_is_reported_not_ignored(self):
+        r = self._repo()
+        shapes = r / ".." / "bad_shapes.txt"
+        shapes.write_text("this line has no separator\n[unclosed :: a broken regex\n")
+        checks = conform_repo(r, shapes_file=str(shapes))
+        e1 = by_id(checks, "S1e")
+        self.assertTrue(e1 and not e1[0]["ok"], "a shape that fails to load must be reported")
+        self.assertEqual(len(e1[0]["evidence"]), 2)
         self.assertFalse(by_id(checks, "S2 ")[0]["ok"])
         self.assertFalse(by_id(checks, "S3 ")[0]["ok"])
         self.assertFalse(by_id(checks, "S4 ")[0]["ok"])
@@ -247,9 +272,7 @@ class PrefilterLosesNothing(unittest.TestCase):
         """
         from sch.conform.checks import GENERIC_PATTERNS
         sl = chr(47)
-        planted = [f"{sl}home{sl}someone{sl}x", f"{sl}data{sl}grp{sl}home{sl}",
-                   "login" + "-01-02", "hn" + "-01-02", "123456." + "hn" + "-01-02",
-                   "a" + chr(64) + "b.edu", f"scratch{sl}20260101__x"]
+        planted = [f"{sl}home{sl}someone{sl}x", "a" + chr(64) + "b.edu", f"scratch{sl}20260101__x"]
         self.assertEqual(len(planted), len(GENERIC_PATTERNS))
         d = Path(tempfile.mkdtemp())
         try:
