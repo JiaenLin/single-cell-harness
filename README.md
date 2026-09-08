@@ -6,13 +6,17 @@ Decisions are **mounted**, not applied. A filter, a correction, an annotation or
 plugin contributing to a stack over immutable observations — so any of them can be removed, and
 everything downstream knows when one does.
 
-> **Status: the kernel exists.** `sch` implements Phase 1 (the domain-free core, proved on a toy
-> profile), Phase 2 (the profile and the 15-check validator, every rule tripped by a broken
-> plugin), the gate-is-a-probe machinery of Phase 4, and the agent surface of Phase 10 with its
-> adversarial suite. Phases 3, 5–9 and 11 are not built. `sch conform` checks a child tool
-> against [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it; the four
-> tools now pass it with no failing row, each change proved by a pre-declared reproduction
-> (ADR-0013).
+> **Status: the kernel exists, and the development suite around it is in daily use.** `sch`
+> implements Phase 1 (the domain-free core, proved on a toy profile), Phase 2 (the profile and the
+> 15-check validator, every rule tripped by a broken plugin), the gate-is-a-probe machinery of
+> Phase 4, and the agent surface of Phase 10 with its adversarial suite. Phases 3, 5–9 and 11 are
+> not built.
+>
+> `sch conform` checks a child tool against
+> [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it; all four pass with
+> no failing row, each change proved by a pre-declared reproduction (ADR-0013). `sch dev` serves
+> all five repositories and is run on the cluster after every change to any of them — most
+> recently PBS 707628, every tier green in all five.
 > [`ARCHITECTURE.md`](ARCHITECTURE.md) is normative and **locked** — the layers and the invariants
 > that may not be broken. [`VISION.md`](VISION.md) is the thesis, written to be argued with.
 > [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) is the contract every plugin conforms to.
@@ -188,13 +192,16 @@ stack rather than assembled by hand under deadline.
 
 ## Orchestration, not absorption
 
-[scQC](https://github.com/JiaenLin/scQC) ·
-[scAnno](https://github.com/JiaenLin/scAnno) ·
-[scIntegrate](https://github.com/JiaenLin/scIntegrate) ·
-[scProfile](https://github.com/JiaenLin/scProfile)
+| tool | does |
+|---|---|
+| [scQC](https://github.com/JiaenLin/scQC) | quality control, and who set each threshold |
+| [scAnno](https://github.com/JiaenLin/scAnno) | cell-type labels, only as deep as the evidence goes |
+| [scIntegrate](https://github.com/JiaenLin/scIntegrate) | whether you need batch integration, and which method |
+| [scProfile](https://github.com/JiaenLin/scProfile) | communication, velocity, pseudotime, differential expression |
 
-Each keeps its own repository, lock, version and users, and mounts through a thin adapter over the
-contract it already has. scProfile implements a single-stage version of the model — declared
+Each keeps its own repository, lock, version and users, and works perfectly well on its own. They
+mount here through a thin adapter over the contract each already has — nothing was rewritten to
+join. scProfile implements a single-stage version of the model — declared
 `needs`/`provides`, prerequisite resolution before compute is spent, guards with logged escapes,
 cross-environment isolation, and a required `cannot_show` on every plugin.
 
@@ -211,7 +218,7 @@ $ sch report                                  # numbers that resolve to events, 
 $ sch doctor --architecture                   # L1 L2 L3 C4 D2 X1 G1 G3 and every shipped plugin
 $ sch conform ../scQC --terms ~/site/forbidden_terms.txt
 $ sch conform --run runs/new --against runs/reference   # is a comparison between them meaningful?
-$ python -m unittest discover -s tests        # 66 tests, all synthetic
+$ python -m unittest discover -s tests        # 144 tests, all synthetic
 ```
 
 ## Documentation
