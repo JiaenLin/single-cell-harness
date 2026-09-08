@@ -77,11 +77,15 @@ plan = [("sch", repo, None, None), ("scqc", f"{tools}/scQC", "criterion", "fail_
 rec, total = {}, 0.0
 for name, root, pt, nm in plan:
     a = time.time()
+    # A FIXTURE DIRECTORY PER REPOSITORY. Sharing one made repository N+1 delete repository N's
+    # run_a, which is harmless while each ladder reads its own immediately - and deeply confusing
+    # the moment anyone re-runs a single tier against the leftovers, as I did.
     rep = ladder.run(root, point_name=pt, name=nm, keep_going=True,
-                     fixdir=f"{out}/fixture", terms=terms)
+                     fixdir=f"{out}/fixture/{name}", terms=terms)
     el = time.time() - a; total += el
     rec[name] = {"seconds": round(el, 1), "failing": rep["failed"],
                  "tiers": {r["tier"]: r["seconds"] for r in rep["results"]}}
+    open(f"{out}/suites/{name}.ladder.txt", "w").write(ladder.format_run(rep))
     print(f"  {name:12s} {el:6.1f}s   failing: {rep['failed'] or 'none'}")
 rec["_total_seconds"] = round(total, 1)
 json.dump(rec, open(f"{out}/timings.json", "w"), indent=1)
