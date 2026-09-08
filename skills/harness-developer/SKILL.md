@@ -64,6 +64,17 @@ Seven tiers, cheapest first, stopping at the first failure (`--keep-going` runs 
 The word list and the shape list both live **outside** the repository being checked — `$<TOOL>_FORBIDDEN_TERMS` for names, `$SCH_SITE_SHAPES` for hostname and job-id patterns. A tool that ships the cohort's vocabulary in order to prove it does not ship the cohort's vocabulary has shipped it, and a tool that knows one cluster's hostnames is blind to every other cluster's. Both checks say plainly when they were given nothing.
 | `baseline` | a number moved that was not supposed to move |
 
+**What the exit code means.** Three outcomes, and the third is the one worth branching on:
+
+| code | meaning |
+|---|---|
+| `0` | what ran, passed |
+| `2` | a check failed, or your input was refused — something is wrong and the message names it |
+| `3` | nothing could be run: no `DEVPOINTS.yaml`, a dependency absent, no baseline to compare against. **Nothing was proved either way**, which is not the same as passing |
+
+A `sch dev check` whose every tier skipped exits 3, not 0. A green that established nothing is
+the one result an agent must never read as permission.
+
 **3. Read what it says it did not prove.** Every tier prints that, and the run ends with the
 union. A green ladder is permission to spend an hour on the cluster with a reasonable
 expectation the hour will not be wasted. It is not a merge.

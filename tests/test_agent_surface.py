@@ -156,3 +156,79 @@ class MapIsEnoughToActOn(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _path_exists(parser, toks):
+    """Does this sequence of words name a real subcommand path?"""
+    import argparse as _a
+    for t in toks:
+        subs = [x for x in parser._actions if isinstance(x, _a._SubParsersAction)]
+        if not subs:
+            return False
+        if t not in subs[0].choices:
+            return False
+        parser = subs[0].choices[t]
+    return True
+
+
+class ErrorsNameCommandsThatExist(unittest.TestCase):
+    """An error message that tells an agent to run something is an instruction, and an
+    instruction to run a command that does not exist costs a round trip to discover.
+
+    `sch dev map` without a declaration said "`sch dev map --init` writes a first one". There was
+    no --init. The flag exists now, but the class of defect is what matters: a message and a
+    parser are two descriptions of one interface, and only one of them is executable.
+    """
+
+    def test_every_sch_command_in_a_message_parses(self):
+        from sch.cli import build_parser
+        bad = []
+        for path in sorted((ROOT / "sch").rglob("*.py")):
+            text = path.read_text(encoding="utf-8")
+            for cmd in re.findall(r"`sch ([a-z][^`\n]*)`", text):
+                cmd = re.sub(r"<[^>]*>", "X", cmd)
+                cmd = re.sub(r"\{[^}]*\}", "X", cmd)
+                cmd = re.sub(r"\b(FILE|DIR|RUNDIR|REFRUN|NAME|POINT|REPO|NEW|REF|Q|S|TEXT|PATH)\b",
+                             "X", cmd)
+                if "..." in cmd or "|" in cmd:
+                    continue
+                try:
+                    toks = shlex.split(cmd)
+                except ValueError:
+                    continue                      # unbalanced quotes in prose, not a command
+                if not any(t.startswith("-") or t == "X" for t in toks):
+                    # A bare `sch dev new` in a sentence is a reference to a command, not an
+                    # instruction to run one. What must be right is that the SUBCOMMAND PATH
+                    # exists - a message naming `sch dev sprocket` would be just as wrong.
+                    self.assertTrue(_path_exists(build_parser(), toks),
+                                    f"{path.relative_to(ROOT)}: `sch {cmd}` is not a subcommand")
+                    continue
+                try:
+                    build_parser().parse_args(toks)
+                except SystemExit:
+                    bad.append(f"{path.relative_to(ROOT)}: sch {cmd}")
+        self.assertEqual(bad, [], "messages naming commands the parser rejects:\n  " + "\n  ".join(bad))
+
+
+class ExitCodesSeparateFailedFromCouldNotRun(unittest.TestCase):
+    """0 passed, 2 failed, 3 nothing could be run. The third is the one that was missing: a check
+    whose every tier skipped exited 0, which an agent reads as proof."""
+
+    def _code(self, argv, **env):
+        import os
+        return subprocess.run([sys.executable, "-m", "sch", *argv], cwd=str(ROOT),
+                              capture_output=True, text=True,
+                              env={**os.environ, **env}).returncode
+
+    def test_green_is_zero(self):
+        self.assertEqual(self._code(["dev", "check", "--only", "contract"]), 0)
+
+    def test_a_failing_tier_is_two(self):
+        self.assertEqual(self._code(["conform", "/tmp"]), 2)
+
+    def test_no_declaration_is_three_not_two(self):
+        self.assertEqual(self._code(["dev", "map", "--root", "/tmp"]), 3)
+
+    def test_every_tier_skipped_is_three_not_zero(self):
+        """The failure this guards against is a green that proved nothing."""
+        self.assertEqual(self._code(["dev", "check", "--only", "baseline"]), 3)

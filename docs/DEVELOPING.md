@@ -161,6 +161,10 @@ their runs recorded the machine they ran on. Paths and job ids are provenance in
 defects in a repository, and no word list tells them apart; the tier therefore asks where the
 answer is unambiguous, and says so in its `cannot_prove`.
 
+Exit codes are `0` passed, `2` failed, `3` could not run. The separation matters because a
+check that skipped every tier used to exit `0`, and an agent reads that as proof. It also means a
+missing baseline, a missing declaration and an absent dependency are all `3` — setup, not defect.
+
 A **baseline** is the numeric fingerprint of a fixture run: numeric leaves of every JSON,
 per-column statistics of every CSV, bytes of everything else, with volatile fields (times, job
 ids, paths, commits) excluded. Floats compare with a relative tolerance rather than bit-equality,

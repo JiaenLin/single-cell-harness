@@ -108,6 +108,57 @@ def _validate(doc, f):
                 raise DevpointsError(f"{f}: point {name!r}: register file {reg['file']} does not exist")
 
 
+STARTER = """# What can be added to this repository, and how a reader can tell whether it was added
+# correctly. `sch dev map` reads this; without it, nothing in `sch dev` can check anything here.
+#
+# Fill in the marked places and delete this line. Every field below is required except where it
+# says otherwise; `sch dev map` will tell you what is missing.
+tool: {tool}
+devpoints: 1
+
+# How this repository runs its own tests. `{{python}}` is the interpreter running the check, and
+# `{{jobs}}` is how many things this machine should do at once - use it if your runner takes a
+# concurrency flag.
+tests:
+  command: ["{{python}}", "-m", "pytest", "-q", "tests"]
+
+# The end-to-end exercise, run twice: once on a synthetic cohort, once on the SAME cohort with
+# every column renamed. Anything that resolves a role passes both; anything that knows a column
+# name passes one. Placeholders: {{observations}} {{design}} {{out}} {{name}} {{shape}} {{root}}
+# {{jobs}} and one per role - {{role_sample}} {{role_condition}} {{role_batch}} {{role_cell_type}}
+# {{role_subject}} {{role_covariate}} {{role_counts}}. `sch dev map --json` lists them with values.
+fixture:
+  command: ["{{python}}", "-m", "{tool}", "run", "--input", "{{observations}}", "--out", "{{out}}"]
+  products: []          # relative to {{out}}; each is checked for existence and non-zero size
+
+baseline_dir: tests/baselines
+
+points:
+  # One block per kind of thing that can be added. Rename this one.
+  thing:
+    what: <one line a reader who is not you would recognise>
+    lives: <the file or directory a new one goes into>
+    # optional; each table is read by PARSING the file, never by editing it
+    register: []
+    must_declare: []
+    example: <the existing one to start from>
+    proves: <what a green `sch dev check` establishes for this kind>
+    cannot_prove: <what it does NOT establish - the field everyone skips, and the one that decides how much cluster time a change here will cost>
+"""
+
+
+def init(root, tool: str | None = None, force: bool = False) -> Path:
+    """Write a starter declaration. The error you get without one names this command, so it has
+    to exist - it named a flag that did not, which is the same defect this suite exists to find,
+    one level up."""
+    root = Path(root).resolve()
+    f = root / FILENAME
+    if f.exists() and not force:
+        raise DevpointsError(f"{f} already exists; --force overwrites it")
+    f.write_text(STARTER.format(tool=tool or root.name.lower().replace("-", "_")), encoding="utf-8")
+    return f
+
+
 def point(doc: dict, name: str) -> dict:
     pts = doc.get("points") or {}
     if name not in pts:

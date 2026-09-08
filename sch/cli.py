@@ -290,17 +290,36 @@ def cmd_conform(a):
     return 0 if all(c["ok"] or c["level"] == "warn" for c in checks) else 2
 
 
+# WHAT AN AGENT BRANCHES ON. Three outcomes, and the third is the one that was missing:
+#
+#   0  what ran, passed
+#   2  a check FAILED, or the caller's input was refused - something is wrong and it is named
+#   3  nothing could be run: no declaration, a dependency absent, nothing to compare against.
+#      NOTHING WAS PROVED EITHER WAY, which is a different fact from passing and used to be
+#      reported as 0 by a check whose every tier had skipped.
+OK, FAILED, CANNOT_RUN = 0, 2, 3
+
+
 def cmd_dev(a):
     from . import dev as D
     from .dev import ladder, points as P
     a.root = getattr(a, "root", None) or "."
 
     if a.sub == "map":
+        if getattr(a, "init", False):
+            try:
+                f = P.init(a.root, force=a.force)
+            except D.DevpointsError as e:
+                print(e, file=sys.stderr)
+                return FAILED
+            print(f"  wrote {f}")
+            print("  fill in the marked places, then `sch dev map` reads it back")
+            return OK
         try:
             doc = P.load(a.root)
         except D.DevpointsError as e:
             print(e, file=sys.stderr)
-            return 2
+            return CANNOT_RUN
         pts = doc.get("points") or {}
         if a.json:
             # EVERYTHING NEEDED TO FORM THE NEXT COMMAND, so an agent never has to read prose to
@@ -353,9 +372,12 @@ def cmd_dev(a):
     if a.sub == "new":
         try:
             info = D.new(a.root, a.point, a.name, force=a.force)
-        except (D.DevpointsError, ValueError) as e:
+        except D.DevpointsError as e:
             print(e, file=sys.stderr)
-            return 2
+            return CANNOT_RUN                       # the point is not declared: setup, not defect
+        except ValueError as e:
+            print(e, file=sys.stderr)
+            return FAILED
         if a.json:
             print(json.dumps(info, indent=1))
             return 0
@@ -378,7 +400,7 @@ def cmd_dev(a):
                     else F.write_both(a.dir, seed=a.seed))
         except ImportError as e:
             print(f"the fixture needs anndata, numpy and pandas: {e}", file=sys.stderr)
-            return 3
+            return CANNOT_RUN
         if a.json:
             print(json.dumps(recs, indent=1))
             return 0
@@ -399,11 +421,15 @@ def cmd_dev(a):
                              terms=a.terms, fixdir=a.fixture_dir, seed=a.seed)
         except D.DevpointsError as e:
             print(e, file=sys.stderr)
-            return 2
+            return CANNOT_RUN
         print(ladder.format_run(rep))
         if a.json:
             print(json.dumps(rep, indent=1, default=str))
-        return 0 if rep["ok"] else 2
+        if not rep["ran"]:
+            print("\nNOTHING RAN. Every tier was skipped, so nothing was established - which is "
+                  "not the same as passing, and exits 3 rather than 0.", file=sys.stderr)
+            return CANNOT_RUN
+        return OK if rep["ok"] else FAILED
 
     if a.sub == "baseline":
         from .dev import baseline as B
@@ -416,13 +442,13 @@ def cmd_dev(a):
             diffs, ref = B.check(a.rundir, a.path)
         except FileNotFoundError as e:
             print(e, file=sys.stderr)
-            return 2
+            return CANNOT_RUN                       # no baseline is not a failing baseline
         for d in diffs[:40]:
             print(f"  {d['product']}: {d['what']}  {d['detail']}")
         print(f"  {len(diffs)} difference(s) against {a.path} at rtol {ref.get('rtol')}")
         if diffs:
             print("  a deliberate change bumps state_version and re-records; anything else is a defect")
-        return 0 if not diffs else 2
+        return OK if not diffs else FAILED
 
     if a.sub == "job":
         from .dev import job as J
@@ -432,7 +458,7 @@ def cmd_dev(a):
                            walltime=a.walltime, name=a.name or "reproduce")
         except (ValueError, OSError) as e:
             print(e, file=sys.stderr)
-            return 2
+            return FAILED
         if a.json:
             print(json.dumps(info, indent=1))
             return 0
@@ -499,7 +525,11 @@ def build_parser():
         q.add_argument("--root", default=None, help="repository (default .)")
         return q
 
-    q = rooted(ds.add_parser("map")); q.set_defaults(fn=cmd_dev)
+    q = rooted(ds.add_parser("map"))
+    q.add_argument("--init", action="store_true",
+                   help="write a starter DEVPOINTS.yaml here, for a repository that declares nothing yet")
+    q.add_argument("--force", action="store_true", help="with --init, overwrite an existing one")
+    q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("new")); q.add_argument("point"); q.add_argument("name")
     q.add_argument("--force", action="store_true"); q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("fixture")); q.add_argument("dir"); q.add_argument("--shape", choices=["a", "b"])

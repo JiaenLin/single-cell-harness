@@ -10,6 +10,8 @@ worse than no hazard at all - it is a claim a reader will trust.
 from __future__ import annotations
 
 import json
+import re
+import shlex
 import shutil
 import tempfile
 import unittest
@@ -562,3 +564,44 @@ class HarnessDeclaresItsOwnPoints(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TheStarterDeclarationIsUsable(unittest.TestCase):
+    """`sch dev map` without a declaration tells you to run `sch dev map --init`. That flag did
+    not exist - the error named a command the tool did not have, which is the same defect this
+    suite exists to find, one level up. And the first starter it wrote did not parse."""
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def test_the_starter_loads_and_maps(self):
+        from sch.dev import points as PP
+        PP.init(self.d, tool="demo")
+        doc = PP.load(self.d)
+        self.assertEqual(doc["tool"], "demo")
+        self.assertTrue(doc["points"])
+        for pt in doc["points"].values():
+            for field in ("what", "lives", "proves", "cannot_prove"):
+                self.assertTrue(pt.get(field), f"the starter omits {field}")
+
+    def test_it_does_not_overwrite_without_force(self):
+        from sch.dev import points as PP
+        PP.init(self.d, tool="demo")
+        (self.d / "DEVPOINTS.yaml").write_text("tool: mine\ndevpoints: 1\n")
+        with self.assertRaises(PP.DevpointsError):
+            PP.init(self.d, tool="demo")
+        self.assertIn("mine", (self.d / "DEVPOINTS.yaml").read_text())
+
+    def test_the_error_without_a_declaration_names_a_command_that_exists(self):
+        from sch.cli import build_parser
+        from sch.dev import points as PP
+        with self.assertRaises(PP.DevpointsError) as e:
+            PP.load(self.d)
+        msg = str(e.exception)
+        named = re.findall(r"`sch ([^`]+)`", msg)
+        self.assertTrue(named, "the error names no command at all")
+        for cmd in named:
+            build_parser().parse_args(shlex.split(cmd))       # raises SystemExit if it does not exist

@@ -160,7 +160,7 @@ def t1_contract(doc, results, terms=None):
     warn = sum(1 for c in checks if not c["ok"] and c["level"] == "warn")
     return _t(results, "contract", not bad,
               bad or [f"{len(checks)} checks, 0 failing, {warn} warning(s)"],
-              cannot="that a RUN conforms - `sch conform --run` is a different question",
+              cannot="that a RUN conforms - `sch conform --run RUNDIR` is a different question",
               seconds=time.time() - t0)
 
 
