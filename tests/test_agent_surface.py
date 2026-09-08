@@ -21,7 +21,13 @@ from pathlib import Path
 
 from helpers import ROOT
 
+# EVERY DOCUMENT AN AGENT FOLLOWS, and `plugin-maker` was not on this list. It is the skill for
+# converting somebody else's tool into a plugin, so it is nearly all commands - and none of them
+# was checked against the parser. It also spent months describing a six-file directory layout that
+# `scprofile/plugin.py` had already replaced, which this check cannot catch but the omission is the
+# same shape: a document nobody verifies drifts from the tool it documents.
 DOCS = ["skills/harness-developer/SKILL.md", "skills/harness-agent/SKILL.md",
+        "skills/plugin-maker/SKILL.md",
         "docs/DEVELOPING.md", "README.md", "docs/CHILD_CONFORMANCE.md"]
 
 # A documented command is written for a reader, so it carries placeholders. These stand in for
@@ -181,9 +187,18 @@ class ErrorsNameCommandsThatExist(unittest.TestCase):
     """
 
     def test_every_sch_command_in_a_message_parses(self):
+        """AND IN EVERY DOCUMENT AN AGENT FOLLOWS, not only in the source.
+
+        This scanned `sch/**/*.py` alone, so the messages the tool prints were checked and the
+        SKILLS were not - and a skill is nearly all commands, written for an agent that will run
+        them verbatim. `skills/plugin-maker/SKILL.md` had never had a single one checked.
+        """
         from sch.cli import build_parser
         bad = []
-        for path in sorted((ROOT / "sch").rglob("*.py")):
+        paths = sorted((ROOT / "sch").rglob("*.py")) + [ROOT / d for d in DOCS]
+        for path in paths:
+            if not path.is_file():
+                continue
             text = path.read_text(encoding="utf-8")
             for cmd in re.findall(r"`sch ([a-z][^`\n]*)`", text):
                 cmd = re.sub(r"<[^>]*>", "X", cmd)

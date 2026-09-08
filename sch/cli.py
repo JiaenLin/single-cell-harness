@@ -639,7 +639,11 @@ def build_parser():
     p = sub.add_parser("materialise"); stackable(p); p.add_argument("--full", action="store_true"); p.add_argument("--out")
     p.set_defaults(fn=cmd_materialise)
     p = sub.add_parser("ask"); stackable(p); p.add_argument("probe"); p.add_argument("--param", action="append")
-    p.add_argument("--subject"); p.set_defaults(fn=cmd_ask)
+    p.add_argument("--subject")
+    p.add_argument("--upto", default=None,
+                   help="materialise the view BELOW this mounted plugin - the view a gate saw "
+                        "when it mounted, so a refusal's number can be reproduced")
+    p.set_defaults(fn=cmd_ask)
     p = sub.add_parser("scratch"); stackable(p); p.add_argument("script"); p.add_argument("--label")
     p.add_argument("--param", action="append"); p.set_defaults(fn=cmd_scratch)
     p = sub.add_parser("promote"); stackable(p); p.add_argument("scratch_id"); p.add_argument("--by")

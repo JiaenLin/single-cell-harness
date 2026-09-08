@@ -1,152 +1,131 @@
 ---
 name: plugin-maker
-description: Convert a public single-cell tool into a single-cell-harness plugin. Use when asked to wrap, package, port or add a tool (scVelo, CellChat, pySCENIC, CellRank, Milo, LIANA, decoupler, hdWGCNA…) as a plugin, or to fix a plugin failing `sch plugin validate`. Produces a conforming directory: manifest, entry point, lock, selftest and guard.
+description: Convert a tool that lives in somebody else's codebase into a plugin of this family, and pick up a half-built one where it was left. Use when asked to wrap, package, port or add a tool (scVelo, CellChat, pySCENIC, CellRank, Milo, LIANA, decoupler, hdWGCNA…), to finish a plugin that is declared but incomplete, or to work out what a plugin still owes. Drives `sch dev convert`, which reads the target repository's own declaration — so this never assumes which plugin format is wanted.
 allowed-tools: Read, Write, Edit, Bash, WebFetch, WebSearch, Grep, Glob
 ---
 
 # Converting a tool into a plugin
 
-Read [`PLUGIN_FORMAT.md`](../../PLUGIN_FORMAT.md) before writing anything. This skill is the
-procedure; that file is the contract.
+## Do not assume the format. Ask the repository.
 
-## What you are producing
+This family has more than one. The harness's own plugins are directories with a `plugin.yml`
+([`PLUGIN_FORMAT.md`](../../PLUGIN_FORMAT.md)). scProfile's kernels are ONE FILE with a `PLUGIN`
+dict and a `run(ctx)` — and that format exists because the six-file one was an assembly kit; see
+the "WHY THIS REPLACED SIX FILES" note in `scprofile/plugin.py`. A skill that names a layout up
+front teaches whichever one it was written against, which is what the previous version of this file
+did for months after the format it described stopped being the one anybody wanted.
+
+So the first command is always the same, from inside the repository you are adding to:
 
 ```
-<name>/
-  plugin.yml   run.py|run.R   lock.yml   selftest.py   README.md   UPSTREAM.md
-  guard.py?    invariant.py?  references.yml?
+PYTHONPATH=/path/to/single-cell-harness python3 -m sch dev map --root .
 ```
 
-## Order of work
+That prints the extension points, what each must declare, and the scaffolding command for each. If
+the repository has its own maker, `sch dev new` defers to it — use it, because it renders the
+template from the format's own knowledge and a generic skeleton does not.
 
-**Do not start with the manifest.** Start by finding out what the tool actually is, because three
-manifest fields cannot be written without that and they are the three that matter.
+## The whole job, in one command
 
-### 1. Read the tool's own documentation, and SAVE it
-
-Write `UPSTREAM.md` in the plugin directory before anything else: the documented signature with
-every default, where results are written, the licence and the citation, and links to each page you
-read.
-
-Then, in the same file, the section that earns it: **every default that is wrong for this
-contract, and why.** A default that errors is harmless. A default that silently produces a
-plausible wrong answer is what this file exists to catch — LIANA+ defaults to a human
-ligand-receptor resource, and run against mouse symbols it does not fail, it returns a small
-believable table of almost nothing.
-
-Also record **what the tool can do that you are not using**, so under-use is deliberate and
-visible rather than accidental. Wrapping a framework as though it were one function is the
-commonest way to waste one.
-
-### 2. Measure the tool, do not remember it
-
-Read the **installed** signatures, not the documentation and not your own recollection:
-
-```bash
-python -c "import inspect, TOOL; print(inspect.signature(TOOL.main_function))"
+```
+sch dev convert --root . --point <point> --name <plugin>
 ```
 
-APIs move between minor versions, and a function that lost a parameter two releases ago will accept
-it through `**kwargs` and fail somewhere unrelated. If the tool is not installed, fetch its
-repository and read the source of the entry points you intend to call.
+Six stages, in dependency order, each either something a machine extracts from the tool's own
+source or something only you can answer — never both. It prints which are done, which are not, and
+what the next one is.
 
-Record: the exact version, the entry points, their real signatures, the **recommended settings from
-the tool's own tutorial**, and the licence.
+**There is no separate "start" and "resume".** A raw tool and a half-built plugin are the same
+input at different points on one line; converting a repository is resuming from zero. Nothing is
+remembered between invocations — no journal, no lock file — so what remains is computed from the
+declaration every time. A conversion picked up on another machine four months later reads the same
+answer. Run `sch dev convert` and believe it.
 
-### 3. Decide the layer, and bias toward `checkpoint`
+## The mechanical stages: run the command, read the answer
 
-Does it produce a view of existing data, or new numbers? A wrong `stack` declaration means the
-kernel will offer an unmount that silently produces a different dataset. A wrong `checkpoint` costs
-a rebuild. These are not symmetric.
+**`inventory` — what the tool already draws.**
 
-Set `state_version: 1` at the same time. It versions *the numbers*, not the wrapper: it goes up
-whenever the plugin would compute something different for the same inputs, and the pinned tool's
-version moving is the ordinary reason. Every cached view is keyed on it.
-
-### 4. Write `cannot_show` before writing any code
-
-This is the field that takes the longest and the one that makes the plugin worth having. Sources,
-in order: the tool's paper (stated limits), its issue tracker (limits its users found), and
-benchmark papers that included it (limits its authors did not mention).
-
-Write what the output does **not** establish, in the terms a reader will use. If the list has fewer
-than three entries, you have not finished.
-
-### 5. Capabilities, never column names
-
-`{label}`, `{sample}`, `{batch}`, `{counts}` resolve per dataset. A plugin naming a real column has
-bound itself to one project. Prefer `capability:embedding` over `obsm/X_scanvi`.
-
-### 6. Pin hard, and prove it
-
-Take the tool's declared requirements and **ignore the lower bounds** — they say what it was written
-against, not what it still works with. Pin the stack it was released alongside, with `==` on every
-line.
-
-Then write a `selftest.py` that runs the **whole path** on a synthetic fixture: preprocessing, the
-model, the outputs the plugin will merge. Assert shapes and finiteness, never a biological answer.
-Importing the package proves nothing — every failure worth catching imports cleanly and dies inside
-the first real call.
-
-### 7. Implement the protocol
-
-Read `in.json`, do the work, write declared outputs and `out.json`. Import nothing from the host
-except its stdlib-only manifest helper.
-
-- resolve keys from `in.json["keys"]`; treat `sentinels` as *not a cell type*, and never drop them
-- obs columns are `barcode,value` CSV; obsm are `.npy` with a `barcodes.txt` beside them
-- if the result does not fit the merged object — a matrix on a selected gene set — ship it under
-  `objects`. Padding with zeros asserts *no effect* where the truth is *not computed*
-- refuse with a reason and a fix rather than producing a number on unsuitable input
-- record the wrapped tool's version **at runtime**, read from the tool
-
-### 8. Guard only where the output could mislead
-
-Not a prerequisite check. A guard is for a run that would succeed and produce numbers that do not
-support the sentence a reader will write.
-
-### 9. The companion, or the reason there is none
-
-Name one relationship this plugin **owns** that could break silently while it runs — a conservation
-law, an ordering, an agreement between what it declared and what it wrote — and assert it in
-`invariant.py`. Every removed observation appears in the removal record. Every barcode written back
-was one that came in. The count of masked cells matches the mask.
-
-If there is genuinely nothing observable between calls, write `no_runtime_invariant:` in the
-manifest with the reason. Both are accepted; silence is not, because "there is nothing to check"
-and "nobody thought about it" have to be distinguishable.
-
-Then prove it: break the plugin so the check fails, watch it fail, revert. A check that cannot be
-made to fail is decoration.
-
-### 10. Write the README, then validate
-
-`README.md` carries four sections — what it does, **report surface** (every number, table and
-figure a reader could quote, with the `cannot_show` line each travels with), **cost** (to run, and
-to unmount), **known limitations**. Known limitations is written last and honestly; an empty one is
-rejected, and a marketing one should be.
-
-```bash
-sch plugin validate <dir> && sch plugin test <dir>
+```
+sch dev convert inventory --root . --point kernel --name <plugin> --python <the plugin's own interpreter>
 ```
 
-## Refusals
+Extractors are plugins: one reads a Python package's `pl`/`plotting` submodule, one reads an R
+namespace. `$SCH_EXTRACTORS` adds a site one for an in-house tool. Pass the interpreter the PLUGIN
+runs in, not yours — a tool pins versions the harness does not have, and inventorying it in the
+wrong environment reports a surface the plugin will never see.
 
-Decline to produce a plugin when:
+**If no extractor could look, that is not an empty inventory.** The command says so and exits 2.
+Build the plugin's environment (`scprofile install <name> --prefix DIR`) and ask again. Never write
+`"native_plots": {}` because the import failed — it certifies a wrapper as having nothing to
+account for, which is the one claim that is never true.
 
-- the tool cannot be pinned to a working environment — say so rather than shipping a lock that
-  resolves differently each week;
-- `cannot_show` cannot be written because nobody has established what the tool does not show;
-- the tool needs a modality this pipeline does not produce **and** the plugin cannot refuse cleanly
-  and name the fix.
+**`account` — turn the inventory into decisions.**
 
-A tool that is not ready is a finding. Report it with what is missing.
+```
+sch dev convert account --root . --point kernel --name <plugin> --python <...>
+```
 
-## Do not
+Prints a paste-ready block with every exported function: the ones already decided carried through
+unchanged, the rest as placeholders. Re-runnable after a version bump — the answer is then the
+diff, plus anything the upstream has stopped exporting.
 
-- copy the tool's source into the plugin — wrap it, pin it, cite it
-- silently repair the tool's output
-- hard-code a column name, an organism, a species or a design
-- write `cannot_show: []`, or a README whose known limitations are empty
-- ship an `invariant.py` that cannot fail, or an absent one with no reason given
-- claim `reversible: true` without knowing what would be removed to undo it
+This is the stage that is worth the most. cellchat used **1** of its tool's 30-odd plots until
+somebody went through them; after the accounting it uses **32 of 35**, and four of those answer a
+design comparison directly.
+
+**`measure` — the memory the plugin actually costs.**
+
+```
+sch dev convert measure --root . --point kernel --run <a completed run>
+```
+
+Fitted from a real run, never estimated. Two terms, always: a fixed cost plus a per-cell one. **A
+rate with no baseline is worse than declaring nothing** — absent, the allocator assumes
+conservative values and prints that it is guessing; a pure rate attributes the fixed cost to the
+cells and asks for less than the import costs on a small object, so the job is sized to be killed.
+Where the run had one size only, the command prints the rate commented out. Leave it commented.
+
+**`contract`, `defaults`, `references`** — read from the tool's own source. Declare the wrapped
+tool's OWN defaults rather than inheriting them silently; declare every resource consulted that did
+not come from the user's object, with its tier. If there are genuinely none, declare the empty
+container: `"references": {}` says you looked, absent says nobody has.
+
+## The judgement stage: what no command can do
+
+`summary`, `when_to_use`, `cannot_show`, and the question under each figure. Do this LAST, because
+every earlier stage is evidence for it.
+
+- **`summary`** — what a user reads in the plan to decide whether they want this at all.
+- **`when_to_use`** — the situation someone should reach for it in. Not what it does; when.
+- **`cannot_show`** — a conclusion this result does not support, however it looks. Write the
+  reading a reader would take that the method cannot carry. If you cannot think of one, you have
+  not understood the method yet; go back to its documentation. This field is an ERROR when absent
+  because a result whose limits were never written down reads exactly as authoritative as one whose
+  limits were thought about.
+- **each figure's `question`** — printed above the panel, so a reader knows what it is for before
+  deciding whether it answers them.
+
+**Read the tool's documentation and record having read it** in `upstream.docs`, with the date and
+what defaults you changed. That record is what catches a default that is wrong rather than absent.
+
+## When you are done
+
+```
+scprofile validate <name>          # the declaration, without running anything
+sch dev check --root . --point kernel --name <name>
+```
+
+`validate` refuses a declaration whose fields still carry the scaffold's marker, and names them —
+a plugin whose every human-readable field says TODO is not a plugin the tool can act on. The ladder
+adds the two-shape fixture: the same synthetic cohort written twice with every column renamed, so
+code that asks for a capability passes both and code that knows a column name passes one.
+
+Every tier prints what it does **not** prove. A green ladder does not say the numbers are right.
+
+## What good looks like
+
+cellchat is the only finished conversion in the family and the standard the rest are measured
+against: 35 upstream plots accounted, 10 declared figures all drawn, both memory terms measured, 9
+entries in `cannot_show`. Point `sch dev convert` at it and it prints 6 of 6.
+
+Point it at any other and it prints where that one stopped.
