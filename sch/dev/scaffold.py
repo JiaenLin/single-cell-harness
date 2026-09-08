@@ -89,7 +89,17 @@ def new(root, point_name: str, name: str, *, force: bool = False) -> dict:
 
     lives = Path(pt["lives"])
     target = base / (lives / f"{name}.py" if (base / lives).is_dir() else lives)
-    if pt.get("template"):
+    # A TOOL THAT HAS ITS OWN SCAFFOLDER KEEPS IT. scProfile's writes a rich, commented template
+    # from its own knowledge of the format; this one would have written a one-line stub beside
+    # it. Both were pointed at - the declaration said "`scprofile scaffold` is the right first
+    # command" while `sch dev map` printed "`sch dev new POINT NAME` starts one" - and a newcomer
+    # had to guess which. Declaring `scaffold_command` removes the choice: the suite runs nothing
+    # and writes no skeleton, and contributes the one thing the tool's own scaffolder does not,
+    # which is the SPEC written before the code.
+    own = pt.get("scaffold_command")
+    if own:
+        own = str(own).replace("{name}", name)
+    elif pt.get("template"):
         tpl = base / pt["template"]
         if not tpl.is_file():
             raise ValueError(f"{doc['tool']} declares template {pt['template']} for {point_name}, "
@@ -107,13 +117,17 @@ def new(root, point_name: str, name: str, *, force: bool = False) -> dict:
 
     edits = []
     for reg in pt.get("register") or []:
-        edits.append(f"add {name!r} to {reg['table']} in {reg['file']}"
-                     + (f"  (beside {pt['example']!r})" if pt.get("example") else ""))
+        where = (f"add {name!r} to {reg['table']} in {reg['file']}" if reg.get("table")
+                 else f"add a line to {reg['file']} matching  "
+                      + reg["pattern"].replace("{name}", name))
+        edits.append(where + (f"  (beside {pt['example']!r})" if pt.get("example") else ""))
     return {"tool": doc["tool"], "point": point_name, "name": name,
+            "scaffold_command": own,
             "written": written, "skipped": skipped, "register": edits,
             "must_declare": pt.get("must_declare") or [],
             "example": pt.get("example"), "proves": pt.get("proves"),
             "cannot_prove": pt.get("cannot_prove"),
-            "next": [f"fill in {Path(spec_dir).name}/SPEC.{name}.md before writing the mechanism",
+            "next": ([f"this tool scaffolds its own: {own}"] if own else [])
+                    + [f"fill in {Path(spec_dir).name}/SPEC.{name}.md before writing the mechanism",
                      *[f"registry: {e}" for e in edits],
                      f"then: sch dev check --point {point_name} --name {name}"]}

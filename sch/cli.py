@@ -361,9 +361,16 @@ def cmd_dev(a):
             if reg:
                 print(f"    registered {len(reg)}: {', '.join(map(str, reg[:10]))}")
             for r in v.get("register") or []:
-                print(f"    register   {r['table']} in {r['file']}")
-            if v.get("must_declare"):
-                print(f"    declare    {', '.join(v['must_declare'])}")
+                what = r.get("table") or f"a line matching {r['pattern']}"
+                print(f"    register   {what} in {r['file']}")
+            keys = [k for k in (v.get("must_declare") or []) if P._KEYISH.match(str(k))]
+            prose = [k for k in (v.get("must_declare") or []) if not P._KEYISH.match(str(k))]
+            if keys:
+                print(f"    declare    {', '.join(keys)}   (checked by parsing)")
+            for q in prose:
+                print(f"    also       {q}   (for a person to check)")
+            if v.get("scaffold_command"):
+                print(f"    scaffold   {v['scaffold_command']}")
             print(f"    proves     {v['proves']}")
             print(f"    CANNOT     {v['cannot_prove']}")
         print(f"\n  sch dev new POINT NAME     starts one")
@@ -381,6 +388,9 @@ def cmd_dev(a):
         if a.json:
             print(json.dumps(info, indent=1))
             return 0
+        if info.get("scaffold_command"):
+            print(f"  THIS TOOL SCAFFOLDS ITS OWN. Run:  {info['scaffold_command']}")
+            print(f"  (nothing was written in its place; below is what this suite adds to it)")
         for f in info["written"]:
             print(f"  wrote   {f}")
         for f in info["skipped"]:

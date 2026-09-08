@@ -39,6 +39,7 @@ which is the only arrangement in which the check means anything.
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 
 from .. import yamlish
@@ -51,7 +52,8 @@ SCHEMA = 1
 # Every point must answer these. `proves`/`cannot_prove` are not documentation: the ladder prints
 # them, so a point that cannot say what its fixture run fails to establish does not get one.
 REQUIRED = ("what", "lives", "proves", "cannot_prove")
-OPTIONAL = ("register", "must_declare", "example", "template", "tests", "fixture", "notes")
+OPTIONAL = ("register", "must_declare", "example", "template", "scaffold_command",
+            "tests", "fixture", "notes")
 
 
 class DevpointsError(ValueError):
@@ -102,8 +104,12 @@ def _validate(doc, f):
             if k not in REQUIRED + OPTIONAL:
                 raise DevpointsError(f"{f}: point {name!r} has unknown key {k!r}")
         for reg in pt.get("register") or []:
-            if not isinstance(reg, dict) or not reg.get("file") or not reg.get("table"):
-                raise DevpointsError(f"{f}: point {name!r}: each `register` entry needs file and table")
+            if not isinstance(reg, dict) or not reg.get("file") or not (reg.get("table") or reg.get("pattern")):
+                raise DevpointsError(
+                    f"{f}: point {name!r}: each `register` entry needs `file` and either `table` "
+                    f"(a Python literal, read by parsing) or `pattern` (a regular expression with "
+                    f"{{name}} in it, for a registry that is not Python - a row in a table, a line "
+                    f"in a manifest)")
             if not (root / reg["file"]).is_file():
                 raise DevpointsError(f"{f}: point {name!r}: register file {reg['file']} does not exist")
 
@@ -201,12 +207,73 @@ def registration(doc: dict, point_name: str, name: str) -> list:
     rows = []
     for reg in point(doc, point_name).get("register") or []:
         f = root / reg["file"]
+        if reg.get("pattern"):
+            # A REGISTRY THAT IS NOT PYTHON. scProfile's real admission gate is a row in
+            # ROADMAP.md's Tier 0 table, enforced by its own suite and documented nowhere - a
+            # newcomer found it only by running the tests and watching them go red. A pattern
+            # entry lets the declaration name that gate so the tool announces it instead.
+            try:
+                text = f.read_text(encoding="utf-8")
+            except OSError:
+                rows.append({"file": reg["file"], "table": reg["pattern"], "readable": False,
+                             "keys": [], "present": False})
+                continue
+            rx = re.compile(reg["pattern"].replace("{name}", re.escape(name)), re.M)
+            rows.append({"file": reg["file"], "table": reg["pattern"], "readable": True,
+                         "keys": [], "present": bool(rx.search(text))})
+            continue
         keys = _table_keys(f, reg["table"])
         rows.append({"file": reg["file"], "table": reg["table"],
                      "readable": keys is not None,
                      "keys": keys or [],
                      "present": bool(keys) and name in keys})
     return rows
+
+
+# A `must_declare` entry that is a bare identifier is a KEY and is checked. One with a space in
+# it is a sentence and is printed. The field carried both from the start - scProfile lists `sees`
+# and `caveats`, scQC lists "a GATES entry with as_written" - and the tier printed all of them
+# and enforced none, so a scaffold missing three required keys passed the declaration tier while
+# the tier was displaying their names. A requirement that is only ever displayed is decoration.
+_KEYISH = re.compile(r"^[a-z_][a-z0-9_]*$")
+
+
+def _string_keys(path: Path) -> set | None:
+    """Every string key of every dict literal in a module, and every module-level name assigned.
+
+    None when the file cannot be read or parsed - which is a different answer from "the keys are
+    absent", and is reported as such.
+    """
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, SyntaxError):
+        return None
+    found = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Dict):
+            found |= {k.value for k in node.keys
+                      if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+        elif isinstance(node, ast.keyword) and node.arg:
+            found.add(node.arg)
+    for node in tree.body:
+        for t in (node.targets if isinstance(node, ast.Assign) else
+                  [node.target] if isinstance(node, ast.AnnAssign) else []):
+            if isinstance(t, ast.Name):
+                found.add(t.id)
+                found.add(t.id.lower())
+    return found
+
+
+def declared_keys(doc: dict, point_name: str, name: str) -> tuple:
+    """(where, keys) for the artefact this point says a new one lives in. keys is None when the
+    artefact cannot be found or read."""
+    pt = point(doc, point_name)
+    base = Path(doc["_root"])
+    lives = base / pt["lives"]
+    target = lives / f"{name}.py" if lives.is_dir() else lives
+    if not target.is_file():
+        return str(target), None
+    return str(target.relative_to(base)), _string_keys(target)
 
 
 def existing(doc: dict, point_name: str) -> list:

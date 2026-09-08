@@ -137,16 +137,40 @@ def t0_declaration(doc, point_name, name, results):
             ev.append(f"{r['file']}: {r['table']} is not a literal - registration cannot be read here")
             ok = False
         elif not r["present"]:
-            ev.append(f"{r['file']}: {name!r} is not in {r['table']} (has {len(r['keys'])} entries)")
+            where = f"{r['table']} in {r['file']}" if r["keys"] or "{name}" not in str(r["table"]) \
+                else f"{r['file']} (no line matching {r['table']})"
+            ev.append(f"{name!r} is not registered: {where}"
+                      + (f" — it has {len(r['keys'])} entries" if r["keys"] else ""))
             ok = False
         else:
-            ev.append(f"{r['file']}: {name!r} is in {r['table']}")
+            how = f"in {r['table']}" if r["keys"] else "as a line in"
+            ev.append(f"{name!r} is registered {how} {r['file']}" if r["keys"]
+                      else f"{name!r} is registered: a matching line is in {r['file']}")
     if not rows:
         ev.append(f"point {point_name!r} declares no registry - nothing to check here")
-    for k in pt.get("must_declare") or []:
-        ev.append(f"must declare: {k}")
+    # A bare identifier in `must_declare` is a key and is CHECKED against the artefact; a
+    # sentence is a requirement for a person and is printed. Printing both and checking neither
+    # is how a scaffold missing three required keys passed this tier while the tier was
+    # displaying their names.
+    keys = [k for k in (pt.get("must_declare") or []) if pts._KEYISH.match(str(k))]
+    prose = [k for k in (pt.get("must_declare") or []) if not pts._KEYISH.match(str(k))]
+    if keys:
+        where, present = pts.declared_keys(doc, point_name, name)
+        if present is None:
+            ev.append(f"cannot read {where}, so {len(keys)} required key(s) are unchecked")
+            ok = False
+        else:
+            missing = [k for k in keys if k not in present]
+            if missing:
+                ev.append(f"{where} declares neither " + ", nor ".join(missing))
+                ok = False
+            else:
+                ev.append(f"{where} declares all {len(keys)} required key(s)")
+    for k in prose:
+        ev.append(f"must declare (for a person to check): {k}")
     return _t(results, "declaration", ok, ev,
-              cannot="that the declaration is TRUE - only that it is present",
+              cannot="that a declared key is TRUE - only that it is there. A sentence in "
+                     "`must_declare` is printed and not checked; a bare key name is checked.",
               seconds=time.time() - t0)
 
 
