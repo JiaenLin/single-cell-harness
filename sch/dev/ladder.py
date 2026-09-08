@@ -47,8 +47,14 @@ from . import points as pts
 TIERS = ("declaration", "contract", "unit", "fixture_a", "fixture_b", "leak", "baseline")
 
 
-def _t(results, tier, ok, evidence, cannot="", skipped=False, seconds=0.0):
+def _t(results, tier, ok, evidence, cannot="", skipped=False, seconds=0.0, applicable=True):
+    """`applicable=False` marks a tier there is NOTHING HERE FOR - no test command declared, no
+    products to fingerprint. That is different from a tier that could have run and could not, for
+    want of a library or a word list, and only the second should make a check report itself
+    incomplete. Conflating them would make every repository that legitimately has no baseline
+    exit 3 for ever, and an exit code that is always the same is not read."""
     results.append({"tier": tier, "ok": bool(ok), "skipped": bool(skipped),
+                    "applicable": bool(applicable),
                     "evidence": evidence, "cannot_prove": cannot, "seconds": round(seconds, 2)})
     return results[-1]
 
@@ -177,7 +183,8 @@ def t0_declaration(doc, point_name, name, results):
         else:
             missing = [k for k in keys if k not in present]
             if missing:
-                ev.append(f"{where} declares neither " + ", nor ".join(missing))
+                ev.append(f"{where} does not declare "
+                          + (missing[0] if len(missing) == 1 else ", nor ".join(missing)))
                 ok = False
             else:
                 ev.append(f"{where} declares all {len(keys)} required key(s)")
@@ -206,8 +213,9 @@ def t1_contract(doc, results, terms=None):
 def t2_unit(doc, results, skip=False):
     cmd = (doc.get("tests") or {}).get("command")
     if skip or not cmd:
-        return _t(results, "unit", True, ["no `tests.command` declared" if not cmd else "skipped by request"],
-                  skipped=True)
+        return _t(results, "unit", True,
+                  ["no `tests.command` declared" if not cmd else "skipped by request"],
+                  skipped=True, applicable=bool(cmd))
     r = _run(_fill(cmd, python=sys.executable, root=doc["_root"], jobs=_jobs()), doc["_root"])
     return _t(results, "unit", r["code"] == 0,
               [f"exit {r['code']}: {' '.join(r['cmd'])}"] + _excerpt(r["out"]),
@@ -218,7 +226,8 @@ def t2_unit(doc, results, skip=False):
 def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=None):
     spec = _fixture_spec(doc, point_name)
     if not spec.get("command"):
-        return _t(results, tier, True, ["no `fixture.command` declared - nothing to run"], skipped=True)
+        return _t(results, tier, True, ["no `fixture.command` declared - nothing to run"],
+                  skipped=True, applicable=False)
     obs = Path(fixdir) / f"fixture_{shape}.h5ad"
     dsn = Path(fixdir) / f"design_{shape}.csv"
     if not obs.is_file():
@@ -363,7 +372,9 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
     path = bdir / f"{name}.baseline.json"
     run = Path(fixdir) / "run_a"
     if not run.is_dir():
-        return _t(results, "baseline", True, ["no fixture run to fingerprint"], skipped=True)
+        return _t(results, "baseline", True,
+                  ["no fixture run to fingerprint - this point's fixture writes no products"],
+                  skipped=True, applicable=False)
     if record:
         # THE FIRST EXECUTION IS STILL ON DISK. Its fingerprint used to be taken at the end of
         # every fixture_a and stashed in case a recording followed - reading and hashing every
@@ -492,7 +503,8 @@ def run(root=".", point_name=None, name=None, only=None, skip=(), keep_going=Fal
     asked = [t for t in TIERS if (not only or t in only) and t not in skip]
     if not (point_name and name):
         asked = [t for t in asked if t not in ("declaration", "baseline")]
-    unrun = [t for t in asked if t not in ran]
+    inapplicable = {r["tier"] for r in results if not r.get("applicable", True)}
+    unrun = [t for t in asked if t not in ran and t not in inapplicable]
     return {"tool": doc.get("tool"), "point": point_name, "name": name, "fixture_dir": tmp,
             "results": results, "ran": ran, "failed": failed,
             "asked": asked, "not_run": unrun,
