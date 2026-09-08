@@ -539,9 +539,11 @@ def format_run(rep: dict) -> str:
     for c in rep["cannot_prove"]:
         lines.append(f"  - {c}")
     lines.append("")
-    lines.append(f"{len(rep['ran'])} of {len(rep.get('asked') or rep['ran'])} tier(s) ran, "
-                 f"{len(rep['failed'])} failing"
+    na = [r["tier"] for r in rep["results"] if not r.get("applicable", True)]
+    lines.append(f"{len(rep['ran'])} of {len(rep.get('asked') or rep['ran'])} tier(s) ran"
+                 + (f" ({len(na)} not applicable here: {', '.join(na)})" if na else "")
+                 + f", {len(rep['failed'])} failing"
                  + (f": {', '.join(rep['failed'])}" if rep["failed"] else ""))
     if rep.get("not_run"):
-        lines.append(f"  did NOT run: {', '.join(rep['not_run'])} - so this is not a full check")
+        lines.append(f"  COULD NOT run: {', '.join(rep['not_run'])} - so this is not a full check")
     return "\n".join(lines)
