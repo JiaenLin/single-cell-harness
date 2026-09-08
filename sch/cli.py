@@ -300,6 +300,36 @@ def cmd_conform(a):
 OK, FAILED, CANNOT_RUN = 0, 2, 3
 
 
+def _convert_specs(doc, point, root, only):
+    """[(name, declaration)] for the artefacts at this point. Read, never imported.
+
+    PARSED RATHER THAN IMPORTED, because a half-built plugin is exactly the kind that does not
+    import - its `run()` raises and its dependencies are not installed yet, which is the state a
+    conversion exists to get it out of. A converter that could only read plugins that already work
+    would be useless on every plugin that needs it.
+    """
+    import ast
+    from .dev import points as P
+    pt = P.point(doc, point)
+    d = Path(doc["_root"]) / str(pt.get("lives") or ".")
+    out = []
+    for f in sorted(d.glob("*.py")):
+        if f.stem.startswith("_") or (only and f.stem != only):
+            continue
+        try:
+            tree = ast.parse(f.read_text(encoding="utf-8"))
+        except SyntaxError:
+            continue
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "PLUGIN":
+                try:
+                    out.append((f.stem, ast.literal_eval(node.value)))
+                except ValueError:
+                    pass
+                break
+    return out
+
+
 def cmd_dev(a):
     from . import dev as D
     from .dev import ladder, points as P
@@ -447,6 +477,49 @@ def cmd_dev(a):
             return CANNOT_RUN
         return OK
 
+    if a.sub == "convert":
+        from .dev import convert as CV
+        doc = P.load(a.root)
+        point = a.point or next(iter(P.points(doc)))
+        try:
+            _ph, up_path, _stages = CV.plan(doc, point)
+        except CV.ConvertError as e:
+            print(f"sch dev convert: {e}", file=sys.stderr)
+            return CANNOT_RUN
+        specs = _convert_specs(doc, point, a.root, a.name)
+        if not specs:
+            print(f"sch dev convert: no {point} named {a.name!r} under {a.root}", file=sys.stderr)
+            return CANNOT_RUN
+        if a.action == "status":
+            out = []
+            for nm, spec in specs:
+                out.append(CV.format_status(CV.status(spec, doc, point), nm, point))
+            print("\n\n".join(out))
+            return OK
+        # inventory
+        bad = 0
+        for nm, spec in specs:
+            tool = a.tool or CV._dotted(spec, up_path)
+            if not tool:
+                print(f"{nm}: declares no `{up_path}`, so there is no upstream to inventory. A "
+                      f"plugin that wraps nothing owes no accounting.")
+                continue
+            print(f"\n{nm}  wraps {tool}")
+            looked = False
+            for ext, inv in CV.inventory(tool, python=a.python, rscript=a.rscript):
+                if inv.complete:
+                    looked = True
+                    print(f"  {ext}: {len(inv)} function(s) - {inv.how}")
+                    for fn in inv.names:
+                        print(f"      {fn}")
+                else:
+                    print(f"  {ext}: could not look - {inv.why_not}")
+            if not looked:
+                bad += 1
+                print(f"  NO EXTRACTOR COULD LOOK AT {tool}. That is not an empty inventory and "
+                      f"must not be recorded as one.")
+        return FAILED if bad else OK
+
     if a.sub == "baseline":
         from .dev import baseline as B
         if a.action == "record":
@@ -554,6 +627,17 @@ def build_parser():
     q.add_argument("--only", action="append", choices=list(_TIERS)); q.add_argument("--skip", action="append", choices=list(_TIERS))
     q.add_argument("--keep-going", action="store_true"); q.add_argument("--record-baseline", action="store_true")
     q.add_argument("--terms"); q.add_argument("--fixture-dir"); q.add_argument("--seed", type=int, default=20260906)
+    q.set_defaults(fn=cmd_dev)
+    # CONVERT: a raw tool becoming a plugin, and picking that up where it was left. `status` is
+    # the default because the first question on returning to a half-built plugin is always the
+    # same one, and it is computed from the file rather than remembered.
+    q = rooted(ds.add_parser("convert"))
+    q.add_argument("action", nargs="?", default="status", choices=["status", "inventory"])
+    q.add_argument("--point", default=None)
+    q.add_argument("--name", default=None, help="the plugin being converted; omit for all of them")
+    q.add_argument("--tool", default=None, help="override the upstream named in the declaration")
+    q.add_argument("--python", default=None, help="the interpreter the plugin's own env uses")
+    q.add_argument("--rscript", default=None)
     q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("baseline")); q.add_argument("action", choices=["record", "check"])
     q.add_argument("rundir"); q.add_argument("--path", required=True); q.set_defaults(fn=cmd_dev)

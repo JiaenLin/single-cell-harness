@@ -1,0 +1,189 @@
+"""The conversion pipeline: reading a foreign codebase, and resuming a half-built plugin.
+
+WHAT THIS IS FOR. Eight of scProfile's nine plugins owe an accounting of the figures their wrapped
+tool already draws. Not because the work was skipped - because the only inventory extractor this
+family had was four lines of R inside `kernels/cellchat.py`, hardcoded to one package's naming
+convention and reachable by nothing else. `scprofile/native.py`, the half that CONSUMES an
+inventory, has been domain-free and shipped the whole time.
+"""
+from __future__ import annotations
+
+import json
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+from sch.dev import convert as C
+from sch.dev import extract
+from sch.dev import points as P
+
+ROOT = Path(__file__).resolve().parents[1]
+
+DECL = """
+tool: demo
+devpoints: 1
+tests:
+  command: ["{python}", "-c", "print(1)"]
+points:
+  widget:
+    what: a widget
+    lives: widgets
+    proves: it runs
+    cannot_prove: that it is right
+    convert:
+      placeholder: "TODO"
+      upstream: wraps.tool
+      stages:
+        - {name: contract, fills: [inject]}
+        - {name: inventory, fills: [native_plots], why: what the tool already draws}
+        - {name: judgement, kind: judgement, fills: [summary, cannot_show]}
+"""
+
+
+class Extractors(unittest.TestCase):
+    def test_the_built_ins_load(self):
+        """STRICT, because the first version of the loader returned an empty dict.
+
+        `python_package.py` does `from . import Inventory`; loaded by file path it had no package
+        context, the relative import raised, and `discover()` swallowed it - so "there are no
+        extractors" and "neither extractor would load" were the same answer.
+        """
+        got = extract.discover(strict=True)
+        self.assertIn("python_package", got)
+        self.assertIn("r_namespace", got)
+        self.assertEqual({m.EXTRACT["reads"] for m in got.values()},
+                         {"python-package", "r-package"})
+
+    def test_every_extractor_declares_what_it_reads(self):
+        for name, mod in extract.discover(strict=True).items():
+            for key in extract.REQUIRED:
+                self.assertTrue(str(mod.EXTRACT.get(key) or "").strip(), f"{name}: no {key}")
+
+    def test_a_package_that_is_not_there_is_not_an_empty_inventory(self):
+        """THE DISTINCTION THE WHOLE MECHANISM RESTS ON. An accounting of zero plots, filed
+        because the package could not be imported, is a wrapper certified as having nothing to
+        account for."""
+        from sch.dev.extract import python_package as PP
+        inv = PP.inventory("nosuchpackage_zzz")
+        self.assertFalse(inv.complete)
+        self.assertFalse(bool(inv))
+        self.assertEqual(inv.names, [])
+        self.assertIn("nosuchpackage_zzz", inv.why_not)
+
+    def test_a_real_package_is_inventoried_and_says_how(self):
+        from sch.dev.extract import python_package as PP
+        inv = PP.inventory("matplotlib.pyplot")
+        self.assertTrue(inv.complete, inv.why_not)
+        self.assertIn("plot", inv.names)
+        self.assertTrue(inv.how, "an inventory nobody can argue with is one nobody reads")
+
+    @unittest.skipUnless(shutil.which("Rscript") or shutil.which("R"), "no R here")
+    def test_the_r_extractor_finds_r_plots(self):
+        """CELLCHAT'S FOUR LINES, OUT OF CELLCHAT. `stats` is used because it ships with R, so
+        this asserts the mechanism rather than the presence of somebody's bioinformatics stack."""
+        from sch.dev.extract import r_namespace as RN
+        inv = RN.inventory("stats")
+        self.assertTrue(inv.complete, inv.why_not)
+        self.assertIn("plot.ts", inv.names)
+
+    @unittest.skipUnless(shutil.which("Rscript") or shutil.which("R"), "no R here")
+    def test_the_r_pattern_is_an_argument_and_not_a_law(self):
+        """A pattern that finds everything and one that finds nothing must give different answers,
+        or the pattern is not being used."""
+        from sch.dev.extract import r_namespace as RN
+        none = RN.inventory("stats", pattern="^zzz_no_such_prefix")
+        self.assertTrue(none.complete, "an unmatched pattern is not a failure to look")
+        self.assertEqual(none.names, [])
+
+
+class Stages(unittest.TestCase):
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "widgets").mkdir()
+        (self.d / "DEVPOINTS.yaml").write_text(DECL)
+        self.doc = P.load(self.d)
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def test_a_point_with_no_convert_block_says_so(self):
+        (self.d / "DEVPOINTS.yaml").write_text(
+            DECL.split("    convert:")[0])
+        with self.assertRaises(C.ConvertError) as cm:
+            C.plan(P.load(self.d), "widget")
+        self.assertIn("convert", str(cm.exception))
+
+    def test_status_is_computed_from_the_declaration_not_remembered(self):
+        """NO JOURNAL, NO LOCK FILE. The plugin file is the state, so a conversion picked up on
+        another machine four months later reads the same answer."""
+        half = {"inject": {"required": ["counts"]}, "summary": "TODO — what it gives you"}
+        rows = C.status(half, self.doc, "widget")
+        by = {r["stage"]: r for r in rows}
+        self.assertTrue(by["contract"]["done"])
+        self.assertFalse(by["inventory"]["done"])
+        self.assertFalse(by["judgement"]["done"])
+        self.assertEqual(C.next_stage(half, self.doc, "widget")["stage"], "inventory")
+
+    def test_a_placeholder_counts_as_unfilled_however_deep(self):
+        deep = {"inject": {"required": ["TODO"]}}
+        self.assertEqual(C.unfilled(deep, ["inject"], "TODO"), ["inject"])
+
+    def test_declaring_nothing_and_declaring_it_is_empty_are_different(self):
+        """`references: {}` is a maintainer saying they looked; absent is nobody having looked.
+        The same distinction the extractors draw, one layer up."""
+        self.assertEqual(C.unfilled({}, ["native_plots"], "TODO"), ["native_plots"])
+        self.assertEqual(C.unfilled({"native_plots": {}}, ["native_plots"], "TODO"), [])
+
+    def test_a_finished_declaration_has_nothing_left(self):
+        done = {"inject": {"required": ["counts"]}, "native_plots": {"pl.x": {"where": "f.png"}},
+                "summary": "what it gives you", "cannot_show": ["not a causal claim"]}
+        self.assertIsNone(C.next_stage(done, self.doc, "widget"))
+        self.assertTrue(all(r["done"] for r in C.status(done, self.doc, "widget")))
+
+    def test_judgement_stages_are_marked_as_such(self):
+        """A conversion that stopped listing what only a person can answer would look finished
+        while the plugin still could not say what its result must not be read as."""
+        rows = {r["stage"]: r for r in C.status({}, self.doc, "widget")}
+        self.assertEqual(rows["judgement"]["kind"], "judgement")
+        self.assertEqual(rows["inventory"]["kind"], "mechanical")
+
+    def test_the_upstream_field_is_read_from_the_declaration(self):
+        _ph, up, _st = C.plan(self.doc, "widget")
+        self.assertEqual(up, "wraps.tool")
+        self.assertEqual(C._dotted({"wraps": {"tool": "scvelo"}}, up), "scvelo")
+        self.assertIsNone(C._dotted({"wraps": {}}, up))
+
+
+class Command(unittest.TestCase):
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "widgets").mkdir()
+        (self.d / "DEVPOINTS.yaml").write_text(DECL)
+        (self.d / "widgets" / "half.py").write_text(
+            'PLUGIN = {"wraps": {"tool": "nosuchpackage_zzz"}, "inject": {"required": ["x"]}}\n'
+            'def run(ctx):\n    raise NotImplementedError\n')
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _run(self, *args):
+        return subprocess.run([sys.executable, "-m", "sch", "dev", "convert", *args,
+                               "--root", str(self.d), "--point", "widget"],
+                              capture_output=True, text=True, cwd=ROOT)
+
+    def test_status_reads_a_plugin_that_does_not_import(self):
+        """PARSED, NOT IMPORTED. A half-built plugin is exactly the kind that will not import -
+        its run() raises and its dependencies are not installed - which is the state a conversion
+        exists to get it out of."""
+        p = self._run("status")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("half", p.stdout)
+        self.assertIn("next: inventory", p.stdout)
+
+    def test_an_inventory_nobody_could_take_fails_rather_than_recording_zero(self):
+        p = self._run("inventory")
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        self.assertIn("NO EXTRACTOR COULD LOOK", p.stdout)

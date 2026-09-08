@@ -53,7 +53,7 @@ SCHEMA = 1
 # them, so a point that cannot say what its fixture run fails to establish does not get one.
 REQUIRED = ("what", "lives", "proves", "cannot_prove")
 OPTIONAL = ("register", "must_declare", "example", "template", "scaffold_command",
-            "tests", "fixture", "notes")
+            "tests", "fixture", "notes", "convert")
 
 
 class DevpointsError(ValueError):
