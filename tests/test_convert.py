@@ -407,3 +407,36 @@ class JobScriptsKeepTheirExitCodes(unittest.TestCase):
             text = f.read_text(encoding="utf-8")
             self.assertIn("SEALED.txt", text, f"{f.name} writes no seal")
             self.assertIn("FAILED.txt", text, f"{f.name} can only succeed")
+
+
+class SealsDistinguishFailedFromNotRun(unittest.TestCase):
+    """Exit 2 and exit 3 are different answers and a job must not fold them together.
+
+    `sch dev check` exits 2 when a tier FAILED and 3 when one COULD NOT RUN. The distinction was
+    built into the ladder deliberately - "an exit code that is always the same is not read" - and
+    the first attempt at making a failing tier seal FAILED flattened it, so PBS 708051 sealed
+    FAILED with every tier reporting 0 failing. scQC has no baseline and never will, so that seal
+    would have been FAILED for ever, which teaches everyone to ignore it: the same defect pointing
+    the other way.
+    """
+
+    JOBS = sorted((ROOT / "jobs").glob("*.pbs")) if (ROOT / "jobs").is_dir() else []
+
+    def test_a_job_that_reads_a_check_exit_code_tells_three_from_two(self):
+        for f in self.JOBS:
+            text = f.read_text(encoding="utf-8")
+            if "dev check" not in text:
+                continue
+            self.assertIn("INCOMPLETE_CHECKS", text,
+                          f"{f.name} runs `sch dev check` and records only pass or fail, so a "
+                          f"tier that could not run reads as one that failed")
+            self.assertRegex(text, r"3\)\s*INCOMPLETE_CHECKS",
+                             f"{f.name} does not route exit 3 to the incomplete list")
+
+    def test_the_seal_says_what_was_not_checked(self):
+        for f in self.JOBS:
+            text = f.read_text(encoding="utf-8")
+            if "INCOMPLETE_CHECKS" not in text:
+                continue
+            self.assertIn("incomplete_checks=", text,
+                          f"{f.name} tracks incomplete checks and never writes them into the seal")

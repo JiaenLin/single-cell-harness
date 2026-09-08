@@ -24,6 +24,9 @@
 #     and the point of the run was to find out - so the loop printed each exit code and threw it
 #     away. They work now, so a failing tier is a regression and seals FAILED; the run still visits
 #     all five rather than stopping at the first, and every failure names its command and code.
+#     A tier that COULD NOT RUN (exit 3) is not a failure and does not seal FAILED; it is recorded
+#     in the seal as `incomplete_checks`, because a run that checked less is a weaker statement
+#     and that belongs where somebody reading the seal will see it.
 #   nothing outside this run directory is written.
 #
 # NOT A REPRODUCTION and nothing here is about the biology. No result from this run may be
@@ -61,6 +64,10 @@ finish() { s=$?
     echo "NOT PROMOTABLE, synthetic cohort, no number here is about the biology"
     [ -n "$missing" ] && echo "missing=$missing"
     [ -n "${FAILED_CHECKS:-}" ] && echo "failed_checks=$FAILED_CHECKS"
+    # SEALED, AND SAYING WHAT IT DID NOT CHECK. A run that could not run every tier is a weaker
+    # statement than one that did, and the seal is where that has to be written down - otherwise
+    # the only two readings are "fine" and "broken" and the third one goes missing.
+    [ -n "${INCOMPLETE_CHECKS:-}" ] && echo "incomplete_checks=$INCOMPLETE_CHECKS"
     ls "$RUNDIR/checks"/*.txt 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' '
   } > "$seal"
   rm -f "$RUNDIR/RUNNING.txt"
@@ -69,6 +76,7 @@ trap finish EXIT
 { echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)"; echo "host=$(hostname -s)"; } > "$RUNDIR/RUNNING.txt"
 
 FAILED_CHECKS=""
+INCOMPLETE_CHECKS=""
 export PYTHONNOUSERSITE=1 PYTHONPATH="$REPO"
 # The leak tier's word list. It lives in the PROJECT, never in a tool - $SCH_FORBIDDEN_TERMS is
 # the fallback every tool's variable falls back to, so one export covers all five.
@@ -178,7 +186,16 @@ for spec in "sch:$REPO:" \
   # This was deliberate ONCE, and the header above still says so: the first run existed to find
   # out whether these fixture commands worked at all, and a crash was the only interesting
   # failure. They work now, and a failing tier is a regression.
-  if [ "$rc" -ne 0 ]; then FAILED_CHECKS="$FAILED_CHECKS $name"; fi
+  # TWO AND THREE ARE NOT THE SAME ANSWER, and the first version of this treated them as one.
+  # `sch dev check` exits 2 when a tier FAILED and 3 when one COULD NOT RUN - a distinction built
+  # into the ladder deliberately, because "an exit code that is always the same is not read". scQC
+  # has no baseline and never will, so folding 3 into failure would seal this job FAILED for ever
+  # and teach everyone to ignore it: the same defect, pointing the other way.
+  case "$rc" in
+    0) ;;
+    3) INCOMPLETE_CHECKS="$INCOMPLETE_CHECKS $name" ;;
+    *) FAILED_CHECKS="$FAILED_CHECKS $name" ;;
+  esac
   # RECORD THEN CHECK, IN ONE JOB. Recording and checking kept disagreeing - three times, each
   # found a run later than the change that caused it. The round trip is the thing that has to
   # work, so it is exercised here rather than inferred from two jobs an hour apart.
@@ -188,7 +205,11 @@ for spec in "sch:$REPO:" \
     "$PY" -m sch "${verify[@]}" > "$RUNDIR/checks/$name.recheck.txt" 2>&1
     rc=$?
     echo "  recheck exit $rc"
-    if [ "$rc" -ne 0 ]; then FAILED_CHECKS="$FAILED_CHECKS $name(recheck)"; fi
+    case "$rc" in
+      0) ;;
+      3) INCOMPLETE_CHECKS="$INCOMPLETE_CHECKS $name(recheck)" ;;
+      *) FAILED_CHECKS="$FAILED_CHECKS $name(recheck)" ;;
+    esac
     grep -E "^  (ok|FAIL) baseline|tier\(s\) ran" "$RUNDIR/checks/$name.recheck.txt" || true
   fi
   set -e
