@@ -520,6 +520,28 @@ def cmd_dev(a):
                       f"must not be recorded as one.")
         return FAILED if bad else OK
 
+    if a.action == "account":
+        # THE INVENTORY TURNED INTO A DECISION. Printed to paste, which is this tool's existing
+        # idiom for a measurement a machine took and a maintainer owns.
+        bad = 0
+        for nm, spec in specs:
+            tool = a.tool or CV._dotted(spec, up_path)
+            if not tool:
+                continue
+            best = None
+            for _ext, inv in CV.inventory(tool, python=a.python, rscript=a.rscript):
+                if inv.complete and (best is None or len(inv) > len(best)):
+                    best = inv
+            if best is None:
+                bad += 1
+                print(f"\n{nm}: no extractor could look at {tool}, so there is nothing to rule "
+                      f"on yet. Build this plugin's environment first.")
+                continue
+            print(f"\n# ---- {nm}: paste into kernels/{nm}.py, then rule on each entry")
+            print(f"#      {best.how}")
+            print(CV.worksheet(tool, best.names, spec.get("native_plots"), _ph))
+        return FAILED if bad else OK
+
     if a.sub == "baseline":
         from .dev import baseline as B
         if a.action == "record":
@@ -632,7 +654,8 @@ def build_parser():
     # the default because the first question on returning to a half-built plugin is always the
     # same one, and it is computed from the file rather than remembered.
     q = rooted(ds.add_parser("convert"))
-    q.add_argument("action", nargs="?", default="status", choices=["status", "inventory"])
+    q.add_argument("action", nargs="?", default="status",
+                   choices=["status", "inventory", "account"])
     q.add_argument("--point", default=None)
     q.add_argument("--name", default=None, help="the plugin being converted; omit for all of them")
     q.add_argument("--tool", default=None, help="override the upstream named in the declaration")

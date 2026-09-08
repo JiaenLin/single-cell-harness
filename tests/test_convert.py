@@ -187,3 +187,43 @@ class Command(unittest.TestCase):
         p = self._run("inventory")
         self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
         self.assertIn("NO EXTRACTOR COULD LOOK", p.stdout)
+
+
+class Worksheet(unittest.TestCase):
+    """The inventory turned into a decision a maintainer can make without looking anything up."""
+
+    def test_every_exported_function_appears(self):
+        w = C.worksheet("scanpy", ["pl.umap", "pl.dotplot"], {}, "TODO")
+        self.assertIn("'pl.umap'", w)
+        self.assertIn("'pl.dotplot'", w)
+
+    def test_what_is_already_decided_is_carried_through_unchanged(self):
+        """RE-RUNNABLE AFTER A VERSION BUMP, and the answer is the diff. A worksheet that reset
+        every decision would be a worksheet nobody runs twice."""
+        w = C.worksheet("t", ["a", "b"], {"a": {"use": "figures/a.png"}}, "TODO")
+        self.assertIn("'a': {'use': 'figures/a.png'}", w)
+        self.assertIn("TODO", w.split("'b'", 1)[1][:80])
+        self.assertNotIn("TODO", w.split("'b'", 1)[0])
+
+    def test_an_undecided_entry_is_a_placeholder_so_it_cannot_pass_as_finished(self):
+        w = C.worksheet("t", ["a"], {}, "TODO")
+        self.assertIn("TODO", w)
+
+    def test_the_three_valid_skips_are_offered_and_the_rejected_ones_named(self):
+        """The vocabulary is `scprofile/native.py`'s and this must not invent a fourth reason."""
+        w = C.worksheet("t", ["a"], {}, "TODO")
+        for reason in ("not_applicable", "superseded_by_design", "duplicate_of"):
+            self.assertIn(reason, w)
+        self.assertIn("reimplemented", w)
+
+    def test_a_declaration_the_upstream_no_longer_exports_is_reported(self):
+        """Both causes matter - the tool dropped it, or the inventory pattern stopped matching -
+        and neither is fixed by deleting the line."""
+        w = C.worksheet("t", ["a"], {"gone": {"use": "x"}}, "TODO")
+        self.assertIn("NO LONGER EXPORTED", w)
+        self.assertIn("gone", w)
+
+    def test_it_counts_what_is_left(self):
+        w = C.worksheet("t", ["a", "b", "c"], {"a": {"use": "x"}}, "TODO")
+        self.assertIn("3 function(s)", w)
+        self.assertIn("1 already decided, 2 to rule on", w)

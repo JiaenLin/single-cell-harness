@@ -166,3 +166,51 @@ def format_status(rows, name, point_name):
     nxt = next((r for r in rows if not r["done"]), None)
     L.append(f"\n  next: {nxt['stage']}" if nxt else "\n  nothing left to convert")
     return "\n".join(L)
+
+
+def worksheet(tool, names, declared, placeholder="TODO", width=96):
+    """A paste-ready accounting block: every function the tool exports, decided or waiting.
+
+    PRINTED TO PASTE, NOT WRITTEN INTO THE FILE. This tool already has that idiom - every run fits
+    both memory terms "and prints them ready to paste" - and it is the right one here for a reason
+    beyond consistency: rewriting a Python source file to insert a nested dict means either an
+    AST round-trip that loses the comments a plugin is mostly made of, or a regex over somebody's
+    declaration. The accounting is the maintainer's decision; the machine's job is to put the
+    question in front of them with nothing left to look up.
+
+    WHAT IS ALREADY DECIDED IS CARRIED THROUGH UNCHANGED, so this can be re-run after a version
+    bump and the answer is the diff: entries the upstream no longer exports, and new ones nobody
+    has ruled on. That is the resume property again, one level down.
+
+    Every undecided entry is written as a placeholder, so a half-filled worksheet pasted into a
+    plugin does not validate - which is the same mechanism that stops a scaffold being mistaken
+    for a finished plugin.
+    """
+    decided = dict(declared or {})
+    known = [n for n in names if n in decided]
+    new = [n for n in names if n not in decided]
+    stale = [n for n in decided if n not in names]
+    L = [f'    # {len(names)} function(s) exported by {tool}. '
+         f'{len(known)} already decided, {len(new)} to rule on.',
+         '    "native_plots": {']
+    for n in known:
+        L.append(f'        {n!r}: {decided[n]!r},')
+    if new:
+        L.append(f'        # ---- NOT YET RULED ON. Each is either USED - say where its output')
+        L.append(f'        # lands - or SKIPPED for one of exactly three reasons, with what that')
+        L.append(f'        # reason has to supply:')
+        L.append(f'        #   {{"use": "figures/x.png"}}')
+        L.append(f'        #   {{"skip": "not_applicable",     "evidence": "..."}}')
+        L.append(f'        #   {{"skip": "superseded_by_design", "panel": "...", "defect": "..."}}')
+        L.append(f'        #   {{"skip": "duplicate_of",       "same_as": "..."}}')
+        L.append(f'        # "reimplemented", "not considered" and "dependency missing" are')
+        L.append(f'        # rejected by name; see scprofile/native.py.')
+        for n in new:
+            L.append(f'        {n!r}: {{"use": "{placeholder} — where does this land, '
+                     f'or which skip applies?"}},')
+    L.append("    },")
+    if stale:
+        L.append(f"    # DECLARED AND NO LONGER EXPORTED by {tool}: {sorted(stale)}")
+        L.append(f"    # Either the upstream dropped them or the inventory pattern stopped")
+        L.append(f"    # matching. Both are worth knowing; neither is fixed by deleting the line.")
+    return "\n".join(L)
