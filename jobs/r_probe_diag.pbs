@@ -88,3 +88,29 @@ n=$(grep -c . "$RUNDIR/logs/step3.out" 2>/dev/null || true)
 say "  step3 rc=$rc  ${n:-0} line(s) of output"
 say "  peak RSS: $(grep -i 'Maximum resident set size' "$RUNDIR/logs/step3.err" | tr -s ' ' || echo unknown)"
 head -6 "$RUNDIR/logs/step3.out" 2>/dev/null | sed 's/^/    /'
+
+# ============================================================================================
+# 4. IS A NAME EXPORTED, ASKED DIRECTLY - no pattern in the way
+# ============================================================================================
+#
+# WHY THIS STEP EXISTS. Both probes that look at this package filter exports through a REGEX -
+# the harness extractor with one pattern, the plugin with a narrower one - and the plugin then
+# reports every declared name its own pattern missed as a function "CellChat does not export".
+# Those are different statements. `rankNet` begins with neither `netVisual` nor `plot` nor
+# anything else in either pattern, so a name that is exported and simply unmatched is
+# indistinguishable from one that is gone. This asks membership and nothing else.
+if [ -n "${NAMES:-}" ]; then
+  echo; echo "=== 4. exported or not, by name"
+  set +e
+  "$RSCRIPT" --vanilla -e '
+args <- commandArgs(trailingOnly = TRUE)
+ok <- suppressWarnings(suppressMessages(requireNamespace(args[1], quietly = TRUE)))
+if (!ok) { cat("NO_NAMESPACE"); quit(status = 0) }
+ex <- getNamespaceExports(args[1])
+for (n in args[-1]) cat(n, if (n %in% ex) "EXPORTED" else "absent", "\n")
+' "$PKG" ${NAMES} > "$RUNDIR/logs/step4.out" 2> "$RUNDIR/logs/step4.err"
+  rc=$?
+  set -e
+  say "  step4 rc=$rc"
+  while read -r ln; do [ -n "$ln" ] && say "    $ln"; done < "$RUNDIR/logs/step4.out"
+fi
