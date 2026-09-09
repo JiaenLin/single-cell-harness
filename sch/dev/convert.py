@@ -170,6 +170,12 @@ def format_status(rows, name, point_name):
     return "\n".join(L)
 
 
+def _clip(text, n):
+    """Truncated so the reader can see it was truncated. A silent cut reads as the whole thing."""
+    t = " ".join(str(text or "").split())
+    return t if len(t) <= n else t[:n - 1] + "…"
+
+
 def worksheet(tool, inv, declared, source="", placeholder="TODO", width=96):
     """A paste-ready accounting block with the evidence for each decision beside it.
 
@@ -219,10 +225,12 @@ def worksheet(tool, inv, declared, source="", placeholder="TODO", width=96):
             d = detail.get(n) or {}
             sig = d.get("signature") or ""
             summary = d.get("summary") or ""
-            head = f"        # {n}{sig}"
+            # THE SUMMARY GETS ITS OWN LINE. Both on one, truncated together, meant decoupler's
+            # signatures - which carry full type annotations and a return type - pushed the
+            # docstring line off the end, losing the single most useful thing on the row.
+            L.append(f"        # {n}{_clip(sig, 104)}")
             if summary:
-                head += f"  —  {summary}"
-            L.append(head[:width + 40])
+                L.append(f"        #   {_clip(summary, 104)}")
             if d.get("deprecated"):
                 L.append("        #   DEPRECATED upstream. Using it ties this plugin to something "
                          "its author is removing.")
