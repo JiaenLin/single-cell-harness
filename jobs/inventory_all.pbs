@@ -33,6 +33,9 @@
 # THE PREDICTIONS, WRITTEN BEFORE THE RUN.
 # --------------------------------------------------------------------------------------------
 #
+#   Q0  A MANAGER IS ON PATH AT ALL, checked once before anything is attempted. The first run of
+#       this job did not check, and reported nine problems that were one missing `module load`.
+#
 #   Q1  THE EXISTING ENVIRONMENT IS NOT REBUILT. scprofile-env-3e79297712 is on disk at 1.6 GB
 #       and its address is derived from the requirements, which have not changed. The install
 #       must report it as already present and skip. A rebuild here means the content-address is
@@ -86,6 +89,29 @@ finish() { s=$?
   exit $s; }
 trap finish EXIT
 { echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)"; echo "host=$(hostname -s)"; } > "$RUNDIR/RUNNING.txt"
+
+# THE PACKAGE MANAGER, BEFORE ANYTHING ELSE. A compute node's PATH is not a login shell's: it
+# carries python 3.9 and no conda, so both new environments failed identically nine lines apart
+# and the job reported nine problems that were one. The tool's own error named the fix - "on a
+# cluster that is usually `module load anaconda3`" - and this job had not read it.
+#
+# CHECKED ONCE, AT THE TOP, AND REFUSED AS `COULD NOT RUN` RATHER THAN `FAILED`. An environment
+# that cannot be attempted is not an environment that will not resolve, and burning a submission
+# to discover a missing interpreter nine times is the same waste in a different shape.
+if ! command -v conda >/dev/null 2>&1; then
+  [ -f /etc/profile.d/modules.sh ] && . /etc/profile.d/modules.sh || true
+  module load anaconda3 >/dev/null 2>&1 || true
+fi
+if ! command -v conda >/dev/null 2>&1 && [ -x /apps/anaconda3/bin/conda ]; then
+  export PATH="/apps/anaconda3/bin:$PATH"        # where this cluster keeps it, measured
+fi
+if ! command -v conda >/dev/null 2>&1; then
+  echo "no conda-family manager on PATH after `module load anaconda3` and after trying" >&2
+  echo "/apps/anaconda3/bin. Two of the three environments need conda packages - r-base and" >&2
+  echo "51 others - so a venv will not do, and nothing below can be attempted." >&2
+  exit 3                                          # could not run; not the same as failed
+fi
+echo "package manager: $(command -v conda)"
 
 export PYTHONNOUSERSITE=1
 export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
