@@ -1210,5 +1210,54 @@ class JobsDoNotDieOnAGrepThatFindsNothing(unittest.TestCase):
                                   + "\n  ".join(bad))
 
 
+
+
+class AnExtractorThatFailsSaysWhatFailed(unittest.TestCase):
+    """`produced no answer: ` with nothing after the colon is not a diagnosis.
+
+    MET ON A REAL MACHINE. The R extractor was pointed at an environment with CellChat and 219
+    other R packages installed in it, and Rscript came back with both streams empty. The message
+    interpolated `stderr or stdout`, so it rendered as the prefix and nothing - the least
+    informative output possible for the one failure that most needs explaining. An R that writes
+    an error and an R that cannot start at all are different problems, and the exit status is
+    what separates them.
+    """
+
+    def _inv(self, script):
+        from sch.dev.extract import r_namespace as RN
+        d = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, d, True)
+        exe = d / "Rscript"
+        exe.write_text(script)
+        exe.chmod(0o755)
+        return RN.inventory("SomePkg", rscript=str(exe))
+
+    def test_a_silent_failure_names_the_exit_status_and_says_it_was_silent(self):
+        inv = self._inv("#!/bin/sh\nexit 127\n")
+        self.assertFalse(inv.complete)
+        self.assertIn("exit 127", inv.why_not)
+        self.assertIn("both stdout and stderr were empty", inv.why_not)
+
+    def test_an_error_on_stderr_is_still_reported_verbatim(self):
+        inv = self._inv("#!/bin/sh\necho 'cannot open shared object' >&2\nexit 1\n")
+        self.assertFalse(inv.complete)
+        self.assertIn("cannot open shared object", inv.why_not)
+
+    def test_a_missing_namespace_is_its_own_answer_and_not_a_silent_one(self):
+        """Distinct from both: R started, and said the package is not there."""
+        inv = self._inv("#!/bin/sh\nprintf SCH_NO_NAMESPACE\n")
+        self.assertFalse(inv.complete)
+        self.assertIn("cannot load the namespace", inv.why_not)
+        # it may well warn that an empty inventory would be misread - what it must not do is
+        # report the SILENT failure, which is a different diagnosis
+        self.assertNotIn("both stdout and stderr were empty", inv.why_not)
+        self.assertNotIn("produced no answer", inv.why_not)
+
+    def test_a_working_probe_still_returns_the_names(self):
+        inv = self._inv("#!/bin/sh\nprintf 'SCH_OK\\nnetVisual_a\\nplotB\\n'\n")
+        self.assertTrue(inv.complete)
+        self.assertEqual(list(inv.names), ["netVisual_a", "plotB"])
+
+
 if __name__ == "__main__":
     unittest.main()

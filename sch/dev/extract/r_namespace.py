@@ -65,8 +65,22 @@ def inventory(tool, rscript=None, pattern=DEFAULT_PATTERN, timeout=180):
                                  f"environment this plugin runs in, then ask again - an empty "
                                  f"inventory here would read as a package with no plots.")
     if not txt.startswith("SCH_OK"):
+        # SAY WHAT ACTUALLY HAPPENED, INCLUDING WHEN NOTHING DID. This read
+        # `produced no answer: {stderr or stdout}` and the case it met was BOTH STREAMS EMPTY -
+        # so it rendered as "produced no answer: " with nothing after the colon, which is the
+        # least informative output possible for the one failure that most needs explaining.
+        # An R that exits without writing anything is a different problem from an R that writes
+        # an error, and the exit status is what tells them apart.
+        # THE TRUNCATION IS FOR CAPTURED OUTPUT, NOT FOR THE SENTENCE EXPLAINING IT. `[-300:]`
+        # applied to the whole thing took the front off this module's own advice and produced
+        # "nd stderr were empty" - a message about unreadable output, made unreadable.
+        captured = ((p.stderr or "").strip() or txt)[-300:]
+        detail = captured or (
+            f"both stdout and stderr were empty. An R that produces nothing at all usually "
+            f"cannot start: check that {exe} runs outside this tool, and that R_HOME and the "
+            f"shared libraries its build needs are reachable from a non-interactive shell.")
         return Inventory(tool, [], "", complete=False,
-                         why_not=f"{exe} produced no answer: {(p.stderr or txt)[-200:]}")
+                         why_not=f"{exe} produced no answer (exit {p.returncode}): {detail}")
     names = [ln.strip() for ln in txt[len("SCH_OK"):].splitlines() if ln.strip()]
     return Inventory(tool, names,
                      f"exports of {tool} matching {pattern!r}, which is a PATTERN and not a "
