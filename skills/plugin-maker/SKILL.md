@@ -25,6 +25,27 @@ That prints the extension points, what each must declare, and the scaffolding co
 the repository has its own maker, `sch dev new` defers to it — use it, because it renders the
 template from the format's own knowledge and a generic skeleton does not.
 
+## One plugin at a time. This is not a style preference.
+
+**Convert ONE. Finish it. Have a person check it. Improve the maker from what that one taught.
+Then start the next — and the next one is the test.**
+
+Every action that fills a declaration shows you the wrapped tool's own surface. Run across a
+family at once, they put every answer in front of you before any has been decided, and every
+change you then make to the maker is fitted to all of them at once — with nothing held back to
+show it generalises. The next unseen tool becomes the first real test, and you have spent the
+evidence that would have predicted it.
+
+Measured on this family: nine plugins were inventoried in one submission, and every extractor
+fix after that was a fix against a corpus already read. `sch dev convert` refuses those actions
+without `--name` where a point holds more than one artefact, and names them so you can pick.
+`status` is exempt — it reads declarations and shows you no upstream.
+
+**Report the cost of each conversion, so the loop can be seen to converge:** how many maker
+defects it found, how many decisions needed a person, how many job submissions it took. If those
+do not fall from one plugin to the next, the maker is not improving and you are converting
+plugins by hand.
+
 ## The whole job, in one command
 
 ```

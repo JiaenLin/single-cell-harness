@@ -519,12 +519,58 @@ def cmd_dev(a):
         # and `legends` was added to the parser and not to it. Nothing failed: `specs` stayed
         # empty, the loop ran zero times, and the command printed nothing and exited 0. A missing
         # registration must not be able to look like a plugin with no figures.
+        # ONE PLUGIN AT A TIME, AND THE SUITE ENFORCES IT RATHER THAN TRUSTING IT.
+        #
+        # THE ACTIONS THAT FILL A DECLARATION ARE HELD-OUT ACTIONS. `account`, `inventory`,
+        # `defaults`, `references`, `contract`, `legends` and `build` all put the wrapped tool's
+        # own surface in front of whoever is converting. Run across a whole family at once they
+        # show every answer before any of them has been decided - and any change made to THIS
+        # TOOL afterwards is fitted to all of them at once, with nothing left over to test
+        # whether it generalises. The next unseen tool is then the first real test, and there is
+        # no evidence left to predict how it will go.
+        #
+        # Measured here: nine plugins were inventoried in one submission, which made every
+        # extractor fix after it a fix against a corpus already read. The loop that does not do
+        # that is: convert ONE, finish it, have a person check it, change the maker from what
+        # that one taught, then the next - where the next is a genuine test.
+        #
+        # THE THRESHOLD IS MORE THAN ONE, not "no name given". A point holding a single artefact
+        # has no held-out set to spend, so refusing there is friction that buys nothing - and
+        # the first version of this rule refused it anyway and took seven of this suite's own
+        # tests with it.
+        #
+        # `status` is exempt: it reads the declarations and shows nobody an upstream. `build` is
+        # NOT - it walks the build phase and runs every mechanical stage in it, which would have
+        # left the widest door open behind a closed one.
+        FILLS = ("inventory", "account", "defaults", "references", "contract", "legends",
+                 "build")
         specs = []
         if a.action not in ("measure",):
             specs = _convert_specs(doc, point, a.root, a.name)
             if not specs:
                 print(f"sch dev convert: no {point} named {a.name!r} under {a.root}",
                       file=sys.stderr)
+                return CANNOT_RUN
+            if a.action in FILLS and not a.name and len(specs) > 1:
+                names = ", ".join(nm for nm, _ in specs)
+                print(f"sch dev convert {a.action}: name ONE with --name. This point holds "
+                      f"{len(specs)}: {names}\n"
+                      f"\n"
+                      f"  This action shows you the wrapped tool's own surface. Run over the "
+                      f"whole family at once it puts every\n"
+                      f"  answer in front of you before any has been decided, and every change "
+                      f"made to this tool afterwards is\n"
+                      f"  fitted to all of them - with nothing held back to show it generalises. "
+                      f"The next unseen tool is then\n"
+                      f"  the first real test, and there is no evidence left to predict it.\n"
+                      f"\n"
+                      f"  Convert one, finish it, have it checked, improve the maker from what "
+                      f"it taught, then start the next.\n"
+                      f"  The next one is the test.\n"
+                      f"\n"
+                      f"  `sch dev convert status --root {a.root}` reads every declaration and "
+                      f"shows you no upstream, so it is\n"
+                      f"  answers \"where is everything\".", file=sys.stderr)
                 return CANNOT_RUN
         if a.action == "status":
             out = []
@@ -897,7 +943,11 @@ def build_parser():
                    choices=["status", "inventory", "account", "measure",
                             "defaults", "references", "contract", "legends", "build"])
     q.add_argument("--point", default=None)
-    q.add_argument("--name", default=None, help="the plugin being converted; omit for all of them")
+    q.add_argument("--name", default=None,
+                   help="the plugin being converted. REQUIRED for the actions that fill a "
+                        "declaration: they show you the upstream, and seeing the whole family's "
+                        "at once leaves nothing held out to prove a change to this tool "
+                        "generalises. `status` reads declarations only and takes all of them")
     q.add_argument("--tool", default=None, help="override the upstream named in the declaration")
     q.add_argument("--python", default=None, help="the interpreter the plugin's own env uses")
     q.add_argument("--rscript", default=None)

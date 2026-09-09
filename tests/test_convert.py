@@ -1277,5 +1277,81 @@ class AnExtractorThatFailsSaysWhatFailed(unittest.TestCase):
         self.assertEqual(list(inv.names), ["netVisual_a", "plotB"])
 
 
+
+
+class OnePluginAtATime(unittest.TestCase):
+    """The held-out rule, enforced by the suite rather than trusted to whoever is converting.
+
+    WHY IT IS A RULE AND NOT A HABIT. The actions that fill a declaration all put the wrapped
+    tool's own surface in front of you. Run across a family at once they show every answer
+    before any of them has been decided - and every change made to the MAKER afterwards is
+    fitted to all of them at once, with nothing held back to show it generalises. The next
+    unseen tool is then the first real test, and there is no evidence left to predict it.
+
+    Measured, on this repository: nine plugins were inventoried in one submission, which made
+    every extractor fix after it a fix against a corpus already read. The loop that does not do
+    that is convert one, finish it, have a person check it, improve the maker from what that one
+    taught, then start the next - where the next one is the test.
+
+    `status` is deliberately exempt. It reads declarations and shows nobody an upstream, so it is
+    the command that answers "where is everything" without spending the held-out set.
+    """
+
+    FILLS = ("inventory", "account", "defaults", "references", "contract", "legends", "build")
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.d, True)
+        (self.d / "DEVPOINTS.yaml").write_text(DECL)
+        (self.d / "widgets").mkdir()
+        for nm in ("alpha", "beta"):
+            (self.d / "widgets" / f"{nm}.py").write_text(
+                'PLUGIN = {"wraps": {"tool": "json"}, "inject": "x"}\n')
+
+    def _run(self, *args):
+        return subprocess.run([sys.executable, "-m", "sch", "dev", "convert", *args,
+                               "--root", str(self.d), "--point", "widget"],
+                              cwd=str(ROOT), capture_output=True, text=True)
+
+    def test_every_filling_action_refuses_a_whole_family(self):
+        for action in self.FILLS:
+            r = self._run(action)
+            self.assertEqual(r.returncode, 3,
+                             f"`convert {action}` without --name did not refuse: {r.stdout[:200]}")
+            self.assertIn("name ONE with --name", r.stderr, action)
+            self.assertIn("alpha, beta", r.stderr, f"{action} does not say which ones")
+
+    def test_the_refusal_says_why_rather_than_just_no(self):
+        r = self._run("account")
+        for phrase in ("held back", "generalises", "the next one is the test"):
+            self.assertIn(phrase.lower(), r.stderr.lower(), f"the refusal does not say {phrase!r}")
+
+    def test_it_points_at_the_command_that_is_safe_to_run_across_everything(self):
+        self.assertIn("convert status", self._run("account").stderr)
+
+    def test_a_point_holding_one_artefact_is_not_refused(self):
+        """No held-out set exists to spend, so the friction buys nothing. The first version of
+        this rule refused it anyway and took seven of this suite's own tests with it."""
+        (self.d / "widgets" / "beta.py").unlink()
+        r = self._run("legends")
+        self.assertNotEqual(r.returncode, 3, r.stderr[:300])
+
+    def test_status_reads_the_whole_family_and_is_not_refused(self):
+        r = self._run("status")
+        self.assertEqual(r.returncode, 0, r.stderr[:300])
+        for nm in ("alpha", "beta"):
+            self.assertIn(nm, r.stdout)
+
+    def test_naming_one_is_allowed(self):
+        r = self._run("legends", "--name", "alpha")
+        self.assertNotEqual(r.returncode, 3, r.stderr[:300])
+
+    def test_build_is_covered_because_it_runs_the_others(self):
+        """The widest door of all - it walks the build phase and executes every mechanical
+        stage in it, so leaving it out would have left one open behind a closed one."""
+        self.assertIn("build", self.FILLS)
+        self.assertEqual(self._run("build").returncode, 3)
+
+
 if __name__ == "__main__":
     unittest.main()
