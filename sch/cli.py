@@ -551,7 +551,13 @@ def cmd_dev(a):
                 continue
             print(f"\n# ---- {nm}: paste into kernels/{nm}.py, then rule on each entry")
             print(f"#      {best.how}")
-            print(CV.worksheet(tool, best.names, spec.get("native_plots"), _ph))
+            # THE PLUGIN'S OWN SOURCE IS HALF THE ANSWER, so it is read and passed in.
+            src = ""
+            for f in sorted((Path(a.root) / str(P.point(doc, point).get("lives") or ".")).glob("*.py")):
+                if f.stem == nm:
+                    src = f.read_text(encoding="utf-8")
+                    break
+            print(CV.worksheet(tool, best, spec.get("native_plots"), src, _ph))
         return FAILED if bad else OK
 
     if a.action == "measure":

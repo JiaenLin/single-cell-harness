@@ -241,43 +241,93 @@ class Command(unittest.TestCase):
 
 
 class Worksheet(unittest.TestCase):
-    """The inventory turned into a decision a maintainer can make without looking anything up."""
+    """The inventory turned into decisions, with the evidence for each one beside it.
+
+    A NAME IS THE ONE THING THE DECIDER ALREADY HAS. The first version of this printed thirty-five
+    of them and left somebody to open thirty-five documentation pages and read five thousand lines
+    of plugin. Both answers are already available - what a function draws is in the package, and
+    whether this wrapper calls it is in the wrapper.
+    """
+
+    def _inv(self, names, detail=None):
+        from sch.dev.extract import Inventory
+        return Inventory("t", names, "how", detail=detail or {})
 
     def test_every_exported_function_appears(self):
-        w = C.worksheet("scanpy", ["pl.umap", "pl.dotplot"], {}, "TODO")
+        w = C.worksheet("scanpy", self._inv(["pl.umap", "pl.dotplot"]), {})
         self.assertIn("'pl.umap'", w)
         self.assertIn("'pl.dotplot'", w)
 
+    def test_the_upstream_signature_and_summary_travel_with_it(self):
+        w = C.worksheet("t", self._inv(["pl.umap"], {
+            "pl.umap": {"signature": "(adata, color=None)",
+                        "summary": "Scatter plot in UMAP basis."}}), {})
+        self.assertIn("(adata, color=None)", w)
+        self.assertIn("Scatter plot in UMAP basis.", w)
+
+    def test_a_deprecated_function_says_so(self):
+        w = C.worksheet("t", self._inv(["pl.old"], {"pl.old": {"deprecated": True}}), {})
+        self.assertIn("DEPRECATED", w)
+
+    def test_a_function_the_plugin_calls_carries_its_call_site(self):
+        """32 of cellchat's 35 are located this way, and 21 carry the output's own name as a
+        string literal on the call line."""
+        src = 'x = 1\nnpng("heatmap_count", netVisual_heatmap(cc, measure = "count"))\n'
+        w = C.worksheet("t", self._inv(["netVisual_heatmap"]), {}, src)
+        self.assertIn("called at line 2", w)
+        self.assertIn("'heatmap_count'", w)
+        self.assertIn("confirm where this lands", w)
+
+    def test_a_function_the_plugin_never_calls_says_that_instead(self):
+        w = C.worksheet("t", self._inv(["pl.unused"]), {}, "x = 1\n")
+        self.assertIn("not called anywhere", w)
+        self.assertIn("which skip applies", w)
+
+    def test_nothing_is_decided_however_strong_the_evidence(self):
+        """A wrong `use` reads as a decision and is worse than an absent one."""
+        src = 'npng("stem", thing(cc))\n'
+        w = C.worksheet("t", self._inv(["thing"]), {}, src)
+        self.assertIn("TODO", w.split("'thing'", 1)[1][:120])
+
     def test_what_is_already_decided_is_carried_through_unchanged(self):
-        """RE-RUNNABLE AFTER A VERSION BUMP, and the answer is the diff. A worksheet that reset
-        every decision would be a worksheet nobody runs twice."""
-        w = C.worksheet("t", ["a", "b"], {"a": {"use": "figures/a.png"}}, "TODO")
+        w = C.worksheet("t", self._inv(["a", "b"]), {"a": {"use": "figures/a.png"}})
         self.assertIn("'a': {'use': 'figures/a.png'}", w)
-        self.assertIn("TODO", w.split("'b'", 1)[1][:80])
         self.assertNotIn("TODO", w.split("'b'", 1)[0])
 
-    def test_an_undecided_entry_is_a_placeholder_so_it_cannot_pass_as_finished(self):
-        w = C.worksheet("t", ["a"], {}, "TODO")
-        self.assertIn("TODO", w)
-
     def test_the_three_valid_skips_are_offered_and_the_rejected_ones_named(self):
-        """The vocabulary is `scprofile/native.py`'s and this must not invent a fourth reason."""
-        w = C.worksheet("t", ["a"], {}, "TODO")
+        w = C.worksheet("t", self._inv(["a"]), {})
         for reason in ("not_applicable", "superseded_by_design", "duplicate_of"):
             self.assertIn(reason, w)
         self.assertIn("reimplemented", w)
 
     def test_a_declaration_the_upstream_no_longer_exports_is_reported(self):
-        """Both causes matter - the tool dropped it, or the inventory pattern stopped matching -
-        and neither is fixed by deleting the line."""
-        w = C.worksheet("t", ["a"], {"gone": {"use": "x"}}, "TODO")
+        w = C.worksheet("t", self._inv(["a"]), {"gone": {"use": "x"}})
         self.assertIn("NO LONGER EXPORTED", w)
         self.assertIn("gone", w)
 
-    def test_it_counts_what_is_left(self):
-        w = C.worksheet("t", ["a", "b", "c"], {"a": {"use": "x"}}, "TODO")
+    def test_it_counts_what_is_left_and_how_much_is_already_evidenced(self):
+        w = C.worksheet("t", self._inv(["a", "b", "c"]), {"a": {"use": "x"}}, "b(1)\n")
         self.assertIn("3 function(s)", w)
         self.assertIn("1 already decided, 2 to rule on", w)
+        self.assertIn("1 of those are called by this plugin", w)
+
+
+class CallSites(unittest.TestCase):
+    def test_a_match_in_a_comment_is_reported_and_marked(self):
+        """`rankNet`'s only mention in cellchat is the comment "return.data, nothing drawn" -
+        precisely the evidence its entry needs. A scan that hid it would throw the answer away."""
+        got = C.callsites("# ranked flow, rankNet(return.data, nothing drawn)\n", ["rankNet"])
+        self.assertTrue(got["rankNet"]["in_comment"])
+
+    def test_a_real_call_is_preferred_over_a_comment(self):
+        src = "# see thing(x)\nthing(cc)\n"
+        self.assertFalse(C.callsites(src, ["thing"])["thing"]["in_comment"])
+
+    def test_a_dotted_name_matches_on_its_tail(self):
+        self.assertIn("pl.umap", C.callsites("sc.pl.umap(adata)\n", ["pl.umap"]))
+
+    def test_a_name_that_is_never_called_is_absent_not_empty(self):
+        self.assertEqual(C.callsites("x = 1\n", ["nope"]), {})
 
 
 class ActionsAreReachable(unittest.TestCase):

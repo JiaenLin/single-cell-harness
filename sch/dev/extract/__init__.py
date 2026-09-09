@@ -37,10 +37,13 @@ class Inventory:
     guess, before deciding which of them this wrapper should be using.
     """
 
-    def __init__(self, tool, names, how, complete=True, why_not=""):
+    def __init__(self, tool, names, how, complete=True, why_not="", detail=None):
         self.tool = tool
         self.names = sorted(names)
         self.how = how
+        #: {name: {signature, summary, deprecated}} where the extractor could get it. A NAME IS
+        #: THE ONE THING THE DECIDER ALREADY HAS; what they need is what the function draws.
+        self.detail = dict(detail or {})
         #: False when the extractor could not look. NOT the same as an empty inventory.
         self.complete = bool(complete)
         self.why_not = why_not
@@ -53,7 +56,7 @@ class Inventory:
 
     def as_dict(self):
         return {"tool": self.tool, "names": self.names, "how": self.how,
-                "complete": self.complete, "why_not": self.why_not}
+                "complete": self.complete, "why_not": self.why_not, "detail": self.detail}
 
 
 def _load(path: Path, here: bool):

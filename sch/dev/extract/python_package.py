@@ -33,19 +33,39 @@ EXTRACT = {
 _NAMEY = ("plot", "pl_", "draw", "scatter", "heatmap", "violin", "umap", "embedding",
           "dotplot", "barplot", "matrixplot", "rank_genes", "show")
 
-_PROBE = r'''
+#: WHAT A DECISION NEEDS, not just what exists. The first version returned names, and a name is
+#: the one thing the person deciding already has. Thirty-two of cellchat's thirty-five accounting
+#: entries say WHERE THE OUTPUT LANDS and the other three say why the data cannot support the
+#: plot - so the questions are "what does this draw" and "does this wrapper call it", and an
+#: inventory of bare names makes somebody open thirty-five documentation pages to answer the first.
+#: The signature and the summary line are in the package. Bring them.
+_PROBE = r"""
 import importlib, inspect, json, sys
 name = sys.argv[1]
-out = {"tool": name, "names": [], "how": "", "complete": False, "why_not": ""}
+out = {"tool": name, "names": [], "detail": {}, "how": "", "complete": False, "why_not": ""}
 try:
     mod = importlib.import_module(name)
 except Exception as e:
-    out["why_not"] = f"{type(e).__name__}: {e}"
+    out["why_not"] = "%s: %s" % (type(e).__name__, e)
     print(json.dumps(out)); raise SystemExit(0)
 out["version"] = getattr(mod, "__version__", "")
 
+def describe(v):
+    d = {"signature": "", "summary": "", "deprecated": False}
+    try:
+        d["signature"] = str(inspect.signature(v))
+    except Exception:
+        pass
+    doc = inspect.getdoc(v) or ""
+    for line in doc.splitlines():
+        if line.strip():
+            d["summary"] = line.strip()
+            break
+    d["deprecated"] = "deprecated" in doc[:400].lower()
+    return d
+
 def public_callables(m):
-    got = []
+    got = {}
     for a in dir(m):
         if a.startswith("_"):
             continue
@@ -54,39 +74,43 @@ def public_callables(m):
         except Exception:
             continue
         if callable(v) and not inspect.isclass(v):
-            got.append(a)
+            got[a] = v
     return got
 
 sub = None
 for cand in ("pl", "plotting", "plots"):
-    s = getattr(mod, cand, None)
-    if s is not None and hasattr(s, "__name__"):
-        sub = (cand, s); break
+    s_ = getattr(mod, cand, None)
+    if s_ is not None and hasattr(s_, "__name__"):
+        sub = (cand, s_); break
     try:
-        s = importlib.import_module(f"{name}.{cand}")
-        sub = (cand, s); break
+        sub = (cand, importlib.import_module("%s.%s" % (name, cand))); break
     except Exception:
         continue
 
 if sub is not None:
-    cand, s = sub
-    out["names"] = [f"{cand}.{a}" for a in public_callables(s)]
-    out["how"] = f"every public callable of {name}.{cand}, the package's own plotting submodule"
+    cand, s_ = sub
+    got = public_callables(s_)
+    out["names"] = ["%s.%s" % (cand, a) for a in got]
+    out["detail"] = {"%s.%s" % (cand, a): describe(v) for a, v in got.items()}
+    out["how"] = ("every public callable of %s.%s, the package's own plotting submodule"
+                  % (name, cand))
     out["complete"] = True
 else:
-    NAMEY = %(namey)r
-    got = [a for a in public_callables(mod) if any(a.lower().startswith(p) for p in NAMEY)]
+    NAMEY = __NAMEY__
+    got = {a: v for a, v in public_callables(mod).items()
+           if any(a.lower().startswith(p) for p in NAMEY)}
     if got:
-        out["names"] = got
-        out["how"] = ("public callables of %%s whose names begin like plotting functions - a "
-                      "HEURISTIC, because this package has no pl/plotting submodule" %% name)
+        out["names"] = list(got)
+        out["detail"] = {a: describe(v) for a, v in got.items()}
+        out["how"] = ("public callables of %s whose names begin like plotting functions - a "
+                      "HEURISTIC, because this package has no pl/plotting submodule" % name)
         out["complete"] = True
     else:
-        out["why_not"] = (f"{name} has no pl/plotting submodule and no public callable named like "
-                          f"a plotting function, so this extractor cannot say where its figures "
-                          f"live. It is not evidence that there are none.")
+        out["why_not"] = ("%s has no pl/plotting submodule and no public callable named like a "
+                          "plotting function, so this extractor cannot say where its figures "
+                          "live. It is not evidence that there are none." % name)
 print(json.dumps(out))
-''' % {"namey": list(_NAMEY)}
+""".replace("__NAMEY__", repr(list(_NAMEY)))
 
 
 def inventory(tool, python="python3", timeout=180):
@@ -106,4 +130,5 @@ def inventory(tool, python="python3", timeout=180):
     except ValueError:
         return Inventory(tool, [], "", complete=False,
                          why_not=f"unreadable answer from {python}: {line[-1][:160]}")
-    return Inventory(d["tool"], d["names"], d["how"], d["complete"], d["why_not"])
+    return Inventory(d["tool"], d["names"], d["how"], d["complete"], d["why_not"],
+                     detail=d.get("detail") or {})
