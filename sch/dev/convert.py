@@ -593,10 +593,16 @@ def references_in(source, tool="", min_items=20, symbol_share=0.7):
 def contract_in(source):
     """{produces:[...], reads:[...]} inferred from what the plugin emits and asks `ctx` for."""
     produces, reads = [], set()
+    #: Emissions whose name is COMPUTED, so this scan cannot say what they are called. velocity
+    #: emits inside `for col in ...: ctx.emit_obs(col, ...)` and as an f-string, which is why a
+    #: scan of it finds 3 tables where the declaration has 9. THAT DIFFERENCE IS NOT EVIDENCE THE
+    #: DECLARATION IS WRONG, and presenting the found set as if it were a replacement would have
+    #: deleted six correct entries.
+    dynamic = []
     try:
         tree = ast.parse(source)
     except SyntaxError:
-        return {"produces": [], "report.figures": [], "reads": []}
+        return {"produces": [], "report.figures": [], "reads": [], "dynamic": []}
     # FIGURES ARE NOT `produces` AND MUST NOT BE OFFERED AS IF THEY WERE. They are declared in
     # `report.figures`, each with the question it settles; listing them here sent a reader to add
     # five entries to the wrong field. Grouped by where each one is declared.
@@ -606,16 +612,20 @@ def contract_in(source):
     for node in ast.walk(tree):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             fn = node.func.attr
-            if fn in EMIT and node.args and isinstance(node.args[0], ast.Constant) \
-                    and isinstance(node.args[0].value, str):
+            if fn in EMIT and node.args:
                 where, shape = EMIT[fn]
-                produces.append((where, shape.format(node.args[0].value)))
+                arg = node.args[0]
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    produces.append((where, shape.format(arg.value)))
+                else:
+                    dynamic.append((fn, node.lineno, ast.unparse(arg)[:60]
+                                    if hasattr(ast, "unparse") else "<computed>"))
         if isinstance(node, ast.Attribute) and _dotted_name(node).startswith("ctx."):
             reads.add(_dotted_name(node).split(".", 2)[1])
         if isinstance(node, ast.Subscript) and _dotted_name(node.value) == "ctx.keys" \
                 and isinstance(node.slice, ast.Constant):
             reads.add(f"keys[{node.slice.value}]")
-    out = {"produces": [], "report.figures": [], "reads": sorted(reads)}
+    out = {"produces": [], "report.figures": [], "reads": sorted(reads), "dynamic": dynamic}
     for where, what in sorted(set(produces)):
         out[where].append(what)
     return out

@@ -575,14 +575,29 @@ def cmd_dev(a):
             tool = a.tool or CV._dotted(spec, up_path) or ""
             if a.action == "contract":
                 got = CV.contract_in(src)
-                print(f"\n# ---- {nm}: what the code emits and what it asks ctx for")
-                print(f'    "produces": {got["produces"]},')
-                print(f"    #   declared: {spec.get('produces')}")
-                print(f'    # figures emitted (these belong in report.figures, each with the '
-                      f'question it settles):')
-                print(f'    #   {got["report.figures"]}')
                 _dec = [f.get("id") for f in ((spec.get("report") or {}).get("figures") or [])]
-                print(f"    #   declared there: {_dec}")
+                print(f"\n# ---- {nm}: what the code emits, held against what it declares")
+                for field, found, declared in (("produces", got["produces"],
+                                                list(spec.get("produces") or [])),
+                                               ("report.figures", got["report.figures"], _dec)):
+                    fs, ds = set(found), set(declared)
+                    # A NAME IS OFTEN DECLARED WITH A SUFFIX THE EMIT DOES NOT CARRY.
+                    same = {f for f in fs if any(f in d or d in f for d in ds)}
+                    print(f"    # {field}: {len(found)} emitted, {len(declared)} declared, "
+                          f"{len(same)} matched")
+                    extra = sorted(fs - same)
+                    if extra:
+                        print(f"    #   EMITTED AND NOT DECLARED: {extra}")
+                    unseen = sorted(d for d in ds if not any(d in f or f in d for f in fs))
+                    if unseen:
+                        print(f"    #   declared and not seen by this scan: {unseen}")
+                if got["dynamic"]:
+                    print(f"    # THIS SCAN IS BLIND TO {len(got['dynamic'])} EMISSION(S) whose "
+                          f"name is computed:")
+                    for fn_, ln_, expr in got["dynamic"]:
+                        print(f"    #   line {ln_}: {fn_}({expr})")
+                    print("    #   So 'declared and not seen' above is NOT evidence the "
+                          "declaration is wrong. Read those lines before changing anything.")
                 print(f"    # reads from ctx: {', '.join(got['reads']) or 'nothing'}")
                 continue
             if a.action == "references":

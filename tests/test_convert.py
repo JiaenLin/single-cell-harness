@@ -630,3 +630,34 @@ class VersionMismatchIsDiagnosed(unittest.TestCase):
                               ("1.9.0", ">=1.8,<1.9", False), ("3.6.1", ">=3.6,<4", True),
                               ("1.0", "some prose", True)):
             self.assertEqual(C._satisfies(inst, pin), ok, f"{inst} vs {pin}")
+
+
+class TheContractScanAdmitsWhatItCannotSee(unittest.TestCase):
+    """A found set presented as a replacement would delete correct entries.
+
+    velocity emits inside `for col in ...: ctx.emit_obs(col, ...)` and as an f-string, so a scan
+    finds 3 of its 9 `produces` and 7 of its 9 figures. Printing the found set as the answer would
+    have removed six correct declarations - and the six it cannot see are precisely the ones whose
+    names are computed, which is knowable and now said.
+    """
+
+    DYN = ('def run(ctx):\n'
+           '    ctx.emit_obs("fixed", a)\n'
+           '    for col in cols:\n'
+           '        ctx.emit_obs(col, a)\n'
+           '    ctx.emit_obsm(f"velocity_{basis}", b)\n')
+
+    def test_a_computed_name_is_recorded_not_dropped(self):
+        got = C.contract_in(self.DYN)
+        self.assertEqual(got["produces"], ["obs[fixed]"])
+        self.assertEqual(len(got["dynamic"]), 2)
+        self.assertEqual({d[0] for d in got["dynamic"]}, {"emit_obs", "emit_obsm"})
+
+    def test_each_blind_spot_carries_its_line(self):
+        for _fn, line, _expr in C.contract_in(self.DYN)["dynamic"]:
+            self.assertTrue(line > 0)
+
+    def test_a_plugin_emitting_only_literals_has_no_blind_spots(self):
+        got = C.contract_in('def run(ctx):\n    ctx.emit_obs("a", x)\n')
+        self.assertEqual(got["dynamic"], [])
+        self.assertEqual(got["produces"], ["obs[a]"])
