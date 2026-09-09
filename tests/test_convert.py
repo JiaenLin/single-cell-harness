@@ -1353,5 +1353,62 @@ class OnePluginAtATime(unittest.TestCase):
         self.assertEqual(self._run("build").returncode, 3)
 
 
+
+
+class TheWorksheetShowsBothHalvesOfARuling(unittest.TestCase):
+    """A ruling needs the plugin's own panels and limits, not only the tool's surface.
+
+    MEASURED ON ONE CONVERSION. liana's worksheet listed twelve of the wrapped tool's plotting
+    functions with signatures and docstrings - good evidence, and only half of it. Eight of the
+    twelve rulings turned on a single line of the plugin's own `cannot_show` saying the method
+    has no spatial information, and `superseded_by_design` cannot be written at all without the
+    id of the panel that supersedes. All of it was in the declaration this tool had already
+    parsed, and whoever was ruling had to go and find it.
+
+    WHICH FIELDS IS THE REPOSITORY'S TO SAY. `ruling_context:` names them; nothing here knows
+    what a panel or a limit is called in any format.
+    """
+
+    DECL = DECL.replace('      upstream: wraps.tool',
+                        '      upstream: wraps.tool\n'
+                        '      ruling_context: [report.figures, cannot_show]')
+
+    def setUp(self):
+        from sch import yamlish
+        self.doc = yamlish.loads(self.DECL)
+        self.spec = {"report": {"figures": [
+                         {"id": "F1", "question": "does the field hold?"},
+                         {"id": "F2", "shows": "diagnostic"}]},
+                     "cannot_show": ["it has no spatial information",
+                                     "a rank is within this dataset"]}
+
+    def test_it_names_the_panels_a_superseded_ruling_would_have_to_cite(self):
+        out = C.ruling_context(self.spec, self.doc, "widget")
+        self.assertIn("F1", out)
+        self.assertIn("does the field hold?", out)
+        self.assertIn("F2", out)
+
+    def test_it_carries_the_limits_that_decide_a_not_applicable(self):
+        self.assertIn("no spatial information", C.ruling_context(self.spec, self.doc, "widget"))
+
+    def test_every_line_is_a_comment_so_the_block_can_be_pasted(self):
+        for line in C.ruling_context(self.spec, self.doc, "widget").splitlines():
+            self.assertTrue(line.startswith("#"), f"{line!r} would not survive a paste")
+
+    def test_a_point_declaring_no_context_gets_none(self):
+        from sch import yamlish
+        plain = yamlish.loads(DECL)
+        self.assertEqual(C.ruling_context(self.spec, plain, "widget"), "")
+
+    def test_a_plugin_with_nothing_to_say_yet_produces_nothing(self):
+        self.assertEqual(C.ruling_context({}, self.doc, "widget"), "")
+
+    def test_the_harness_names_neither_field(self):
+        import inspect
+        src = inspect.getsource(C.ruling_context)
+        for word in ("report.figures", "cannot_show", "native_plots"):
+            self.assertNotIn(f'"{word}"', src, f"{word!r} is one repository's vocabulary")
+
+
 if __name__ == "__main__":
     unittest.main()

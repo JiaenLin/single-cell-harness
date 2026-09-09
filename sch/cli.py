@@ -642,6 +642,9 @@ def cmd_dev(a):
                 if f.stem == nm:
                     src = f.read_text(encoding="utf-8")
                     break
+            ctx = CV.ruling_context(spec, doc, point)
+            if ctx:
+                print(ctx)
             print(CV.worksheet(tool, best, spec.get("native_plots"), src, _ph))
         return FAILED if bad else OK
 

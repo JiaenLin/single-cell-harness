@@ -285,6 +285,59 @@ def _clip(text, n):
     return t if len(t) <= n else t[:n - 1] + "…"
 
 
+def ruling_context(spec, doc, point_name, width=96):
+    """The plugin's OWN half of a ruling, printed beside the upstream's surface.
+
+    WHAT THIS FIXES, MEASURED ON ONE CONVERSION. The worksheet showed twelve of the wrapped
+    tool's plotting functions with their signatures and docstrings - genuinely good evidence -
+    and nothing about the plugin. But `superseded_by_design` has to NAME the panel that
+    supersedes, and `not_applicable` has to say why, and on that conversion eight of the twelve
+    rulings turned on a single line in the plugin's own `cannot_show` saying it has no spatial
+    information. All of it was in the declaration this tool had already parsed, and whoever was
+    ruling had to go and find it.
+
+    The expensive participant should be deciding, not gathering. This is the gathering.
+
+    WHICH FIELDS, ASKED OF THE REPOSITORY. `ruling_context:` in the point's convert block lists
+    them; nothing here knows what a panel or a limit is called in any format.
+    """
+    import textwrap
+    conv = pts.point(doc, point_name).get(KEY) or {}
+    fields = list(conv.get("ruling_context") or ())
+    if not fields:
+        return ""
+    out = []
+    for f in fields:
+        v = _dotted(spec, f)
+        if not v:
+            continue
+        out.append(f"#   {f}:")
+        if isinstance(v, (list, tuple)):
+            for item in v:
+                if isinstance(item, dict):
+                    # an id and whatever it says it is for, without knowing either key's name
+                    label = str(item.get("id") or item.get("name") or "")
+                    why = next((str(item[k]) for k in ("question", "shows", "what")
+                                if item.get(k)), "")
+                    line = f"{label} - {why}" if label and why else (label or why or str(item))
+                else:
+                    line = str(item)
+                out += textwrap.wrap(" ".join(line.split()), width=width,
+                                     initial_indent="#     - ", subsequent_indent="#       ")
+        elif isinstance(v, dict):
+            for k in sorted(v):
+                out.append(f"#     - {k}")
+        else:
+            out += textwrap.wrap(" ".join(str(v).split()), width=width,
+                                 initial_indent="#     - ", subsequent_indent="#       ")
+    if not out:
+        return ""
+    return ("#\n"
+            "# WHAT THIS PLUGIN ALREADY SAYS. A `superseded_by_design` ruling has to name the\n"
+            "# panel that supersedes, and a `not_applicable` one has to say why - both are here.\n"
+            + "\n".join(out) + "\n#")
+
+
 def worksheet(tool, inv, declared, source="", placeholder="TODO", width=96):
     """A paste-ready accounting block with the evidence for each decision beside it.
 
