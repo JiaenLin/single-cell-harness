@@ -407,7 +407,27 @@ def upstream_calls(source, tool):
     return out
 
 
-def defaults_worksheet(tool, calls, params, declared, placeholder="TODO"):
+def _satisfies(installed, pin):
+    """Crudely: does this version sit inside this pin? Only used to decide whether to WARN."""
+    m = re.findall(r"(>=|<=|==|<|>)\s*([0-9][0-9.]*)", str(pin))
+    if not m:
+        return True
+    def parts(v):
+        return tuple(int(x) for x in re.findall(r"\d+", v)[:3])
+    got = parts(installed)
+    for op, ver in m:
+        want = parts(ver)
+        n = min(len(got), len(want)) or 1
+        a, b = got[:n], want[:n]
+        if op == ">=" and not a >= b: return False
+        if op == ">" and not a > b: return False
+        if op == "<=" and not a <= b: return False
+        if op == "<" and not a < b: return False
+        if op == "==" and a != b: return False
+    return True
+
+
+def defaults_worksheet(tool, calls, params, declared, placeholder="TODO", pins=None):
     """What the wrapper is inheriting from the tool without saying so.
 
     `config` MEANS "THE TOOL'S OWN DEFAULTS, DECLARED RATHER THAN INHERITED", and the failure it
@@ -432,7 +452,20 @@ def defaults_worksheet(tool, calls, params, declared, placeholder="TODO"):
     for path in sorted(calls):
         info = params.get(path) or {}
         if not info.get("found"):
+            # A MISSING ATTRIBUTE IS USUALLY THE WRONG INTERPRETER, AND THE TOOL KNOWS IT. Asked
+            # with a python holding decoupler 2.2.0 about a plugin pinned to >=1.8,<1.9, this said
+            # only "module has no attribute run_ulm" - true, useless, and it reads as a broken
+            # plugin. The version is in hand and the pin is in the declaration; saying both turns
+            # a puzzle into the answer.
             L.append(f"        # {path}: could not read its signature - {info.get('why_not', '')}")
+            inst, want = info.get("installed", ""), (pins or {}).get(path.split(".")[0], "")
+            if inst or want:
+                L.append(f"        #      this interpreter has {inst or 'an unknown version'}"
+                         + (f"; the plugin pins {want}" if want else ""))
+                if inst and want and not _satisfies(inst, want):
+                    L.append("        #      THOSE DISAGREE. Ask with the interpreter this plugin "
+                             "runs in - `scprofile install <name> --prefix DIR` builds it - "
+                             "because a signature from another version is one it will never see.")
             continue
         passed = set(calls[path].get("passes") or ())
         inherited = [q for q in info["params"]

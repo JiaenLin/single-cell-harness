@@ -146,8 +146,13 @@ _PARAMS = r"""
 import importlib, inspect, json, sys
 out = {}
 for path in sys.argv[1:]:
+    root = path.split(".")[0]
+    try:
+        _v = getattr(importlib.import_module(root), "__version__", "")
+    except Exception:
+        _v = ""
     mod, _, attr = path.rpartition(".")
-    rec = {"found": False, "why_not": "", "params": [], "summary": ""}
+    rec = {"found": False, "why_not": "", "params": [], "summary": "", "installed": _v}
     fn = None
     while mod and fn is None:
         try:

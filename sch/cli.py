@@ -610,7 +610,8 @@ def cmd_dev(a):
             from .dev.extract import python_package as _PP
             params = _PP.parameters(sorted(calls), python=a.python or "python3")
             print(f"\n# ---- {nm}: paste into kernels/{nm}.py, then rule on each")
-            print(CV.defaults_worksheet(tool, calls, params, spec.get("config"), _ph))
+            print(CV.defaults_worksheet(tool, calls, params, spec.get("config"), _ph,
+                                        pins=(spec.get("requires") or {}).get("packages")))
         return OK
 
     if a.action == "measure":

@@ -598,3 +598,35 @@ class Contract(unittest.TestCase):
         reads = C.contract_in(src)["reads"]
         self.assertIn("organism", reads)
         self.assertIn("keys[label]", reads)
+
+
+class VersionMismatchIsDiagnosed(unittest.TestCase):
+    """A missing attribute is usually the wrong interpreter, and the tool has what it needs to say so.
+
+    Asked with a python holding decoupler 2.2.0 about a plugin pinned to `>=1.8,<1.9`, the first
+    version said only "module 'decoupler' has no attribute 'run_ulm'" - true, useless, and it reads
+    as a broken plugin. `run_ulm` moved to `dc.mt.*` in 2.x. The installed version is in hand and
+    the pin is in the declaration.
+    """
+
+    def test_a_pin_and_an_installed_version_that_disagree_are_named(self):
+        w = C.defaults_worksheet(
+            "decoupler", {"decoupler.run_ulm": {"line": 1, "passes": []}},
+            {"decoupler.run_ulm": {"found": False, "why_not": "no attribute", "installed": "2.2.0"}},
+            {}, pins={"decoupler": ">=1.8,<1.9"})
+        self.assertIn("2.2.0", w)
+        self.assertIn(">=1.8,<1.9", w)
+        self.assertIn("THOSE DISAGREE", w)
+
+    def test_a_version_inside_the_pin_is_not_blamed(self):
+        w = C.defaults_worksheet(
+            "decoupler", {"decoupler.x": {"line": 1, "passes": []}},
+            {"decoupler.x": {"found": False, "why_not": "no attribute", "installed": "1.8.3"}},
+            {}, pins={"decoupler": ">=1.8,<1.9"})
+        self.assertNotIn("THOSE DISAGREE", w)
+
+    def test_the_comparison_is_only_used_to_warn(self):
+        for inst, pin, ok in (("2.2.0", ">=1.8,<1.9", False), ("1.8.3", ">=1.8,<1.9", True),
+                              ("1.9.0", ">=1.8,<1.9", False), ("3.6.1", ">=3.6,<4", True),
+                              ("1.0", "some prose", True)):
+            self.assertEqual(C._satisfies(inst, pin), ok, f"{inst} vs {pin}")
