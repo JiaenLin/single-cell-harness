@@ -71,6 +71,11 @@ REPO="${REPO:?pass -v REPO=<the harness checkout>}"
 TOOL="${TOOL:?pass -v TOOL=<the scProfile checkout>}"
 ENVS="${ENVS:?pass -v ENVS=<where this family keeps its environments>}"
 HOSTPY="${HOSTPY:-python3}"
+# ONLY THESE PLUGINS, WHEN ASKED. The installs below are idempotent and skip on a match, so a
+# second submission costs nothing there - but re-inventorying the plugins that already answered
+# is work with a known result, and the point of running this at family scale is not to do it
+# twice. Space-separated; empty means all of them.
+ONLY="${ONLY:-}"
 
 mkdir -p "$RUNDIR/logs" "$RUNDIR/account" "$RUNDIR/inventory"
 
@@ -162,14 +167,25 @@ echo; echo "=== inventory and account, per plugin, in its own interpreter"
 # WHICH one could not look and why. That matters exactly when nothing could, so it is paid for
 # then and not on every plugin that worked.
 while IFS=$'\t' read -r k env; do
+  if [ -n "$ONLY" ] && ! printf '%s\n' $ONLY | grep -qx "$k"; then
+    echo "  $k: not asked for this time" >&2
+    continue
+  fi
   py="$ENVS/$env/bin/python"
+  # THE R INTERPRETER TOO, WHERE THE ENVIRONMENT HAS ONE. cellchat wraps an R package and its
+  # inventory needs `Rscript`; the first run passed only --python, so the R extractor reported
+  # "no Rscript on PATH - a fact about this machine and not about the package", correctly, about
+  # a machine whose environment had r-base 4.3 installed in it three lines earlier.
+  rs="$ENVS/$env/bin/Rscript"
+  rsarg=()
+  [ -x "$rs" ] && rsarg=(--rscript "$rs")
   if [ ! -x "$py" ]; then
     echo "  $k: no interpreter at $py - its environment did not build" | tee -a "$RUNDIR/logs/summary.txt"
     BAD=$((BAD+1)); continue
   fi
   set +e
   ( cd "$REPO" && "$HOSTPY" -m sch dev convert account --root "$TOOL" --point kernel \
-       --name "$k" --python "$py" ) > "$RUNDIR/account/$k.txt" 2>&1
+       --name "$k" --python "$py" "${rsarg[@]}" ) > "$RUNDIR/account/$k.txt" 2>&1
   arc=$?
   set -e
   line=$(grep -m1 'function(s) exported by' "$RUNDIR/account/$k.txt" 2>/dev/null | sed 's/^ *# *//')
@@ -184,7 +200,7 @@ while IFS=$'\t' read -r k env; do
     # THE PER-EXTRACTOR DETAIL, PAID FOR ONLY WHERE IT IS NEEDED: which extractor was asked,
     # and what stopped it.
     ( cd "$REPO" && "$HOSTPY" -m sch dev convert inventory --root "$TOOL" --point kernel \
-         --name "$k" --python "$py" ) > "$RUNDIR/inventory/$k.txt" 2>&1 || true
+         --name "$k" --python "$py" "${rsarg[@]}" ) > "$RUNDIR/inventory/$k.txt" 2>&1 || true
     sed -n '1,8p' "$RUNDIR/inventory/$k.txt" | sed 's/^/        /'
   fi
 done < "$RUNDIR/logs/groups.tsv"
