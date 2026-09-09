@@ -910,3 +910,37 @@ class AFilledFieldIsNotAlwaysAFinishedStage(unittest.TestCase):
                                        self.doc, "widget"), "w", "widget")
         self.assertIn("PART inventory", out)
         self.assertIn("the plugin says so", out)
+
+
+class JobScriptsParse(unittest.TestCase):
+    """`bash -n` on every job, because a shell quoting trap is invisible to reading.
+
+    `VPY="${VPY:?pass -v VPY=<the interpreter velocity's environment resolved to>}"` - the
+    apostrophe inside a `${VAR:?message}` expansion opens a quote context that is never closed, and
+    the error bash reports points at the END of the file, sixty lines from the cause. Every line in
+    the file has balanced quotes; the construct spans them.
+    """
+
+    JOBS = sorted((ROOT / "jobs").glob("*.pbs")) if (ROOT / "jobs").is_dir() else []
+
+    def test_every_job_script_is_valid_shell(self):
+        bad = []
+        for f in self.JOBS:
+            p = subprocess.run(["bash", "-n", str(f)], capture_output=True, text=True)
+            if p.returncode != 0:
+                bad.append(f"{f.name}: {p.stderr.strip().splitlines()[0] if p.stderr else '?'}")
+        self.assertEqual(bad, [], "job scripts that do not parse:\n  " + "\n  ".join(bad))
+
+    def test_the_check_fires_on_the_trap_that_caused_it(self):
+        import tempfile as _t
+        with _t.NamedTemporaryFile("w", suffix=".pbs", delete=False) as fh:
+            fh.write('X="${X:?the tool\'s own thing}"\necho done\n')
+            name = fh.name
+        try:
+            p = subprocess.run(["bash", "-n", name], capture_output=True, text=True)
+            self.assertNotEqual(p.returncode, 0,
+                                "an apostrophe inside ${VAR:?...} no longer breaks bash, so this "
+                                "check is testing nothing")
+        finally:
+            pathlib_unlink = Path(name)
+            pathlib_unlink.unlink(missing_ok=True)

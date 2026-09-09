@@ -1,0 +1,115 @@
+#!/bin/bash
+#PBS -N sch_velocity_measure
+#PBS -q short
+#PBS -l select=1:ncpus=8:mem=48gb
+#PBS -l walltime=03:00:00
+#PBS -j oe
+#
+# ============================================================================================
+# THE TEST STAGE OF velocity's CONVERSION, ON SYNTHETIC DATA
+# ============================================================================================
+#
+# The BUILD is done and was done without any data: every field came from velocity's own source or
+# from scvelo's signatures. What is left is the one stage that needs something to run on - both
+# memory terms, fitted from real instances.
+#
+# TWO SIZES, AND THAT IS THE WHOLE POINT. Memory is a fixed cost plus a per-cell one. One size
+# cannot separate them: the fit charges the whole peak to the rate, which under-requests on small
+# objects and is how six of nine plugins came to declare a rate and no baseline. So this runs the
+# same plugin on the same synthetic cohort at two cell counts and fits both terms from the pair.
+#
+# SYNTHETIC ON PURPOSE. Nothing here is about biology and no number from it is quotable - the
+# fixture says `quotable: false` in its own uns. What it measures is the CODE's demand as a
+# function of n, which is a property of the code. The real-cohort test is a different job and a
+# different question.
+#
+# THE PREDICTION, WRITTEN BEFORE THE RUN:
+#   velocity runs to completion on a fixture carrying spliced/unspliced layers. It has never been
+#     run against this fixture - the fixture had no such layers until today - so this may fail,
+#     and finding that out is the point.
+#   the two runs report DIFFERENT peak memory, and the larger object reports the larger figure.
+#     If they are equal, the counter is measuring the job and not the instance and the fit is
+#     worthless; the run says so rather than fitting a horizontal line.
+#   `capacity --memory` then prints both terms, ready to paste.
+#
+# rule-one: no-removal. Writes only inside $RUNDIR.
+# Authored on the workstation and pushed (rule H1). No `git` runs below.
+#
+#   qsub -v RUNDIR=...,REPO=...,TOOL=...,VPY=...  jobs/velocity_measure.pbs
+
+set -euo pipefail
+cd "$PBS_O_WORKDIR"
+
+RUNDIR="${RUNDIR:?pass -v RUNDIR=<run directory>}"
+REPO="${REPO:?pass -v REPO=<the harness checkout>}"
+TOOL="${TOOL:?pass -v TOOL=<the scProfile checkout>}"
+VPY="${VPY:?pass -v VPY=<the interpreter that velocity resolved to>}"
+SMALL="${SMALL:-2000}"
+LARGE="${LARGE:-8000}"
+
+mkdir -p "$RUNDIR/fixture" "$RUNDIR/logs"
+
+finish() { s=$?
+  set +e
+  missing=""
+  for p in logs/small.txt logs/large.txt; do
+    [ -s "$RUNDIR/$p" ] || missing="$missing $p"
+  done
+  if [ "$s" -eq 0 ] && [ -z "$missing" ] && [ "${BAD:-0}" -eq 0 ]; then
+    seal="$RUNDIR/SEALED.txt"
+  else
+    seal="$RUNDIR/FAILED.txt"; [ "$s" -eq 0 ] && s=1
+  fi
+  { echo "exit=$s"; echo "jobid=${PBS_JOBID:-none}"; echo "host=$(hostname -s)"
+    echo "finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "purpose=fit velocity's two memory terms from two synthetic instances"
+    echo "SYNTHETIC. No number here is about biology and none is quotable."
+    [ -n "$missing" ] && echo "missing=$missing"
+    [ "${BAD:-0}" -gt 0 ] && echo "failed_runs=$BAD"
+  } > "$seal"
+  rm -f "$RUNDIR/RUNNING.txt"
+  exit $s; }
+trap finish EXIT
+{ echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)"; echo "host=$(hostname -s)"; } > "$RUNDIR/RUNNING.txt"
+
+export PYTHONNOUSERSITE=1
+export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
+export OMP_NUM_THREADS="${NCPUS:-1}" MKL_NUM_THREADS="${NCPUS:-1}" OPENBLAS_NUM_THREADS="${NCPUS:-1}"
+
+echo "=== fixtures, two sizes, both with spliced/unspliced"
+for n in "$SMALL" "$LARGE"; do
+  PYTHONPATH="$REPO" "$VPY" -m sch dev fixture "$RUNDIR/fixture/n$n" --shape a --cells "$n" --splice
+done
+ls -la "$RUNDIR/fixture"/*/
+
+echo; echo "=== velocity on each"
+ENVDIR=$(dirname "$VPY")
+ENVDIR=$(dirname "$ENVDIR")
+PREFIX=$(dirname "$ENVDIR")
+
+BAD=0
+for n in "$SMALL" "$LARGE"; do
+  label=small
+  if [ "$n" = "$LARGE" ]; then label=large; fi
+  set +e
+  ( cd "$TOOL" && "$VPY" -m scprofile.cli run \
+      --h5ad "$RUNDIR/fixture/n$n/fixture_a.h5ad" \
+      --out "$RUNDIR/run_$label" --kernel velocity \
+      --prefix "$PREFIX" --cores "${NCPUS:-8}" \
+  ) > "$RUNDIR/logs/$label.txt" 2>&1
+  # KEPT, NOT DISPLAYED. `echo "... $?"` reads the status and stores nothing; jobs/*.pbs are
+  # checked for that shape now, after one of them sealed green over a failing tier.
+  rc=$?
+  set -e
+  echo "  $label, $n cells: exit $rc"
+  if [ "$rc" -ne 0 ]; then BAD=$((BAD + 1)); fi
+  tail -n 12 "$RUNDIR/logs/$label.txt"
+done
+
+echo; echo "=== the fitted memory model, from each run"
+for label in small large; do
+  [ -f "$RUNDIR/run_$label/report.json" ] || { echo "  $label: no report.json"; continue; }
+  ( cd "$TOOL" && "$VPY" -m scprofile.cli capacity --out "$RUNDIR/run_$label" --memory ) || true
+done
+
+echo; echo "finished $(date -u)"

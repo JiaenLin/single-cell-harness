@@ -438,8 +438,9 @@ def cmd_dev(a):
     if a.sub == "fixture":
         from .dev import fixture as F
         try:
-            recs = ([F.write(a.dir, shape=a.shape, seed=a.seed)] if a.shape
-                    else F.write_both(a.dir, seed=a.seed))
+            recs = ([F.write(a.dir, shape=a.shape, seed=a.seed, n_cells=a.cells,
+                             splice=a.splice)] if a.shape
+                    else F.write_both(a.dir, seed=a.seed, n_cells=a.cells, splice=a.splice))
         except ImportError as e:
             print(f"the fixture needs anndata, numpy and pandas: {e}", file=sys.stderr)
             return CANNOT_RUN
@@ -783,7 +784,14 @@ def build_parser():
     q = rooted(ds.add_parser("new")); q.add_argument("point"); q.add_argument("name")
     q.add_argument("--force", action="store_true"); q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("fixture")); q.add_argument("dir"); q.add_argument("--shape", choices=["a", "b"])
-    q.add_argument("--seed", type=int, default=20260906); q.set_defaults(fn=cmd_dev)
+    q.add_argument("--seed", type=int, default=20260906)
+    q.add_argument("--cells", type=int, default=2000,
+                   help="cells per shape. Two sizes are what separates a fixed memory cost from a "
+                        "per-cell one; one size cannot")
+    q.add_argument("--splice", action="store_true",
+                   help="also write spliced and unspliced layers, for a plugin whose input is "
+                        "those. Off by default: the digest is a contract every baseline rests on")
+    q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("check")); q.add_argument("--point"); q.add_argument("--name")
     q.add_argument("--only", action="append", choices=list(_TIERS)); q.add_argument("--skip", action="append", choices=list(_TIERS))
     q.add_argument("--keep-going", action="store_true"); q.add_argument("--record-baseline", action="store_true")
