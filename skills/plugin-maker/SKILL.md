@@ -85,6 +85,34 @@ conservative values and prints that it is guessing; a pure rate attributes the f
 cells and asks for less than the import costs on a small object, so the job is sized to be killed.
 Where the run had one size only, the command prints the rate commented out. Leave it commented.
 
+**`legends` — who drew each panel.**
+
+```
+sch dev convert legends --root . --point kernel --name <plugin>
+```
+
+A build stage: it reads the declaration and no data. Every declared figure says `tool` — the
+wrapped tool's own plotting function, unmodified — or `plugin` — this plugin drawing the tool's
+NUMBERS itself, a second scale, a derived matrix, an annotation layer. Those are different claims
+about provenance and the distinction is what the upstream-plot accounting exists to protect.
+Undeclared, the reporter asserted `tool` for anything undescribed, so a plugin-drawn panel was
+reported as the tool's own encoding and the accounting was undone at the last step.
+
+Check it against the source rather than guessing: across all nine shipped plugins not one declared
+figure calls an upstream plotting function, so all fifty-six are `plugin`. A tenth plugin that
+wraps a tool's own figure into its report is the case this stage exists for.
+
+**The legend itself is not declared here, and that is deliberate.** It is written where the figure
+is DRAWN, out of numbers no build stage has — the n, the cap that was applied, the populations
+that were dropped. A build stage demanding the sentence would be asking for a guess, and a guessed
+legend is worse than an absent one because it is believed. So the stage rules the provenance now
+and the sentence is proved at test time, by reading back what the run wrote beside its figures.
+
+**Write the sentence at the emit site.** `emit_figure(..., caption=...)`, or the tool's own
+`captions.tsv` beside the figures when it draws in its own interpreter. A panel emitted without
+one now says so in the log while you are still there to fix it, and the page states plainly that
+no legend was written rather than printing the filename with its underscores removed.
+
 **`contract`, `defaults`, `references`** — read from the tool's own source. Declare the wrapped
 tool's OWN defaults rather than inheriting them silently; declare every resource consulted that did
 not come from the user's object, with its tier. If there are genuinely none, declare the empty
@@ -126,6 +154,29 @@ Every tier prints what it does **not** prove. A green ladder does not say the nu
 
 cellchat is the only finished conversion in the family and the standard the rest are measured
 against: 35 upstream plots accounted, 10 declared figures all drawn, both memory terms measured, 9
-entries in `cannot_show`. Point `sch dev convert` at it and it prints 6 of 6.
+entries in `cannot_show`. Point `sch dev convert` at it and it prints 7 of 7.
 
 Point it at any other and it prints where that one stopped.
+
+## What the fixture cannot tell you
+
+The two-shape fixture has ONE design factor, so the richest thing a plugin can be asked on it is a
+main effect. Four defects in this family live in the branch that reads an INTERACTION — a
+subtraction done the wrong way round that stayed self-consistent so no cross-check saw it,
+marginals emitted before the strata they average, a marginal arm that was a question the design
+enumerated and an object no tool could be handed, and a composed section that named five small
+movers as the leading ones. None of them is reachable on one factor. A plugin can be green on
+every tier here and meet all four on the first real study.
+
+```
+sch dev fixture DIR --crossed
+```
+
+writes eight samples in a 2x2 with two in every cell, which is the smallest design in which every
+term the reading order distinguishes actually exists. Use it whenever a plugin reads the design at
+all. It is a different cohort with its own digest, so it does not disturb any recorded baseline.
+
+And it is still synthetic. What a crossed synthetic cohort proves is that the branch is entered
+and the code runs; whether the SENTENCES are true of a real design is a test-stage question, and
+the properties that make it interesting — a factor perfectly aliased with the machine that
+measured it, cells of unequal size — belong to a cohort, not to a generator.

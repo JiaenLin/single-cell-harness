@@ -120,9 +120,17 @@ echo "=== copying the documents' inputs, and nothing heavy"
 # THE OBJECTS ARE NOT COPIED because the reporter does not read them: it rebuilds from
 # report.json and from what is beside the figures. 12.4 GB of h5ad and rds against 0.1 GB of
 # panels - copying them would make this job twenty minutes of I/O to change nothing.
-rsync -a --exclude 'objects/' --exclude '*.h5ad' --exclude '*.rds' --exclude '*.h5' \
+#
+# AND THE COPY IS WRITABLE. `rsync -a` preserves the mode, a sealed run is `-r--------` by
+# design, and the rebuild then died on the first file it tried to replace - after writing some
+# of the pages, so the checker read a tree that was half old and half new and reported
+# confidently on it. `--no-p` plus an explicit chmod: the source's read-only mode is a property
+# of the SEAL and must not be inherited by a scratch copy of it.
+rsync -rlt --no-p --chmod=Du+rwx,Fu+rw \
+      --exclude 'objects/' --exclude '*.h5ad' --exclude '*.rds' --exclude '*.h5' \
       --exclude 'cache/' --exclude '_cache/' \
       "$REF"/ "$RUNDIR/replay"/ > "$RUNDIR/logs/copy.txt" 2>&1
+chmod -R u+rwX "$RUNDIR/replay"
 du -sh "$RUNDIR/replay"
 
 echo; echo "=== the state of the copy, before anything is rebuilt"
@@ -139,6 +147,16 @@ rc=$?
 set -e
 echo "  report rc=$rc"
 tail -5 "$RUNDIR/logs/report.txt" || true
+# A REBUILD THAT DIED IS NOT A TREE TO PREDICT ABOUT. The first run of this job let rc=1 through
+# and the checker then graded a half-rebuilt directory: three predictions were reported against
+# pages the current code had never written. Whatever the checker said there was not about the
+# writing layer, and it did not look any different from an answer that was.
+if [ "$rc" -ne 0 ]; then
+  echo "the documents were not rebuilt (rc=$rc); the predictions below would be about the OLD"
+  echo "pages copied from the sealed run, which is not what this job asks. Refusing to grade."
+  BAD=1
+  exit 3
+fi
 
 echo; echo "=== the predictions"
 set +e
@@ -170,7 +188,12 @@ say(panels == 711 and legends == 69, "P1",
 
 # P2 - no caption is a filename
 old_tail = text.count(", drawn by the tool itself.")
-stem_shape = len(re.findall(r">[a-z0-9]+(?: [a-z0-9]+){2,}, drawn by ", text))
+# TWO SHAPES, because the fallback had two call sites and the first version of this check only
+# knew one. The contrast panels ended `<stem with spaces>, drawn by the tool itself.`; the
+# per-unit ones had no comma - `<stem with spaces> Drawn by the tool's own fn().` - so a check
+# anchored on the comma passed while the second site was untouched.
+stem_shape = len(re.findall(r">\s*(?:\[[^\]]*\]\s*)?[a-z0-9]+(?: [a-z0-9]+){2,}"
+                            r"(?:, drawn by | Drawn by the tool)", text))
 say(old_tail == 0 and stem_shape == 0, "P2",
     f"{old_tail} caption(s) still end in the old provenance clause, "
     f"{stem_shape} still read as a stem with its underscores removed")
