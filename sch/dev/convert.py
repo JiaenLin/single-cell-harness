@@ -177,7 +177,7 @@ def inventory(tool, python=None, rscript=None):
     return got
 
 
-def format_status(rows, name, point_name):
+def format_status(rows, name, point_name, doc=None, root=".", python="", run=""):
     """The line-per-stage a person reads to know where a conversion stands.
 
     REPORTED IN TWO HALVES, because they are two different claims. "The build is complete" says
@@ -207,9 +207,21 @@ def format_status(rows, name, point_name):
                 if r["why"]:
                     L.append(f"       {r['why']}")
         L.append("")
-    nxt = next((r for r in rows if not r["done"]), None)
-    L.append(f"  next: {nxt['stage']} ({nxt.get('phase', 'build')})" if nxt
-             else "  nothing left to convert")
+    todo = [r for r in rows if not r["done"]]
+    if not todo:
+        L.append("  nothing left to convert")
+        return "\n".join(L)
+    L.append("  what is left, in order:")
+    for r in todo:
+        # `doc` IS OPTIONAL AND MUST BE. A caller that only wants the summary should not have to
+        # hand over the declaration; without it the stages are still named and only the commands
+        # are missing, which is a smaller loss than a TypeError.
+        cmd = advance_command(r, doc, point_name, root, name, python, run) if doc else ""
+        if cmd:
+            L.append(f"    {r['stage']:12s} {cmd}")
+        else:
+            L.append(f"    {r['stage']:12s} nothing runs this - it is what only you can answer: "
+                     f"{', '.join(r['missing'])}")
     return "\n".join(L)
 
 
@@ -698,4 +710,44 @@ def contract_in(source):
     out = {"produces": [], "report.figures": [], "reads": sorted(reads), "dynamic": dynamic}
     for where, what in sorted(set(produces)):
         out[where].append(what)
+    return out
+
+
+#: The convert actions that advance a stage of the same name. `judgement` has none and never will.
+ADVANCES = ("contract", "defaults", "references", "inventory", "measure")
+
+
+def advance_command(row, doc, point_name, root, name, python="", run=""):
+    """The literal command that moves this stage on, or "" when only a person can.
+
+    `next: inventory` TOLD AN AGENT WHERE IT WAS AND NOT WHAT TO DO. Knowing that
+    `sch dev convert account --python <the plugin's own interpreter>` is the thing requires already
+    knowing the tool, which is exactly what somebody arriving at a half-built plugin does not have.
+    A status that names the stage and withholds the command is a status you need a guide beside.
+    """
+    stage = row["stage"]
+    declared = stage_command(doc, point_name, stage)
+    if declared:
+        return " ".join(fill(declared, {"python": python or "python3", "run": run or "<RUNDIR>",
+                                        "root": root, "name": name}))
+    if stage in ADVANCES:
+        # `inventory` IS SEEN WITH ONE ACTION AND DECIDED WITH ANOTHER. `inventory` lists what the
+        # tool exports; `account` turns that into the worksheet with the evidence attached, which
+        # is the one somebody actually works from.
+        action = "account" if stage == "inventory" else stage
+        cmd = f"sch dev convert {action} --root {root} --point {point_name} --name {name}"
+        if stage in ("inventory", "defaults"):
+            cmd += f" --python {python or '<the interpreter this plugin runs in>'}"
+        return cmd
+    return ""
+
+
+def plan_of_work(rows, doc, point_name, root, name, python="", run=""):
+    """[(stage, command|'', what a person must decide)] for every stage not yet done, in order."""
+    out = []
+    for r in rows:
+        if r["done"]:
+            continue
+        out.append((r, advance_command(r, doc, point_name, root, name, python, run),
+                    r["kind"] == "judgement"))
     return out

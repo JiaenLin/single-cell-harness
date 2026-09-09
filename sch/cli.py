@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -507,7 +508,7 @@ def cmd_dev(a):
         # wrong thing entirely, on a repository where nothing was wrong.
         specs = []
         if a.action in ("status", "inventory", "account", "defaults", "references",
-                        "contract"):
+                        "contract", "build"):
             specs = _convert_specs(doc, point, a.root, a.name)
             if not specs:
                 print(f"sch dev convert: no {point} named {a.name!r} under {a.root}",
@@ -516,7 +517,8 @@ def cmd_dev(a):
         if a.action == "status":
             out = []
             for nm, spec in specs:
-                out.append(CV.format_status(CV.status(spec, doc, point), nm, point))
+                out.append(CV.format_status(CV.status(spec, doc, point), nm, point,
+                                            doc=doc, root=a.root, python=a.python or ""))
             print("\n\n".join(out))
             return OK
         # GUARDED, because it was not. This block had no `if` on it and returned at the end, so
@@ -574,6 +576,65 @@ def cmd_dev(a):
                     break
             print(CV.worksheet(tool, best, spec.get("native_plots"), src, _ph))
         return FAILED if bad else OK
+
+    if a.action == "build":
+        # THE WHOLE BUILD, IN ORDER, STOPPING WHERE ONLY A PERSON CAN GO ON. `status` named the
+        # next stage and not the command; naming the command still left an agent to run six of
+        # them by hand and know which need the plugin's own interpreter. This walks the BUILD
+        # phase - never the test phase, which needs data and is a different question - runs each
+        # mechanical stage, and stops at the first thing requiring a decision.
+        #
+        # IT RUNS NOTHING THAT WRITES. Every stage here reads source and prints; the worksheets
+        # are pasted by whoever read them. A driver that edited declarations would be deciding
+        # the things this pipeline exists to put in front of somebody.
+        rows = None
+        for nm, spec in specs:
+            rows = CV.status(spec, doc, point)
+            build = [r for r in rows if r.get("phase", "build") == "build"]
+            done = sum(1 for r in build if r["done"])
+            print(f"\n=== {nm}: build is {done} of {len(build)}")
+            for r in build:
+                if r["done"]:
+                    print(f"  done {r['stage']}")
+                    continue
+                cmd = CV.advance_command(r, doc, point, a.root, nm, a.python or "", "")
+                if not cmd or r["kind"] == "judgement":
+                    print(f"\n  STOP at {r['stage']}: nothing runs this. It is what only you can "
+                          f"answer: {', '.join(r['missing'])}")
+                    if r["why"]:
+                        print(f"       {r['why'].strip()}")
+                    break
+                if r.get("partial"):
+                    print(f"\n  STOP at {r['stage']}: started, and the plugin says what is left.")
+                    print(f"       {r['partial'][:200]}")
+                    print(f"       to see the rest:  {cmd}")
+                    break
+                print(f"\n  --- {r['stage']}")
+                argv = cmd.split()
+                if argv[:1] == ["sch"]:
+                    argv = [sys.executable, "-m", "sch"] + argv[1:]
+                if "<the interpreter this plugin runs in>" in cmd:
+                    print(f"  STOP at {r['stage']}: needs the interpreter this plugin runs in. "
+                          f"Pass --python; `scprofile install {nm} --prefix DIR` builds it.")
+                    break
+                # NOT `cwd=a.root`. The sub-command already knows the repository from --root,
+                # and running it from there put the harness off `sys.path`, so every stage died on
+                # "No module named sch" - and the driver dutifully reported the stage as failing.
+                env = dict(os.environ)
+                here = str(Path(__file__).resolve().parents[1])
+                env["PYTHONPATH"] = os.pathsep.join(
+                    [here] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
+                # FLUSHED FIRST. The parent's prints are buffered and the child's are not, so
+                # the stage's output arrived ABOVE the header saying which stage it was - which
+                # for a driver whose whole job is to say where you are is the one thing it must
+                # not do.
+                sys.stdout.flush()
+                rc = subprocess.run(argv, env=env).returncode
+                sys.stdout.flush()
+                if rc != 0:
+                    print(f"  {r['stage']} exited {rc}; stopping here.")
+                    return rc
+        return OK
 
     if a.action in ("defaults", "references", "contract"):
         # SCANS READ THE PLUGIN; the defaults stage also asks the upstream what its parameters are.
@@ -803,7 +864,7 @@ def build_parser():
     q = rooted(ds.add_parser("convert"))
     q.add_argument("action", nargs="?", default="status",
                    choices=["status", "inventory", "account", "measure",
-                            "defaults", "references", "contract"])
+                            "defaults", "references", "contract", "build"])
     q.add_argument("--point", default=None)
     q.add_argument("--name", default=None, help="the plugin being converted; omit for all of them")
     q.add_argument("--tool", default=None, help="override the upstream named in the declaration")

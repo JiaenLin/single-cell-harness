@@ -232,7 +232,8 @@ class Command(unittest.TestCase):
         p = self._run("status")
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn("half", p.stdout)
-        self.assertIn("next: inventory", p.stdout)
+        self.assertIn("what is left, in order", p.stdout)
+        self.assertIn("inventory", p.stdout)
 
     def test_an_inventory_nobody_could_take_fails_rather_than_recording_zero(self):
         p = self._run("inventory")
@@ -944,3 +945,51 @@ class JobScriptsParse(unittest.TestCase):
         finally:
             pathlib_unlink = Path(name)
             pathlib_unlink.unlink(missing_ok=True)
+
+
+class TheDriverWalksTheBuild(unittest.TestCase):
+    """`sch dev convert build` runs the build phase in order and stops where a person is needed.
+
+    `status` named the next stage and not the command; naming the command still left an agent to
+    run six of them by hand and know which need the plugin's own interpreter. NEVER the test
+    phase - that needs data and is a different question.
+    """
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "widgets").mkdir()
+        (self.d / "DEVPOINTS.yaml").write_text(DECL.replace(
+            "        - {name: contract, fills: [inject]}",
+            "        - {name: contract, phase: build, fills: [inject]}\n"
+            "        - {name: measure, phase: test, fills: [mem]}"))
+        (self.d / "widgets" / "w.py").write_text(
+            'PLUGIN = {"inject": {"required": ["x"]}, "wraps": {"tool": "fakepkg"}}\n')
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _build(self):
+        return subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "build",
+                               "--root", str(self.d), "--point", "widget"],
+                              capture_output=True, text=True, cwd=ROOT)
+
+    def test_it_reports_the_build_and_never_the_test_phase(self):
+        out = self._build().stdout
+        self.assertIn("build is", out)
+        self.assertNotIn("measure", out.split("STOP")[0])
+
+    def test_it_stops_where_only_a_person_can_go_on(self):
+        out = self._build().stdout
+        self.assertIn("STOP at", out)
+
+    def test_a_sub_stage_can_find_the_harness(self):
+        """It ran each stage with cwd set to the TARGET repository, so `-m sch` was not importable
+        and every stage died on "No module named sch" - reported as the stage failing."""
+        self.assertNotIn("No module named sch", self._build().stdout + self._build().stderr)
+
+    def test_the_header_comes_before_the_output_it_heads(self):
+        """The parent's prints are buffered and the child's are not, so a stage's output arrived
+        ABOVE the line saying which stage it was."""
+        out = self._build().stdout
+        if "--- references" in out and "consulted" in out:
+            self.assertLess(out.index("--- references"), out.index("consulted"))
