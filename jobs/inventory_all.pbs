@@ -56,6 +56,15 @@
 #   Q5  THE SEVEN UNKNOWN NUMBERS BECOME KNOWN. There is no prediction of their size - that is
 #       the point of running it - but each must be a number, produced by a named extractor.
 #
+#   Q6  A MEMBER THAT FAILS DOES NOT SINK THE MEMBER THAT WAS ASKED FOR. Measured on the run
+#       before this one: `install liana` ran seven selftests, liana PASSED, and this job recorded
+#       INSTALL FAILED - because abundance cannot import statsmodels through pertpy and de and
+#       decoupler were SIGKILLed by the node. The tool now records a verdict per member and only
+#       the member asked about decides the exit code, so the seal must carry `proofs:` naming
+#       each member's verdict, and an environment with a failing member must still let its
+#       working members through to the inventory below. The failing ones are refused by name
+#       when somebody runs or plans THEM, which is where that refusal belongs.
+#
 # rule-one: no-removal. Writes inside $RUNDIR, and into $ENVS, which is where this family's
 # environments already live and is shared reuse by design - a run that built its own copy would
 # defeat the mechanism this job exists to exercise.
@@ -88,6 +97,10 @@ finish() { s=$?
     echo "purpose=inventory every plugin's wrapped tool, three environments for nine plugins"
     echo "NOT PROMOTABLE. Nothing here is a result about biology; every number counts functions."
     [ "${BAD:-0}" -gt 0 ] && echo "problems=${BAD}"
+    # WHICH PLUGIN CAN RUN IN WHICH ENVIRONMENT, from the tool's own per-member records. A
+    # shared environment is proved one member at a time, so a seal that carries only this job's
+    # own count cannot say which of the seven were proved and which were recorded as failing.
+    [ -s "$RUNDIR/logs/proofs.txt" ] && { echo "proofs:"; cat "$RUNDIR/logs/proofs.txt"; }
     [ -s "$RUNDIR/logs/summary.txt" ] && cat "$RUNDIR/logs/summary.txt"
   } > "$seal"
   rm -f "$RUNDIR/RUNNING.txt"
@@ -137,7 +150,7 @@ for g in RS.group_by_compatibility(list(discover().values())):
 PYG
 column -t "$RUNDIR/logs/groups.tsv"
 
-echo; echo "=== install one member of each environment NEEDED; an existing match is skipped"
+echo; echo "=== build each environment NEEDED, and prove the members asked for; a match is skipped"
 # ONLY THE ENVIRONMENTS THE SELECTED PLUGINS RESOLVE TO. Asked for one plugin, this installed
 # all three groups and ran seven selftests to inventory one package. Converting a family one
 # plugin at a time is the point - a batch pass fits the tool to the whole corpus at once and
@@ -150,24 +163,52 @@ else
 fi
 echo "  environments needed: $(echo $want_envs | tr '\n' ' ')"
 for env in $want_envs; do
-  # AND A MEMBER THAT WAS ASKED FOR, where one was. Installing through `abundance` to inventory
-  # `liana` makes abundance's failing selftest liana's problem.
-  member=$(for k in ${ONLY:-}; do awk -v k="$k" -v e="$env" '$1==k && $2==e{print $1; exit}' \
-             "$RUNDIR/logs/groups.tsv"; done | head -1)
-  [ -n "$member" ] || member=$(awk -v e="$env" '$2==e{print $1; exit}' "$RUNDIR/logs/groups.tsv")
-  echo "--- $env  (installing via $member)"
-  set +e
-  ( cd "$TOOL" && "$HOSTPY" -m scprofile.cli install "$member" --prefix "$ENVS" ) \
-      > "$RUNDIR/logs/install_$env.txt" 2>&1
-  rc=$?
-  set -e
-  if [ "$rc" -ne 0 ]; then
-    BAD=$((BAD+1))
-    echo "    INSTALL FAILED rc=$rc - see logs/install_$env.txt"
-    tail -12 "$RUNDIR/logs/install_$env.txt" | sed 's/^/      /'
-  else
-    echo "    ok  $(grep -ci 'already\|exists\|skip' "$RUNDIR/logs/install_$env.txt" || true) reuse line(s)"
-  fi
+  # AND EVERY MEMBER THAT WAS ASKED FOR, EACH ONE PROVED THROUGH ITSELF. Installing through
+  # `abundance` to inventory `liana` makes abundance's failing selftest liana's problem.
+  #
+  # THIS LINE WAS A NO-OP FOR A MONTH AND THE JOB LOG SAYS SO. It picked the asked-for member,
+  # `scprofile install` then looped over every member of the environment regardless, and one
+  # failure anywhere raised - so the workaround chose a name and changed nothing. Measured:
+  # `install liana` ran seven selftests, liana PASSED, and the job recorded INSTALL FAILED
+  # because abundance could not import statsmodels through pertpy and de and decoupler were
+  # SIGKILLed by the node.
+  #
+  # The tool now records a verdict PER MEMBER and only the member that was asked for decides the
+  # exit code, so the choice below finally means what it says. `head -1` went with it: with two
+  # asked-for plugins in one environment it proved the first and left the second to be
+  # inventoried in an environment nothing had run it in.
+  members=$(for k in ${ONLY:-}; do awk -v k="$k" -v e="$env" '$1==k && $2==e{print $1}' \
+              "$RUNDIR/logs/groups.tsv"; done)
+  # NOBODY ASKED, SO ONE MEMBER IS ENOUGH: with no record on disk yet the tool proves every
+  # member of the environment on that first install anyway, and records each verdict. Naming all
+  # of them here would re-prove the ones it had just recorded - and decoupler's selftest fetches
+  # over the network, where a re-prove costs the full 1800s timeout rather than a second.
+  [ -n "$members" ] || members=$(awk -v e="$env" '$2==e{print $1; exit}' "$RUNDIR/logs/groups.tsv")
+  for member in $members; do
+    echo "--- $env  (proving $member)"
+    set +e
+    ( cd "$TOOL" && "$HOSTPY" -m scprofile.cli install "$member" --prefix "$ENVS" ) \
+        > "$RUNDIR/logs/install_${env}_${member}.txt" 2>&1
+    rc=$?
+    set -e
+    if [ "$rc" -ne 0 ]; then
+      BAD=$((BAD+1))
+      echo "    INSTALL FAILED rc=$rc - see logs/install_${env}_${member}.txt"
+      echo "      This is now a fact about $member itself: another member of $env failing is" \
+           "recorded against that member and no longer reaches this exit code."
+      tail -12 "$RUNDIR/logs/install_${env}_${member}.txt" | sed 's/^/      /'
+    else
+      echo "    ok  $(grep -ci 'already\|exists\|skip' "$RUNDIR/logs/install_${env}_${member}.txt" \
+             || true) reuse line(s)"
+    fi
+    # WHAT WAS PROVED, PER MEMBER, INTO THE SEAL. The verdicts are the job's other result: which
+    # plugins of a shared environment can run there, which cannot, and which were left as they
+    # were recorded before. Without this the seal says one number for seven plugins, which is the
+    # shape of the defect above wearing a different hat. Its own file, because `summary.txt` is
+    # truncated by the inventory stage below and these are written before it.
+    sed -n "s/^ *recorded: /  $env  /p" "$RUNDIR/logs/install_${env}_${member}.txt" \
+        | tee -a "$RUNDIR/logs/proofs.txt"
+  done
 done
 
 echo; echo "=== inventory and account, per plugin, in its own interpreter"
