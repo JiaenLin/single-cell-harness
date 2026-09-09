@@ -714,3 +714,80 @@ class SplatHidesKeywords(unittest.TestCase):
         got = C.upstream_calls(
             "def run(ctx):\n    import scvelo as scv\n    scv.tl.velocity(A, mode='x')\n", "scvelo")
         self.assertFalse(got["scvelo.tl.velocity"]["splat"])
+
+
+class TheDefaultPathWorks(unittest.TestCase):
+    """`--point` OMITTED IS THE PATH SOMEBODY TYPES FIRST, and it crashed.
+
+    `point = a.point or next(iter(P.points(doc)))` - `points.py` exports `point`, singular, so
+    every `sch dev convert` without --point died on AttributeError. Every test and every example
+    I wrote passed --point, so the default was never executed by anything. A cold agent hit it on
+    its first command.
+    """
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "widgets").mkdir()
+        (self.d / "DEVPOINTS.yaml").write_text(DECL)
+        (self.d / "widgets" / "half.py").write_text('PLUGIN = {"inject": {"required": ["x"]}}\n')
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _run(self, *args, root=None):
+        return subprocess.run([sys.executable, "-m", "sch", "dev", "convert", *args,
+                               "--root", str(root or self.d)],
+                              capture_output=True, text=True, cwd=ROOT)
+
+    def test_status_runs_without_being_told_the_point(self):
+        p = self._run()
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("stage(s) complete", p.stdout)
+
+    def test_a_repository_declaring_nothing_says_so_rather_than_tracing_back(self):
+        empty = Path(tempfile.mkdtemp())
+        try:
+            p = self._run(root=empty)
+            self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
+            self.assertIn("DEVPOINTS", p.stderr)
+            self.assertNotIn("Traceback", p.stderr)
+        finally:
+            shutil.rmtree(empty, ignore_errors=True)
+
+
+class ReferencesAcknowledgesWhatIsDeclared(unittest.TestCase):
+    """It printed the same "declare {}" line before and after somebody declared {}.
+
+    The already-declared line was only reached when the extractor had candidates, so a maintainer
+    who had just done the work was told to do it again and reasonably concluded the edit had not
+    taken. Reported by a cold agent who hit exactly that.
+    """
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "widgets").mkdir()
+        (self.d / "DEVPOINTS.yaml").write_text(DECL)
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _say(self, plugin_src):
+        (self.d / "widgets" / "w.py").write_text(plugin_src)
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "references",
+                            "--root", str(self.d), "--point", "widget"],
+                           capture_output=True, text=True, cwd=ROOT)
+        return p.stdout
+
+    def test_an_explicit_empty_is_acknowledged(self):
+        out = self._say('PLUGIN = {"references": {}}\n')
+        self.assertIn("somebody looked", out)
+        self.assertNotIn("absent says nobody did", out)
+
+    def test_absent_is_still_asked_for(self):
+        out = self._say('PLUGIN = {}\n')
+        self.assertIn("absent says nobody did", out)
+
+    def test_declared_references_this_scan_cannot_see_are_not_contradicted(self):
+        out = self._say('PLUGIN = {"references": {"db": {"tier": "fetch"}}}\n')
+        self.assertIn("already declared", out)
+        self.assertIn("not contradicted", out)

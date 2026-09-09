@@ -480,8 +480,21 @@ def cmd_dev(a):
 
     if a.sub == "convert":
         from .dev import convert as CV
-        doc = P.load(a.root)
-        point = a.point or next(iter(P.points(doc)))
+        try:
+            doc = P.load(a.root)
+        except D.DevpointsError as e:
+            print(f"sch dev convert: {e}", file=sys.stderr)
+            return CANNOT_RUN
+        # `P.points` DOES NOT EXIST. `points.py` exports `point` (singular), so every
+        # `sch dev convert` without --point died on AttributeError - the default path, which is
+        # the one somebody types first. Found by a cold agent, not by me and not by the suite:
+        # every test and every example I wrote passed --point, so the default was never executed.
+        point = a.point or next(iter(doc.get("points") or {}), None)
+        if not point:
+            print(f"sch dev convert: {a.root} declares no extension points. "
+                  f"`sch dev map --root {a.root} --init` writes a first DEVPOINTS.yaml.",
+                  file=sys.stderr)
+            return CANNOT_RUN
         try:
             _ph, up_path, _stages = CV.plan(doc, point)
         except CV.ConvertError as e:
@@ -603,9 +616,24 @@ def cmd_dev(a):
             if a.action == "references":
                 found = CV.references_in(src, tool)
                 print(f"\n# ---- {nm}: consulted, and not from the user's object")
+                # SAY WHAT IS ALREADY THERE, EVEN WHEN NOTHING WAS FOUND. This printed the
+                # same "nothing found, declare {}" line before and after somebody declared `{}`,
+                # because the already-declared line was only reached when the extractor had
+                # candidates - so a maintainer who had just done the work was told to do it again
+                # and reasonably concluded their edit had not taken.
+                have = spec.get("references")
                 if not found:
-                    print(f"    # nothing found. If that is right, declare it: "
-                          f'"references": {{}} says you looked; absent says nobody did.')
+                    if isinstance(have, dict) and not have:
+                        print('    # nothing found, and `"references": {}` is declared - so this '
+                              "says somebody looked. Nothing to do.")
+                    elif have:
+                        print(f"    # nothing found, and {len(have)} already declared: "
+                              f"{sorted(have)}. This scan reads Python; a reference fetched from R "
+                              f"or a subprocess is invisible to it, so those are not contradicted.")
+                    else:
+                        print(f"    # nothing found, and nothing declared. If that is right, "
+                              f'declare it: "references": {{}} says you looked; absent says '
+                              f"nobody did.")
                     continue
                 for r in found:
                     print(f"    # {r['kind']:9s} line {r['line']}: {r['what']}")
