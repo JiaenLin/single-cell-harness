@@ -250,16 +250,27 @@ say(said == unlegended, "P3",
     f"row (of {placed} placed)")
 
 # P4 - the aliasing survives to the page
-SAYS_ALIAS = ("aliased with", "varies together with", "Identical split to")
+# FOUR PHRASINGS, FIVE MODULES, ONE FACT - and matched WITHOUT REGARD TO CASE, which is what
+# this check got wrong three times running. The contrast-specific statement is emitted in
+# capitals (`ALIASED WITH CHEMISTRY: ...`) and every earlier version of this looked for the
+# lower-case form, so it reported four pages silent that were each carrying the strongest
+# sentence in the document. Twice that was written up as a defect in the tool.
+#
+# The list is pinned on the other side by `tests/test_one_fact_many_phrasings.py` in the plugin
+# format's own suite, so a fifth wording cannot appear without this going stale loudly.
+SAYS_ALIAS = ("aliased with", "varies together with", "identical split to",
+              "partly confounded with")
 
 
 def _alias_said(s):
-    return sum(s.count(w) for w in SAYS_ALIAS)
+    low = s.lower()
+    return sum(low.count(w) for w in SAYS_ALIAS)
 
 
 briefs = list(run.glob("kernels/*/WRITING_BRIEF.md"))
 in_brief = sum(bool(_alias_said(b.read_text(encoding="utf-8", errors="replace"))) for b in briefs)
-pages_with = [p.name for p in pages if _alias_said(p.read_text(encoding="utf-8", errors="replace"))]
+pages_with = [p.name for p in pages
+              if _alias_said(p.read_text(encoding="utf-8", errors="replace"))]
 # THE PAGES THAT SHOW A CONTRAST ALONG THE ALIASED FACTOR ARE THE ONES THAT MUST CARRY IT.
 levels = {str(v.get(f)) for v in (design or {}).values() for f in (controls or {})}
 shows_contrast = [p.name for p in pages
