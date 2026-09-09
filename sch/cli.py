@@ -575,19 +575,38 @@ def cmd_dev(a):
         if a.action == "status":
             out = []
             for nm, spec in specs:
-                out.append(CV.format_status(CV.status(spec, doc, point), nm, point,
+                # THE PLUGIN'S NAME REACHES `status`, and it has to. A stage that rules on where
+                # the plugin DRAWS is measured from that plugin's source, and a status that did
+                # not pass the name would report "could not look" for every one of them - which
+                # is honest, and useless, on the one command a person types first.
+                out.append(CV.format_status(CV.status(spec, doc, point, nm), nm, point,
                                             doc=doc, root=a.root, python=a.python or ""))
             print("\n\n".join(out))
             return OK
         if a.action == "legends":
+            # TWO HALVES, AND A PLUGIN IS NOT FINISHED WHILE EITHER IS OWED. The declared half
+            # rules on every figure the plugin DECLARES - who drew it. The measured half reads the
+            # plugin's own source and asks where it PRODUCES a panel without describing one, which
+            # nothing in a declaration can answer because a draw site is not declared anywhere.
+            #
+            # NEITHER HALF IS REQUIRED. A point may declare one, the other, or both; a stage that
+            # declares neither is the error, and it is reported as one rather than printing an
+            # empty worksheet that reads as no work left.
             bad = 0
             for nm, spec in specs:
-                try:
-                    print(f"\n{nm}")
-                    print(CV.items_worksheet(spec, doc, point, "legends"))
-                except CV.ConvertError as e:
+                print(f"\n{nm}")
+                said, last = 0, "this stage declares neither half"
+                for fn in (lambda: CV.items_worksheet(spec, doc, point, "legends"),
+                           lambda: CV.draw_worksheet(doc, point, "legends", nm)):
+                    try:
+                        print(fn())
+                        print("")
+                        said += 1
+                    except CV.ConvertError as e:
+                        last = e
+                if not said:
                     bad += 1
-                    print(f"{nm}: {e}", file=sys.stderr)
+                    print(f"{nm}: {last}", file=sys.stderr)
             return FAILED if bad else OK
         # GUARDED, because it was not. This block had no `if` on it and returned at the end, so
         # the `account` branch below was unreachable and `convert account` silently printed an
@@ -660,7 +679,7 @@ def cmd_dev(a):
         # the things this pipeline exists to put in front of somebody.
         rows = None
         for nm, spec in specs:
-            rows = CV.status(spec, doc, point)
+            rows = CV.status(spec, doc, point, nm)
             build = [r for r in rows if r.get("phase", "build") == "build"]
             done = sum(1 for r in build if r["done"])
             print(f"\n=== {nm}: build is {done} of {len(build)}")
@@ -675,11 +694,18 @@ def cmd_dev(a):
                     if r["why"]:
                         print(f"       {r['why'].strip()}")
                     break
-                if r.get("partial"):
-                    print(f"\n  STOP at {r['stage']}: started, and the plugin says what is left.")
-                    print(f"       {r['partial'][:200]}")
-                    print(f"       to see the rest:  {cmd}")
-                    break
+                if r.get("partial") or r.get("draws", {}).get("looked") is not None:
+                    # A DEBT MEASURED FROM SOURCE STOPS THE BUILD TOO. `partial` is what the
+                    # plugin admits about itself; the draw-site half is what its source says
+                    # whether it admits it or not, and a driver that walked past it would run
+                    # every later stage and report a build that has 35 undescribed panels in it.
+                    said = r.get("partial") or CV.draw_summary(r.get("draws") or {})
+                    if said:
+                        print(f"\n  STOP at {r['stage']}: started, and the source says what is "
+                              f"left.")
+                        print(f"       {said[:200]}")
+                        print(f"       to see the rest:  {cmd}")
+                        break
                 print(f"\n  --- {r['stage']}")
                 argv = cmd.split()
                 if argv[:1] == ["sch"]:

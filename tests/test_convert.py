@@ -8,7 +8,9 @@ inventory, has been domain-free and shipped the whole time.
 """
 from __future__ import annotations
 
+import ast
 import contextlib
+import inspect
 import json
 import os
 import re
@@ -22,6 +24,7 @@ from pathlib import Path
 from sch.dev import convert as C
 from sch.dev import extract
 from sch.dev import points as P
+from sch.dev.extract import draw_sites as DS
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -44,6 +47,29 @@ points:
         - {name: inventory, fills: [native_plots], why: what the tool already draws}
         - {name: judgement, kind: judgement, fills: [summary, cannot_show]}
 """
+
+
+def _literals(path):
+    """Every string CONSTANT in a module, docstrings excluded, joined.
+
+    A ratchet on "this suite names no repository's vocabulary" has to read the code and not the
+    prose. `r_namespace.py` explains CellChat in its header and must go on being able to; what it
+    may not do is put one repository's field or wrapper name into a literal the code compares
+    against. Comments are not constants at all, so `ast` already excludes them.
+    """
+    tree = ast.parse(Path(path).read_text(encoding="utf-8"))
+    docs = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            body = getattr(node, "body", None) or []
+            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) \
+                    and isinstance(body[0].value.value, str):
+                docs.add(id(body[0].value))
+    out = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docs:
+            out.append(node.value)
+    return "\n".join(out)
 
 
 @contextlib.contextmanager
@@ -86,8 +112,12 @@ class Extractors(unittest.TestCase):
         got = extract.discover(strict=True)
         self.assertIn("python_package", got)
         self.assertIn("r_namespace", got)
+        self.assertIn("draw_sites", got)
+        # THE KINDS ARE LISTED RATHER THAN COUNTED, so adding one is a deliberate edit here.
+        # `draw_sites` reads the PLUGIN and the other two read the upstream it wraps, which is
+        # why it declares a third kind rather than pretending to be one of theirs.
         self.assertEqual({m.EXTRACT["reads"] for m in got.values()},
-                         {"python-package", "r-package"})
+                         {"python-package", "r-package", "plugin-source"})
 
     def test_every_extractor_declares_what_it_reads(self):
         for name, mod in extract.discover(strict=True).items():
@@ -1480,6 +1510,612 @@ class ADeadEndAnnouncesItself(unittest.TestCase):
         src = inspect.getsource(C.format_status) + inspect.getsource(C.status)
         for word in ("native_plots", "wraps.owed", "superseded_by_design"):
             self.assertNotIn(f'"{word}"', src)
+
+
+# -----------------------------------------------------------------------------------------------
+# THE DRAW-SITE HALF. A conversion is not finished while the plugin still produces a panel and
+# says nothing about it.
+#
+# MEASURED, AND THIS IS WHY THE CLASSES BELOW EXIST. A sealed run of this family: 711 panels, 69
+# with a written legend, 642 without. The 642 come out of 35 call sites in ONE file, every one of
+# them calling a wrapper that already HAS a legend parameter and passing nothing to it. Every
+# check that existed counted the gap in the RUN'S OUTPUT - a number that names a directory of
+# PNGs and not one line anybody can open - and no check anywhere looked at a draw site.
+# -----------------------------------------------------------------------------------------------
+
+#: A host package with TWO emit paths, reached two different ways, and a plugin that draws in
+#: both languages. Written out rather than pointed at a real repository, for the reason every
+#: other fixture here is: a test that reads scProfile passes or fails on scProfile's current
+#: state.
+#:
+#: THE TWO ROUTES ARE THE POINT. One emit path is a METHOD, reached through the object a plugin
+#: is handed; the other is a MODULE-LEVEL FUNCTION, reached through an import. Keyed on the
+#: attribute name alone, `anything.write_panel(...)` in any plugin was a draw site - and a
+#: synthetic plugin that saved a checkpoint and a table and drew nothing at all was reported as
+#: two undescribed panels.
+HOST = '''
+class Context:
+    """What a plugin is handed. Its emit path is reached through the instance."""
+
+    def emit_figure(self, name, fig, *, caption="", source=None):
+        """One of the host's two emit paths."""
+        fig.savefig(name)
+
+
+def write_panel(fig, out_dir, name, *, caption="", source=None):
+    """The other, at module level - so a call to it comes through an import of this module."""
+    fig.savefig(out_dir / name)
+'''
+
+#: EVERY R CALL IS ALONE ON ITS LINE WITH A BLANK LINE EITHER SIDE, and no two of them draw the
+#: same panel. Stacked on consecutive lines, a uniform shift in the embedded-R line arithmetic
+#: lands every site on another line that still holds the wrapper name - so an off-by-one that
+#: made all of the reported line numbers wrong passed a test written to catch exactly that.
+PLUGIN = '''
+PLUGIN = {"api": 1}
+
+_R = r"""
+npng <- function(name, expr, w = 1800, h = 1500, res = 200, legend = "", by = "tool") {
+  path <- file.path(figdir, paste0(name, ".png"))
+  .legend(basename(path), legend, by)
+  grDevices::png(path, width = w, height = h, res = res)
+  print(expr)
+  grDevices::dev.off()
+}
+
+helper <- function(x) { paste0("not a draw site: ", x) }
+
+opener <- function(p) { grDevices::png(p); invisible(NULL) }
+
+npng("silent_one", someTool_circle(cc))
+
+npng("spoken_one", someTool_heatmap(cc), legend = "This one says what it shows and why.")
+
+npng("prefixed", someTool_bubble(cc), leg = "Named by prefix, which R resolves.")
+
+npng("positional", someTool_river(cc), 900, 900, 100, "Supplied without naming anything at all.")
+
+npng(paste0("looped__", pw), someTool_aggregate(cc, signaling = pw))
+
+kept <- npng("assigned_arrow", someTool_dot(cc))
+
+kept2 = npng("assigned_equals", someTool_bar(cc))
+
+npng("silent_five", someTool_violin(cc))
+
+npng("silent_six", someTool_ridge(cc))
+
+npng("silent_seven", someTool_tile(cc))
+
+npng("silent_eight", someTool_rose(cc))
+
+# npng("commented_out", someTool_nothing(cc))
+
+message("npng(\\"in a string\\", nothing())")
+"""
+
+
+def run(ctx):
+    ctx.emit_figure("F1", fig, caption="A described panel, five words at least.")
+    ctx.emit_figure(
+        "F2", fig,
+        # A COMMENT LONG ENOUGH TO PUSH THE ARGUMENT OUT OF ANY WINDOW A LINE SCAN WOULD USE,
+        # which is exactly the shape that made a grep report two described panels as silent.
+        # Three more lines of it, so no plausible window reaches the keyword below.
+        # Four.
+        # Five.
+        caption="Also described, and six lines below the parenthesis.")
+    ctx.emit_figure("F3", fig)
+    # NONE OF THE NEXT THREE IS A DRAW SITE. The host's `write_panel` is a module-level function
+    # and none of these receivers is the module it lives in - they are other objects that happen
+    # to have a method of the same name. The first two are the reviewer's demonstration verbatim.
+    ctx.model.write_panel("checkpoint.pt")
+    ctx.table.write_panel(ctx.out / "counts.parquet")
+    ctx.table.write_panel(fig, ctx.out, "fits_the_signature_wrong_object")
+
+
+def more(ctx, fig):
+    from demopkg.plugin import write_panel
+    from demopkg import plugin as hostmod
+    write_panel(fig, ctx.out, "F4")
+    hostmod.write_panel(fig, ctx.out, "F5", caption="Described, through the module alias.")
+'''
+
+DRAWDECL = """
+tool: demopkg
+devpoints: 1
+points:
+  widget:
+    what: a widget
+    lives: widgets
+    proves: it runs
+    cannot_prove: that it is right
+    convert:
+      placeholder: "TODO"
+      upstream: wraps.tool
+      stages:
+        - {name: contract, fills: [inject]}
+        - name: legends
+          fills: [report.figures]
+          each_item_declares:
+            drawn_by: [tool, plugin]
+          each_draw_site_describes: true
+          finished_by: write the sentence at the call site
+          why: who drew each panel
+"""
+
+
+class ADrawSiteIsFoundByWhatItDoes(unittest.TestCase):
+    """Requiring a plugin to DECLARE its draw wrappers would mean editing every plugin in order
+    to discover that they all need editing - which is the same reason eight of nine owed an
+    accounting: the work was not skipped, there was no command that did it. So a draw wrapper is
+    recognised by behaviour, in both of the languages a plugin here is written in."""
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "demopkg").mkdir()
+        (self.d / "demopkg" / "__init__.py").write_text("")
+        (self.d / "demopkg" / "plugin.py").write_text(HOST)
+        (self.d / "widgets").mkdir()
+        (self.d / "widgets" / "w.py").write_text(PLUGIN)
+        (self.d / "DEVPOINTS.yaml").write_text(DRAWDECL)
+        self.doc = P.load(self.d)
+        self.inv = C.measure_draw_sites(self.doc, "widget", "w")
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _by_panel(self):
+        return {s["panel"]: s for s in DS.sites_of(self.inv)}
+
+    def test_an_r_function_that_opens_a_device_and_closes_it_is_a_draw_wrapper(self):
+        rtext = DS.embedded_r(PLUGIN)[0][0]
+        self.assertEqual([w.name for w in DS.r_wrappers(rtext)], ["npng"])
+
+    def test_a_function_that_only_pastes_a_string_is_not_one(self):
+        """`helper` is defined right beside the wrapper and draws nothing. A scan keyed on "a
+        function defined in the embedded R" would report every one of its calls as a panel."""
+        rtext = DS.embedded_r(PLUGIN)[0][0]
+        self.assertNotIn("helper", [w.name for w in DS.r_wrappers(rtext)])
+
+    def test_a_function_that_opens_a_device_and_never_closes_it_is_not_one(self):
+        """A preamble that opens a device is not a draw site, and treating it as one would file
+        the whole script as one panel."""
+        rtext = DS.embedded_r(PLUGIN)[0][0]
+        self.assertNotIn("opener", [w.name for w in DS.r_wrappers(rtext)])
+
+    def test_the_legend_parameter_is_read_off_the_signature(self):
+        """NOT ASSUMED TO BE CALLED `legend`. It is `caption` on the Python side of the very
+        repository this was built against, and neither name belongs in this suite."""
+        rtext = DS.embedded_r(PLUGIN)[0][0]
+        self.assertEqual(DS.r_wrappers(rtext)[0].legend, "legend")
+        emits = DS.host_emits(self.d, "demopkg")
+        self.assertEqual(emits.detail["emit_figure"]["legend"], "caption")
+
+    def test_a_call_that_passes_nothing_is_silent_and_one_that_passes_something_is_not(self):
+        got = self._by_panel()
+        self.assertIs(got['"silent_one"']["has_legend"], False)
+        self.assertIs(got['"spoken_one"']["has_legend"], True)
+
+    def test_a_legend_named_by_prefix_is_not_reported_silent(self):
+        """R matches argument names by prefix, so `leg =` fills `legend`. A scan looking only for
+        the exact name would send somebody to write a legend that is already there."""
+        self.assertIs(self._by_panel()['"prefixed"']["has_legend"], True)
+
+    def test_a_legend_supplied_positionally_is_not_reported_silent(self):
+        self.assertIs(self._by_panel()['"positional"']["has_legend"], True)
+
+    def test_the_panel_name_is_reported_as_written_including_a_paste0(self):
+        """35 sites produce ~642 panels because many of them are loops. A scan that could only
+        report literal names would drop the sites that account for most of the debt."""
+        self.assertIn('paste0("looped__", pw)', self._by_panel())
+
+    def test_a_commented_out_call_is_not_a_draw_site(self):
+        self.assertNotIn('"commented_out"', self._by_panel())
+
+    def test_the_wrapper_name_inside_a_string_is_not_a_draw_site(self):
+        self.assertNotIn('"in a string"', self._by_panel())
+
+    def test_a_line_number_is_the_python_files_and_not_the_embedded_scripts(self):
+        """"line 6 of the R" is a line number nobody can open. Checked against the file itself,
+        so the arithmetic cannot drift from the thing it indexes.
+
+        THE LINE'S CONTENT IS THIS SITE'S OWN PANEL, NOT JUST THE WRAPPER NAME. Asserting only
+        that the wrapper appears there is satisfied by ANY line that calls the wrapper - and the
+        embedded-R arithmetic fails as a UNIFORM SHIFT, which with the calls stacked on
+        consecutive lines lands every site on another such line, the commented-out one included.
+        A single `- 1` dropped from `embedded_r` made all of the reported line numbers wrong and
+        this test passed. The panel name is unique per site, so a shift of any size fails."""
+        lines = PLUGIN.splitlines()
+        seen = 0
+        for s in DS.sites_of(self.inv):
+            if s["lang"] != "R":
+                continue
+            at = lines[s["line"] - 1]
+            self.assertIn(s["wrapper"], at,
+                          f"{s['panel']} reported at a line that does not hold its call")
+            self.assertIn(s["panel"], at,
+                          f"{s['panel']} reported at line {s['line']}, which holds {at.strip()!r}")
+            seen += 1
+        self.assertGreater(seen, 6, "too few R sites here to distinguish a shift from a match")
+
+    def test_the_embedded_r_arithmetic_survives_a_literal_that_does_not_start_on_its_own_line(self):
+        """The base line is derived from where the literal ENDS, so a literal that opens on the
+        same line as the assignment and one that opens on the next must both land."""
+        for opener in ('_R = r"""\n', '_R = r"""'):
+            src = (opener + 'np <- function(n, e, legend = "") {\n'
+                            '  grDevices::png(n); print(e); grDevices::dev.off()\n'
+                            '}\n'
+                            'np("only_one", thing())\n'
+                            '"""\n')
+            inv = DS.draw_sites("w", src, "w.py", None)
+            site = DS.sites_of(inv)[0]
+            self.assertIn('np("only_one"', src.splitlines()[site["line"] - 1])
+
+    def test_the_python_emit_path_is_measured_and_not_named_here(self):
+        """The repository says what its host package is called - `tool:` in its own
+        DEVPOINTS.yaml - and the emit path is measured out of that package."""
+        emits = DS.host_emits(self.d, "demopkg")
+        self.assertTrue(emits.complete)
+        self.assertEqual(emits.names, ["emit_figure", "write_panel"])
+        src = _literals(ROOT / "sch" / "dev" / "extract" / "draw_sites.py")
+        for word in ("emit_figure", "caption", "npng", "ndev", "scp_draw", "demopkg"):
+            self.assertNotIn(word, src, f"{word!r} is somebody else's vocabulary")
+
+    def test_a_multi_line_python_call_is_not_silent_because_the_argument_is_six_lines_down(self):
+        """MEASURED, AND IT CHANGED THE ANSWER. A line-window scan of the nine shipped plugins
+        reported two sites as passing no legend. Both pass one, six and seven lines below the
+        opening parenthesis, behind a comment explaining what the legend had been getting wrong.
+        A window scan invents debt in the plugins whose authors documented themselves best."""
+        got = {s["panel"]: s for s in DS.sites_of(self.inv) if s["lang"] == "python"}
+        self.assertIs(got["'F2'"]["has_legend"], True)
+        self.assertIs(got["'F3'"]["has_legend"], False)
+
+    def test_a_plugin_that_will_not_parse_is_not_a_plugin_with_no_draw_sites(self):
+        inv = DS.draw_sites("broken", "def f(:\n", "broken.py", None)
+        self.assertFalse(inv.complete)
+        self.assertEqual(len(inv), 0)
+        self.assertIn("will not parse", inv.why_not)
+
+    def test_a_host_package_that_is_not_there_is_not_a_host_with_no_emit_path(self):
+        inv = DS.host_emits(self.d, "nosuchpkg")
+        self.assertFalse(inv.complete)
+        self.assertIn("nosuchpkg", inv.why_not)
+
+
+    def test_the_upstream_inventory_does_not_dispatch_to_a_plugin_source_reader(self):
+        """`convert.inventory` asks every extractor that can look at an UPSTREAM PACKAGE. This
+        one reads the plugin instead and takes different arguments; dispatched there it would be
+        called with a package name and reported as an extractor that could not look at the
+        wrapped tool - a false "could not look", which is the one answer this family protects."""
+        self.assertIn(DS, extract.for_kind("plugin-source"))
+        got = dict(C.inventory("nosuchpackage_xyz", python=sys.executable))
+        self.assertNotIn("draw_sites", got)
+
+    def test_the_command_prints_both_halves_of_the_stage(self):
+        """The declared half rules on figures the plugin DECLARES; the measured half reads its
+        source. A command that printed one of them would report a finished conversion with the
+        other outstanding, which is the whole defect."""
+        out = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "legends",
+                              "--root", str(self.d), "--point", "widget", "--name", "w"],
+                             cwd=str(ROOT), capture_output=True, text=True)
+        self.assertIn("still to rule on", out.stdout)      # the DECLARED half
+        self.assertIn("draw site(s) in w", out.stdout)     # the MEASURED half
+        self.assertIn('"silent_one"', out.stdout)
+
+    def test_a_wrapper_with_no_empty_default_leaves_its_sites_unknown_and_not_silent(self):
+        """A wrapper whose legend is REQUIRED has no empty default to find. Reporting its calls
+        as silent would manufacture a debt out of a wrapper that has no gap at all - so the third
+        answer is UNKNOWN, for the same reason `complete=False` is a third answer next door."""
+        src = ('_R = r"""\n'
+               'draw2 <- function(p, expr, legend) {\n'
+               '  grDevices::png(p); print(expr); grDevices::dev.off()\n'
+               '}\n'
+               'draw2("x", thing())\n'
+               '"""\n')
+        inv = DS.draw_sites("w2", src, "w2.py", None)
+        self.assertEqual(len(DS.silent(inv)), 0)
+        self.assertEqual(len(DS.unknown(inv)), 1)
+
+    def test_two_calls_on_one_line_are_two_draw_sites(self):
+        """ASSERTED ON THE SIDE OF THE OBJECT EVERY CONSUMER READS. `len(inv)` counts `names`,
+        which is never de-duplicated; `sites_of`, `silent`, `unknown` and the debt all read
+        `detail`, which is keyed on `file:line`. Removing the collision fix left `len(inv)` at 2
+        and dropped a site out of the debt, and a test that asked the length saw nothing."""
+        src = ('_R = r"""\n'
+               'np <- function(n, e, legend = "") {\n'
+               '  grDevices::png(n); print(e); grDevices::dev.off()\n'
+               '}\n'
+               'np("a", one()); np("b", two())\n'
+               '"""\n')
+        inv = DS.draw_sites("w3", src, "w3.py", None)
+        self.assertEqual(len(DS.sites_of(inv)), 2,
+                         "keyed on the line alone, the second overwrites the first")
+        self.assertEqual([x["panel"] for x in DS.sites_of(inv)], ['"a"', '"b"'])
+        self.assertEqual(len(DS.silent(inv)), 2)
+        self.assertEqual(C.draw_debt(inv)["total"], 2)
+
+    def test_a_draw_site_whose_result_is_assigned_is_still_a_draw_site(self):
+        """AN R DEFINITION IS `name <- function(...)`, WHICH NEVER MATCHES `name(`. A guard in
+        front of the call scan skipped anything preceded by `<-`, commented as "the definition,
+        not a use" - it suppressed no definition anywhere, and what it did suppress was a panel
+        drawn and kept in a variable. R's other assignment operator was unaffected, so one of
+        the two spellings of the same site was counted and the other silently was not."""
+        got = self._by_panel()
+        self.assertIn('"assigned_arrow"', got, "a site whose result is kept is still a site")
+        self.assertIs(got['"assigned_arrow"']["has_legend"], False)
+        self.assertIs(got['"assigned_equals"']["has_legend"], False)
+
+    def test_one_name_defined_twice_in_one_script_does_not_count_its_calls_twice(self):
+        """R has no overloads: a second definition of a name replaces the first. Scanning both
+        reports every call to it twice, which doubles the one number this extractor produces."""
+        src = ('_R = r"""\n'
+               'np <- function(n, e, legend = "") {\n'
+               '  grDevices::png(n); print(e); grDevices::dev.off()\n'
+               '}\n'
+               'np <- function(n, e, legend = "") {\n'
+               '  grDevices::pdf(n); print(e); grDevices::dev.off()\n'
+               '}\n'
+               'np("once", thing())\n'
+               '"""\n')
+        inv = DS.draw_sites("w4", src, "w4.py", None)
+        self.assertEqual([x["panel"] for x in DS.sites_of(inv)], ['"once"'])
+
+    def test_a_signature_with_two_empty_defaults_is_unknown_and_says_which_two(self):
+        """WHICH ONE CARRIES THE LEGEND IS NOT SETTLED BY DECLARATION ORDER. Taking the first
+        reported a DESCRIBED panel as silent - the call filled the other one - and the worksheet
+        then printed the wrong argument to add. A disagreement between two DEFINITIONS is already
+        reported; this is the same disagreement inside one signature and gets the same answer."""
+        src = ('_R = r"""\n'
+               'plate <- function(slug, expr, provenance = "", subtitle = "", w = 900) {\n'
+               '  grDevices::png(slug, width = w); print(expr); grDevices::dev.off()\n'
+               '}\n'
+               'plate("p1", someThing(x), subtitle = "What this panel shows, and why it is here.")\n'
+               '"""\n')
+        inv = DS.draw_sites("w5", src, "w5.py", None)
+        self.assertEqual(len(DS.silent(inv)), 0, "the call DID describe the panel")
+        self.assertEqual(len(DS.unknown(inv)), 1)
+        how = DS.unknown(inv)[0]["how"]
+        self.assertIn("AMBIGUOUS", how)
+        self.assertIn("provenance", how)
+        self.assertIn("subtitle", how)
+        self.assertEqual(DS.unknown(inv)[0]["legend_param"], "",
+                         "naming one of them sends the reader to the wrong argument")
+
+    def test_an_emit_path_reached_through_the_wrong_object_is_not_a_draw_site(self):
+        """THE NAME ALONE IS NOT THE EMIT PATH. This host's module-level emit path is matched on
+        the bare attribute name with no receiver check, so any `x.write_panel(...)` anywhere
+        became a draw site - and a plugin that saves a checkpoint and a table and draws nothing
+        was reported as two undescribed panels. That is debt manufactured out of a name, which
+        is the failure UNKNOWN exists at the other end to avoid."""
+        got = {(x["line"]) for x in DS.sites_of(self.inv) if x["lang"] == "python"}
+        lines = PLUGIN.splitlines()
+        for i, text in enumerate(lines, start=1):
+            if "checkpoint.pt" in text or "counts.parquet" in text:
+                self.assertNotIn(i, got, f"{text.strip()} is not a draw site")
+        wrong = next(i for i, t in enumerate(lines, start=1)
+                     if "fits_the_signature_wrong_object" in t)
+        self.assertNotIn(wrong, got, "the signature fits; the object it is called on does not")
+
+    def test_the_module_level_emit_path_is_found_when_it_is_actually_imported(self):
+        """The receiver rule must not be a way of not looking. The same name, reached the way
+        the host defines it - the name imported, and the module aliased - IS a draw site."""
+        got = {s["line"]: s for s in DS.sites_of(self.inv) if s["lang"] == "python"}
+        lines = PLUGIN.splitlines()
+        bare = next(i for i, t in enumerate(lines, start=1) if t.strip().startswith("write_panel("))
+        alias = next(i for i, t in enumerate(lines, start=1) if "hostmod.write_panel(" in t)
+        self.assertIn(bare, got)
+        self.assertIs(got[bare]["has_legend"], False)
+        self.assertIn(alias, got)
+        self.assertIs(got[alias]["has_legend"], True)
+
+    def test_a_call_that_cannot_fit_the_measured_signature_is_not_that_function(self):
+        """One positional argument cannot be a call to a function with three required
+        parameters, whatever the attribute is called."""
+        emits = DS.host_emits(self.d, "demopkg")
+        src = ('PLUGIN = {"api": 1}\n'
+               'from demopkg.plugin import write_panel\n'
+               'def run(ctx):\n'
+               '    write_panel(ctx.thing)\n')
+        self.assertEqual(DS.sites_of(DS.draw_sites("w6", src, "w6.py", emits)), [])
+
+
+class TheLegendsStageHoldsOpenWhileAPanelGoesOutUndescribed(unittest.TestCase):
+    """A conversion that reported `legends` done with 35 silent draw sites in the file was
+    telling the truth about the declaration and nothing about the plugin."""
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "demopkg").mkdir()
+        (self.d / "demopkg" / "__init__.py").write_text("")
+        (self.d / "demopkg" / "plugin.py").write_text(HOST)
+        (self.d / "widgets").mkdir()
+        (self.d / "widgets" / "w.py").write_text(PLUGIN)
+        (self.d / "DEVPOINTS.yaml").write_text(DRAWDECL)
+        self.doc = P.load(self.d)
+        #: EVERY DECLARED ENTRY ALREADY RULED ON, so the only thing left is the measured half.
+        self.spec = {"inject": {"a": 1},
+                     "report": {"figures": [{"id": "F1", "drawn_by": "tool"},
+                                            {"id": "F2", "drawn_by": "plugin"}]}}
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _row(self, name="w"):
+        return next(r for r in C.status(self.spec, self.doc, "widget", name)
+                    if r["stage"] == "legends")
+
+    def test_a_silent_draw_site_is_not_a_finished_stage(self):
+        row = self._row()
+        self.assertFalse(row["done"])
+        self.assertTrue(row["draws"]["silent"])
+
+    def test_the_debt_is_not_routed_through_the_declared_list(self):
+        """THE DESIGN CONSTRAINT, PAID FOR ONCE ALREADY. `item_gaps` walks a stage's `fills` and
+        stops at the FIRST list-valued field, and `report.figures` is a non-empty list in all nine
+        plugins - so a draw-site check hung behind it is unreachable and reports nothing, in
+        silence, forever. Here every declared entry IS ruled on, `item_gaps` therefore has nothing
+        to say, and the stage must still be open."""
+        row = self._row()
+        self.assertEqual(row["partial"], "", "the declared half is satisfied")
+        self.assertFalse(row["done"], "and the measured half is not")
+
+    def test_every_silent_site_is_named_and_not_a_leading_handful(self):
+        """A count is a number nobody can act on. The whole value of this check is that a reader
+        can open the lines, and truncating the list gives them the count back.
+
+        THE FIXTURE HAS TO BE ABLE TO TELL THE DIFFERENCE. Named for this regression and given
+        exactly three silent sites, this test passed with the list truncated to three: only a
+        truncation to TWO failed it, so the one revert it exists to catch went straight through.
+        It is the whole file:line that is looked for, because `:17` is inside `:170`."""
+        out = C.format_status(C.status(self.spec, self.doc, "widget", "w"), "w", "widget")
+        row = self._row()
+        sil = row["draws"]["silent"]
+        self.assertGreater(len(sil), 8, "too few silent sites here to see a truncation")
+        for s in sil:
+            self.assertIn(f"{s['file']}:{s['line']}", out)
+
+    def test_a_truncated_list_says_how_many_it_did_not_name(self):
+        """AND THAT LINE IS WHAT KEEPS A TRUNCATION FROM BEING SILENT. The cap and the "... and
+        N more" line are two constants that have to agree: with the list cut to three and the
+        test for more still reading the cap, thirty-two sites left the report with no trace at
+        all. Checked WITH a truncation, which is the only state in which they can disagree."""
+        row = self._row()
+        sil = row["draws"]["silent"]
+        L = C._draw_lines(row, limit=2)
+        named = [x for x in sil if any(f"{x['file']}:{x['line']}" in line for line in L)]
+        self.assertEqual(len(named), 2, "the cap is not the number of sites printed")
+        self.assertIn(f"... and {len(sil) - 2} more", "\n".join(L))
+
+    def test_a_stage_that_reports_this_debt_says_how_it_is_paid(self):
+        out = C.format_status(C.status(self.spec, self.doc, "widget", "w"), "w", "widget")
+        self.assertIn("to finish it:  write the sentence at the call site", out)
+
+    def test_and_says_the_suite_is_the_gap_when_nothing_declares_a_closer(self):
+        from sch import yamlish
+        doc = yamlish.loads(DRAWDECL.replace(
+            "          finished_by: write the sentence at the call site\n", ""))
+        doc["_root"] = str(self.d)
+        out = C.format_status(C.status(self.spec, doc, "widget", "w"), "w", "widget")
+        self.assertIn("NOTHING DECLARES HOW TO FINISH THIS", out)
+
+    def test_not_having_looked_is_not_the_same_as_nothing_to_do(self):
+        """A status asked without naming a plugin has read no source. Reporting the stage done
+        there would file "I did not look" as "there is nothing left"."""
+        row = self._row(name="")
+        self.assertFalse(row["done"])
+        self.assertFalse(row["draws"]["looked"])
+        out = C.format_status(C.status(self.spec, self.doc, "widget", ""), "w", "widget")
+        self.assertIn("COULD NOT LOOK", out)
+
+    def test_a_point_that_does_not_declare_this_is_unaffected(self):
+        from sch import yamlish
+        doc = yamlish.loads(DRAWDECL.replace("          each_draw_site_describes: true\n", ""))
+        doc["_root"] = str(self.d)
+        row = next(r for r in C.status(self.spec, doc, "widget", "w") if r["stage"] == "legends")
+        self.assertTrue(row["done"])
+        self.assertEqual(row["draws"], {})
+
+    def test_the_worksheet_shows_the_call_and_the_argument_to_add(self):
+        """A worksheet nobody can fill in from is a list of line numbers. Each row carries the
+        panel name as written, what is being plotted, and the argument to add - and no sentence,
+        because a legend generated from a function name is a label in the place a description
+        goes and a reader believes it."""
+        sheet = C.draw_worksheet(self.doc, "widget", "legends", "w")
+        self.assertIn("TO WRITE", sheet)
+        self.assertIn('"silent_one"', sheet)
+        self.assertIn("someTool_circle", sheet)
+        self.assertIn('legend = "..."', sheet)
+        self.assertNotIn('"spoken_one"', sheet)
+
+    def test_the_worksheet_refuses_a_stage_that_did_not_ask_for_it(self):
+        with self.assertRaises(C.ConvertError):
+            C.draw_worksheet(self.doc, "widget", "contract", "w")
+
+    def test_the_worksheet_says_it_could_not_look_rather_than_showing_an_empty_one(self):
+        sheet = C.draw_worksheet(self.doc, "widget", "legends", "nosuchwidget")
+        self.assertIn("COULD NOT LOOK", sheet)
+        self.assertNotIn("TO WRITE", sheet)
+
+    def test_the_harness_names_no_wrapper_no_field_and_no_stage_of_any_repository(self):
+        """The module's own docstring says it names no tool, no field and no plugin format. The
+        stage is `legends` in ONE repository's declaration; the key is this suite's own."""
+        for fn in (C.status, C.format_status, C._draw_lines, C.draw_worksheet,
+                   C.measure_draw_sites, C.draw_debt):
+            src = inspect.getsource(fn)
+            for word in ("legends", "report.figures", "npng", "emit_figure", "caption",
+                         "scprofile", "cellchat"):
+                self.assertNotIn(f'"{word}"', src, f"{word!r} in {fn.__name__}")
+                self.assertNotIn(f"'{word}'", src, f"{word!r} in {fn.__name__}")
+
+
+class TheCommandsAPersonActuallyRunsCarryTheMeasuredHalf(unittest.TestCase):
+    """THE MEASUREMENT WAS RATCHETED AND ITS TWO ENTRY POINTS WERE NOT.
+
+    `status` is the first command anybody types and `build` is the one that walks the whole
+    phase, and neither was run by any test: only `legends` was. So dropping the plugin's name in
+    the CLI's call to `status` - degrading every plugin to "COULD NOT LOOK at this plugin's draw
+    sites" - was green, and so was a `draw_summary` that returned "" for every debt, which lets
+    the driver walk straight past a stage with ten undescribed panels in it and run the rest of
+    the build behind it.
+    """
+
+    #: EVERY DECLARED ENTRY RULED ON, so nothing but the measured half can hold the stage open -
+    #: which is what makes the driver's walk-past visible here and nowhere else.
+    SPEC = {"inject": {"a": 1},
+            "report": {"figures": [{"id": "F1", "drawn_by": "tool"},
+                                   {"id": "F2", "drawn_by": "plugin"}]}}
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "demopkg").mkdir()
+        (self.d / "demopkg" / "__init__.py").write_text("")
+        (self.d / "demopkg" / "plugin.py").write_text(HOST)
+        (self.d / "widgets").mkdir()
+        (self.d / "widgets" / "w.py").write_text(
+            PLUGIN.replace('PLUGIN = {"api": 1}', "PLUGIN = " + repr(self.SPEC)))
+        (self.d / "DEVPOINTS.yaml").write_text(DRAWDECL)
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _run(self, action):
+        return subprocess.run([sys.executable, "-m", "sch", "dev", "convert", action,
+                               "--root", str(self.d), "--point", "widget"],
+                              capture_output=True, text=True, cwd=str(ROOT))
+
+    def _silent(self):
+        doc = P.load(self.d)
+        return C.draw_debt(C.measure_draw_sites(doc, "widget", "w"))["silent"]
+
+    def test_status_through_the_cli_looks_at_the_plugins_draw_sites(self):
+        """The name has to reach `status`, and only this command can tell whether it did. Without
+        it the answer is honest and useless - "could not look" for every plugin, on the one
+        command a person types first."""
+        out = self._run("status")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertNotIn("COULD NOT LOOK", out.stdout)
+        sil = self._silent()
+        self.assertGreater(len(sil), 8)
+        for site in sil:
+            self.assertIn(f"{site['file']}:{site['line']}", out.stdout)
+
+    def test_the_driver_stops_at_a_debt_measured_from_the_source(self):
+        """`partial` is what a plugin admits about itself; this is what its source says whether it
+        admits it or not. A driver that walked past it would run every later stage and report a
+        build with ten undescribed panels in it as finished."""
+        out = self._run("build")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("STOP at legends", out.stdout)
+        self.assertIn("started, and the source says what is left", out.stdout)
+        self.assertIn(f"{len(self._silent())} of ", out.stdout)
+        self.assertNotIn("--- legends", out.stdout,
+                         "it printed the stop and then ran the stage anyway")
+
+    def test_the_driver_runs_nothing_after_the_stage_it_stopped_at(self):
+        out = self._run("build").stdout
+        after = out.split("STOP at legends")[1]
+        self.assertNotIn("---", after, "a stage ran behind the stop")
 
 
 if __name__ == "__main__":

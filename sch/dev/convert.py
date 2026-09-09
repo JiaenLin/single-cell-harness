@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import ast
 import re
+from pathlib import Path
 
 from . import points as pts
 
@@ -34,6 +35,19 @@ from . import points as pts
 KEY = "convert"
 #: What a stage entry must carry.
 STAGE_REQUIRED = ("name", "fills")
+#: What a stage declares when its work is not finished while a panel goes out undescribed.
+#:
+#: DELIBERATELY NOT `each_item_declares`, AND THIS IS THE SECOND ATTEMPT. `item_gaps` walks a
+#: stage's `fills` and stops at the FIRST field whose value is a list; `report.figures` is a
+#: non-empty list in all nine of the plugins this was built against, so anything hung behind it
+#: was unreachable and a design that put draw sites there reported nothing, forever, in silence.
+#:
+#: The deeper reason it does not belong there: `each_item_declares` rules on entries of a
+#: DECLARED list, and a draw site is not declared anywhere. It is MEASURED FROM SOURCE - the line
+#: in the plugin where a panel is produced - which is a different kind of fact with a different
+#: failure mode. A declared list can be empty because the author has not written it; a measured
+#: one can be empty because nobody looked, and only the second needs `complete=False`.
+DRAWS_KEY = "each_draw_site_describes"
 
 
 class ConvertError(Exception):
@@ -139,10 +153,118 @@ def item_gaps(spec, stage):
     return {"field": where, "total": len(items), "gaps": gaps, "want": want}
 
 
-def status(spec, doc, point_name):
-    """[{stage, kind, done, missing, why}] in declared order. The whole resume mechanism."""
+# -----------------------------------------------------------------------------------------------
+# THE HALF OF A STAGE THAT IS MEASURED FROM SOURCE RATHER THAN READ FROM A DECLARATION.
+#
+# WHY THIS EXISTS AT ALL, MEASURED. On a sealed run: 711 panels, 69 with a written legend and 642
+# without. Every check this suite had counted that gap on the FAR side - in the run's output - and
+# a count of undescribed PNGs is a number nobody can act on: it names a directory, not the lines
+# that must change. The 642 panels come out of 35 call sites in one file, every one of which
+# already has a legend parameter sitting on the wrapper it calls, unused.
+#
+# So a conversion is not finished while a plugin's own source still produces a panel at a site
+# that offers a legend and passes none.
+# -----------------------------------------------------------------------------------------------
+
+def artefact(doc, point_name, name):
+    """The file this point says one artefact lives in, or None. Never raises on a missing tree."""
+    try:
+        pt = pts.point(doc, point_name)
+    except Exception:                                                     # noqa: BLE001
+        return None
+    root = Path(str(doc.get("_root") or "."))
+    lives = root / str(pt.get("lives") or ".")
+    target = lives / f"{name}.py" if lives.is_dir() else lives
+    return target if target.is_file() else None
+
+
+def measure_draw_sites(doc, point_name, name, source=None):
+    """Where this plugin produces a panel, and whether each site offers a legend.
+
+    THE ANSWER IS THE EXTRACTOR'S, INCLUDING WHEN IT IS "I COULD NOT LOOK". Nothing here turns a
+    failure to read the plugin into an empty list of draw sites - which is what would let a stage
+    that cannot see the source report itself finished.
+
+    THE HOST'S EMIT PATH IS NOT NAMED HERE. `doc['tool']` is what the repository calls its own
+    package, in its own DEVPOINTS.yaml; the extractor measures the emit path out of that package.
+    A point may override it with `draws_through:` when the measurement cannot see it, and the
+    inventory's `how` says which of the two answered.
+    """
+    from .extract import Inventory, draw_sites as DS
+    if not name:
+        return Inventory("", [], "", complete=False,
+                         why_not="this status was asked without naming a plugin, so no source "
+                                 "was read and no draw site was looked at. Pass --name.")
+    path = artefact(doc, point_name, name)
+    if source is None:
+        if path is None:
+            return Inventory(name, [], "", complete=False,
+                             why_not=f"no artefact for {name!r} under the directory this point "
+                                     f"declares, so its draw sites could not be read.")
+        try:
+            source = path.read_text(encoding="utf-8")
+        except OSError as e:
+            return Inventory(name, [], "", complete=False,
+                             why_not=f"{path}: {type(e).__name__}: {e}")
+    root = Path(str(doc.get("_root") or "."))
+    declared = []
+    try:
+        conv = pts.point(doc, point_name).get(KEY) or {}
+        declared = list(conv.get("draws_through") or [])
+    except Exception:                                                     # noqa: BLE001
+        pass
+    emits = DS.host_emits(root, doc.get("tool") or "", declared)
+    where = str(path.relative_to(root)) if path else f"{name}.py"
+    return DS.draw_sites(name, source, where, emits)
+
+
+def draw_debt(inv):
+    """What one plugin's draw sites owe. `{looked, why_not, total, silent, unknown, described}`.
+
+    THREE ANSWERS AND NOT TWO. A site is DESCRIBED, SILENT, or UNKNOWN - the last being a site
+    whose wrapper has no discoverable legend slot, which is a fact about the wrapper and not a
+    debt of the call. Folding unknown into silent would invent 47 gaps out of a wrapper that
+    requires its legend and therefore has none.
+    """
+    from .extract import draw_sites as DS
+    if inv is None:
+        return {"looked": False, "why_not": "nobody looked", "total": 0,
+                "silent": [], "unknown": [], "described": 0, "how": ""}
+    if not getattr(inv, "complete", False):
+        return {"looked": False, "why_not": getattr(inv, "why_not", ""), "total": 0,
+                "silent": [], "unknown": [], "described": 0, "how": ""}
+    sites = DS.sites_of(inv)
+    sil, unk = DS.silent(inv), DS.unknown(inv)
+    return {"looked": True, "why_not": "", "total": len(sites), "silent": sil, "unknown": unk,
+            "described": len(sites) - len(sil) - len(unk), "how": getattr(inv, "how", "")}
+
+
+def draw_summary(debt):
+    """The one sentence a status line carries, or "" when there is nothing outstanding."""
+    if not debt.get("looked"):
+        return (f"the draw sites of this plugin were NOT looked at, so whether its panels go out "
+                f"described is unknown: {debt.get('why_not', '')}")
+    parts = []
+    if debt["silent"]:
+        parts.append(f"{len(debt['silent'])} of {debt['total']} draw sites write no legend")
+    if debt["unknown"]:
+        parts.append(f"{len(debt['unknown'])} draw at a wrapper with no legend parameter to pass")
+    return "; ".join(parts)
+
+
+def status(spec, doc, point_name, name="", source=None):
+    """[{stage, kind, done, missing, why}] in declared order. The whole resume mechanism.
+
+    `name` IS OPTIONAL AND ITS ABSENCE IS AN ANSWER. A stage that rules on draw sites needs the
+    plugin's source, and a caller that names no plugin has not supplied one - so such a stage
+    reports "not looked at" rather than done. A status that quietly skipped the half it could not
+    measure would be the same defect this module has fixed in four other places.
+    """
     placeholder, _up, stages = plan(doc, point_name)
     out = []
+    drawn_inv = None
+    if any(st.get(DRAWS_KEY) for st in stages):
+        drawn_inv = measure_draw_sites(doc, point_name, name, source)
     for st in stages:
         missing = unfilled(spec, list(st["fills"]), placeholder)
         # A FIELD THAT IS PRESENT IS NOT ALWAYS A STAGE THAT IS FINISHED. velocity's `native_plots`
@@ -177,6 +299,18 @@ def status(spec, doc, point_name):
             partial = (f"{len(ig['gaps'])} of {ig['total']} entries in `{ig['field']}` have not "
                        f"been ruled on: " + shown
                        + (f", and {len(ig['gaps']) - 3} more" if len(ig["gaps"]) > 3 else ""))
+        # AND THE HALF THAT IS NOT DECLARED ANYWHERE. `unfilled` asks whether a field is there,
+        # `item_gaps` asks whether every entry of it has been ruled on, and both of them read the
+        # plugin's DECLARATION. Neither can see a panel that is produced and never described,
+        # because a draw site is a line of code and not an entry in a list.
+        #
+        # ITS OWN KEY IN THE ROW, NOT `partial`. `partial` is one sentence that the report clips
+        # at 150 characters, and this debt is 35 named lines - the whole value of it is that a
+        # reader can open them. Folded into `partial` it would print as "35 of 47 draw sit…".
+        draws = {}
+        if st.get(DRAWS_KEY):
+            draws = draw_debt(drawn_inv)
+        owes_draws = bool(draws) and (not draws["looked"] or draws["silent"] or draws["unknown"])
         out.append({"stage": st["name"],
                     "partial": partial,
                     "kind": st.get("kind", "mechanical"),
@@ -193,13 +327,14 @@ def status(spec, doc, point_name):
                     "phase": st.get("phase", "build"),
                     "finished_by": finished_by,
                     "fills": list(st["fills"]),
-                    "done": not missing and not partial,
+                    "draws": draws,
+                    "done": not missing and not partial and not owes_draws,
                     "missing": missing,
                     "why": st.get("why", "")})
     return out
 
 
-def next_stage(spec, doc, point_name):
+def next_stage(spec, doc, point_name, name=""):
     """The first stage not done, or None. Order is the declaration's, and it is the dependency.
 
     A LIST IS A DEPENDENCY GRAPH WHEN THE ORDER IS MEANT. `account` cannot run before `inventory`,
@@ -207,7 +342,7 @@ def next_stage(spec, doc, point_name):
     an ordered list rather than as edges is enough here and says so: if a conversion ever needs two
     stages that genuinely do not depend on each other to run at once, this is where that shows up.
     """
-    for row in status(spec, doc, point_name):
+    for row in status(spec, doc, point_name, name):
         if not row["done"]:
             return row
     return None
@@ -242,6 +377,51 @@ def inventory(tool, python=None, rscript=None):
     return got
 
 
+def _draw_lines(row, limit=40):
+    """The draw-site half of one status row, as lines. Empty when the stage owes nothing there.
+
+    THE SITES ARE NAMED AND NOT COUNTED - UP TO `limit` OF THEM, AND THEN SAID TO BE MORE. The
+    whole difference between this and the check it replaces is that a count of 642 undescribed
+    panels names a directory and 35 named lines name the work, so truncating the list back down
+    to three hands the reader the count again.
+
+    IT IS A CAP AND NOT A PROMISE, and the prose used to say otherwise. Past `limit` the row says
+    how many it did not name, and that one line is all that stands between a shorter cap and
+    sites leaving the report with no trace - so the two constants are tested against each other
+    WITH a truncation, which is the only state in which they can disagree.
+    """
+    d = row.get("draws") or {}
+    if not d:
+        return []
+    if not d.get("looked"):
+        return [f"       COULD NOT LOOK at this plugin's draw sites, so whether its panels go "
+                f"out described is unknown -",
+                f"       {d.get('why_not', '')}",
+                f"       An answer of zero silent draw sites from here would be a fact about "
+                f"this checkout, not about the plugin."]
+    if not (d.get("silent") or d.get("unknown")):
+        return []
+    L = []
+    if d.get("silent"):
+        L.append(f"       {len(d['silent'])} of {d['total']} draw sites write no legend "
+                 f"({d['described']} do). Each is a panel the page will describe by its "
+                 f"filename:")
+        for s in d["silent"][:limit]:
+            panel = _clip(s.get("panel") or "(unnamed)", 46)
+            call = (s.get("calls") or [""])[0] or _clip(s.get("draws", ""), 40)
+            L.append(f"         {s['file']}:{s['line']:<6} {s['wrapper']}({panel})"
+                     + (f"   -> {call}" if call else ""))
+        if len(d["silent"]) > limit:
+            L.append(f"         ... and {len(d['silent']) - limit} more")
+    if d.get("unknown"):
+        L.append(f"       {len(d['unknown'])} site(s) draw through a wrapper with no legend "
+                 f"parameter at all, so no call could pass one:")
+        for s in d["unknown"][:6]:
+            L.append(f"         {s['file']}:{s['line']:<6} {s['wrapper']} defined at "
+                     f"{s.get('wrapper_at', '?')}")
+    return L
+
+
 def format_status(rows, name, point_name, doc=None, root=".", python="", run=""):
     """The line-per-stage a person reads to know where a conversion stands.
 
@@ -262,15 +442,22 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
         L.append(f"{name}  ({point_name})  {phase}: {done} of {len(group)} complete    {headline}")
         for r in group:
             mark = ("done" if r["done"]
-                    else "PART" if r.get("partial")
+                    else "PART" if r.get("partial") or r.get("draws", {}).get("silent")
                     else "ASK " if r["kind"] == "judgement" else "todo")
             L.append(f"  {mark} {r['stage']:12s} {', '.join(r['fills'])}")
+            d = r.get("draws") or {}
+            L += _draw_lines(r)
             if r.get("partial"):
                 L.append(f"       started, and the plugin says so: {r['partial'][:150]}")
+            if r.get("partial") or d.get("silent") or d.get("unknown"):
                 # AND WHAT WOULD FINISH IT, or that this repository declares nothing that
                 # would. The second case is the one worth printing: a stage whose remaining
                 # work no command in the suite can do is a gap in the SUITE, and it was
                 # invisible - the maker printed the debt and stopped, every time, forever.
+                #
+                # THE DRAW-SITE DEBT GOES THROUGH THE SAME GATE, because it is the same
+                # failure: 35 sites reported as owing a legend, and nothing anywhere saying
+                # what pays them, is a report an agent reads and cannot act on.
                 if r.get("finished_by"):
                     L.append(f"       to finish it:  {r['finished_by']}")
                 else:
@@ -282,7 +469,8 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
                              f"`finished_by:` on the stage")
                     L.append(f"       once something can do the work.")
             elif not r["done"]:
-                L.append(f"       unfilled: {', '.join(r['missing'])}")
+                if r["missing"]:
+                    L.append(f"       unfilled: {', '.join(r['missing'])}")
                 if r["why"]:
                     L.append(f"       {r['why']}")
         L.append("")
@@ -896,6 +1084,100 @@ def items_worksheet(spec, doc, point_name, stage_name, width=96):
         for reason in bad.get(who, ()):
             lines.append(f"           -> {reason}")
     return "\n".join(lines)
+
+
+def draw_worksheet(doc, point_name, stage_name, name, source=None, width=96, inv=None):
+    """The half of a legends worksheet that is measured from the plugin's source.
+
+    WHAT A WORKSHEET IS FOR, AND WHAT THIS ONE HAS TO CARRY. `items_worksheet` above rules on a
+    DECLARED list and its rows are labelled by the plugin's own ids, so a person filling it in
+    already knows what each row is. A draw site has no id and no declaration: it is a line of
+    code, and the only reason somebody can write a true sentence about it is that the line says
+    what is being plotted. So each row carries the panel name AS WRITTEN - a literal or the
+    `paste0(...)` that makes one name per pathway - the plotting call underneath it, and the file
+    and line to open.
+
+    IT WRITES NOTHING AND DECIDES NOTHING, for the same reason `worksheet` does not: this can see
+    that a legend is absent and cannot see what the panel shows. A sentence generated from a
+    function name would be a label in the place a description goes, which is the exact defect the
+    host's caption module was written to remove - and a wrong legend is believed where an absent
+    one is noticed.
+
+    THE EDIT IS SHOWN, NOT MADE. Each row prints the argument to add and where to add it, because
+    the fix is one keyword argument at a call site whose wrapper already has the parameter.
+    """
+    import textwrap
+    _ph, _up, stages = plan(doc, point_name)
+    st = next((x for x in stages if x["name"] == stage_name), None)
+    if st is None:
+        raise ConvertError(f"no stage named {stage_name!r} in point {point_name!r}")
+    if not st.get(DRAWS_KEY):
+        raise ConvertError(
+            f"stage {stage_name!r} does not declare `{DRAWS_KEY}:`, so this repository has not "
+            f"said that a panel produced without a legend is unfinished work. This worksheet is "
+            f"for a stage that has.")
+    if inv is None:
+        inv = measure_draw_sites(doc, point_name, name, source)
+    d = draw_debt(inv)
+    if not d["looked"]:
+        return "\n".join([
+            f"{stage_name}: COULD NOT LOOK at {name}'s draw sites.",
+            f"  {d['why_not']}",
+            "  An empty worksheet here would read as a plugin whose every panel is described.",
+        ])
+    L = [f"{stage_name}: {d['total']} draw site(s) in {name}. {d['described']} pass a legend, "
+         f"{len(d['silent'])} do not"
+         + (f", {len(d['unknown'])} draw through a wrapper that has no legend parameter"
+            if d["unknown"] else "") + "."]
+    L += textwrap.wrap(f"how they were found: {d['how']}", width=width,
+                       initial_indent="  ", subsequent_indent="    ")
+    L += textwrap.wrap(
+        "A legend is written HERE, at the draw site, because here is where the numbers that "
+        "describe the panel still exist - the n, the cap that was applied, the populations that "
+        "were dropped. Written anywhere else it can only be a guess, and a guessed legend is "
+        "worse than an absent one: the page prints it in the space a description goes, and a "
+        "reader believes it.", width=width, initial_indent="  ", subsequent_indent="  ")
+    # WHAT THE THIRD COLUMN IS, SAID ON THE PAGE THAT PRINTS IT. It is a filtered list of the
+    # names called in the expression, not a measurement of which of them draws - a plotting call
+    # assigned to a variable on the line above is not in the expression at all. Measured on the
+    # plugin this was built against, 2 of 35 rows name the wrong function. The file, the line and
+    # the count do not come from it.
+    L += textwrap.wrap(
+        "`names called` is what the drawn expression calls, with helpers and language "
+        "scaffolding filtered out BY A LIST - a guess at which of them draws the panel and not a "
+        "measurement of it, wrong on a small minority of rows, and no part of the count or the "
+        "line number. Open the line.",
+        width=width, initial_indent="  ", subsequent_indent="  ")
+    L.append("")
+    if not d["silent"] and not d["unknown"]:
+        L.append("  Every draw site in this plugin passes a legend. Nothing to fill in.")
+        return "\n".join(L)
+    for s in d["silent"]:
+        L.append(f"  TO WRITE  {s['file']}:{s['line']}")
+        L.append(f"            panel name as written:  {_clip(s.get('panel') or '?', width - 36)}")
+        if s.get("calls"):
+            L.append(f"            {'names called:':<24}{', '.join(s['calls'])}")
+        # WHAT TO SHOW IS NOT THE SAME IN THE TWO LANGUAGES. Where the wrapper is handed the
+        # plotting expression, that expression IS the panel and it is what a reader needs. Where
+        # the wrapper is handed a finished figure object, the expression is the variable's name
+        # and says nothing - so the whole call is shown, and the line number is what takes the
+        # reader to the drawing above it.
+        shown = s.get("draws") if s.get("lang") == "R" else s.get("call")
+        if shown:
+            L += textwrap.wrap(_clip(shown, 600), width=width,
+                               initial_indent="            call:   ",
+                               subsequent_indent="                    ")
+        L.append(f"            add:                    {s['legend_param']} = \"...\"   "
+                 f"(the wrapper is {s['wrapper']}, defined at {s.get('wrapper_at', '?')})")
+        L.append("")
+    for s in d["unknown"]:
+        L.append(f"  NO SLOT   {s['file']}:{s['line']}  {s['wrapper']}({_clip(s.get('panel'), 40)})")
+        L.append(f"            {s['wrapper']} is defined at {s.get('wrapper_at', '?')} and no "
+                 f"parameter of it defaults to the empty string,")
+        L.append("            so no call to it can pass a legend. The wrapper is what has to "
+                 "change, not these call sites.")
+        L.append("")
+    return "\n".join(L)
 
 
 #: The convert actions that advance a stage of the same name. `judgement` has none and never will.
