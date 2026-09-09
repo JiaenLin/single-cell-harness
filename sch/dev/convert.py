@@ -397,11 +397,18 @@ def upstream_calls(source, tool):
         if head not in al:
             continue
         full = al[head] + ("." + rest if rest else "")
-        got = out.setdefault(full, {"line": node.lineno, "passes": set(), "calls": 0})
+        got = out.setdefault(full, {"line": node.lineno, "passes": set(), "calls": 0,
+                                    "splat": False})
         got["calls"] += 1
         for kw in node.keywords:
             if kw.arg:
                 got["passes"].add(kw.arg)
+            else:
+                # `f(**opts)` HIDES EVERY KEYWORD IT PASSES. Not the case in any shipped plugin,
+                # but "passes: nothing by name" would otherwise be reported for a call that in
+                # fact names all of them - the same blind spot the contract scan has for a
+                # computed emit name, and knowable at the same moment.
+                got["splat"] = True
     for v in out.values():
         v["passes"] = sorted(v["passes"])
     return out
@@ -475,6 +482,9 @@ def defaults_worksheet(tool, calls, params, declared, placeholder="TODO", pins=N
         if info.get("summary"):
             L.append(f"        #      {_clip(info['summary'], 100)}")
         L.append(f"        #      passes: {sorted(passed) or 'nothing by name'}")
+        if calls[path].get("splat"):
+            L.append("        #      AND `**kwargs`, so this scan cannot see every keyword it "
+                     "passes; the inherited list below may be too long.")
         if required:
             L.append(f"        #      required by the signature: {required}")
         if not inherited:
@@ -483,7 +493,18 @@ def defaults_worksheet(tool, calls, params, declared, placeholder="TODO", pins=N
         L.append(f"        #      INHERITED SILENTLY ({len(inherited)}): each is a default chosen "
                  f"by {tool}, not by this plugin.")
         for q in inherited:
-            mark = "already in config" if q["name"] in decided else f'{placeholder} — declare it, or leave it and say nothing?'
+            # A CONFIG KEY OF THE SAME NAME IS NOT THE SAME PARAMETER, and saying "already in
+            # config" for one implied it was handled. velocity declares `min_confidence` default
+            # 0.5 - its OWN threshold for a figure gate - and calls `scv.tl.latent_time(A)` bare,
+            # which inherits scvelo's `min_confidence` of 0.75. Two values, one name, both live in
+            # the same plugin, and a reader of the config would reasonably think they were one.
+            if q["name"] in decided:
+                mine = (declared or {}).get(q["name"]) or {}
+                mine_d = mine.get("default", "?") if isinstance(mine, dict) else "?"
+                mark = (f'NAME COLLISION: this plugin declares `{q["name"]}` (default {mine_d!r}) '
+                        f'and does NOT pass it here, so {tool} uses {q["default"]}')
+            else:
+                mark = f'{placeholder} — declare it, or leave it and say nothing?'
             L.append(f'        #        {q["name"]:24s} = {q["default"]:<22s} {mark}')
     L.append("    },")
     return "\n".join(L)

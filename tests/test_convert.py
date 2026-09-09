@@ -661,3 +661,56 @@ class TheContractScanAdmitsWhatItCannotSee(unittest.TestCase):
         got = C.contract_in('def run(ctx):\n    ctx.emit_obs("a", x)\n')
         self.assertEqual(got["dynamic"], [])
         self.assertEqual(got["produces"], ["obs[a]"])
+
+
+class NameCollisionsAreNotHandledParameters(unittest.TestCase):
+    """A config key of the same name is not the same parameter, and saying so implied it was.
+
+    velocity declares `min_confidence` with default 0.5 - its OWN threshold, for a figure gate -
+    and calls `scv.tl.latent_time(A)` bare, so scvelo uses its own `min_confidence` of 0.75. Two
+    values, one name, both live in that plugin, and a reader of the config would reasonably think
+    they were one thing. "already in config" said the opposite of what is true.
+    """
+
+    def _w(self, declared):
+        return C.defaults_worksheet(
+            "scvelo", {"scvelo.tl.latent_time": {"line": 1, "passes": [], "splat": False}},
+            {"scvelo.tl.latent_time": {"found": True, "params": [
+                {"name": "min_confidence", "default": "0.75", "required": False,
+                 "annotation": ""}]}},
+            declared)
+
+    def test_a_same_named_config_key_that_is_not_passed_is_a_collision(self):
+        w = self._w({"min_confidence": {"type": "float", "default": 0.5}})
+        self.assertIn("NAME COLLISION", w)
+        self.assertIn("0.5", w)
+        self.assertIn("0.75", w)
+        self.assertNotIn("already in config", w)
+
+    def test_with_no_such_config_key_it_is_simply_undeclared(self):
+        w = self._w({})
+        self.assertNotIn("NAME COLLISION", w)
+        self.assertIn("declare it, or leave it", w)
+
+
+class SplatHidesKeywords(unittest.TestCase):
+    """`f(**opts)` passes keywords this scan cannot name, so "passes nothing" would be wrong."""
+
+    def test_a_splat_call_is_recorded(self):
+        got = C.upstream_calls(
+            "def run(ctx):\n    import scvelo as scv\n    scv.tl.velocity(A, **opts)\n", "scvelo")
+        self.assertTrue(got["scvelo.tl.velocity"]["splat"])
+
+    def test_the_worksheet_says_the_inherited_list_may_be_too_long(self):
+        w = C.defaults_worksheet(
+            "scvelo", {"scvelo.tl.velocity": {"line": 1, "passes": [], "splat": True}},
+            {"scvelo.tl.velocity": {"found": True, "params": [
+                {"name": "mode", "default": "'stochastic'", "required": False, "annotation": ""}]}},
+            {})
+        self.assertIn("**kwargs", w)
+        self.assertIn("may be too long", w)
+
+    def test_a_plain_call_makes_no_such_claim(self):
+        got = C.upstream_calls(
+            "def run(ctx):\n    import scvelo as scv\n    scv.tl.velocity(A, mode='x')\n", "scvelo")
+        self.assertFalse(got["scvelo.tl.velocity"]["splat"])
