@@ -102,7 +102,12 @@ if [ -n "$PROJECT" ]; then
   echo; echo "=== 5. conform --run: every promoted run this project names ==="
   for pm in "$PROJECT"/results/*/PROMOTED.md; do
     [ -f "$pm" ] || continue
-    rk=$(grep -oE 'runs/[a-z-]+/[0-9]{2}_[a-z_]+/[0-9]{8}T[0-9]{4,6}Z__[^ `|]+' "$pm" | head -1 | tr -d '`')
+    # `|| true`, because a PROMOTED.md that names no run key is a document to skip and not a
+    # reason to end the job. Under `set -euo pipefail` the failing grep takes the whole shell
+    # with it, and the `|| true` on the NEXT line guards a different statement - so one
+    # unparseable promotion file silently truncated this suite at section 5.
+    rk=$(grep -oE 'runs/[a-z-]+/[0-9]{2}_[a-z_]+/[0-9]{8}T[0-9]{4,6}Z__[^ `|]+' "$pm" \
+         | head -1 | tr -d '`' || true)
     [ -n "$rk" ] && [ -d "$PROJECT/$rk" ] && ( cd "$REPO" && "$PY" -m sch conform --run "$PROJECT/$rk" ) 2>&1 | tee -a "$RUNDIR/conform/runs.txt" || true
   done
 fi

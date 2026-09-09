@@ -1171,5 +1171,44 @@ class TheJobsCheckerRunsBeforeItIsSubmitted(unittest.TestCase):
             self.assertIn(f"  {tag}  ", r.stdout, f"{tag} did not evaluate:\n{r.stdout}")
 
 
+
+
+class JobsDoNotDieOnAGrepThatFindsNothing(unittest.TestCase):
+    """`set -euo pipefail` plus an unguarded command substitution is a silent early exit.
+
+    THE DEFECT. A job's summary line was built with `line=$(grep -m1 ... | sed ...)`. Under
+    `set -euo pipefail` a substitution whose pipeline fails takes the shell with it, and `grep`
+    fails when it finds nothing - which is exactly the case that line existed to detect. So the
+    first plugin whose tool could not be looked at ENDED THE JOB, after one line of output, with
+    a seal that said `problems=3` and a summary file that was empty. The version before it had
+    `|| echo 0` and the rewrite dropped the guard along with the command it was attached to.
+
+    The rule is narrow on purpose: only `grep`, and only inside a substitution, because `awk`
+    and `sed` return 0 on no match and are not the hazard.
+    """
+
+    JOBS = sorted((ROOT / "jobs").glob("*.pbs"))
+
+    def test_every_job_uses_the_strict_shell(self):
+        """The rule below only matters because they do."""
+        for j in self.JOBS:
+            self.assertIn("set -euo pipefail", j.read_text(), f"{j.name} is not strict")
+
+    def test_no_grep_in_a_substitution_is_left_unguarded(self):
+        bad = []
+        for j in self.JOBS:
+            text = j.read_text()
+            # join continuations so a substitution split over two lines is seen whole
+            joined = re.sub(r"\\\n\s*", " ", text)
+            for m in re.finditer(r"\$\((?:[^()]|\([^()]*\))*\)", joined):
+                frag = m.group(0)
+                if re.search(r"\bgrep\b", frag) and "|| true" not in frag \
+                        and "|| echo" not in frag:
+                    line = joined[:m.start()].count("\n") + 1
+                    bad.append(f"{j.name}:~{line}: {' '.join(frag.split())[:88]}")
+        self.assertEqual(bad, [], "a grep that finds nothing will end these jobs:\n  "
+                                  + "\n  ".join(bad))
+
+
 if __name__ == "__main__":
     unittest.main()

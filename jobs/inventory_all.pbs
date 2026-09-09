@@ -188,7 +188,14 @@ while IFS=$'\t' read -r k env; do
        --name "$k" --python "$py" "${rsarg[@]}" ) > "$RUNDIR/account/$k.txt" 2>&1
   arc=$?
   set -e
-  line=$(grep -m1 'function(s) exported by' "$RUNDIR/account/$k.txt" 2>/dev/null | sed 's/^ *# *//')
+  # `|| true` IS NOT DECORATION HERE. Under `set -euo pipefail` a command substitution whose
+  # pipeline fails takes the shell with it, and `grep` fails when it finds nothing - which is
+  # precisely the case this line exists to detect. The first plugin whose tool could not be
+  # looked at therefore ENDED THE JOB, quietly, after one line of output. The version before
+  # this one guarded it with `|| echo 0` and the rewrite dropped the guard along with the
+  # command it was attached to.
+  line=$(grep -m1 'function(s) exported by' "$RUNDIR/account/$k.txt" 2>/dev/null \
+         | sed 's/^ *# *//' || true)
   if [ -n "$line" ]; then
     echo "  $k: $line" | tee -a "$RUNDIR/logs/summary.txt"
   else
