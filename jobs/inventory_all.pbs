@@ -1,0 +1,154 @@
+#!/bin/bash
+#PBS -N sch_inventory_all
+#PBS -q workq
+#PBS -l select=1:ncpus=8:mem=32gb
+#PBS -l walltime=08:00:00
+#PBS -j oe
+#
+# ============================================================================================
+# THE INVENTORY STAGE, FOR EVERY PLUGIN AT ONCE
+# ============================================================================================
+#
+# WHAT IS OWED. Eight of nine plugins owe an accounting of the figures their wrapped tool
+# already draws. Not because anyone skipped it - because until recently no command could produce
+# the inventory, and it needs the interpreter the PLUGIN runs in, not the harness's. cellchat is
+# the one that has been through it: it used 1 of its tool's thirty-odd plots until somebody
+# looked, and 32 of 35 afterwards. For seven of the others NOBODY KNOWS THE NUMBER. That is the
+# state, not a figure of speech.
+#
+# WHY ONE JOB. The environment resolver folds nine plugins into three environments, so the whole
+# family costs three installs and not nine - and one of those three already exists and will be
+# skipped by the content-address check rather than rebuilt. The seven-member environment has
+# never been built: 14 pip, 51 conda and 3 R packages, CellChat among them. Whether its declared
+# constraints have an installable transitive closure is itself one of the questions here; the
+# resolver proves they do not CONTRADICT, and only a real resolve proves they install.
+#
+# WHAT THIS DOES NOT DO. It does not rule on anything. `account` prints a worksheet with every
+# exported plotting function and the evidence beside it; deciding that a wrapper should be using
+# the tool's 34th plot, or writing down why it should not, is the judgement stage and belongs to
+# a person. The expensive participant should be answering that question rather than finding out
+# that the tool has 34 - which is the whole efficiency argument for this pipeline.
+#
+# --------------------------------------------------------------------------------------------
+# THE PREDICTIONS, WRITTEN BEFORE THE RUN.
+# --------------------------------------------------------------------------------------------
+#
+#   Q1  THE EXISTING ENVIRONMENT IS NOT REBUILT. scprofile-env-3e79297712 is on disk at 1.6 GB
+#       and its address is derived from the requirements, which have not changed. The install
+#       must report it as already present and skip. A rebuild here means the content-address is
+#       reading something it should not, and every prose edit in this repository has been
+#       silently invalidating environments.
+#
+#   Q2  THE SEVEN-MEMBER ENVIRONMENT INSTALLS, or the failure names the package pair that
+#       stopped it. This has never been built. A resolver conflict is a result; a timeout is not.
+#
+#   Q3  EVERY PLUGIN GETS AN INVENTORY, or says why not. `NO EXTRACTOR COULD LOOK` is a real
+#       answer and names a gap in the extractor layer - it must never be recorded as an empty
+#       inventory, which certifies a wrapper as having nothing to account for.
+#
+#   Q4  THE TWO KNOWN NUMBERS REPRODUCE. cellchat's tool exports 35 plotting functions and
+#       velocity's exports 20; both were measured before. A different count means the installed
+#       version moved, which is worth knowing and is not a defect in this job.
+#
+#   Q5  THE SEVEN UNKNOWN NUMBERS BECOME KNOWN. There is no prediction of their size - that is
+#       the point of running it - but each must be a number, produced by a named extractor.
+#
+# rule-one: no-removal. Writes inside $RUNDIR, and into $ENVS, which is where this family's
+# environments already live and is shared reuse by design - a run that built its own copy would
+# defeat the mechanism this job exists to exercise.
+# Authored on the workstation and pushed (rule H1). No `git` runs below.
+#
+#   qsub -v RUNDIR=...,REPO=...,TOOL=...,ENVS=$HOME/envs  jobs/inventory_all.pbs
+
+set -euo pipefail
+cd "$PBS_O_WORKDIR"
+
+RUNDIR="${RUNDIR:?pass -v RUNDIR=<run directory>}"
+REPO="${REPO:?pass -v REPO=<the harness checkout>}"
+TOOL="${TOOL:?pass -v TOOL=<the scProfile checkout>}"
+ENVS="${ENVS:?pass -v ENVS=<where this family keeps its environments>}"
+HOSTPY="${HOSTPY:-python3}"
+
+mkdir -p "$RUNDIR/logs" "$RUNDIR/account" "$RUNDIR/inventory"
+
+finish() { s=$?
+  set +e
+  if [ "$s" -eq 0 ] && [ "${BAD:-0}" -eq 0 ]; then seal="$RUNDIR/SEALED.txt"
+  else seal="$RUNDIR/FAILED.txt"; [ "$s" -eq 0 ] && s=1; fi
+  { echo "exit=$s"; echo "jobid=${PBS_JOBID:-none}"; echo "host=$(hostname -s)"
+    echo "finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "purpose=inventory every plugin's wrapped tool, three environments for nine plugins"
+    echo "NOT PROMOTABLE. Nothing here is a result about biology; every number counts functions."
+    [ "${BAD:-0}" -gt 0 ] && echo "problems=${BAD}"
+    [ -s "$RUNDIR/logs/summary.txt" ] && cat "$RUNDIR/logs/summary.txt"
+  } > "$seal"
+  rm -f "$RUNDIR/RUNNING.txt"
+  exit $s; }
+trap finish EXIT
+{ echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)"; echo "host=$(hostname -s)"; } > "$RUNDIR/RUNNING.txt"
+
+export PYTHONNOUSERSITE=1
+export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
+export OMP_NUM_THREADS="${NCPUS:-1}" MKL_NUM_THREADS="${NCPUS:-1}"
+BAD=0
+
+echo "=== the plan: which environment each plugin resolves to"
+# ASKED OF THE TOOL, NOT WRITTEN HERE. The grouping is the tool's decision and changes when a
+# plugin's requirements change; a list in this job would be a second copy of it, stale by design.
+( cd "$TOOL" && "$HOSTPY" - ) > "$RUNDIR/logs/groups.tsv" <<'PYG'
+import sys
+sys.path.insert(0, ".")
+from scprofile import resolve as RS
+from scprofile.kernels import discover
+for g in RS.group_by_compatibility(list(discover().values())):
+    for m in g.members:
+        print(f"{m}\t{g.name}")
+PYG
+column -t "$RUNDIR/logs/groups.tsv"
+
+echo; echo "=== install one member of each environment; an existing match is skipped"
+for env in $(cut -f2 "$RUNDIR/logs/groups.tsv" | sort -u); do
+  member=$(awk -v e="$env" '$2==e{print $1; exit}' "$RUNDIR/logs/groups.tsv")
+  echo "--- $env  (installing via $member)"
+  set +e
+  ( cd "$TOOL" && "$HOSTPY" -m scprofile.cli install "$member" --prefix "$ENVS" ) \
+      > "$RUNDIR/logs/install_$env.txt" 2>&1
+  rc=$?
+  set -e
+  if [ "$rc" -ne 0 ]; then
+    BAD=$((BAD+1))
+    echo "    INSTALL FAILED rc=$rc - see logs/install_$env.txt"
+    tail -12 "$RUNDIR/logs/install_$env.txt" | sed 's/^/      /'
+  else
+    echo "    ok  $(grep -ci 'already\|exists\|skip' "$RUNDIR/logs/install_$env.txt" || true) reuse line(s)"
+  fi
+done
+
+echo; echo "=== inventory and account, per plugin, in its own interpreter"
+: > "$RUNDIR/logs/summary.txt"
+while IFS=$'\t' read -r k env; do
+  py="$ENVS/$env/bin/python"
+  if [ ! -x "$py" ]; then
+    echo "  $k: no interpreter at $py - its environment did not build" | tee -a "$RUNDIR/logs/summary.txt"
+    BAD=$((BAD+1)); continue
+  fi
+  set +e
+  ( cd "$REPO" && "$HOSTPY" -m sch dev convert inventory --root "$TOOL" --point kernel \
+       --name "$k" --python "$py" ) > "$RUNDIR/inventory/$k.txt" 2>&1
+  irc=$?
+  ( cd "$REPO" && "$HOSTPY" -m sch dev convert account --root "$TOOL" --point kernel \
+       --name "$k" --python "$py" ) > "$RUNDIR/account/$k.txt" 2>&1
+  set -e
+  n=$(grep -c '^      ' "$RUNDIR/inventory/$k.txt" 2>/dev/null || echo 0)
+  if grep -q "NO EXTRACTOR COULD LOOK" "$RUNDIR/inventory/$k.txt" 2>/dev/null; then
+    echo "  $k: NO EXTRACTOR COULD LOOK - a gap in the extractor layer, not an empty inventory" \
+        | tee -a "$RUNDIR/logs/summary.txt"
+    BAD=$((BAD+1))
+  else
+    echo "  $k: $n exported plotting function(s) [rc=$irc]" | tee -a "$RUNDIR/logs/summary.txt"
+  fi
+done < "$RUNDIR/logs/groups.tsv"
+
+echo; echo "=== the worksheets are in $RUNDIR/account/ - one per plugin, ready to rule on"
+echo "  NOTHING HERE IS A DECISION. Each entry still needs a person to say used, not_applicable,"
+echo "  superseded_by_design or duplicate_of, with the evidence the worksheet already carries."
