@@ -45,10 +45,14 @@
 #       a sentence, with a provenance nothing had checked. Zero occurrences of `, drawn by the
 #       tool itself.` and zero of the stem-with-spaces shape.
 #
-#   P3  AN UNDESCRIBED PANEL SAYS SO. Every panel with no row in its captions.tsv renders a
+#   P3  AN UNDESCRIBED PANEL SAYS SO. A legend reaches a panel by one of two routes and both
+#       count: `captions.tsv` beside the figures, written by a tool drawing in its own
+#       interpreter, and `caption=` on `emit_figure`, which arrives in report.json. Every panel
+#       with no legend by EITHER route renders a
 #       caption containing `NO LEGEND WAS WRITTEN`, and still names its own file so a reader can
 #       go and look at it. The count of such captions must EQUAL the count of placed panels with
-#       no legend row - not merely be non-zero, which a single one would satisfy.
+#       no legend - not merely be non-zero, which a single one would satisfy. Measured: 378 of
+#       the 612 placed panels have no legend, and all 180 plugin-drawn ones do have one.
 #
 #   P4  THE ALIASING SURVIVES TO THE PAGE. `aliased with` appears in the writing brief AND in
 #       the rendered report. This is the prediction this cohort exists to test: a 2x2 whose
@@ -201,9 +205,23 @@ say(old_tail == 0 and stem_shape == 0, "P2",
 # P3 - an undescribed panel says so, and the count is the count
 said = text.count("NO LEGEND WAS WRITTEN")
 # every panel the reporter PLACED, and whether a legend existed for it
+#
+# THERE ARE TWO PLACES A LEGEND CAN COME FROM, and the first version of this check knew one.
+# `captions.tsv` is what a tool drawing in its OWN interpreter writes beside its figures; a
+# plugin drawing in Python passes `caption=` to `emit_figure` and it arrives in report.json.
+# Counting only the first called all 180 plugin-drawn panels undescribed - every one of which
+# carries a written sentence - and the run reported 558 undescribed against 378 saying so, a
+# discrepancy of exactly the 180. The tool was right and the checker was wrong, and the checker
+# was the thing nobody had checked.
+import json as _json
+_pay = _json.loads((run / "report.json").read_text(encoding="utf-8", errors="replace"))
+described = {Path(str(f.get("path") or "")).name
+             for v in (_pay.get("kernels") or {}).values()
+             for f in (v.get("figures") or [])
+             if str(f.get("caption") or "").strip()}
 placed, unlegended = 0, 0
 for capdir in run.glob("kernels/*/*/figures"):
-    have = set()
+    have = set(described)
     tsv = capdir / "captions.tsv"
     if tsv.is_file():
         for line in tsv.read_text(encoding="utf-8", errors="replace").splitlines()[1:]:
