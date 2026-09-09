@@ -150,6 +150,72 @@ class Fixture(unittest.TestCase):
             self.assertNotEqual(names["a"], names["b"], f"role {role} is named the same in both shapes")
 
 
+class ACrossedDesign(unittest.TestCase):
+    """The second factor, and the reason it is off by default.
+
+    WHAT IT IS FOR. With one factor the richest thing this cohort expresses is a main effect. Four
+    defects in this family lived in the branch that reads an INTERACTION - a subtraction done the
+    wrong way round that stayed self-consistent, marginals emitted before the strata they average,
+    a marginal arm with no object behind it, and a composed section that called five small movers
+    the leading ones - and not one of them is reachable on a one-factor cohort. A plugin could
+    pass every tier here and meet all four on the first real study.
+    """
+
+    def test_the_default_cohort_is_byte_for_byte_what_it_was(self):
+        """THE WHOLE CONSTRAINT. Every recorded baseline in five repositories rests on this
+        string. A second factor that moved it would have bought one plugin's tier with everyone
+        else's evidence."""
+        self.assertEqual(F.digest(F.build()), "d423a5817fdcb29e")
+
+    def test_a_crossed_cohort_is_a_different_cohort_and_says_so(self):
+        self.assertNotEqual(F.digest(F.build(crossed=True)), F.digest(F.build()))
+
+    def test_it_is_deterministic_too(self):
+        self.assertEqual(F.digest(F.build(crossed=True)), F.digest(F.build(crossed=True)))
+
+    def test_every_cell_of_the_two_by_two_holds_two_samples(self):
+        """SIX SAMPLES CANNOT DO THIS. A 2x2 out of six is 2/1 somewhere, and a cell holding one
+        sample has no spread - so the simple effect it is half of is undefined and the
+        interaction degrades to a main effect without saying it has."""
+        d = F.build(crossed=True)["design"]
+        d = d[d["_role_sample"] != "S98"]
+        cells = d.groupby(["_role_condition", "_role_stratum"], observed=True).size()
+        self.assertEqual(len(cells), 4, "the design is not crossed")
+        self.assertEqual(sorted(cells.tolist()), [2, 2, 2, 2])
+
+    def test_batch_is_crossed_with_both_factors_and_confounded_with_neither(self):
+        """A batch confounded with the design makes every conclusion here unattributable, which
+        is a real lesson and a different fixture's."""
+        d = F.build(crossed=True)["design"]
+        d = d[d["_role_sample"] != "S98"]
+        for cell, sub in d.groupby(["_role_condition", "_role_stratum"], observed=True):
+            self.assertEqual(len(set(sub["_role_batch"])), 2, f"one chip fills the cell {cell}")
+
+    def test_the_one_factor_cohort_carries_no_second_factor_at_all(self):
+        """Not an empty column, not a constant one: absent. A column of one level is a factor a
+        resolver will enumerate and find nothing to compare."""
+        self.assertNotIn("_role_stratum", F.build()["obs"].columns)
+        self.assertNotIn("_role_stratum", F.build()["design"].columns)
+
+    def test_the_tiny_sample_survives_the_extra_samples(self):
+        """It was addressed as "S12", which the crossed design appends a sample after."""
+        for crossed in (False, True):
+            c = F.build(crossed=crossed)
+            last = str(c["design"]["_role_sample"].iloc[-2])
+            self.assertEqual(int((c["obs"]["_role_sample"] == last).sum()), 7)
+
+    def test_the_crossed_hazards_are_declared_and_true(self):
+        c = F.build(crossed=True)
+        d = c["design"][c["design"]["_role_sample"] != "S98"]
+        tiny = str(d["_role_sample"].iloc[-1])
+        cell = d[d["_role_sample"] == tiny][["_role_condition", "_role_stratum"]].iloc[0]
+        self.assertEqual(len(F.CROSSED_HAZARDS), 2)
+        self.assertTrue(bool(cell["_role_stratum"]), "the tiny sample sits in no stratum")
+        for _subject, sub in d.groupby("_role_subject", observed=True):
+            self.assertEqual(len(set(zip(sub["_role_condition"], sub["_role_stratum"]))), 1,
+                             "a subject spans two cells, so it is not nested after all")
+
+
 class Baseline(unittest.TestCase):
     def setUp(self):
         self.d = Path(tempfile.mkdtemp())

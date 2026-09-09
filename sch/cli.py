@@ -440,8 +440,9 @@ def cmd_dev(a):
         from .dev import fixture as F
         try:
             recs = ([F.write(a.dir, shape=a.shape, seed=a.seed, n_cells=a.cells,
-                             splice=a.splice)] if a.shape
-                    else F.write_both(a.dir, seed=a.seed, n_cells=a.cells, splice=a.splice))
+                             splice=a.splice, crossed=a.crossed)] if a.shape
+                    else F.write_both(a.dir, seed=a.seed, n_cells=a.cells,
+                                      splice=a.splice, crossed=a.crossed))
         except ImportError as e:
             print(f"the fixture needs anndata, numpy and pandas: {e}", file=sys.stderr)
             return CANNOT_RUN
@@ -453,7 +454,11 @@ def cmd_dev(a):
             print(f"    {r['observations']}")
             print(f"    {r['design']}")
             print("    roles: " + ", ".join(f"{k}={v}" for k, v in r["roles"].items()))
-        print(f"\n  {len(F.HAZARDS)} structural hazards are built in; see FIXTURE_<shape>.json")
+            print("    factors: " + " x ".join(r["factors"])
+                  + ("  - crossed, so an interaction exists to get wrong"
+                     if r["crossed"] else "  - one factor, so no interaction is expressible here"))
+        print(f"\n  {len(recs[0]['hazards'])} structural hazards are built in; "
+              f"see FIXTURE_<shape>.json")
         print("  SYNTHETIC. No number here is quotable and no result on it is evidence about biology.")
         return 0
 
@@ -506,9 +511,13 @@ def cmd_dev(a):
         # them: it runs the child's own command against a completed run and never opens a plugin.
         # Requiring them first made it refuse with "no widget named None" - an error about the
         # wrong thing entirely, on a repository where nothing was wrong.
+        #
+        # NAMED BY EXCLUSION, because the inclusive list was a second place to register an action
+        # and `legends` was added to the parser and not to it. Nothing failed: `specs` stayed
+        # empty, the loop ran zero times, and the command printed nothing and exited 0. A missing
+        # registration must not be able to look like a plugin with no figures.
         specs = []
-        if a.action in ("status", "inventory", "account", "defaults", "references",
-                        "contract", "build"):
+        if a.action not in ("measure",):
             specs = _convert_specs(doc, point, a.root, a.name)
             if not specs:
                 print(f"sch dev convert: no {point} named {a.name!r} under {a.root}",
@@ -521,6 +530,16 @@ def cmd_dev(a):
                                             doc=doc, root=a.root, python=a.python or ""))
             print("\n\n".join(out))
             return OK
+        if a.action == "legends":
+            bad = 0
+            for nm, spec in specs:
+                try:
+                    print(f"\n{nm}")
+                    print(CV.items_worksheet(spec, doc, point, "legends"))
+                except CV.ConvertError as e:
+                    bad += 1
+                    print(f"{nm}: {e}", file=sys.stderr)
+            return FAILED if bad else OK
         # GUARDED, because it was not. This block had no `if` on it and returned at the end, so
         # the `account` branch below was unreachable and `convert account` silently printed an
         # inventory. Dead code behind an unconditional return, which is the same shape as a test
@@ -852,6 +871,10 @@ def build_parser():
     q.add_argument("--splice", action="store_true",
                    help="also write spliced and unspliced layers, for a plugin whose input is "
                         "those. Off by default: the digest is a contract every baseline rests on")
+    q.add_argument("--crossed", action="store_true",
+                   help="a second design factor crossed with the first: eight samples, two in "
+                        "every cell of a 2x2. Off by default for the same reason. Without it no "
+                        "interaction exists, so the branch that reads one is never entered")
     q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("check")); q.add_argument("--point"); q.add_argument("--name")
     q.add_argument("--only", action="append", choices=list(_TIERS)); q.add_argument("--skip", action="append", choices=list(_TIERS))
@@ -864,7 +887,7 @@ def build_parser():
     q = rooted(ds.add_parser("convert"))
     q.add_argument("action", nargs="?", default="status",
                    choices=["status", "inventory", "account", "measure",
-                            "defaults", "references", "contract", "build"])
+                            "defaults", "references", "contract", "legends", "build"])
     q.add_argument("--point", default=None)
     q.add_argument("--name", default=None, help="the plugin being converted; omit for all of them")
     q.add_argument("--tool", default=None, help="override the upstream named in the declaration")

@@ -993,3 +993,119 @@ class TheDriverWalksTheBuild(unittest.TestCase):
         out = self._build().stdout
         if "--- references" in out and "consulted" in out:
             self.assertLess(out.index("--- references"), out.index("consulted"))
+
+
+class RulingOnEveryEntry(unittest.TestCase):
+    """A stage whose field is a LIST is not finished when the list exists.
+
+    THE DEFECT THIS EXISTS FOR. `unfilled` asks whether a field is there, which is the whole
+    question for `config` or `summary` and the wrong question for `report.figures`. The list is
+    there from the moment the first figure is declared, so a stage that ruled on it reported done
+    with fifty-five of fifty-six panels never looked at. Unlike `outstanding_if`, this needs no
+    admission from the plugin - which is what makes it work on a plugin that has never been told
+    the stage exists, and every plugin in the family was one.
+    """
+
+    DECL = DECL.replace(
+        "        - {name: judgement, kind: judgement, fills: [summary, cannot_show]}",
+        "        - name: legends\n"
+        "          fills: [report.figures]\n"
+        "          each_item_declares:\n"
+        "            drawn_by: [tool, plugin]\n"
+        "          why: who drew each panel\n"
+        "        - {name: judgement, kind: judgement, fills: [summary, cannot_show]}")
+
+    def setUp(self):
+        from sch import yamlish
+        self.doc = yamlish.loads(self.DECL)
+
+    def _row(self, spec):
+        return next(r for r in C.status(spec, self.doc, "widget") if r["stage"] == "legends")
+
+    def test_a_list_that_exists_is_not_a_stage_that_is_done(self):
+        spec = {"report": {"figures": [{"id": "F1", "drawn_by": "plugin"}, {"id": "F2"}]}}
+        row = self._row(spec)
+        self.assertFalse(row["done"])
+        self.assertIn("1 of 2", row["partial"])
+        self.assertIn("F2 (no drawn_by)", row["partial"])
+
+    def test_every_entry_ruled_is_done(self):
+        spec = {"report": {"figures": [{"id": "F1", "drawn_by": "plugin"},
+                                       {"id": "F2", "drawn_by": "tool"}]}}
+        self.assertTrue(self._row(spec)["done"])
+
+    def test_a_value_outside_the_declared_set_is_not_a_ruling(self):
+        """`drawn_by: yes` is a filled field and an unanswered question."""
+        spec = {"report": {"figures": [{"id": "F1", "drawn_by": "yes"}]}}
+        row = self._row(spec)
+        self.assertFalse(row["done"])
+        self.assertIn("expected one of tool, plugin", row["partial"])
+
+    def test_an_absent_field_is_still_the_missing_answer_not_the_item_answer(self):
+        """With no `report` at all the stage is TODO, not PARTIAL: there is nothing to rule on."""
+        row = self._row({})
+        self.assertFalse(row["done"])
+        self.assertEqual(row["missing"], ["report.figures"])
+        self.assertEqual(row["partial"], "")
+
+    def test_the_harness_knows_none_of_these_names(self):
+        """`report.figures`, `drawn_by`, `tool` and `plugin` all arrive from the declaration.
+
+        Asserted on the two functions that do the work rather than on the module, because the
+        module is not clean: see the test below.
+        """
+        import inspect
+        src = inspect.getsource(C.item_gaps) + inspect.getsource(C.items_worksheet)
+        for word in ("report.figures", "drawn_by", "plugin", "tool"):
+            self.assertNotIn(f'"{word}"', src, f"{word!r} is one repository's vocabulary")
+
+    def test_the_one_place_the_module_does_name_a_field_is_still_the_one_place(self):
+        """A RATCHET OVER A KNOWN DEVIATION, not an endorsement of it. The module's own docstring
+        says it "names no tool, no field and no plugin format", and `contract_in` names
+        `report.figures` anyway - it buckets a scanned produce-call under scProfile's field name.
+        That predates this stage and is a real leak of one format into the shared tool; the fix
+        is for the point to declare the bucket, and it is not this change. What must not happen
+        meanwhile is the leak spreading, so the count is pinned."""
+        import inspect
+        src = (ROOT / "sch" / "dev" / "convert.py").read_text()
+        here = inspect.getsource(C.contract_in)
+        self.assertEqual(src.count('"report.figures"'), here.count('"report.figures"'),
+                         "a format's field name has spread beyond `contract_in`")
+
+    def test_the_worksheet_names_the_plugins_own_question_beside_each_row(self):
+        spec = {"report": {"figures": [{"id": "F1", "question": "does the field hold?"}]}}
+        sheet = C.items_worksheet(spec, self.doc, "widget", "legends")
+        self.assertIn("TO RULE  F1", sheet)
+        self.assertIn("does the field hold?", sheet)
+        self.assertIn("tool | plugin", sheet)
+
+    def test_a_stage_that_rules_on_nothing_refuses_the_worksheet(self):
+        with self.assertRaises(C.ConvertError):
+            C.items_worksheet({}, self.doc, "widget", "contract")
+
+    def test_the_stage_advances_like_any_other(self):
+        self.assertIn("legends", C.ADVANCES)
+        row = self._row({})
+        cmd = C.advance_command(row, self.doc, "widget", ".", "w")
+        self.assertIn("convert legends", cmd)
+
+
+class EveryActionLoadsTheDeclarationsItReads(unittest.TestCase):
+    """`legends` was added to the parser's choices and not to the list of actions that load the
+    plugins, so the loop ran zero times and the command printed nothing and exited 0. A second
+    place to register an action is a place to forget one; the list is now the exceptions."""
+
+    def test_a_new_action_cannot_silently_read_no_plugins(self):
+        src = (ROOT / "sch" / "cli.py").read_text()
+        self.assertIn('if a.action not in ("measure",):', src)
+
+    def test_legends_prints_something_for_a_real_repository(self):
+        out = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "legends",
+                              "--root", str(ROOT), "--point", "kernel"],
+                             cwd=str(ROOT), capture_output=True, text=True)
+        self.assertNotEqual(out.stdout.strip() + out.stderr.strip(), "",
+                            "an action that reads declarations printed nothing at all")
+
+
+if __name__ == "__main__":
+    unittest.main()

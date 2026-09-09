@@ -51,6 +51,9 @@ ROLES = {
     "cell_type": {"a": "cell_type",   "b": "celltype_final"},
     "subject":   {"a": "subject",     "b": "donor_id"},
     "covariate": {"a": "age_weeks",   "b": "age_at_collection"},
+    # ONLY IN THE CROSSED FIXTURE. Absent by default, so `_rename` simply finds nothing to
+    # rename and the one-factor object is byte-identical to what every baseline was recorded on.
+    "stratum":   {"a": "timepoint",   "b": "visit"},
     "counts":    {"a": "counts",      "b": "raw_counts"},
 }
 
@@ -73,6 +76,17 @@ HAZARDS = {
     "constant_covariate_in_arm": "a numeric covariate with no spread inside one arm",
 }
 
+#: Present only when the second factor is asked for. The 2x2 is not itself a hazard - it is the
+#: design - but these two are, and both are reachable only once a design has strata.
+CROSSED_HAZARDS = {
+    "tiny_sample_inside_a_design_cell":
+        "the 7-cell sample sits in one cell of the 2x2, so one stratum's simple effect rests on\n"
+        "                               one usable sample while the marginal over it looks fully powered",
+    "subject_nested_in_a_design_cell":
+        "each subject contributes to one cell only - the shape that makes a subject term and a\n"
+        "                               design term inseparable, and the reason a marginal is not a within-subject claim",
+}
+
 # Real symbols, so a tool that looks anything up finds something; the rest are synthetic. A
 # marker-driven tool will not annotate this cohort correctly, and it is not asked to.
 REAL_GENES = ["ACTB", "GAPDH", "PTPRC", "EPCAM", "COL1A1", "PECAM1", "MKI67", "RPS4X", "RPL13",
@@ -85,24 +99,61 @@ def _rng(seed):
     return np.random.default_rng(seed)
 
 
-def build(seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520):
+def build(seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520,
+          crossed: bool = False):
     """The numbers, once. Both shapes are this, renamed - so a difference between the shapes can
-    only ever be the tool's, never the fixture's."""
+    only ever be the tool's, never the fixture's.
+
+    `crossed` ADDS A SECOND DESIGN FACTOR, and is off by default for the same reason `splice` is:
+    the digest is a contract and every recorded baseline rests on it.
+
+    WHY IT HAS TO EXIST. With one factor the richest thing this cohort can express is a main
+    effect. An interaction - one factor's effect compared against the same effect at the other
+    factor's control level - is not a harder version of that; it is a different branch of the
+    code, with its own sign convention, its own reading order, and its own unit. Four defects in
+    this family lived in that branch: an interaction subtracted the wrong way round and stayed
+    self-consistent so no cross-check saw it; marginals were emitted before the strata they
+    average, which is precisely the order that hides an interaction; a marginal arm was a
+    question the design enumerated and an object no tool could be handed; and a composed section
+    called five small movers the leading ones. Not one of them is REACHABLE on a one-factor
+    cohort, so a plugin could pass every tier here and meet all four on the first real study.
+
+    EIGHT SAMPLES, TWO IN EVERY CELL. Six cannot do it: a 2x2 out of six is 2/1 somewhere, and a
+    cell holding one sample has no spread, so the simple effect it is half of is undefined and
+    the interaction silently degrades to a main effect. Two per cell is the smallest design in
+    which every term the reading order distinguishes actually exists.
+    """
     import numpy as np
     import pandas as pd
 
     rng = _rng(seed)
-    samples = ["S1", "S2", "S3", "S10", "S11", "S12"]          # prefix_sample_names
-    arm_of = {"S1": "ctrl", "S2": "ctrl", "S3": "ctrl", "S10": "treated", "S11": "treated", "S12": "treated"}
-    chip_of = {"S1": "chipA", "S2": "chipA", "S3": "chipB", "S10": "chipB", "S11": "chipA", "S12": "chipB"}
+    if crossed:
+        # S1 is still a prefix of S10-S13. Batch is fully crossed with BOTH factors - one chip
+        # in every cell of the 2x2 - because a batch confounded with the design would make every
+        # conclusion here unattributable, which is a different lesson taught by a different
+        # fixture. Subject stays nested, and is declared as a hazard for that reason.
+        samples = ["S1", "S2", "S3", "S4", "S10", "S11", "S12", "S13"]   # prefix_sample_names
+        arm_of = {"S1": "ctrl", "S2": "ctrl", "S3": "ctrl", "S4": "ctrl",
+                  "S10": "treated", "S11": "treated", "S12": "treated", "S13": "treated"}
+        strat_of = {"S1": "baseline", "S2": "baseline", "S3": "followup", "S4": "followup",
+                    "S10": "baseline", "S11": "baseline", "S12": "followup", "S13": "followup"}
+        chip_of = {"S1": "chipA", "S2": "chipB", "S3": "chipA", "S4": "chipB",
+                   "S10": "chipA", "S11": "chipB", "S12": "chipA", "S13": "chipB"}
+    else:
+        samples = ["S1", "S2", "S3", "S10", "S11", "S12"]      # prefix_sample_names
+        arm_of = {"S1": "ctrl", "S2": "ctrl", "S3": "ctrl", "S10": "treated", "S11": "treated", "S12": "treated"}
+        strat_of = {}
+        chip_of = {"S1": "chipA", "S2": "chipA", "S3": "chipB", "S10": "chipB", "S11": "chipA", "S12": "chipB"}
     subj_of = {s: f"D{i//2 + 1}" for i, s in enumerate(samples)}
 
-    # S12 gets 7 cells (tiny_sample); the rest split what is left, unevenly.
+    # The LAST sample gets 7 cells (tiny_sample); the rest split what is left, unevenly. Named
+    # positionally rather than as "S12", so the crossed design does not quietly lose the hazard
+    # by adding a sample after it.
     n_tiny = 7
     w = rng.dirichlet(np.ones(len(samples) - 1) * 4.0)
     counts_per = list((w * (n_cells - n_tiny)).astype(int))
     counts_per[0] += (n_cells - n_tiny) - sum(counts_per)
-    per_sample = dict(zip(samples[:-1], counts_per)) | {"S12": n_tiny}
+    per_sample = dict(zip(samples[:-1], counts_per)) | {samples[-1]: n_tiny}
 
     sample_col = np.concatenate([np.repeat(s, k) for s, k in per_sample.items()])
     n = len(sample_col)
@@ -162,19 +213,33 @@ def build(seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520):
         "pct_counts_mt_like": qc,
         "free_note": note,                                                          # mixed_object_obs
     })
+    if strat_of:
+        # PLACED AFTER condition, NOT BESIDE batch. A reader scanning the columns should see the
+        # two design factors adjacent; a second factor filed among the nuisance columns is how a
+        # crossed term gets treated as one.
+        obs.insert(list(obs.columns).index("_role_condition") + 1, "_role_stratum",
+                   pd.Categorical([strat_of[s] for s in sample_col]))
     obs.index = pd.Index([f"{s}_{b}" for s, b in zip(sample_col, barcode)], name=None)
     if not obs.index.is_unique:                   # the duplicate pair shares a sample only by chance
         obs.index = pd.Index([f"{x}_{i}" if d else x for i, (x, d) in
                               enumerate(zip(obs.index, obs.index.duplicated(keep="first")))])
 
+    # THE COVARIATE IS SPELLED OUT, not generated, because `constant_covariate_in_arm` is a
+    # hazard and a formula would smooth it away. `treated` is 60.0 throughout in both designs.
+    covar_of = {"S1": 51.0, "S2": 53.0, "S3": 49.0, "S4": 47.0,
+                "S10": 60.0, "S11": 60.0, "S12": 60.0, "S13": 60.0}
     design = pd.DataFrame({
         "_role_sample": samples + ["S98"],                     # design_row_without_cells
         "_role_condition": [arm_of[s] for s in samples] + ["ctrl"],
         "_role_batch": [chip_of[s] for s in samples] + ["chipA"],
         "_role_subject": [subj_of[s] for s in samples] + ["D9"],
-        "_role_covariate": [51.0, 53.0, 49.0, 60.0, 60.0, 60.0, 55.0],
+        "_role_covariate": [covar_of[s] for s in samples] + [55.0],
     })
-    return {"X": X, "obs": obs, "genes": genes, "design": design, "seed": seed}
+    if strat_of:
+        design.insert(list(design.columns).index("_role_condition") + 1, "_role_stratum",
+                      [strat_of[s] for s in samples] + ["baseline"])
+    return {"X": X, "obs": obs, "genes": genes, "design": design, "seed": seed,
+            "crossed": bool(strat_of)}
 
 
 def _rename(frame, shape):
@@ -182,7 +247,7 @@ def _rename(frame, shape):
 
 
 def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520,
-          core=None, splice: bool = False) -> dict:
+          core=None, splice: bool = False, crossed: bool = False) -> dict:
     """Write one shape. `core` lets both shapes share one build, which is what makes them the
     same cohort rather than two cohorts that resemble each other.
 
@@ -204,7 +269,7 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
 
     if shape not in SHAPES:
         raise ValueError(f"shape must be one of {SHAPES}, not {shape!r}")
-    c = core or build(seed=seed, n_cells=n_cells, n_genes=n_genes)
+    c = core or build(seed=seed, n_cells=n_cells, n_genes=n_genes, crossed=crossed)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -241,10 +306,19 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
     dsn = out / f"design_{shape}.csv"
     _rename(c["design"].copy(), shape).to_csv(dsn, index=False)
 
+    # THE ROLES ARE WHAT THIS OBJECT ACTUALLY CARRIES. Listing `stratum` on a one-factor
+    # fixture would promise a column that is not there, and a resolver believing it would report
+    # the absence as the tool's fault.
+    _crossed = bool(c.get("crossed"))
+    roles = {r: names[shape] for r, names in ROLES.items()
+             if r != "stratum" or _crossed}
     rec = {"shape": shape, "seed": c["seed"], "cells": int(A.n_obs), "genes": int(A.n_vars),
-           "roles": {r: names[shape] for r, names in ROLES.items()},
+           "roles": roles,
+           "factors": [roles["condition"]] + ([roles["stratum"]] if _crossed else []),
+           "crossed": _crossed,
            "observations": str(h5), "design": str(dsn),
-           "digest": digest(c), "hazards": HAZARDS,
+           "digest": digest(c),
+           "hazards": dict(HAZARDS, **(CROSSED_HAZARDS if _crossed else {})),
            "synthetic": True, "quotable": False,
            "cannot_prove": ["that any number here is biologically meaningful",
                             "that a method is better than another method",
@@ -254,8 +328,8 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
 
 
 def write_both(out, seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520,
-               splice: bool = False) -> list:
-    core = build(seed=seed, n_cells=n_cells, n_genes=n_genes)
+               splice: bool = False, crossed: bool = False) -> list:
+    core = build(seed=seed, n_cells=n_cells, n_genes=n_genes, crossed=crossed)
     return [write(out, shape=s, core=core, splice=splice) for s in SHAPES]
 
 
@@ -266,6 +340,10 @@ def digest(core) -> str:
     h = hashlib.sha256()
     h.update(core["X"].tobytes())
     h.update("|".join(core["genes"]).encode())
-    for col in ("_role_sample", "_role_cell_type", "_role_condition"):
-        h.update("|".join(map(str, core["obs"][col])).encode())
+    # APPENDED, NEVER INSERTED. A second design factor is part of what this cohort IS, so a
+    # crossed fixture must not share a digest with the one-factor one - but adding the column to
+    # the middle of this tuple would move the DEFAULT digest too, and every baseline with it.
+    for col in ("_role_sample", "_role_cell_type", "_role_condition", "_role_stratum"):
+        if col in core["obs"]:
+            h.update("|".join(map(str, core["obs"][col])).encode())
     return h.hexdigest()[:16]

@@ -97,6 +97,48 @@ def _flatten(value):
     return ""
 
 
+def item_gaps(spec, stage):
+    """Which entries of a list-valued field do not yet declare what the stage says every one must.
+
+    WHY A STAGE NEEDS THIS AT ALL. `unfilled` asks whether a FIELD is there. For most stages that
+    is the whole question. For a stage that rules on a LIST - one entry per figure, per plot, per
+    resource - the field is there from the moment the first entry is written, and the stage then
+    reports done with every entry after the first still undecided. That is the same defect
+    `outstanding_if` was added for, in the one shape `outstanding_if` cannot see: the plugin is
+    not admitting anything is left, because nothing in it knows that anything is left.
+
+    NO FIELD NAME LIVES HERE. The stage names its own list through `fills`, the keys through
+    `each_item_declares`, and the permitted values as that key's list. `id` and `name` are read
+    only to LABEL a row in the worksheet, and a row with neither is labelled by position.
+    """
+    want = stage.get("each_item_declares") or {}
+    if not want:
+        return {}
+    items, where = None, ""
+    for f in stage.get("fills") or ():
+        v = _dotted(spec, f)
+        if isinstance(v, (list, tuple)):
+            items, where = list(v), f
+            break
+    if items is None:
+        return {}
+    gaps = []
+    for i, it in enumerate(items):
+        d = it if isinstance(it, dict) else {}
+        who = str(d.get("id") or d.get("name") or f"entry {i + 1}")
+        bad = []
+        for key, allowed in want.items():
+            v = d.get(key)
+            allowed = [str(x) for x in (allowed or [])]
+            if v in (None, "", [], {}):
+                bad.append(f"no {key}")
+            elif allowed and str(v) not in allowed:
+                bad.append(f"{key}={v!r}, expected one of {', '.join(allowed)}")
+        if bad:
+            gaps.append((who, bad))
+    return {"field": where, "total": len(items), "gaps": gaps, "want": want}
+
+
 def status(spec, doc, point_name):
     """[{stage, kind, done, missing, why}] in declared order. The whole resume mechanism."""
     placeholder, _up, stages = plan(doc, point_name)
@@ -113,6 +155,18 @@ def status(spec, doc, point_name):
             said = _dotted(spec, st["outstanding_if"])
             if said:
                 partial = str(said)
+        # AND THE SAME QUESTION ASKED OF EVERY ENTRY. `outstanding_if` needs the plugin to admit
+        # what is left; this needs nothing but the entries themselves, which is what makes it
+        # work on a plugin that has never been told the stage exists.
+        ig = item_gaps(spec, st) if not missing and not partial else {}
+        if ig and ig["gaps"]:
+            # THE REASON TRAVELS WITH THE NAME. Listing the entries alone said "F1 does not
+            # declare drawn_by" about an entry that declares it as `yes` - a different problem
+            # with a different fix, described as the one it is not.
+            shown = ", ".join(f"{w} ({'; '.join(r)})" for w, r in ig["gaps"][:3])
+            partial = (f"{len(ig['gaps'])} of {ig['total']} entries in `{ig['field']}` have not "
+                       f"been ruled on: " + shown
+                       + (f", and {len(ig['gaps']) - 3} more" if len(ig["gaps"]) > 3 else ""))
         out.append({"stage": st["name"],
                     "partial": partial,
                     "kind": st.get("kind", "mechanical"),
@@ -713,8 +767,61 @@ def contract_in(source):
     return out
 
 
+def items_worksheet(spec, doc, point_name, stage_name, width=96):
+    """The worksheet for any stage that rules on every entry of a list, not just on the field.
+
+    WHAT IT DOES NOT CHECK, AND WHY THAT IS THE RIGHT LINE. For legends this rules on the
+    PROVENANCE - a fact about the figure that is true before the run and is therefore a build
+    stage's business. It does not check that a sentence was written, because the sentence is
+    written where the figure is DRAWN, out of numbers that do not exist until something runs: how
+    many pairs there were before the cap, which populations were dropped, what n is. A build
+    stage that demanded the sentence would be asking for one that could only be a guess, and a
+    guessed legend is worse than an absent one - it is believed. The sentence is proved at test
+    time, by reading back what the run wrote beside its figures.
+    """
+    _ph, _up, stages = plan(doc, point_name)
+    st = next((x for x in stages if x["name"] == stage_name), None)
+    if st is None:
+        raise ConvertError(f"no stage named {stage_name!r} in point {point_name!r}")
+    if not st.get("each_item_declares"):
+        raise ConvertError(
+            f"stage {stage_name!r} declares no `each_item_declares:`, so there is nothing to rule "
+            f"on entry by entry. This worksheet is for a stage whose field is a LIST and whose "
+            f"work is one decision per item.")
+    ig = item_gaps(spec, st) or {}
+    lines = [f"{stage_name}: {ig.get('total', 0)} entries in `{ig.get('field', '?')}`, "
+             f"{len(ig.get('gaps', ()))} still to rule on"]
+    for k, allowed in (st.get("each_item_declares") or {}).items():
+        lines.append(f"  every entry must declare  {k}: "
+                     + (" | ".join(str(x) for x in allowed) if allowed else "<any non-empty>"))
+    why = " ".join(str(st.get("why", "")).split())
+    if why:
+        import textwrap
+        lines += textwrap.wrap(why, width=width, initial_indent="  ", subsequent_indent="  ")
+    lines.append("")
+    items = _dotted(spec, ig.get("field") or "") or []
+    bad = dict(ig.get("gaps") or ())
+    for i, it in enumerate(items):
+        d = it if isinstance(it, dict) else {}
+        who = str(d.get("id") or d.get("name") or f"entry {i + 1}")
+        mark = "TO RULE" if who in bad else "     ok"
+        lines.append(f"  {mark}  {who}")
+        # THE PLUGIN'S OWN WORDS ARE THE PROMPT. Whoever fills this in needs to know what the
+        # panel is FOR, and the plugin already says so; making them go and look it up is how a
+        # worksheet gets filled in by pattern rather than by reading.
+        for key in ("question", "shows", "what"):
+            if d.get(key):
+                import textwrap
+                lines += textwrap.wrap(f"{key}: {d[key]}", width=width,
+                                       initial_indent="           ", subsequent_indent="           ")
+                break
+        for reason in bad.get(who, ()):
+            lines.append(f"           -> {reason}")
+    return "\n".join(lines)
+
+
 #: The convert actions that advance a stage of the same name. `judgement` has none and never will.
-ADVANCES = ("contract", "defaults", "references", "inventory", "measure")
+ADVANCES = ("contract", "defaults", "references", "inventory", "legends", "measure")
 
 
 def advance_command(row, doc, point_name, root, name, python="", run=""):
