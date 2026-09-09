@@ -132,3 +132,90 @@ def inventory(tool, python="python3", timeout=180):
                          why_not=f"unreadable answer from {python}: {line[-1][:160]}")
     return Inventory(d["tool"], d["names"], d["how"], d["complete"], d["why_not"],
                      detail=d.get("detail") or {})
+
+
+# -----------------------------------------------------------------------------------------------
+# THE OTHER QUESTION AN UPSTREAM CAN ANSWER. The inventory above asks what a package DRAWS; this
+# asks what one of its functions TAKES. A plugin calls a handful of a tool's functions, and every
+# parameter of those it does not pass is a default it has inherited without looking - which is the
+# defect `config` exists to prevent, and the reason DEVPOINTS names decoupler's `min_n` and
+# cellrank's terminal-state method.
+# -----------------------------------------------------------------------------------------------
+
+_PARAMS = r"""
+import importlib, inspect, json, sys
+out = {}
+for path in sys.argv[1:]:
+    mod, _, attr = path.rpartition(".")
+    rec = {"found": False, "why_not": "", "params": [], "summary": ""}
+    fn = None
+    while mod and fn is None:
+        try:
+            m = importlib.import_module(mod)
+        except Exception as e:
+            rec["why_not"] = "%s: %s" % (type(e).__name__, e)
+            mod, _, head = mod.rpartition(".")
+            attr = head + "." + attr if head else attr
+            continue
+        obj = m
+        try:
+            for part in attr.split("."):
+                obj = getattr(obj, part)
+            fn = obj
+        except Exception as e:
+            rec["why_not"] = "%s: %s" % (type(e).__name__, e)
+            break
+    if fn is None:
+        out[path] = rec
+        continue
+    rec["found"] = True
+    rec["why_not"] = ""
+    doc = inspect.getdoc(fn) or ""
+    for line in doc.splitlines():
+        if line.strip():
+            rec["summary"] = line.strip(); break
+    try:
+        sig = inspect.signature(fn)
+    except Exception as e:
+        rec["why_not"] = "no signature: %s" % e
+        out[path] = rec
+        continue
+    for nm, prm in sig.parameters.items():
+        if prm.kind in (prm.VAR_POSITIONAL, prm.VAR_KEYWORD):
+            continue
+        rec["params"].append({
+            "name": nm,
+            "default": "" if prm.default is prm.empty else repr(prm.default),
+            "required": prm.default is prm.empty,
+            "annotation": "" if prm.annotation is prm.empty else str(prm.annotation)[:60],
+        })
+    out[path] = rec
+print(json.dumps(out))
+"""
+
+
+def parameters(paths, python="python3", timeout=180):
+    """{dotted path: {found, why_not, summary, params:[{name, default, required, annotation}]}}.
+
+    Resolved in the interpreter the PLUGIN runs in, for the same reason the inventory is: a
+    signature read from a different version of the package is a signature the plugin will never
+    see, and a default that has since changed is exactly what this exists to catch.
+    """
+    if not paths:
+        return {}
+    try:
+        p = subprocess.run([python, "-c", _PARAMS, *paths], capture_output=True, text=True,
+                           timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return {k: {"found": False, "why_not": f"could not run {python}: {e}", "params": [],
+                    "summary": ""} for k in paths}
+    txt = (p.stdout or "").strip().splitlines()
+    if not txt:
+        return {k: {"found": False, "params": [], "summary": "",
+                    "why_not": f"{python} produced no answer: {(p.stderr or '')[-160:]}"}
+                for k in paths}
+    try:
+        return json.loads(txt[-1])
+    except ValueError:
+        return {k: {"found": False, "params": [], "summary": "",
+                    "why_not": f"unreadable answer: {txt[-1][:160]}"} for k in paths}

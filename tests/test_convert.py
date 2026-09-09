@@ -490,3 +490,111 @@ class SealsDistinguishFailedFromNotRun(unittest.TestCase):
                 continue
             self.assertIn("incomplete_checks=", text,
                           f"{f.name} tracks incomplete checks and never writes them into the seal")
+
+
+class UpstreamCalls(unittest.TestCase):
+    """Which functions of the wrapped tool this plugin actually drives.
+
+    THE IMPORTS ARE INSIDE THE FUNCTIONS, because `scprofile/plugin.py` requires it - module scope
+    runs in the HOST's interpreter, which has none of the plugin's pins. A grep for `^import`
+    finds almost nothing, so this is parsed.
+    """
+
+    SRC = ("def run(ctx):\n"
+           "    import scanpy as sc\n"
+           "    sc.tl.score_genes_cell_cycle(a, s_genes=S, n_bins=25)\n"
+           "    sc.pl.umap(a)\n"
+           "    other.thing(1)\n")
+
+    def test_it_follows_the_alias(self):
+        got = C.upstream_calls(self.SRC, "scanpy")
+        self.assertIn("scanpy.tl.score_genes_cell_cycle", got)
+        self.assertIn("scanpy.pl.umap", got)
+
+    def test_it_records_what_the_call_names_explicitly(self):
+        got = C.upstream_calls(self.SRC, "scanpy")
+        self.assertEqual(got["scanpy.tl.score_genes_cell_cycle"]["passes"], ["n_bins", "s_genes"])
+
+    def test_calls_into_anything_else_are_not_the_wrapped_tool(self):
+        self.assertNotIn("other.thing", C.upstream_calls(self.SRC, "scanpy"))
+
+    def test_a_plugin_that_never_imports_the_tool_yields_nothing(self):
+        self.assertEqual(C.upstream_calls("def run(ctx):\n    pass\n", "scanpy"), {})
+
+
+class Defaults(unittest.TestCase):
+    def test_the_worksheet_separates_passed_from_inherited(self):
+        """`config` means the tool's own defaults DECLARED rather than inherited, and the failure
+        is silent - cellrank's terminal-state method was passed bare, so the number deciding what
+        the fate probabilities are probabilities OF appeared nowhere a reader could see."""
+        w = C.defaults_worksheet(
+            "fk", {"fk.score": {"line": 9, "passes": ["s_genes"]}},
+            {"fk.score": {"found": True, "summary": "Score.", "params": [
+                {"name": "adata", "default": "", "required": True, "annotation": ""},
+                {"name": "s_genes", "default": "None", "required": False, "annotation": ""},
+                {"name": "n_bins", "default": "25", "required": False, "annotation": ""}]}},
+            {})
+        self.assertIn("passes: ['s_genes']", w)
+        self.assertIn("INHERITED SILENTLY (1)", w)
+        self.assertIn("n_bins", w.split("INHERITED SILENTLY", 1)[1])
+        self.assertNotIn("s_genes", w.split("INHERITED SILENTLY", 1)[1])
+
+    def test_a_signature_that_could_not_be_read_says_so(self):
+        w = C.defaults_worksheet("fk", {"fk.x": {"line": 1, "passes": []}},
+                                 {"fk.x": {"found": False, "why_not": "no such attribute"}}, {})
+        self.assertIn("could not read its signature", w)
+
+    def test_a_call_naming_every_optional_parameter_inherits_nothing(self):
+        w = C.defaults_worksheet(
+            "fk", {"fk.x": {"line": 1, "passes": ["a"]}},
+            {"fk.x": {"found": True, "params": [
+                {"name": "a", "default": "1", "required": False, "annotation": ""}]}}, {})
+        self.assertIn("inherits nothing", w)
+
+
+class References(unittest.TestCase):
+    def test_a_gene_list_written_into_the_plugin_is_a_bundled_reference(self):
+        """THE ONE THE FIRST VERSION MISSED. cellcycle's sets are `<block>.split()`, a Call and not
+        a literal, so `literal_eval` raised and 97 symbols scored against every cell were
+        invisible."""
+        src = 'S_GENES = """%s""".split()\n' % " ".join(f"GENE{i}" for i in range(30))
+        got = C.references_in(src)
+        self.assertEqual([r["kind"] for r in got], ["bundled"])
+        self.assertIn("30 entries", got[0]["what"])
+
+    def test_prose_is_not_a_data_set(self):
+        """`origin (29 entries, e.g. on, the, single)` was a docstring split on whitespace."""
+        src = 'NOTE = """%s""".split()\n' % " ".join(["the", "quick", "brown", "fox"] * 8)
+        self.assertEqual(C.references_in(src), [])
+
+    def test_a_url_in_prose_is_not_a_reference(self):
+        """Every plugin records its upstream's homepage, and reporting those made each one look
+        like it had two undeclared fetches."""
+        src = '"""See https://example.com/docs for the method."""\nPLUGIN = {"wraps": {"homepage": "https://example.com"}}\n'
+        self.assertEqual(C.references_in(src), [])
+
+    def test_a_url_in_executable_code_is_one(self):
+        src = 'def run(ctx):\n    url = "https://example.com/data.csv"\n'
+        self.assertEqual([r["kind"] for r in C.references_in(src)], ["fetch"])
+
+    def test_a_call_named_like_a_fetch_is_flagged(self):
+        src = "def run(ctx):\n    import decoupler as dc\n    net = dc.get_collectri(organism='human')\n"
+        got = C.references_in(src, "decoupler")
+        self.assertIn("runtime?", [r["kind"] for r in got])
+
+
+class Contract(unittest.TestCase):
+    def test_figures_are_not_produces(self):
+        """They are declared in `report.figures`, each with the question it settles. Listing them
+        under `produces` sent a reader to add five entries to the wrong field."""
+        src = ('def run(ctx):\n    ctx.emit_obs("score", x)\n    ctx.emit_figure("F1_thing", y)\n'
+               '    ctx.emit_table("t", z)\n')
+        got = C.contract_in(src)
+        self.assertEqual(got["produces"], ["obs[score]", "tables/t"])
+        self.assertEqual(got["report.figures"], ["F1_thing"])
+
+    def test_what_the_plugin_asks_ctx_for_is_reported(self):
+        src = 'def run(ctx):\n    a = ctx.organism\n    b = ctx.keys["label"]\n'
+        reads = C.contract_in(src)["reads"]
+        self.assertIn("organism", reads)
+        self.assertIn("keys[label]", reads)

@@ -492,7 +492,8 @@ def cmd_dev(a):
         # Requiring them first made it refuse with "no widget named None" - an error about the
         # wrong thing entirely, on a repository where nothing was wrong.
         specs = []
-        if a.action in ("status", "inventory", "account"):
+        if a.action in ("status", "inventory", "account", "defaults", "references",
+                        "contract"):
             specs = _convert_specs(doc, point, a.root, a.name)
             if not specs:
                 print(f"sch dev convert: no {point} named {a.name!r} under {a.root}",
@@ -559,6 +560,58 @@ def cmd_dev(a):
                     break
             print(CV.worksheet(tool, best, spec.get("native_plots"), src, _ph))
         return FAILED if bad else OK
+
+    if a.action in ("defaults", "references", "contract"):
+        # SCANS READ THE PLUGIN; the defaults stage also asks the upstream what its parameters are.
+        lives = str(P.point(doc, point).get("lives") or ".")
+        for nm, spec in specs:
+            src = ""
+            f = Path(a.root) / lives / f"{nm}.py"
+            if f.is_file():
+                src = f.read_text(encoding="utf-8")
+            if not src:
+                print(f"{nm}: not a single file under {lives}/, so it cannot be read here")
+                continue
+            tool = a.tool or CV._dotted(spec, up_path) or ""
+            if a.action == "contract":
+                got = CV.contract_in(src)
+                print(f"\n# ---- {nm}: what the code emits and what it asks ctx for")
+                print(f'    "produces": {got["produces"]},')
+                print(f"    #   declared: {spec.get('produces')}")
+                print(f'    # figures emitted (these belong in report.figures, each with the '
+                      f'question it settles):')
+                print(f'    #   {got["report.figures"]}')
+                _dec = [f.get("id") for f in ((spec.get("report") or {}).get("figures") or [])]
+                print(f"    #   declared there: {_dec}")
+                print(f"    # reads from ctx: {', '.join(got['reads']) or 'nothing'}")
+                continue
+            if a.action == "references":
+                found = CV.references_in(src, tool)
+                print(f"\n# ---- {nm}: consulted, and not from the user's object")
+                if not found:
+                    print(f"    # nothing found. If that is right, declare it: "
+                          f'"references": {{}} says you looked; absent says nobody did.')
+                    continue
+                for r in found:
+                    print(f"    # {r['kind']:9s} line {r['line']}: {r['what']}")
+                    print(f"    #   {r['why']}")
+                print(f"    # already declared: {sorted(spec.get('references') or {})}")
+                continue
+            # defaults
+            if not tool:
+                print(f"{nm}: declares no `{up_path}`, so there is no upstream to read")
+                continue
+            calls = CV.upstream_calls(src, tool)
+            if not calls:
+                print(f"\n# ---- {nm}: no call into {tool} found, so nothing is being inherited "
+                      f"from it. If this wrapper drives the tool some other way - a subprocess, "
+                      f"an R string - this scan cannot see it and has not said there is nothing.")
+                continue
+            from .dev.extract import python_package as _PP
+            params = _PP.parameters(sorted(calls), python=a.python or "python3")
+            print(f"\n# ---- {nm}: paste into kernels/{nm}.py, then rule on each")
+            print(CV.defaults_worksheet(tool, calls, params, spec.get("config"), _ph))
+        return OK
 
     if a.action == "measure":
         # THE STAGE DECLARES ITS OWN COMMAND, the way `tests` and `fixture` already do. The
@@ -697,7 +750,8 @@ def build_parser():
     # same one, and it is computed from the file rather than remembered.
     q = rooted(ds.add_parser("convert"))
     q.add_argument("action", nargs="?", default="status",
-                   choices=["status", "inventory", "account", "measure"])
+                   choices=["status", "inventory", "account", "measure",
+                            "defaults", "references", "contract"])
     q.add_argument("--point", default=None)
     q.add_argument("--name", default=None, help="the plugin being converted; omit for all of them")
     q.add_argument("--tool", default=None, help="override the upstream named in the declaration")

@@ -25,6 +25,7 @@ not finding out that scvelo has 34.
 """
 from __future__ import annotations
 
+import ast
 import re
 
 from . import points as pts
@@ -326,4 +327,262 @@ def fill(argv, values):
         for k, v in values.items():
             s = s.replace("{" + k + "}", str(v))
         out.append(s)
+    return out
+
+
+# -----------------------------------------------------------------------------------------------
+# SCANS READ THE PLUGIN. EXTRACTORS READ THE UPSTREAM. Keeping the two apart is what stops this
+# module learning one package's habits: everything below parses the wrapper, which this family
+# wrote and can therefore rely on being Python.
+# -----------------------------------------------------------------------------------------------
+
+
+def _aliases(tree, tool):
+    """{local name: dotted upstream path} for every way this file names the wrapped tool.
+
+    THE IMPORTS ARE INSIDE THE FUNCTIONS, deliberately - `scprofile/plugin.py` requires it, because
+    module scope runs in the HOST's interpreter, which has none of the plugin's pins. So this walks
+    the whole tree rather than the module body, and a grep for `^import` finds almost nothing.
+    """
+    root = str(tool).split(".")[0]
+    out = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for al in node.names:
+                if al.name == root or al.name.startswith(root + "."):
+                    out[al.asname or al.name.split(".")[0]] = al.name
+        elif isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            if mod == root or mod.startswith(root + "."):
+                for al in node.names:
+                    out[al.asname or al.name] = f"{mod}.{al.name}"
+    return out
+
+
+def _dotted_name(node):
+    """`sc.tl.score_genes` out of an ast attribute chain, or ""."""
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name):
+        return ""
+    parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
+def upstream_calls(source, tool):
+    """{upstream dotted path: {line, passes:[kwarg names], text}} for calls into the wrapped tool.
+
+    WHICH FUNCTIONS THIS WRAPPER ACTUALLY DRIVES, which is the set whose defaults matter. A tool
+    exports hundreds; a plugin calls a handful, and it is that handful whose parameters are being
+    inherited silently. `passes` is what the call names explicitly - everything else in the
+    signature is a default nobody has looked at.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return {}
+    al = _aliases(tree, tool)
+    if not al:
+        return {}
+    out = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        name = _dotted_name(node.func)
+        if not name:
+            continue
+        head, _, rest = name.partition(".")
+        if head not in al:
+            continue
+        full = al[head] + ("." + rest if rest else "")
+        got = out.setdefault(full, {"line": node.lineno, "passes": set(), "calls": 0})
+        got["calls"] += 1
+        for kw in node.keywords:
+            if kw.arg:
+                got["passes"].add(kw.arg)
+    for v in out.values():
+        v["passes"] = sorted(v["passes"])
+    return out
+
+
+def defaults_worksheet(tool, calls, params, declared, placeholder="TODO"):
+    """What the wrapper is inheriting from the tool without saying so.
+
+    `config` MEANS "THE TOOL'S OWN DEFAULTS, DECLARED RATHER THAN INHERITED", and the failure it
+    exists to stop is silent: `predict_terminal_states()` was called bare, so the single number
+    deciding which macrostates the fate probabilities are probabilities OF appeared nowhere a
+    reader could see it. Nothing in the plugin was wrong; nothing said what it had chosen.
+
+    Three groups, because they need three different decisions:
+      PASSED      the call names it. Already a decision, and only worth declaring in `config` if a
+                  user should be able to change it.
+      INHERITED   the call does not name it and the tool has a default. THIS IS THE GROUP THE
+                  STAGE IS FOR - each is a choice made by somebody else, invisible in the report.
+      REQUIRED    no default upstream, so the call must supply it. Not a config question.
+
+    Nothing is decided here either. An inherited default is not automatically a `config` key: most
+    are noise and a handful decide the answer, and only a person who understands the method can
+    say which. What the machine can do is stop them being invisible.
+    """
+    decided = set((declared or {}).keys())
+    L = [f"    # {tool}: what this wrapper inherits without declaring it.",
+         '    "config": {']
+    for path in sorted(calls):
+        info = params.get(path) or {}
+        if not info.get("found"):
+            L.append(f"        # {path}: could not read its signature - {info.get('why_not', '')}")
+            continue
+        passed = set(calls[path].get("passes") or ())
+        inherited = [q for q in info["params"]
+                     if not q["required"] and q["name"] not in passed and q["name"] != "self"]
+        required = [q["name"] for q in info["params"] if q["required"]]
+        L.append(f"        # ---- {path}  (called at line {calls[path]['line']})")
+        if info.get("summary"):
+            L.append(f"        #      {_clip(info['summary'], 100)}")
+        L.append(f"        #      passes: {sorted(passed) or 'nothing by name'}")
+        if required:
+            L.append(f"        #      required by the signature: {required}")
+        if not inherited:
+            L.append("        #      inherits nothing - every optional parameter is named.")
+            continue
+        L.append(f"        #      INHERITED SILENTLY ({len(inherited)}): each is a default chosen "
+                 f"by {tool}, not by this plugin.")
+        for q in inherited:
+            mark = "already in config" if q["name"] in decided else f'{placeholder} — declare it, or leave it and say nothing?'
+            L.append(f'        #        {q["name"]:24s} = {q["default"]:<22s} {mark}')
+    L.append("    },")
+    return "\n".join(L)
+
+
+#: Names that mean "this fetches something the user did not supply". Deliberately broad: a false
+#: positive costs a glance at a line number, and a missed reference is one the plan cannot warn
+#: about and the report cannot name.
+_FETCHY = re.compile(r"^(get|fetch|load|download|read)_|^(get|fetch|download)$", re.I)
+_URL = re.compile(r"https?://[^\s\"\'<>)]+")
+
+
+def _literal_items(node):
+    """The strings a module-level assignment holds, seeing through a trailing `.split()`.
+
+    THE FIRST VERSION MISSED THE ONLY REAL FINDING. cellcycle's gene sets are written
+    `S_GENES = <triple-quoted block>.split()`, which is a Call and not a literal, so
+    `ast.literal_eval` raised and the 97 symbols this plugin scores every cell against were
+    invisible - while a docstring assigned to a variable came back as a 29-entry data set.
+    """
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
+            and node.func.attr == "split":
+        node = node.func.value
+    try:
+        value = ast.literal_eval(node)
+    except (ValueError, TypeError, SyntaxError):
+        return []
+    if isinstance(value, str):
+        return [t for t in value.split() if t]
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return [t for t in value if isinstance(t, str)]
+    return []
+
+
+#: A symbol, not a word. `origin (29 entries, e.g. on, the, single)` was a docstring split on
+#: whitespace and reported as a data set; requiring most entries to look like identifiers rather
+#: than prose is what tells 97 gene symbols from a paragraph.
+_SYMBOL = re.compile(r"^[A-Z0-9][A-Z0-9._:-]{1,}$")
+
+
+def references_in(source, tool="", min_items=20, symbol_share=0.7):
+    """[{kind, what, line, why}] for everything this plugin consults that is not the user's object.
+
+    THREE SHAPES, and the third is the one that hides. A URL is obvious. A call named
+    `get_progeny` is nearly obvious. A gene list pasted into the file is not obvious at all -
+    cellcycle carries 97 symbols from Tirosh et al. 2016, declares `references: None`, and the
+    report therefore cannot say where its phase calls came from. Its own comment says HUMAN
+    symbols, which is the case the format warns about: a prior published for one organism returns
+    a small plausible table for the wrong one rather than failing.
+
+    A LITERAL IS A `bundled` REFERENCE. It ships with the plugin and is pinned by the plugin's
+    version, which is what that tier means; being spelled in Python rather than downloaded changes
+    who stores it, not whether it decides the answer.
+
+    URLS IN PROSE ARE NOT REFERENCES. Every plugin records its upstream's homepage and docs in its
+    own declaration, and reporting those made each plugin look like it had two undeclared fetches.
+    Only URLs in executable code count - a URL something actually goes to.
+    """
+    out = []
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return out
+    docs = {id(n) for n in ast.walk(tree)
+            if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+            and getattr(n, "body", None) and isinstance(n.body[0], ast.Expr)
+            and isinstance(n.body[0].value, ast.Constant)
+            for n in [n.body[0].value]}
+    declared = {id(n) for a in tree.body
+                if isinstance(a, ast.Assign) and getattr(a.targets[0], "id", "") == "PLUGIN"
+                for n in ast.walk(a)}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+            continue
+        if id(node) in docs or id(node) in declared:
+            continue
+        for u in _URL.findall(node.value):
+            out.append({"kind": "fetch", "what": u, "line": getattr(node, "lineno", 0),
+                        "why": "a URL in executable code. Declare it with a checksum, or say "
+                               "which tier it is."})
+    if tool:
+        for path, info in sorted(upstream_calls(source, tool).items()):
+            if _FETCHY.match(path.rsplit(".", 1)[-1]):
+                out.append({"kind": "runtime?", "what": path, "line": info["line"],
+                            "why": "named like something that fetches. If it reaches the network "
+                                   "at run time the COMPUTE NODE needs a route, and a node "
+                                   "without one fails after the queue slot is spent."})
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or not isinstance(node.targets[0], ast.Name):
+            continue
+        items = _literal_items(node.value)
+        if len(items) < min_items:
+            continue
+        share = sum(1 for t in items if _SYMBOL.match(t)) / len(items)
+        if share < symbol_share:
+            continue
+        out.append({"kind": "bundled",
+                    "what": f"{node.targets[0].id} ({len(items)} entries, e.g. "
+                            f"{', '.join(items[:3])})",
+                    "line": node.lineno,
+                    "why": "a data set written into the plugin. It ships with this file and is "
+                           "pinned by its version - that is what `bundled` means - and the report "
+                           "cannot name it while it is undeclared."})
+    return out
+
+
+def contract_in(source):
+    """{produces:[...], reads:[...]} inferred from what the plugin emits and asks `ctx` for."""
+    produces, reads = [], set()
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return {"produces": [], "report.figures": [], "reads": []}
+    # FIGURES ARE NOT `produces` AND MUST NOT BE OFFERED AS IF THEY WERE. They are declared in
+    # `report.figures`, each with the question it settles; listing them here sent a reader to add
+    # five entries to the wrong field. Grouped by where each one is declared.
+    EMIT = {"emit_obs": ("produces", "obs[{}]"), "emit_obsm": ("produces", "obsm[{}]"),
+            "emit_layer": ("produces", "layers[{}]"), "emit_table": ("produces", "tables/{}"),
+            "emit_figure": ("report.figures", "{}")}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            fn = node.func.attr
+            if fn in EMIT and node.args and isinstance(node.args[0], ast.Constant) \
+                    and isinstance(node.args[0].value, str):
+                where, shape = EMIT[fn]
+                produces.append((where, shape.format(node.args[0].value)))
+        if isinstance(node, ast.Attribute) and _dotted_name(node).startswith("ctx."):
+            reads.add(_dotted_name(node).split(".", 2)[1])
+        if isinstance(node, ast.Subscript) and _dotted_name(node.value) == "ctx.keys" \
+                and isinstance(node.slice, ast.Constant):
+            reads.add(f"keys[{node.slice.value}]")
+    out = {"produces": [], "report.figures": [], "reads": sorted(reads)}
+    for where, what in sorted(set(produces)):
+        out[where].append(what)
     return out
