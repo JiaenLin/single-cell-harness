@@ -137,9 +137,24 @@ for g in RS.group_by_compatibility(list(discover().values())):
 PYG
 column -t "$RUNDIR/logs/groups.tsv"
 
-echo; echo "=== install one member of each environment; an existing match is skipped"
-for env in $(cut -f2 "$RUNDIR/logs/groups.tsv" | sort -u); do
-  member=$(awk -v e="$env" '$2==e{print $1; exit}' "$RUNDIR/logs/groups.tsv")
+echo; echo "=== install one member of each environment NEEDED; an existing match is skipped"
+# ONLY THE ENVIRONMENTS THE SELECTED PLUGINS RESOLVE TO. Asked for one plugin, this installed
+# all three groups and ran seven selftests to inventory one package. Converting a family one
+# plugin at a time is the point - a batch pass fits the tool to the whole corpus at once and
+# leaves nothing held out to test it against - so the job has to be able to do one.
+if [ -n "$ONLY" ]; then
+  want_envs=$(for k in $ONLY; do awk -v k="$k" '$1==k{print $2}' "$RUNDIR/logs/groups.tsv"; done \
+              | sort -u)
+else
+  want_envs=$(cut -f2 "$RUNDIR/logs/groups.tsv" | sort -u)
+fi
+echo "  environments needed: $(echo $want_envs | tr '\n' ' ')"
+for env in $want_envs; do
+  # AND A MEMBER THAT WAS ASKED FOR, where one was. Installing through `abundance` to inventory
+  # `liana` makes abundance's failing selftest liana's problem.
+  member=$(for k in ${ONLY:-}; do awk -v k="$k" -v e="$env" '$1==k && $2==e{print $1; exit}' \
+             "$RUNDIR/logs/groups.tsv"; done | head -1)
+  [ -n "$member" ] || member=$(awk -v e="$env" '$2==e{print $1; exit}' "$RUNDIR/logs/groups.tsv")
   echo "--- $env  (installing via $member)"
   set +e
   ( cd "$TOOL" && "$HOSTPY" -m scprofile.cli install "$member" --prefix "$ENVS" ) \
