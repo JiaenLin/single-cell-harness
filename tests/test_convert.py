@@ -791,3 +791,36 @@ class ReferencesAcknowledgesWhatIsDeclared(unittest.TestCase):
         out = self._say('PLUGIN = {"references": {"db": {"tier": "fetch"}}}\n')
         self.assertIn("already declared", out)
         self.assertIn("not contradicted", out)
+
+
+class ADottedNameMatchesItsSubmodule(unittest.TestCase):
+    """Matching the tail alone reported three scvelo plots as called when none was.
+
+    `pl.paga` matched `scv.tl.paga(...)` - a different submodule - `pl.plot` matched `ctx.plot()`
+    and `pl.scatter` matched `ax.scatter(...)`, neither of them scvelo. Three of seven "called"
+    were wrong and each would have sent somebody to write a `use` entry for a function the plugin
+    never calls. The whole point of the worksheet is that its evidence can be trusted at a glance.
+    """
+
+    SRC = ("scv.tl.paga(A, groups=k)\n"
+           "F, plt = ctx.figure, ctx.plot()\n"
+           "ax.scatter(x, y)\n"
+           "scv.pl.velocity_embedding_stream(A)\n")
+
+    def test_a_different_submodule_is_not_a_match(self):
+        self.assertEqual(C.callsites(self.SRC, ["pl.paga"]), {})
+
+    def test_a_same_named_method_on_something_else_is_not_a_match(self):
+        self.assertEqual(C.callsites(self.SRC, ["pl.plot"]), {})
+        self.assertEqual(C.callsites(self.SRC, ["pl.scatter"]), {})
+
+    def test_the_real_call_still_matches_through_an_alias(self):
+        got = C.callsites(self.SRC, ["pl.velocity_embedding_stream"])
+        self.assertEqual(got["pl.velocity_embedding_stream"]["line"], 4)
+
+    def test_an_undotted_name_still_matches_on_itself(self):
+        got = C.callsites("netVisual_circle(cc)\n", ["netVisual_circle"])
+        self.assertIn("netVisual_circle", got)
+
+    def test_and_is_not_matched_inside_a_longer_identifier(self):
+        self.assertEqual(C.callsites("my_netVisual_circle(cc)\n", ["netVisual_circle"]), {})

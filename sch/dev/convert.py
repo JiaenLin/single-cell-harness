@@ -284,10 +284,17 @@ def callsites(source, names, window=3):
         tail = str(name).split(".")[-1]
         if not tail:
             continue
-        # `(?<!\w)` AND NOT `(?<![\w.])`. Excluding a preceding dot rejected `sc.pl.umap(adata)`,
-        # which is how every scanpy plot is called - so this found nothing in the eight Python
-        # plugins, the ones that need it. A word character still excludes `foo_umap(`.
-        rx = re.compile(r"(?<!\w)" + re.escape(tail) + r"\s*\(")
+        # AS MUCH OF THE DOTTED NAME AS THE INVENTORY GIVES. Matching the tail alone reported
+        # scvelo's `pl.paga` as called at `scv.tl.paga(...)` - a different submodule - and
+        # `pl.plot` at `ctx.plot()` and `pl.scatter` at `ax.scatter(...)`, neither of them scvelo
+        # at all. Three of seven "called" were wrong, presented as evidence, and each would have
+        # sent somebody to write a `use` entry for a function this plugin never calls.
+        #
+        # `(?<!\w)` and not `(?<![\w.])` on the front: excluding a preceding dot rejected
+        # `sc.pl.umap(adata)`, which is how every scanpy plot is called, so it found nothing in
+        # the eight Python plugins. A word character still excludes `foo_umap(`.
+        want = ".".join(str(name).split(".")[-2:]) if "." in str(name) else tail
+        rx = re.compile(r"(?<!\w)" + re.escape(want).replace(r"\.", r"\.") + r"\s*\(")
         best = None
         for i, line in enumerate(lines):
             if not rx.search(line):
