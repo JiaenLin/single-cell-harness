@@ -182,9 +182,22 @@ def _rename(frame, shape):
 
 
 def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520,
-          core=None) -> dict:
+          core=None, splice: bool = False) -> dict:
     """Write one shape. `core` lets both shapes share one build, which is what makes them the
-    same cohort rather than two cohorts that resemble each other."""
+    same cohort rather than two cohorts that resemble each other.
+
+    `splice` ADDS SPLICED AND UNSPLICED LAYERS, and is off by default on purpose. A plugin whose
+    entire input is those two layers - RNA velocity is the case - could not be run against this
+    fixture at all, so its fixture tier only ever exercised `plan`, and the one thing that would
+    have measured its memory or rendered its panels beside the upstream's was missing. The
+    alternative was a velocity-shaped object written somewhere else, which is one plugin's cohort
+    and the thing the two-shape fixture exists to prevent.
+
+    DEFAULT OFF BECAUSE THE DIGEST IS A CONTRACT. Every recorded baseline and the two-shape
+    equality both rest on the written object; adding layers unconditionally would move the digest
+    and invalidate all of them for the benefit of one plugin. Asked for, the layers are added and
+    the digest of the CORE is unchanged - `digest()` reads the core, not the file.
+    """
     import anndata as ad
     import numpy as np
     import pandas as pd
@@ -200,6 +213,19 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
     var["mt"] = [g.startswith("MT-") for g in c["genes"]]
     A = ad.AnnData(X=c["X"].copy(), obs=obs, var=var)
     A.layers[ROLES["counts"][shape]] = c["X"].copy()
+    if splice:
+        # A FIXED SPLIT OF THE SAME COUNTS, not a second random draw. The unspliced fraction has
+        # to VARY BETWEEN CELLS or every diagnostic that asks "is there enough unspliced signal"
+        # sees one number and cannot fail; it is drawn from the cell's own index so both shapes
+        # get identical values, which is what keeps the two-shape comparison meaningful.
+        #
+        # NOT A MODEL OF SPLICING. Nothing fitted on this means anything about kinetics - the
+        # object says `quotable: False` and this is why. What it supports is the code path: that a
+        # plugin reading these layers runs, draws, and can be measured.
+        frac = 0.10 + 0.30 * ((np.arange(c["X"].shape[0]) % 17) / 16.0)
+        un = np.rint(c["X"] * frac[:, None]).astype(c["X"].dtype)
+        A.layers["unspliced"] = un
+        A.layers["spliced"] = (c["X"] - un).astype(c["X"].dtype)
 
     # A PCA-like embedding computed from the counts, so it is consistent with them; the key is
     # `X_pca` in BOTH shapes, because that name is a convention and not a cohort's choice.
@@ -227,9 +253,10 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
     return rec
 
 
-def write_both(out, seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520) -> list:
+def write_both(out, seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520,
+               splice: bool = False) -> list:
     core = build(seed=seed, n_cells=n_cells, n_genes=n_genes)
-    return [write(out, shape=s, core=core) for s in SHAPES]
+    return [write(out, shape=s, core=core, splice=splice) for s in SHAPES]
 
 
 def digest(core) -> str:

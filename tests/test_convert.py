@@ -356,7 +356,7 @@ class ActionsAreReachable(unittest.TestCase):
     def test_each_action_produces_its_own_output(self):
         with _fake_package(pl=True) as py:
             seen = {a: self._run(a, py).stdout for a in ("status", "inventory", "account")}
-        self.assertIn("stage(s) complete", seen["status"])
+        self.assertIn("build:", seen["status"])
         self.assertIn("function(s)", seen["inventory"])
         self.assertIn('"native_plots"', seen["account"],
                       "account printed something that is not a worksheet")
@@ -742,7 +742,7 @@ class TheDefaultPathWorks(unittest.TestCase):
     def test_status_runs_without_being_told_the_point(self):
         p = self._run()
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertIn("stage(s) complete", p.stdout)
+        self.assertIn("build:", p.stdout)
 
     def test_a_repository_declaring_nothing_says_so_rather_than_tracing_back(self):
         empty = Path(tempfile.mkdtemp())
@@ -824,3 +824,89 @@ class ADottedNameMatchesItsSubmodule(unittest.TestCase):
 
     def test_and_is_not_matched_inside_a_longer_identifier(self):
         self.assertEqual(C.callsites("my_netVisual_circle(cc)\n", ["netVisual_circle"]), {})
+
+
+class BuildAndTestAreSeparate(unittest.TestCase):
+    """A build stage reads source and cannot be fitted to a cohort; a test stage needs data.
+
+    Written down because the pull is real. The memory measurement needs a run, the real cohort is
+    where the data is, and reaching for it during a BUILD is how a plugin ends up shaped around one
+    dataset - which is the thing the two-shape fixture exists to prevent.
+    """
+
+    DECL2 = DECL.replace(
+        "        - {name: contract, fills: [inject]}",
+        "        - {name: contract, phase: build, fills: [inject]}\n"
+        "        - {name: measure, phase: test, fills: [mem]}")
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "widgets").mkdir()
+        (self.d / "DEVPOINTS.yaml").write_text(self.DECL2)
+        self.doc = P.load(self.d)
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def test_each_stage_carries_its_phase(self):
+        got = {r["stage"]: r["phase"] for r in C.status({}, self.doc, "widget")}
+        self.assertEqual(got["contract"], "build")
+        self.assertEqual(got["measure"], "test")
+
+    def test_a_stage_with_no_phase_declared_is_a_build_stage(self):
+        """The safe default: a stage nobody classified must not silently be allowed data."""
+        got = {r["stage"]: r["phase"] for r in C.status({}, self.doc, "widget")}
+        self.assertEqual(got["inventory"], "build")
+
+    def test_the_two_are_counted_and_reported_apart(self):
+        out = C.format_status(C.status({"inject": {"a": 1}}, self.doc, "widget"), "w", "widget")
+        self.assertIn("build: 1 of", out)
+        self.assertIn("test: 0 of 1", out)
+        self.assertIn("cannot be fitted to a cohort", out)
+
+
+class AFilledFieldIsNotAlwaysAFinishedStage(unittest.TestCase):
+    """velocity's `native_plots` holds 2 of scvelo's 20 and its admission says so.
+
+    The status read the field's presence and reported the stage done, while the plugin was saying
+    in another field that eighteen remain. A point declares which field means outstanding.
+    """
+
+    DECL3 = DECL.replace(
+        "        - {name: inventory, fills: [native_plots], why: what the tool already draws}",
+        "        - {name: inventory, fills: [native_plots], outstanding_if: wraps.unreviewed}")
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "widgets").mkdir()
+        (self.d / "DEVPOINTS.yaml").write_text(self.DECL3)
+        self.doc = P.load(self.d)
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _row(self, spec):
+        return {r["stage"]: r for r in C.status(spec, self.doc, "widget")}["inventory"]
+
+    def test_filled_with_an_outstanding_admission_is_partial(self):
+        r = self._row({"native_plots": {"a": {"use": "x"}},
+                       "wraps": {"unreviewed": "18 of 20 remain"}})
+        self.assertFalse(r["done"])
+        self.assertEqual(r["partial"], "18 of 20 remain")
+
+    def test_filled_with_no_admission_is_done(self):
+        r = self._row({"native_plots": {"a": {"use": "x"}}})
+        self.assertTrue(r["done"])
+        self.assertFalse(r["partial"])
+
+    def test_empty_is_neither_done_nor_partial(self):
+        r = self._row({})
+        self.assertFalse(r["done"])
+        self.assertFalse(r["partial"])
+
+    def test_the_report_distinguishes_partial_from_todo(self):
+        out = C.format_status(C.status({"native_plots": {"a": 1},
+                                        "wraps": {"unreviewed": "18 remain"}},
+                                       self.doc, "widget"), "w", "widget")
+        self.assertIn("PART inventory", out)
+        self.assertIn("the plugin says so", out)

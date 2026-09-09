@@ -103,10 +103,32 @@ def status(spec, doc, point_name):
     out = []
     for st in stages:
         missing = unfilled(spec, list(st["fills"]), placeholder)
+        # A FIELD THAT IS PRESENT IS NOT ALWAYS A STAGE THAT IS FINISHED. velocity's `native_plots`
+        # holds two of scvelo's twenty and its `wraps.plots_unreviewed` says the other eighteen are
+        # unruled - and this reported the stage as done, because the field was there and carried no
+        # placeholder. The plugin was telling the truth in one field and the status was reading the
+        # other. A point declares which field, if any, means the work is still outstanding.
+        partial = ""
+        if not missing and st.get("outstanding_if"):
+            said = _dotted(spec, st["outstanding_if"])
+            if said:
+                partial = str(said)
         out.append({"stage": st["name"],
+                    "partial": partial,
                     "kind": st.get("kind", "mechanical"),
+                    # BUILD OR TEST, and the split is the point. A BUILD stage reads source - the
+                    # plugin's own code, or the wrapped tool's signatures and namespace - and
+                    # touches no data at all, so it CANNOT be overfitted to a cohort. A TEST stage
+                    # needs something to run on, and that is where a fixture or an existing
+                    # dataset belongs.
+                    #
+                    # Keeping them apart is what stops the build reaching for a real cohort
+                    # because that is where the data happens to be. A plugin whose build is
+                    # complete is finished as a piece of code; whether it is CORRECT is the test
+                    # stage's question and a different one.
+                    "phase": st.get("phase", "build"),
                     "fills": list(st["fills"]),
-                    "done": not missing,
+                    "done": not missing and not partial,
                     "missing": missing,
                     "why": st.get("why", "")})
     return out
@@ -156,18 +178,38 @@ def inventory(tool, python=None, rscript=None):
 
 
 def format_status(rows, name, point_name):
-    """The line-per-stage a person reads to know where a conversion stands."""
-    done = sum(1 for r in rows if r["done"])
-    L = [f"{name}  ({point_name})  {done} of {len(rows)} stage(s) complete"]
-    for r in rows:
-        mark = "done" if r["done"] else ("ASK " if r["kind"] == "judgement" else "todo")
-        L.append(f"  {mark} {r['stage']:12s} {', '.join(r['fills'])}")
-        if not r["done"]:
-            L.append(f"       unfilled: {', '.join(r['missing'])}")
-            if r["why"]:
-                L.append(f"       {r['why']}")
+    """The line-per-stage a person reads to know where a conversion stands.
+
+    REPORTED IN TWO HALVES, because they are two different claims. "The build is complete" says
+    this plugin is finished as a piece of code and was written without any data in front of it -
+    which is the only way to know it was not shaped around one cohort. "The tests pass" says it
+    behaves, and needs something to run on.
+    """
+    L = []
+    for phase, headline in (("build", "BUILD - reads source only, so it cannot be fitted to a "
+                                      "cohort"),
+                            ("test", "TEST - needs something to run on: the fixture, or a "
+                                     "dataset you already have")):
+        group = [r for r in rows if r.get("phase", "build") == phase]
+        if not group:
+            continue
+        done = sum(1 for r in group if r["done"])
+        L.append(f"{name}  ({point_name})  {phase}: {done} of {len(group)} complete    {headline}")
+        for r in group:
+            mark = ("done" if r["done"]
+                    else "PART" if r.get("partial")
+                    else "ASK " if r["kind"] == "judgement" else "todo")
+            L.append(f"  {mark} {r['stage']:12s} {', '.join(r['fills'])}")
+            if r.get("partial"):
+                L.append(f"       started, and the plugin says so: {r['partial'][:150]}")
+            elif not r["done"]:
+                L.append(f"       unfilled: {', '.join(r['missing'])}")
+                if r["why"]:
+                    L.append(f"       {r['why']}")
+        L.append("")
     nxt = next((r for r in rows if not r["done"]), None)
-    L.append(f"\n  next: {nxt['stage']}" if nxt else "\n  nothing left to convert")
+    L.append(f"  next: {nxt['stage']} ({nxt.get('phase', 'build')})" if nxt
+             else "  nothing left to convert")
     return "\n".join(L)
 
 
