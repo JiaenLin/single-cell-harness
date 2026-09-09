@@ -440,9 +440,9 @@ def cmd_dev(a):
         from .dev import fixture as F
         try:
             recs = ([F.write(a.dir, shape=a.shape, seed=a.seed, n_cells=a.cells,
-                             splice=a.splice, crossed=a.crossed)] if a.shape
+                             splice=a.splice, crossed=a.crossed, force=a.force)] if a.shape
                     else F.write_both(a.dir, seed=a.seed, n_cells=a.cells,
-                                      splice=a.splice, crossed=a.crossed))
+                                      splice=a.splice, crossed=a.crossed, force=a.force))
         except ImportError as e:
             print(f"the fixture needs anndata, numpy and pandas: {e}", file=sys.stderr)
             return CANNOT_RUN
@@ -450,7 +450,10 @@ def cmd_dev(a):
             print(json.dumps(recs, indent=1))
             return 0
         for r in recs:
-            print(f"  shape {r['shape']}  {r['cells']} cells x {r['genes']} genes  digest {r['digest']}")
+            print(f"  shape {r['shape']}  {r['cells']} cells x {r['genes']} genes  "
+                  f"digest {r['digest']}"
+                  + ("   REUSED - already on disk from these arguments; --force rebuilds"
+                     if r.get("reused") else ""))
             print(f"    {r['observations']}")
             print(f"    {r['design']}")
             print("    roles: " + ", ".join(f"{k}={v}" for k, v in r["roles"].items()))
@@ -871,6 +874,11 @@ def build_parser():
     q.add_argument("--splice", action="store_true",
                    help="also write spliced and unspliced layers, for a plugin whose input is "
                         "those. Off by default: the digest is a contract every baseline rests on")
+    q.add_argument("--force", action="store_true",
+                   help="rebuild even when a fixture written from these exact arguments is "
+                        "already there. The cohort is a pure function of them, so the default "
+                        "is to reuse it - the same rule `scprofile install` applies to an "
+                        "environment")
     q.add_argument("--crossed", action="store_true",
                    help="a second design factor crossed with the first: eight samples, two in "
                         "every cell of a 2x2. Off by default for the same reason. Without it no "

@@ -152,6 +152,15 @@ done
 
 echo; echo "=== inventory and account, per plugin, in its own interpreter"
 : > "$RUNDIR/logs/summary.txt"
+# ONE EXTRACTION PER PLUGIN, NOT TWO. This ran `inventory` and then `account`, and `account`
+# calls the same extractor itself - so every plugin imported its wrapped tool twice, in its own
+# interpreter, to answer one question. `account` prints the count in its first line ("N
+# function(s) exported by X. A already decided, B to rule on"), which is what the summary wants
+# and is strictly more than the other command was being parsed for.
+#
+# `inventory` IS THE DIAGNOSTIC, AND IT RUNS ON FAILURE ONLY. Its extra value is per-extractor:
+# WHICH one could not look and why. That matters exactly when nothing could, so it is paid for
+# then and not on every plugin that worked.
 while IFS=$'\t' read -r k env; do
   py="$ENVS/$env/bin/python"
   if [ ! -x "$py" ]; then
@@ -159,19 +168,24 @@ while IFS=$'\t' read -r k env; do
     BAD=$((BAD+1)); continue
   fi
   set +e
-  ( cd "$REPO" && "$HOSTPY" -m sch dev convert inventory --root "$TOOL" --point kernel \
-       --name "$k" --python "$py" ) > "$RUNDIR/inventory/$k.txt" 2>&1
-  irc=$?
   ( cd "$REPO" && "$HOSTPY" -m sch dev convert account --root "$TOOL" --point kernel \
        --name "$k" --python "$py" ) > "$RUNDIR/account/$k.txt" 2>&1
+  arc=$?
   set -e
-  n=$(grep -c '^      ' "$RUNDIR/inventory/$k.txt" 2>/dev/null || echo 0)
-  if grep -q "NO EXTRACTOR COULD LOOK" "$RUNDIR/inventory/$k.txt" 2>/dev/null; then
-    echo "  $k: NO EXTRACTOR COULD LOOK - a gap in the extractor layer, not an empty inventory" \
-        | tee -a "$RUNDIR/logs/summary.txt"
-    BAD=$((BAD+1))
+  line=$(grep -m1 'function(s) exported by' "$RUNDIR/account/$k.txt" 2>/dev/null | sed 's/^ *# *//')
+  if [ -n "$line" ]; then
+    echo "  $k: $line" | tee -a "$RUNDIR/logs/summary.txt"
   else
-    echo "  $k: $n exported plotting function(s) [rc=$irc]" | tee -a "$RUNDIR/logs/summary.txt"
+    BAD=$((BAD+1))
+    echo "  $k: no extractor could look [rc=$arc] - a gap in the extractor layer, NOT an empty" \
+        | tee -a "$RUNDIR/logs/summary.txt"
+    echo "        inventory, which would certify a wrapper as having nothing to account for" \
+        | tee -a "$RUNDIR/logs/summary.txt"
+    # THE PER-EXTRACTOR DETAIL, PAID FOR ONLY WHERE IT IS NEEDED: which extractor was asked,
+    # and what stopped it.
+    ( cd "$REPO" && "$HOSTPY" -m sch dev convert inventory --root "$TOOL" --point kernel \
+         --name "$k" --python "$py" ) > "$RUNDIR/inventory/$k.txt" 2>&1 || true
+    sed -n '1,8p' "$RUNDIR/inventory/$k.txt" | sed 's/^/        /'
   fi
 done < "$RUNDIR/logs/groups.tsv"
 

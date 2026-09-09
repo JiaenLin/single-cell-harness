@@ -246,8 +246,37 @@ def _rename(frame, shape):
     return frame.rename(columns={f"_role_{r}": names[shape] for r, names in ROLES.items()})
 
 
+def matching(out, shape, seed, n_cells, n_genes, splice, crossed):
+    """The record already on disk if it was written from exactly these arguments, else None.
+
+    EXISTS-AND-MATCHES, THE SAME RULE THE ENVIRONMENT INSTALLER USES. This cohort is a pure
+    function of (seed, cells, genes, splice, crossed) - that is what "deterministic: same seed,
+    same bytes" means - so writing it a second time produces the files that are already there.
+    Two sizes with splice layers, which is what a memory measurement needs, was rebuilt on every
+    submission of a job whose expensive part it is not.
+
+    KEYED ON THE ARGUMENTS, NOT ON THE DIGEST, because the digest is computed FROM the built
+    cohort: verifying it would cost the build it is meant to avoid. The digest still goes into
+    the record and still fails loudly if the generator ever stops being deterministic.
+    """
+    rec_path = Path(out) / f"FIXTURE_{shape}.json"
+    if not rec_path.is_file():
+        return None
+    try:
+        rec = json.loads(rec_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not (Path(rec.get("observations", "")).is_file()
+            and Path(rec.get("design", "")).is_file()):
+        return None                      # the record outlived what it describes
+    want = {"seed": int(seed), "cells": int(n_cells), "genes": int(n_genes),
+            "splice": bool(splice), "crossed": bool(crossed)}
+    got = {k: rec.get(k) for k in want}
+    return rec if got == want else None
+
+
 def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520,
-          core=None, splice: bool = False, crossed: bool = False) -> dict:
+          core=None, splice: bool = False, crossed: bool = False, force: bool = False) -> dict:
     """Write one shape. `core` lets both shapes share one build, which is what makes them the
     same cohort rather than two cohorts that resemble each other.
 
@@ -269,6 +298,10 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
 
     if shape not in SHAPES:
         raise ValueError(f"shape must be one of {SHAPES}, not {shape!r}")
+    if not force:
+        have = matching(out, shape, seed, n_cells, n_genes, splice, crossed)
+        if have is not None:
+            return dict(have, reused=True)
     c = core or build(seed=seed, n_cells=n_cells, n_genes=n_genes, crossed=crossed)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -313,6 +346,10 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
     roles = {r: names[shape] for r, names in ROLES.items()
              if r != "stratum" or _crossed}
     rec = {"shape": shape, "seed": c["seed"], "cells": int(A.n_obs), "genes": int(A.n_vars),
+           # RECORDED BECAUSE THE REUSE CHECK READS IT. Without `splice` on the record, a run
+           # that asked for the layers would match a record written without them and be handed
+           # an object missing the only thing it needs.
+           "splice": bool(splice),
            "roles": roles,
            "factors": [roles["condition"]] + ([roles["stratum"]] if _crossed else []),
            "crossed": _crossed,
@@ -328,9 +365,17 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
 
 
 def write_both(out, seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520,
-               splice: bool = False, crossed: bool = False) -> list:
+               splice: bool = False, crossed: bool = False, force: bool = False) -> list:
+    # THE CORE IS BUILT ONCE, OR NOT AT ALL. Checking both shapes first is the difference between
+    # skipping the write and skipping the WORK: the two shapes are one cohort renamed, so if
+    # neither needs writing there is nothing to draw, and building it to discover that is the
+    # redundancy this check exists to remove.
+    if not force:
+        have = [matching(out, s, seed, n_cells, n_genes, splice, crossed) for s in SHAPES]
+        if all(h is not None for h in have):
+            return [dict(h, reused=True) for h in have]
     core = build(seed=seed, n_cells=n_cells, n_genes=n_genes, crossed=crossed)
-    return [write(out, shape=s, core=core, splice=splice) for s in SHAPES]
+    return [write(out, shape=s, core=core, splice=splice, force=force) for s in SHAPES]
 
 
 def digest(core) -> str:

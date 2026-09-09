@@ -700,3 +700,132 @@ class TheStarterDeclarationIsUsable(unittest.TestCase):
         self.assertTrue(named, "the error names no command at all")
         for cmd in named:
             build_parser().parse_args(shlex.split(cmd))       # raises SystemExit if it does not exist
+
+
+class TheFixtureIsNotRebuiltWhenItIsAlreadyThere(unittest.TestCase):
+    """Exists-and-matches, the same rule the environment installer applies.
+
+    The cohort is a pure function of (seed, cells, genes, splice, crossed) - that is what
+    "deterministic: same seed, same bytes" means - so writing it again produces the files that
+    are already on disk. A memory measurement needs two sizes WITH splice layers, and that was
+    rebuilt on every submission of a job whose expensive part it is not.
+
+    `--force` rebuilds, because the escape hatch has to exist and has to be asked for.
+    """
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.d, True)
+        try:
+            import anndata  # noqa: F401
+        except ImportError:
+            self.skipTest("the fixture needs anndata")
+
+    def test_a_second_write_is_reused_and_says_so(self):
+        first = F.write(self.d, shape="a", n_cells=200, n_genes=60)
+        self.assertFalse(first.get("reused"))
+        again = F.write(self.d, shape="a", n_cells=200, n_genes=60)
+        self.assertTrue(again.get("reused"))
+        self.assertEqual(first["digest"], again["digest"])
+
+    def test_force_rebuilds(self):
+        F.write(self.d, shape="a", n_cells=200, n_genes=60)
+        self.assertFalse(F.write(self.d, shape="a", n_cells=200, n_genes=60,
+                                 force=True).get("reused"))
+
+    def test_a_different_argument_is_a_different_cohort_and_is_not_reused(self):
+        F.write(self.d, shape="a", n_cells=200, n_genes=60)
+        for kw in ({"n_cells": 300}, {"n_genes": 80}, {"seed": 7},
+                   {"splice": True}, {"crossed": True}):
+            got = F.write(self.d, shape="a", **{"n_cells": 200, "n_genes": 60, **kw})
+            self.assertFalse(got.get("reused"), f"{kw} was served a cohort built without it")
+
+    def test_splice_is_on_the_record_or_the_check_cannot_see_it(self):
+        """THE ONE THAT WOULD HAVE BITTEN. Without `splice` recorded, a run asking for the layers
+        matches a record written without them and is handed an object missing the only thing it
+        needs - and velocity's whole input is those two layers."""
+        plain = F.write(self.d, shape="a", n_cells=200, n_genes=60)
+        self.assertIn("splice", plain)
+        self.assertFalse(plain["splice"])
+        spliced = F.write(self.d, shape="a", n_cells=200, n_genes=60, splice=True)
+        self.assertFalse(spliced.get("reused"))
+        import anndata as ad
+        self.assertIn("spliced", ad.read_h5ad(spliced["observations"]).layers)
+
+    def test_a_record_that_outlived_its_files_is_not_a_match(self):
+        rec = F.write(self.d, shape="a", n_cells=200, n_genes=60)
+        Path(rec["observations"]).unlink()
+        self.assertFalse(F.write(self.d, shape="a", n_cells=200,
+                                 n_genes=60).get("reused"))
+
+    def test_both_shapes_skip_without_building_the_core(self):
+        F.write_both(self.d, n_cells=200, n_genes=60)
+        again = F.write_both(self.d, n_cells=200, n_genes=60)
+        self.assertTrue(all(r.get("reused") for r in again))
+        self.assertEqual(len({r["digest"] for r in again}), 1,
+                         "the two shapes stopped sharing a digest")
+
+
+class TheReuseDecisionItselfNeedsNoCohort(unittest.TestCase):
+    """`matching` reads a record and two paths, so it is testable where anndata is not installed.
+
+    WORTH SEPARATING. The class above skips on this workstation, which means the reuse rule -
+    the part that decides whether hours of work happen - would have shipped exercised only on
+    the cluster. The decision is pure: a JSON record, the arguments, and whether the files it
+    names are still there.
+    """
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.d, True)
+        self.h5 = self.d / "fixture_a.h5ad"
+        self.csv = self.d / "design_a.csv"
+        self.h5.write_bytes(b"not really an h5ad")
+        self.csv.write_text("a,b\n")
+
+    def _record(self, **over):
+        rec = {"shape": "a", "seed": 20260906, "cells": 2000, "genes": 520,
+               "splice": False, "crossed": False,
+               "observations": str(self.h5), "design": str(self.csv), "digest": "x"}
+        rec.update(over)
+        (self.d / "FIXTURE_a.json").write_text(json.dumps(rec))
+        return rec
+
+    def _match(self, **over):
+        args = {"seed": 20260906, "n_cells": 2000, "n_genes": 520,
+                "splice": False, "crossed": False}
+        args.update(over)
+        return F.matching(self.d, "a", **args)
+
+    def test_the_same_arguments_match(self):
+        self._record()
+        self.assertIsNotNone(self._match())
+
+    def test_every_argument_is_part_of_the_key(self):
+        self._record()
+        for kw in ({"seed": 1}, {"n_cells": 1}, {"n_genes": 1},
+                   {"splice": True}, {"crossed": True}):
+            self.assertIsNone(self._match(**kw), f"{kw} was treated as the same cohort")
+
+    def test_an_old_record_with_no_splice_key_does_not_match_a_plain_request(self):
+        """A RECORD WRITTEN BEFORE THE KEY EXISTED must not be reused, in either direction. It
+        says nothing about its layers, so believing it says `no layers` hands a plugin whose
+        entire input is those layers an object without them."""
+        rec = self._record()
+        del rec["splice"]
+        (self.d / "FIXTURE_a.json").write_text(json.dumps(rec))
+        self.assertIsNone(self._match())
+        self.assertIsNone(self._match(splice=True))
+
+    def test_a_record_naming_files_that_are_gone_is_not_a_match(self):
+        self._record()
+        self.h5.unlink()
+        self.assertIsNone(self._match())
+        self.h5.write_bytes(b"back")
+        self.csv.unlink()
+        self.assertIsNone(self._match())
+
+    def test_unreadable_or_absent_records_are_not_matches_and_do_not_raise(self):
+        self.assertIsNone(self._match())
+        (self.d / "FIXTURE_a.json").write_text("{not json")
+        self.assertIsNone(self._match())
