@@ -158,6 +158,16 @@ def status(spec, doc, point_name):
         # AND THE SAME QUESTION ASKED OF EVERY ENTRY. `outstanding_if` needs the plugin to admit
         # what is left; this needs nothing but the entries themselves, which is what makes it
         # work on a plugin that has never been told the stage exists.
+        # HOW A PARTIAL STAGE IS FINISHED, or that nothing says. `outstanding_if` gave the
+        # maker a way to report a stage as started-and-owing, and no way to report how the debt
+        # is paid - so a wrapper part-way through printed what it owed, forever, and the reader
+        # was left to work out that no command in this suite can produce what the accounting
+        # demands. Measured: `superseded_by_design` must name a DEFECT, a defect needs the
+        # upstream's panel rendered beside the plugin's, and no stage renders one. Two plugins
+        # sat at PARTIAL for that reason with nothing saying so.
+        #
+        # A dead end that announces itself is a task. A silent one is a plugin nobody finishes.
+        finished_by = str(st.get("finished_by") or "")
         ig = item_gaps(spec, st) if not missing and not partial else {}
         if ig and ig["gaps"]:
             # THE REASON TRAVELS WITH THE NAME. Listing the entries alone said "F1 does not
@@ -181,6 +191,7 @@ def status(spec, doc, point_name):
                     # complete is finished as a piece of code; whether it is CORRECT is the test
                     # stage's question and a different one.
                     "phase": st.get("phase", "build"),
+                    "finished_by": finished_by,
                     "fills": list(st["fills"]),
                     "done": not missing and not partial,
                     "missing": missing,
@@ -256,6 +267,20 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
             L.append(f"  {mark} {r['stage']:12s} {', '.join(r['fills'])}")
             if r.get("partial"):
                 L.append(f"       started, and the plugin says so: {r['partial'][:150]}")
+                # AND WHAT WOULD FINISH IT, or that this repository declares nothing that
+                # would. The second case is the one worth printing: a stage whose remaining
+                # work no command in the suite can do is a gap in the SUITE, and it was
+                # invisible - the maker printed the debt and stopped, every time, forever.
+                if r.get("finished_by"):
+                    L.append(f"       to finish it:  {r['finished_by']}")
+                else:
+                    L.append(f"       NOTHING DECLARES HOW TO FINISH THIS. `{r['stage']}` can "
+                             f"report what is outstanding and this point names no stage or "
+                             f"command that closes it,")
+                    L.append(f"       so the plugin stays part-way through no matter who reads "
+                             f"it. That is a gap in the suite, not in the plugin. Declare "
+                             f"`finished_by:` on the stage")
+                    L.append(f"       once something can do the work.")
             elif not r["done"]:
                 L.append(f"       unfilled: {', '.join(r['missing'])}")
                 if r["why"]:

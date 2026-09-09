@@ -1410,5 +1410,77 @@ class TheWorksheetShowsBothHalvesOfARuling(unittest.TestCase):
             self.assertNotIn(f'"{word}"', src, f"{word!r} is one repository's vocabulary")
 
 
+
+
+class ADeadEndAnnouncesItself(unittest.TestCase):
+    """A stage that reports what it owes and no way to pay it is a gap in the SUITE.
+
+    `outstanding_if` gave the maker a way to say a stage is started-and-owing, and no way to say
+    how the debt is paid. So a wrapper part-way through printed what it owed, forever, and
+    nobody reading it could tell that no command in this suite can produce what the accounting
+    demands.
+
+    MEASURED, ON TWO PLUGINS. `superseded_by_design` must name a DEFECT; a defect needs the
+    upstream's panel rendered beside the plugin's own; no stage renders one. liana and velocity
+    both sit at PARTIAL for exactly that reason and neither said so - the maker printed the debt
+    and stopped.
+
+    A dead end that announces itself is a task. A silent one is a plugin nobody finishes.
+    """
+
+    def setUp(self):
+        from sch import yamlish
+        self.doc = yamlish.loads(DECL.replace(
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}",
+            "        - name: inventory\n"
+            "          fills: [native_plots]\n"
+            "          outstanding_if: wraps.owed\n"
+            "          why: what the tool already draws"))
+        self.spec = {"native_plots": {"a": {"use": "x"}}, "wraps": {"owed": "two are unruled"}}
+
+    def _rows(self):
+        return C.status(self.spec, self.doc, "widget")
+
+    def _text(self):
+        return C.format_status(self._rows(), "w", "widget", doc=self.doc, root=".")
+
+    def test_the_stage_is_partial_not_done(self):
+        row = next(r for r in self._rows() if r["stage"] == "inventory")
+        self.assertFalse(row["done"])
+        self.assertIn("two are unruled", row["partial"])
+
+    def test_a_partial_stage_with_no_declared_closer_says_the_suite_is_the_gap(self):
+        out = self._text()
+        self.assertIn("NOTHING DECLARES HOW TO FINISH THIS", out)
+        self.assertIn("gap in the suite, not in the plugin", out)
+        self.assertIn("finished_by", out)
+
+    def test_where_something_can_do_the_work_it_is_named_instead(self):
+        from sch import yamlish
+        doc = yamlish.loads(DECL.replace(
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}",
+            "        - name: inventory\n"
+            "          fills: [native_plots]\n"
+            "          outstanding_if: wraps.owed\n"
+            "          finished_by: run the panels side by side and rule each\n"
+            "          why: what the tool already draws"))
+        out = C.format_status(C.status(self.spec, doc, "widget"), "w", "widget", doc=doc, root=".")
+        self.assertIn("to finish it:  run the panels side by side", out)
+        self.assertNotIn("NOTHING DECLARES HOW", out)
+
+    def test_a_finished_stage_says_neither(self):
+        spec = {"native_plots": {"a": {"use": "x"}}, "wraps": {}}
+        out = C.format_status(C.status(spec, self.doc, "widget"), "w", "widget",
+                              doc=self.doc, root=".")
+        self.assertNotIn("NOTHING DECLARES HOW", out)
+        self.assertNotIn("to finish it:", out)
+
+    def test_the_harness_names_no_repository_field(self):
+        import inspect
+        src = inspect.getsource(C.format_status) + inspect.getsource(C.status)
+        for word in ("native_plots", "wraps.owed", "superseded_by_design"):
+            self.assertNotIn(f'"{word}"', src)
+
+
 if __name__ == "__main__":
     unittest.main()
