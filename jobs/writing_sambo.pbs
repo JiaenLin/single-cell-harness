@@ -54,10 +54,21 @@
 #       no legend - not merely be non-zero, which a single one would satisfy. Measured: 378 of
 #       the 612 placed panels have no legend, and all 180 plugin-drawn ones do have one.
 #
-#   P4  THE ALIASING SURVIVES TO THE PAGE. `aliased with` appears in the writing brief AND in
-#       the rendered report. This is the prediction this cohort exists to test: a 2x2 whose
-#       first factor is inseparable from a technical one. If the sentence is in the brief and
-#       not on the page, the writing layer knows something the reader is not told.
+#   P4  THE ALIASING SURVIVES TO THE PAGE. This is the prediction this cohort exists to test: a
+#       2x2 whose first factor is inseparable from a technical one.
+#
+#       MATCHED ON MEANING, NOT ON ONE MODULE'S WORDS. The first version of this looked for
+#       `aliased with`, which is the BRIEF's phrasing, and reported the caveat missing from
+#       every page - while two of the seven carried it in the composed wording, "varies together
+#       with chemistry across all samples, so a difference along age is a difference along
+#       both". A check that knows one of the writers' vocabularies reports the others as silent,
+#       which is the same defect as a caption that knows one of the two places a legend lives.
+#
+#       Measured: the caveat reaches 2 of 7 pages - the composed paper and the panel page. It
+#       does NOT reach the by-arm page, which is where a reader meets the age contrast itself
+#       ("interactions from young to aged"). `_by_arm_block` does carry an aliasing clause and
+#       rendered nothing here, because this plugin produced no per-cell column to split; the
+#       contrast panels that DID render come by another route and carry no caveat at all.
 #
 #   P5  THE DESIGN'S OWN QUESTIONS COME OUT RIGHT, computed from the run's own `design` and
 #       `controls` in report.json - no design is written into this job. Seven comparisons: four
@@ -236,12 +247,27 @@ say(said == unlegended, "P3",
     f"row (of {placed} placed)")
 
 # P4 - the aliasing survives to the page
+SAYS_ALIAS = ("aliased with", "varies together with", "Identical split to")
+
+
+def _alias_said(s):
+    return sum(s.count(w) for w in SAYS_ALIAS)
+
+
 briefs = list(run.glob("kernels/*/WRITING_BRIEF.md"))
-in_brief = sum("aliased with" in b.read_text(encoding="utf-8", errors="replace") for b in briefs)
-on_page = text.count("aliased with")
-say(in_brief > 0 and on_page > 0, "P4",
-    f"`aliased with` in {in_brief}/{len(briefs)} brief(s) and {on_page} time(s) on the pages "
-    f"- age is inseparable from chemistry in this cohort")
+in_brief = sum(bool(_alias_said(b.read_text(encoding="utf-8", errors="replace"))) for b in briefs)
+pages_with = [p.name for p in pages if _alias_said(p.read_text(encoding="utf-8", errors="replace"))]
+# THE PAGES THAT SHOW A CONTRAST ALONG THE ALIASED FACTOR ARE THE ONES THAT MUST CARRY IT.
+levels = {str(v.get(f)) for v in (design or {}).values() for f in (controls or {})}
+shows_contrast = [p.name for p in pages
+                  if sum(p.read_text(encoding="utf-8", errors="replace").count(f" to {l}")
+                         + p.read_text(encoding="utf-8", errors="replace").count(f"from {l} ")
+                         for l in levels if l and l != "None")]
+missing = sorted(set(shows_contrast) - set(pages_with))
+say(in_brief > 0 and not missing, "P4",
+    f"the caveat is on {len(pages_with)}/{len(pages)} page(s) {pages_with}; "
+    f"{len(shows_contrast)} page(s) show a contrast along an aliased factor"
+    + (f" and {len(missing)} of them carry no caveat: {missing}" if missing else ""))
 
 # P5 - the design's own questions, from the run's own design and controls
 import json
