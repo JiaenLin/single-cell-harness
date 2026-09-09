@@ -226,6 +226,9 @@ said = text.count("NO LEGEND WAS WRITTEN")
 # was the thing nobody had checked.
 import json as _json
 _pay = _json.loads((run / "report.json").read_text(encoding="utf-8", errors="replace"))
+# THE RUN'S OWN DESIGN, READ ONCE AND BEFORE ANYTHING NEEDS IT. P4 used these and P5 defined
+# them, which is fine until the checker is read top to bottom, which is how it runs.
+design, controls = _pay.get("design") or {}, _pay.get("controls") or {}
 described = {Path(str(f.get("path") or "")).name
              for v in (_pay.get("kernels") or {}).values()
              for f in (v.get("figures") or [])
@@ -270,9 +273,7 @@ say(in_brief > 0 and not missing, "P4",
     + (f" and {len(missing)} of them carry no caveat: {missing}" if missing else ""))
 
 # P5 - the design's own questions, from the run's own design and controls
-import json
-pay = json.loads((run / "report.json").read_text(encoding="utf-8", errors="replace"))
-design, controls = pay.get("design") or {}, pay.get("controls") or {}
+pay = _pay
 sys.path.insert(0, os.environ.get("TOOL", "."))
 try:
     from scprofile.design_panel import comparisons

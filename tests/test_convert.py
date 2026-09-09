@@ -9,6 +9,7 @@ inventory, has been domain-free and shipped the whole time.
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import re
 import shutil
@@ -1105,6 +1106,69 @@ class EveryActionLoadsTheDeclarationsItReads(unittest.TestCase):
                              cwd=str(ROOT), capture_output=True, text=True)
         self.assertNotEqual(out.stdout.strip() + out.stderr.strip(), "",
                             "an action that reads declarations printed nothing at all")
+
+
+
+
+class TheJobsCheckerRunsBeforeItIsSubmitted(unittest.TestCase):
+    """A prediction is only as good as the thing grading it, and nothing was grading that.
+
+    THREE TIMES IN ONE JOB. The SAMBO writing job carries its predictions as an embedded Python
+    checker, and three separate defects in that checker reached the cluster: it counted only one
+    of the two places a legend can live and reported 558 undescribed panels against 378 saying
+    so; it searched for one module's phrasing of the aliasing caveat and called two pages that
+    carry it silent; and it used a name that the section below it defined, which is fine until
+    the file is read top to bottom, which is how it runs. Each cost a submission, and the first
+    two produced confident FAIL lines about the tool that were about the checker.
+
+    A wrong answer about a tool looks exactly like a right one. So the checker is extracted and
+    RUN here, against a tiny synthetic tree shaped like a run, and every prediction has to
+    evaluate. This does not check that the predictions are TRUE - only the cohort can say that -
+    it checks that asking them does not raise.
+    """
+
+    JOB = ROOT / "jobs" / "writing_sambo.pbs"
+
+    def _checker(self):
+        lines = self.JOB.read_text().split("\n")
+        i = next(n for n, l in enumerate(lines) if "PYCHK" in l and "<<" in l)
+        j = next(n for n, l in enumerate(lines) if l.strip() == "PYCHK")
+        return "\n".join(lines[i + 1:j])
+
+    def test_the_job_and_its_checker_parse(self):
+        import ast
+        self.assertEqual(subprocess.run(["bash", "-n", str(self.JOB)]).returncode, 0)
+        ast.parse(self._checker())
+
+    def test_every_prediction_evaluates_on_a_tree_shaped_like_a_run(self):
+        d = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, d, True)
+        (d / "report").mkdir()
+        figs = d / "kernels" / "k" / "u" / "figures"
+        figs.mkdir(parents=True)
+        (d / "report" / "p.html").write_text(
+            "<h2>x</h2> nativecmp_a.png: NO LEGEND WAS WRITTEN for this panel. "
+            "In this design <b>f1</b> varies together with machine across all samples. "
+            "interactions from lo to hi")
+        (figs / "nativecmp_a.png").write_bytes(b"x")
+        (d / "kernels" / "k" / "WRITING_BRIEF.md").write_text("`f1` is aliased with `machine`")
+        des = {}
+        for i, (a, b) in enumerate([(a, b) for a in ("lo", "hi") for b in ("base", "alt")
+                                    for _ in (0, 1)]):
+            des[f"s{i}"] = {"f1": a, "f2": b, "machine": "m1" if a == "lo" else "m2"}
+        (d / "report.json").write_text(json.dumps(
+            {"design": des, "controls": {"f1": "lo", "f2": "base"},
+             "kernels": {"k": {"figures": []}}}))
+
+        tool = os.environ.get("SCH_TEST_TOOL", "")
+        env = dict(os.environ, PANELS="1", LEGENDS="0", TOOL=tool)
+        r = subprocess.run([sys.executable, "-", str(d)], input=self._checker(),
+                           text=True, capture_output=True, env=env)
+        if "cannot import the enumerator" in r.stdout:
+            self.skipTest("the plugin format's own package is not importable here")
+        self.assertNotIn("Traceback", r.stderr, f"the checker raised:\n{r.stderr[-600:]}")
+        for tag in ("P0", "P1", "P2", "P3", "P4", "P5", "P6"):
+            self.assertIn(f"  {tag}  ", r.stdout, f"{tag} did not evaluate:\n{r.stdout}")
 
 
 if __name__ == "__main__":
