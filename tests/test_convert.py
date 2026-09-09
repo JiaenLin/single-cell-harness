@@ -1194,6 +1194,24 @@ class JobsDoNotDieOnAGrepThatFindsNothing(unittest.TestCase):
         for j in self.JOBS:
             self.assertIn("set -euo pipefail", j.read_text(), f"{j.name} is not strict")
 
+    def test_no_apostrophe_inside_a_required_variable_message(self):
+        """`${VAR:?the tool's own thing}` does not parse, and lies about where.
+
+        Bash treats the apostrophe as opening a quote, so the error it reports names the END OF
+        THE FILE rather than the line that caused it - once, sixty lines away from the mistake.
+        This project has been bitten twice: `${VPY:?...velocity's environment...}` and then
+        `${RSCRIPT:?...the environment's own Rscript...}`, months apart, by the same hand.
+        """
+        bad = []
+        for j in self.JOBS:
+            for n, line in enumerate(j.read_text().splitlines(), 1):
+                for m in re.finditer(r"\$\{[A-Za-z_][A-Za-z0-9_]*:\?([^}]*)\}", line):
+                    if "'" in m.group(1):
+                        bad.append(f"{j.name}:{n}: {line.strip()[:88]}")
+        self.assertEqual(bad, [], "an apostrophe in a `${VAR:?...}` message stops the job "
+                                  "parsing, and the error points somewhere else:\n  "
+                                  + "\n  ".join(bad))
+
     def test_no_grep_in_a_substitution_is_left_unguarded(self):
         bad = []
         for j in self.JOBS:

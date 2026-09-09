@@ -1,0 +1,90 @@
+#!/bin/bash
+#PBS -N sch_r_probe
+#PBS -q short
+#PBS -l select=1:ncpus=4:mem=64gb
+#PBS -l walltime=00:40:00
+#PBS -j oe
+#
+# ============================================================================================
+# WHY DOES R PRODUCE NOTHING - one question, measured
+# ============================================================================================
+#
+# The inventory extractor asked this environment's own Rscript for CellChat's exports and got
+# exit -9 with both streams empty. -9 is SIGKILL from OUTSIDE: the extractor's own 180-second
+# timeout raises TimeoutExpired and would have said so, so something else killed it. On a PBS
+# node with a memory cgroup that is what an out-of-memory kill looks like, and the job it ran
+# inside asked for 32 GB.
+#
+# THREE THINGS, IN ORDER, SO THE ANSWER IS NOT A GUESS:
+#   1. does Rscript run AT ALL - `R.version.string`, which loads no package
+#   2. how long does loading CellChat's namespace take, and how much memory does it peak at
+#   3. does the extractor's exact probe then work
+#
+# 64 GB and 40 minutes, deliberately more than the job that failed, because the point is to find
+# the ceiling rather than to hit it again. If step 2 peaks near 32 GB the answer is memory; if it
+# runs in seconds and step 3 still dies, the answer is something else and this says so.
+#
+# rule-one: no-removal. Writes only inside $RUNDIR.
+# Authored on the workstation and pushed (rule H1). No `git` runs below.
+#
+#   qsub -v RUNDIR=...,RSCRIPT=$HOME/envs/scprofile-env-0242f5f3d1/bin/Rscript  jobs/r_probe_diag.pbs
+
+set -euo pipefail
+cd "$PBS_O_WORKDIR"
+
+RUNDIR="${RUNDIR:?pass -v RUNDIR=<run directory>}"
+# NO APOSTROPHE IN A `${VAR:?...}` MESSAGE. Inside one, bash's parser treats it as opening a
+# quote, and the error it then reports points at the end of the file rather than at this line.
+# This project has now been bitten by it twice.
+RSCRIPT="${RSCRIPT:?pass -v RSCRIPT=<the Rscript belonging to this environment>}"
+PKG="${PKG:-CellChat}"
+
+mkdir -p "$RUNDIR/logs"
+finish() { s=$?
+  { echo "exit=$s"; echo "jobid=${PBS_JOBID:-none}"; echo "host=$(hostname -s)"
+    echo "finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "purpose=why the R extractor got SIGKILL with no output"
+    echo "DIAGNOSTIC. Nothing here is a result; it measures one interpreter."
+    [ -s "$RUNDIR/logs/verdict.txt" ] && cat "$RUNDIR/logs/verdict.txt"
+  } > "$RUNDIR/$([ $s -eq 0 ] && echo SEALED.txt || echo FAILED.txt)"
+  exit $s; }
+trap finish EXIT
+
+: > "$RUNDIR/logs/verdict.txt"
+say() { echo "$*" | tee -a "$RUNDIR/logs/verdict.txt"; }
+
+echo "=== 1. does Rscript start at all"
+set +e
+out=$("$RSCRIPT" --vanilla -e 'cat(R.version.string)' 2>"$RUNDIR/logs/step1.err")
+rc=$?
+set -e
+say "  step1 rc=$rc  out=${out:-<empty>}  err=$(head -c 120 "$RUNDIR/logs/step1.err")"
+
+echo; echo "=== 2. loading the namespace, timed and measured"
+set +e
+/usr/bin/time -v "$RSCRIPT" --vanilla -e \
+  "t0<-Sys.time(); ok<-requireNamespace('$PKG', quietly=TRUE); cat(ok, as.numeric(Sys.time()-t0))" \
+  > "$RUNDIR/logs/step2.out" 2> "$RUNDIR/logs/step2.err"
+rc=$?
+set -e
+say "  step2 rc=$rc  out=$(cat "$RUNDIR/logs/step2.out" 2>/dev/null || echo '<empty>')"
+say "  peak RSS: $(grep -i 'Maximum resident set size' "$RUNDIR/logs/step2.err" | tr -s ' ' || echo unknown)"
+say "  elapsed:  $(grep -i 'Elapsed (wall clock)' "$RUNDIR/logs/step2.err" | tr -s ' ' || echo unknown)"
+
+echo; echo "=== 3. the extractor's own probe, verbatim"
+set +e
+/usr/bin/time -v "$RSCRIPT" --vanilla -e '
+args <- commandArgs(trailingOnly = TRUE)
+pkg <- args[1]; pat <- args[2]
+ok <- suppressWarnings(suppressMessages(requireNamespace(pkg, quietly = TRUE)))
+if (!ok) { cat("SCH_NO_NAMESPACE"); quit(status = 0) }
+hit <- grep(pat, sort(getNamespaceExports(pkg)), value = TRUE)
+cat("SCH_OK"); cat(paste(c("", hit), collapse = "\n"))
+' "$PKG" "^(netVisual|netAnalysis|plot|Plot|show|draw|gg|Stacked|vis|Vis)" \
+  > "$RUNDIR/logs/step3.out" 2> "$RUNDIR/logs/step3.err"
+rc=$?
+set -e
+n=$(grep -c . "$RUNDIR/logs/step3.out" 2>/dev/null || true)
+say "  step3 rc=$rc  ${n:-0} line(s) of output"
+say "  peak RSS: $(grep -i 'Maximum resident set size' "$RUNDIR/logs/step3.err" | tr -s ' ' || echo unknown)"
+head -6 "$RUNDIR/logs/step3.out" 2>/dev/null | sed 's/^/    /'
