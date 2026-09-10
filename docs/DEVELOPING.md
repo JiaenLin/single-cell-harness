@@ -240,6 +240,8 @@ nothing in `sch/` knows what a figure family or an upstream plot is.
 | `places_every` | every figure family named in the listed fields is placed by a rule in the field this stage fills |
 | `positions` / `axes` | the values those rules may take |
 | `axis_field` | the field mapping a family to what it multiplies over |
+| `enforced_by` | the drawing code must READ the ceiling: a conditional naming the token that returns |
+| `generated_by` | a command that writes the stage's mechanism, so the check can regenerate it and compare |
 
 `places_every` takes one entry per declaration that names figure families, each saying how to read
 an id out of it — a key, a value at a path, or filenames inside prose — and, where the format
@@ -248,6 +250,98 @@ lists what is unplaced, what has no axis and what is unbounded, and prints the e
 
 The stage is a BUILD stage: it reads declarations and source only, so it cannot be shaped around
 one cohort.
+
+### Demanded, checked and generated are three different claims
+
+`enforced_by` closes an asymmetry: deleting a DECLARATION turned the maker red at once, while
+deleting the code that honoured it turned nothing red — one plugin declared 49 ceilings, enforced
+none of them, and reported `build: 7 of 7 complete`. The stage now requires that a draw wrapper
+refuses past its ceiling, in whatever language the plugin draws in, and a wrapper that DELEGATES
+is guarded by what it delegates to — otherwise the check would be demanding the guard be written
+twice.
+
+`generated_by` closes the next one. A stage that requires mechanism, and finds mechanism, still
+does not know the mechanism is the maker's OUTPUT rather than a hand-written file that satisfies
+the check. The command is run into a scratch directory and the result compared byte for byte;
+`{out}` is that directory and `{python}` is the HOST's interpreter, because a generator is the
+repository's own tool whatever language the artefact is written in. A companion that has been
+edited in place reads as `DRIFTED`, one that is absent as `MISSING`, and a generator that cannot
+run as `cannot say` — never as a pass.
+
+This was not a hypothetical gap. In the repository it was written for, the command named there
+**crashed for every artefact in the repository**: it wrote a six-file layout that repository had
+replaced, and took a one-file artefact's path for a directory. The file it was said to generate
+had never been generated once, while being given as the reason the mechanism was no longer
+hand-written.
+
+A generated companion belongs to ONE artefact and is named for it — `kernels/cellchat.draw.R`,
+never a bare `draw.R` beside nine plugins that would answer the requirement for all of them.
+
+---
+
+## 10. `sch dev rules` — the rules of a development round, checked
+
+A round of work on a maker has rules, and the reason is not tidiness. A maker's only real evidence
+that it generalises is an artefact it has never seen; ordinary helpfulness destroys that evidence.
+Repair the plugins that are broken and there is nothing left to test the maker on. Hand-edit the
+one being converted and the maker is no longer what produced it. Both feel like progress.
+
+So the round declares its rules in the repository's own `DEVPOINTS.yaml`, under `rules:`, and this
+command checks them. It reports and never writes.
+
+| rule | what it reduces to |
+|---|---|
+| `maker_output` | no block of `min_block`+ significant lines is repeated inside an artefact or shared between two |
+| `held_out` | the named artefacts are unchanged over the range |
+| `in_place` | every changed path is declared mechanism, or the artefact the round is converting (or a companion generated beside it) |
+| `end_to_end` | what runs end to end is exactly the complement of the held-out set |
+
+**Duplication is the signal for hand-written mechanism.** Method is written once because it is
+about one method; mechanism appears twice because it is about all of them. Measured: one plugin
+carried three near-identical copies of a ceiling reader and six draw wrappers in three variants,
+and one of those copies recorded, in its own comment, a run lost because a function present in two
+of them was missing from the third. A generated definition cannot have that defect; three
+hand-written ones cannot avoid it.
+
+**The range is pinned in the declaration.** Two of these rules are answered from git, so whoever
+chooses the range chooses the answer, and the flattering range is always available. `rules.since`
+makes the range part of the claim: moving it is a diff a reader can see. `--since` still overrides,
+and the report says which it used. Comments and blank lines are dropped before comparison, in
+every language the artefact is made of — two copies of one mechanism differ in their comments far
+more than in their code.
+
+Silence is never a pass: no `rules:` block, or a range that is not a commit, reports `cannot say`
+and exits 3.
+
+---
+
+## 11. `sch dev convert overfit` — is the maker general, or fitted to the one it was built on?
+
+The gold standard is a conversion of an artefact the maker has never seen, and that evidence is
+spent the moment it is used. Between conversions there is nothing to appeal to but the maker's own
+source. This measures the two things that can be read off a family with no run and no conversion,
+and refuses to pretend they are the third.
+
+**Corpus** — how many artefacts each instrument could actually look at. A check whose corpus is
+ONE was fitted by construction, however carefully it was written, and no change to it is
+falsifiable. It is measured per instrument and not per stage: `placement` asks three questions with
+three instruments, two of which read a declaration and one of which has to find code in whatever
+language the plugin draws in.
+
+**Discrimination** — how many distinct answers an instrument has ever given. One answer over a wide
+corpus may be a constant wearing a check's clothes. A family in which every artefact is *finished*
+is reported separately, because calling that vacuity would be a false alarm on every completed
+conversion; the evidence that fills that gap is a scaffolded artefact asked at once.
+
+**Fitted literals** — constants in the maker naming the upstream vocabulary of exactly one member,
+where that vocabulary is the tool name and the symbols the artefact itself accounts for. A general
+maker may name a convention; it may not name a member's tool. The corpus composition is printed
+beside the findings, because a family one member dominates cannot distinguish that member's
+vocabulary from the family's.
+
+It exits 2 on a finding, 3 on a point holding fewer than two artefacts — generality is a fact about
+a family or about nothing — and it says in its own output that it is not a substitute for held-out
+conversion and does not spend it.
 
 ---
 
