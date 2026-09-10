@@ -331,6 +331,15 @@ def status(spec, doc, point_name, name="", source=None):
             draws = draw_debt(drawn_inv)
         owes_draws = bool(draws) and (not draws["looked"] or draws["silent"] or draws["unknown"]
                                       or draws.get("broken"))
+        # AND A PLACEMENT STAGE IS NOT DONE WHILE A FAMILY IS UNPLACED, UNAXISED, UNBOUNDED, OR
+        # ITS CEILING UNREAD. The worksheet named all six unguarded wrappers and `status` still
+        # reported build 7 of 7 complete - a debt reported and gated on by nothing, which is the
+        # defect `finished_by` exists to prevent, one level up from where it was found before.
+        owes_place = False
+        if st.get(PLACES_KEY):
+            _pd = placement_debt(spec, st, source_text=_source_of(doc, point_name, name))
+            owes_place = bool(_pd["unplaced"] or _pd["unbounded"] or _pd["wrong"]
+                              or _pd["unaxised"] or _pd.get("unguarded"))
         out.append({"stage": st["name"],
                     "partial": partial,
                     "kind": st.get("kind", "mechanical"),
@@ -348,7 +357,7 @@ def status(spec, doc, point_name, name="", source=None):
                     "finished_by": finished_by,
                     "fills": list(st["fills"]),
                     "draws": draws,
-                    "done": not missing and not partial and not owes_draws,
+                    "done": not missing and not partial and not owes_draws and not owes_place,
                     "missing": missing,
                     "why": st.get("why", "")})
     return out
@@ -1115,8 +1124,9 @@ def _families(spec, rules):
     return uniq
 
 
-def placement_debt(spec, st):
-    """What a plugin still owes on WHERE its figures go and HOW MANY of each it draws."""
+def placement_debt(spec, st, source_text=""):
+    """What a plugin still owes on WHERE its figures go, HOW MANY of each, and whether the code
+    that draws them reads the ceiling."""
     rules = st.get(PLACES_KEY) or []
     placed = {str(k): str(v) for k, v in
               (((spec or {}).get("report") or {}).get("figure_position") or {}).items()}
@@ -1135,6 +1145,18 @@ def placement_debt(spec, st):
             node = (node or {}).get(part) if isinstance(node, dict) else None
         amap = {str(k): str(v) for k, v in (node or {}).items()}
     akeys = sorted(amap, key=len, reverse=True)
+
+    # AND WHETHER THE DRAWING CODE READS THE CEILING AT ALL. A declaration the code ignores is a
+    # comment: one plugin declared 49 ceilings, enforced none of them, and the whole build phase
+    # reported finished. Deleting a declaration turns this stage red at once; until now, deleting
+    # the code that honours it turned nothing red.
+    guards, guard_says = [], ""
+    enf = st.get("enforced_by") or {}
+    if enf.get("token") and source_text:
+        from .extract import draw_sites as _DS
+        guards = _DS.ceiling_guards(source_text, str(enf["token"]),
+                                    str(enf.get("returns") or "return"))
+        guard_says = _DS.guard_report(guards, str(enf["token"]))
 
     fams = _families(spec or {}, rules)
     unplaced, unbounded, wrong, unaxised = [], [], [], []
@@ -1158,7 +1180,21 @@ def placement_debt(spec, st):
             unbounded.append((stem, field, bound))
     return {"looked": bool(rules), "families": fams, "unplaced": unplaced,
             "unbounded": unbounded, "wrong": wrong, "positions": ok_positions,
-            "unaxised": unaxised, "axes": axes, "axis_field": axis_field}
+            "unaxised": unaxised, "axes": axes, "axis_field": axis_field,
+            # ONLY WHEN A CEILING IS DECLARED. A plugin that bounds nothing owes no guard, and
+            # reporting one would be a demand nobody could act on.
+            "unguarded": ([g for g in guards if not g["guarded"]]
+                          if any(v for _s, _f, _p, _b, v in fams) else []),
+            "guard_says": guard_says}
+
+
+def _source_of(doc, point_name, name):
+    """The plugin's own source, or "" - the same artefact `measure_draw_sites` reads."""
+    path = artefact(doc, point_name, name) if name else None
+    try:
+        return path.read_text(encoding="utf-8") if path else ""
+    except OSError:
+        return ""
 
 
 def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
@@ -1172,7 +1208,7 @@ def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
         raise ConvertError(
             f"stage {stage_name!r} declares no `{PLACES_KEY}:`, so this repository has not said "
             f"which declarations name a figure family. This worksheet is for a stage that has.")
-    d = placement_debt(spec, st)
+    d = placement_debt(spec, st, source_text=_source_of(doc, point_name, name))
     fams = d["families"]
     L = [f"{stage_name}: {len(fams)} figure family(ies) declared by {name or 'this plugin'}. "
          f"{len(fams) - len(d['unplaced'])} placed, {len(d['unplaced'])} not; "
@@ -1192,7 +1228,21 @@ def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
         "files or nothing can be multiplied by it.",
         width=width, initial_indent="  ", subsequent_indent="  ")
     L.append("")
-    if not (d["unplaced"] or d["unbounded"] or d["wrong"] or d["unaxised"]):
+    if d.get("guard_says"):
+        L += textwrap.wrap(f"ceiling guards: {d['guard_says']}", width=width,
+                           initial_indent="  ", subsequent_indent="    ")
+        L.append("")
+    for g in d.get("unguarded", []):
+        L.append(f"  READS NO CEILING  {g['wrapper']}  at line {g['line']}")
+        L.append(f"            this plugin declares ceilings and this wrapper draws without "
+                 f"consulting one.")
+        L.append(f"            Add an early exit at the top of the body, before the panel is "
+                 f"computed:")
+        L.append(f"                if (<the family is full>) return(invisible(NULL))")
+        L.append("            A declaration the drawing code does not read is a comment.")
+        L.append("")
+    if not (d["unplaced"] or d["unbounded"] or d["wrong"] or d["unaxised"]
+            or d.get("unguarded")):
         L.append("  Every declared figure family is placed, says what it multiplies over, and "
                  "is bounded.")
         return "\n".join(L)

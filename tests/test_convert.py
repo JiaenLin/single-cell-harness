@@ -2329,5 +2329,102 @@ class PlacementStage(unittest.TestCase):
 
 
 
+
+GUARDSRC = '''
+"""A plugin whose embedded R draws through a wrapper."""
+import os
+
+_R = """
+npng <- function(name, expr, legend = "") {
+  if (.at_ceiling(name)) return(invisible(NULL))
+  png(file.path(out, paste0(name, ".png"))); print(expr); dev.off()
+}
+nbad <- function(name, expr, legend = "") {
+  # this one only mentions the ceiling in a comment
+  png(file.path(out, paste0(name, ".png"))); print(expr); dev.off()
+}
+ncount <- function(name, expr, legend = "") {
+  if (.at_ceiling(name)) seen <- seen + 1
+  png(file.path(out, paste0(name, ".png"))); print(expr); dev.off()
+}
+nstr <- function(name, expr, legend = "") {
+  note <- "
+if (.at_ceiling(name)) return(invisible(NULL))
+"
+  png(file.path(out, paste0(name, ".png"))); print(expr); dev.off()
+}
+"""
+'''
+
+
+class TheCeilingIsRead(unittest.TestCase):
+    """A ceiling the drawing code does not read is a comment, and the maker must say so.
+
+    MEASURED. One plugin declared 49 ceilings, had every guard stripped out of its embedded R,
+    and the whole build phase reported finished: `placement` said every family was bounded and
+    `status` said build 7 of 7 complete. Deleting a DECLARATION turns the maker red at once;
+    deleting the code that honours it turned nothing red. That asymmetry is how general mechanism
+    came to be hand-written into one plugin and called done.
+    """
+
+    def _rows(self):
+        return DS.ceiling_guards(GUARDSRC, "ceiling")
+
+    def test_a_wrapper_that_returns_on_the_ceiling_passes(self):
+        got = {r["wrapper"]: r["guarded"] for r in self._rows()}
+        self.assertTrue(got.get("npng"), f"a guarded wrapper was not recognised: {got}")
+
+    def test_a_guard_that_exists_only_inside_a_string_is_not_a_guard(self):
+        """WHAT THE MASK IS ACTUALLY FOR. A commented-out guard is already excluded by the line
+        having to START with `if`; a guard written inside a string literal is not, and reading
+        the raw body counts it. The scan runs on the mask, where a string's content is blank.
+
+        The first version of this test asserted the comment case, which passes with or without
+        the mask - so the mutation that removed the mask survived it."""
+        got = {r["wrapper"]: r["guarded"] for r in self._rows()}
+        self.assertFalse(got.get("nstr", True),
+                         "a guard written inside a string literal was counted as reading the "
+                         "ceiling")
+        self.assertFalse(got.get("nbad", True),
+                         "a wrapper naming the ceiling only in a comment was counted as reading it")
+
+    def test_a_conditional_that_does_not_leave_is_not_a_guard(self):
+        """`if (full) count <- count + 1` mentions the token and draws the panel anyway."""
+        got = {r["wrapper"]: r["guarded"] for r in self._rows()}
+        self.assertFalse(got.get("ncount", True),
+                         "a conditional that does not return was counted as a guard")
+
+    def test_a_plugin_with_no_wrapper_says_so_rather_than_passing(self):
+        """FOUND-NOTHING IS NOT LOOKED-AND-FOUND-NOTHING. An empty list from a file with no
+        embedded R must not read as every wrapper being guarded."""
+        self.assertIn("no draw wrapper was found",
+                      DS.guard_report(DS.ceiling_guards("x = 1\n", "ceiling"), "ceiling"))
+        self.assertIn("of 4 draw wrapper(s)", DS.guard_report(self._rows(), "ceiling"))
+
+    def test_a_plugin_that_bounds_nothing_owes_no_guard(self):
+        """A demand nobody can act on is worse than no demand. `unguarded` is reported only when
+        the declaration actually carries a ceiling."""
+        st = {"name": "placement", "positions": ["contrast"],
+              "enforced_by": {"token": "ceiling", "returns": "return"},
+              C.PLACES_KEY: [{"field": "native_plots", "named_by": "use"}]}
+        spec = {"native_plots": {"fn": {"use": "figures/x_thing.png"}},
+                "report": {"figure_position": {"x_thing": "contrast"}}}
+        d = C.placement_debt(spec, st, source_text=GUARDSRC)
+        self.assertEqual(d["unguarded"], [],
+                         "a plugin declaring no ceiling was asked to enforce one")
+
+    def test_a_plugin_that_bounds_something_owes_a_guard_for_every_wrapper(self):
+        st = {"name": "placement", "positions": ["contrast"],
+              "enforced_by": {"token": "ceiling", "returns": "return"},
+              C.PLACES_KEY: [{"field": "native_plots", "named_by": "use", "per_item": "<",
+                              "bound": "at_most"}]}
+        spec = {"native_plots": {"fn": {"use": "figures/x_thing__<i>.png", "at_most": 3}},
+                "report": {"figure_position": {"x_thing": "contrast"}}}
+        d = C.placement_debt(spec, st, source_text=GUARDSRC)
+        self.assertEqual(sorted(g["wrapper"] for g in d["unguarded"]), ["nbad", "ncount", "nstr"],
+                         f"the wrong wrappers were reported: {d['unguarded']}")
+
+
+
 if __name__ == "__main__":
     unittest.main()

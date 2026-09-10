@@ -1059,3 +1059,53 @@ def _around(rtext, i):
     b = rtext.find("\n", i)
     line = rtext[a:b if b >= 0 else len(rtext)].strip()
     return line if len(line) <= 110 else line[:107] + "..."
+
+
+def ceiling_guards(source, token, returns="return"):
+    """Which draw wrappers CONSULT the declared ceiling, and which only carry it.
+
+    A CEILING THE DRAWING CODE DOES NOT READ IS A COMMENT. Measured, on the plugin this was
+    written for: 49 families each declaring `at_most`, the whole build phase green - `placement`
+    reporting every family bounded, `status` reporting build 7 of 7 complete - and every guard
+    removed from the embedded R. The declaration said what may be drawn and nothing stopped the
+    drawing. Deleting a DECLARATION turns the maker red at once; deleting the code that honours
+    it turned nothing red at all, which is the asymmetry this closes.
+
+    WHAT IS CHECKED IS A SHAPE, NOT A MEANING. A wrapper passes when its body contains a
+    conditional that MENTIONS the token and RETURNS - the early exit that refuses a panel. That
+    cannot prove the arithmetic is right; `capacity --promised` holds a finished run against the
+    declaration and is what proves the outcome. This is the build-phase half: it fails a plugin
+    that declares ceilings and never reads them, which is the state that was green.
+
+    THE TOKEN IS NOT KNOWN HERE. `ceiling`, `at_most`, `budget` - whatever the repository's own
+    format calls the thing, it declares it, exactly as it declares which field holds a legend.
+
+    THE SCAN IS ON THE MASK, so a wrapper that only NAMES the token in a comment does not pass.
+    That is the cheapest way to fake this check and it is the first one that had to be closed.
+    """
+    out = []
+    for rtext, base in embedded_r(source):
+        for w in r_wrappers(rtext):
+            body = _mask(w.body or "")
+            guarded = False
+            for line in body.splitlines():
+                s = line.strip()
+                if not s.startswith("if") or token not in s:
+                    continue
+                # THE CONDITIONAL MUST LEAVE. `if (full) count <- count + 1` mentions the token
+                # and draws the panel anyway.
+                if returns in s:
+                    guarded = True
+                    break
+            out.append({"wrapper": w.name, "line": base + w.line, "guarded": guarded})
+    return out
+
+
+def guard_report(rows, token):
+    """A sentence for `ceiling_guards`: what was read, so silence is not mistaken for a pass."""
+    if not rows:
+        return ("no draw wrapper was found in this plugin's embedded scripts, so nothing was "
+                "read for a ceiling guard")
+    n = sum(1 for r in rows if r["guarded"])
+    return (f"{n} of {len(rows)} draw wrapper(s) refuse past the declared ceiling, by a "
+            f"conditional naming {token!r} that returns")
