@@ -488,6 +488,18 @@ def cmd_dev(a):
             return CANNOT_RUN
         return OK
 
+    if a.sub == "jobcheck":
+        from .dev import jobcheck as JC
+        paths = list(a.paths) or sorted((Path(a.root) / "jobs").glob("*.pbs"))
+        if not paths:
+            print(f"sch dev jobcheck: no job scripts given and none under {a.root}/jobs",
+                  file=sys.stderr)
+            return CANNOT_RUN
+        print(f"job scripts read: {len(paths)}")
+        bad = JC.report(paths)
+        print(f"  {bad} of {len(paths)} with at least one problem")
+        return FAILED if bad else OK
+
     if a.sub == "convert":
         from .dev import convert as CV
         try:
@@ -1025,6 +1037,13 @@ def build_parser():
     # CONVERT: a raw tool becoming a plugin, and picking that up where it was left. `status` is
     # the default because the first question on returning to a half-built plugin is always the
     # same one, and it is computed from the file rather than remembered.
+    jc = rooted(ds.add_parser("jobcheck",
+                              help="the shell defects this family has paid for, on ANY job "
+                                   "script - not only the ones kept in jobs/"))
+    jc.add_argument("paths", nargs="*", type=Path,
+                    help="job scripts to read (default: every jobs/*.pbs under --root)")
+    jc.set_defaults(fn=cmd_dev)
+
     q = rooted(ds.add_parser("convert"))
     q.add_argument("action", nargs="?", default="status",
                    choices=["status", "freshness", "borrowed", "inventory", "account",

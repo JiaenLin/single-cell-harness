@@ -470,14 +470,15 @@ class JobScriptsKeepTheirExitCodes(unittest.TestCase):
 
         Assigning it first - `rc=$?; echo "  exit $rc"` - keeps it available to test.
         """
-        bad = []
-        for f in self.JOBS:
-            for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
-                s = line.strip()
-                if s.startswith("#"):
-                    continue
-                if re.search(r'^echo\s+.*\$\?', s):
-                    bad.append(f"{f.name}:{i}: {s}")
+        # ONE DEFINITION, in sch/dev/jobcheck.py, so this suite and `sch dev jobcheck` cannot
+        # disagree. They used to be the same rule written twice - and the command did not exist,
+        # so the rule guarded only the jobs kept in this repository while a job written anywhere
+        # else reproduced the defect unwatched.
+        from sch.dev import jobcheck as _JC
+        bad = [f"{f.name}:{h}" for f in self.JOBS
+               for rid, _why, hits in _JC.problems(f) if rid in ("exit-displayed",
+                                                                 "status-not-kept")
+               for h in hits]
         self.assertEqual(bad, [], "an exit code displayed and not kept:\n  " + "\n  ".join(bad))
 
     def test_a_pipeline_that_matters_sets_pipefail(self):
