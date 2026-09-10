@@ -554,12 +554,14 @@ def coverage_report(cov, point_name):
     n = len(cov) - len(unowned)
     if not unowned:
         return (f"every one of the {len(cov)} key(s) this point requires is filled by a stage")
-    return (f"{n} of {len(cov)} key(s) this point requires are filled by a stage. "
+    return (f"{n} of {len(cov)} key(s) this point requires are filled by a CONVERSION STAGE. "
             f"NO STAGE FILLS: {', '.join(unowned)}\n"
             f"  A field no stage fills is one a person must invent unaided, and a complete build "
-            f"says nothing about it.\n"
-            f"  Give it a stage in `convert.stages`, or accept it as the conversion's INPUT - "
-            f"but decide, rather than not asking.")
+            f"says nothing about it. This is a statement about the CONVERSION and not about the\n"
+            f"  repository: a field may still be checked by its validator or by a ladder tier, "
+            f"and one of these may be the conversion's INPUT rather than its output.\n"
+            f"  Give it a stage in `convert.stages`, or rule that it belongs elsewhere - but "
+            f"decide, rather than not asking.")
 
 
 def next_stage(spec, doc, point_name, name=""):
