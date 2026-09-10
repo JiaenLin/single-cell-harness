@@ -337,7 +337,8 @@ def status(spec, doc, point_name, name="", source=None):
         # defect `finished_by` exists to prevent, one level up from where it was found before.
         owes_place = False
         if st.get(PLACES_KEY):
-            _pd = placement_debt(spec, st, source_text=_source_of(doc, point_name, name))
+            _pd = placement_debt(spec, st, source_text=_source_of(doc, point_name, name),
+                                 also_r=_r_beside(doc, point_name, name))
             owes_place = bool(_pd["unplaced"] or _pd["unbounded"] or _pd["wrong"]
                               or _pd["unaxised"] or _pd.get("unguarded"))
         out.append({"stage": st["name"],
@@ -1124,7 +1125,7 @@ def _families(spec, rules):
     return uniq
 
 
-def placement_debt(spec, st, source_text=""):
+def placement_debt(spec, st, source_text="", also_r=()):
     """What a plugin still owes on WHERE its figures go, HOW MANY of each, and whether the code
     that draws them reads the ceiling."""
     rules = st.get(PLACES_KEY) or []
@@ -1155,7 +1156,7 @@ def placement_debt(spec, st, source_text=""):
     if enf.get("token") and source_text:
         from .extract import draw_sites as _DS
         guards = _DS.ceiling_guards(source_text, str(enf["token"]),
-                                    str(enf.get("returns") or "return"))
+                                    str(enf.get("returns") or "return"), also=also_r)
         guard_says = _DS.guard_report(guards, str(enf["token"]))
 
     fams = _families(spec or {}, rules)
@@ -1188,6 +1189,24 @@ def placement_debt(spec, st, source_text=""):
             "guard_says": guard_says}
 
 
+def _r_beside(doc, point_name, name):
+    """[(text, filename)] for R kept in a file next to the plugin rather than inside it.
+
+    The scaffolded form is one `draw.R` prepended to every embedded script, so the wrapper is
+    defined once. A check that read only the Python would not see it.
+    """
+    path = artefact(doc, point_name, name) if name else None
+    if path is None:
+        return []
+    out = []
+    try:
+        for f in sorted(Path(path).parent.glob("*.R")):
+            out.append((f.read_text(encoding="utf-8", errors="replace"), f.name))
+    except OSError:
+        return []
+    return out
+
+
 def _source_of(doc, point_name, name):
     """The plugin's own source, or "" - the same artefact `measure_draw_sites` reads."""
     path = artefact(doc, point_name, name) if name else None
@@ -1208,7 +1227,8 @@ def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
         raise ConvertError(
             f"stage {stage_name!r} declares no `{PLACES_KEY}:`, so this repository has not said "
             f"which declarations name a figure family. This worksheet is for a stage that has.")
-    d = placement_debt(spec, st, source_text=_source_of(doc, point_name, name))
+    d = placement_debt(spec, st, source_text=_source_of(doc, point_name, name),
+                       also_r=_r_beside(doc, point_name, name))
     fams = d["families"]
     L = [f"{stage_name}: {len(fams)} figure family(ies) declared by {name or 'this plugin'}. "
          f"{len(fams) - len(d['unplaced'])} placed, {len(d['unplaced'])} not; "

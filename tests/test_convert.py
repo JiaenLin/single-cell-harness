@@ -2401,6 +2401,23 @@ class TheCeilingIsRead(unittest.TestCase):
                       DS.guard_report(DS.ceiling_guards("x = 1\n", "ceiling"), "ceiling"))
         self.assertIn("of 4 draw wrapper(s)", DS.guard_report(self._rows(), "ceiling"))
 
+    def test_a_wrapper_kept_beside_the_plugin_is_read_too(self):
+        """THE GENERATED FORM MUST BE VISIBLE TO THE CHECK THAT DEMANDS IT. `scprofile scaffold`
+        emits one `draw.R` prepended to every embedded script, so the wrapper is defined once
+        instead of copied per script. Read only from the Python, this check reported "no draw
+        wrapper was found" for exactly those plugins and the stage called them done."""
+        beside = '''
+npng <- function(id, expr, legend = "") {
+  if (.at_ceiling(id)) return(invisible(NULL))
+  png(file.path(figdir, paste0(id, ".png"))); print(expr); dev.off()
+}
+'''
+        blind = DS.ceiling_guards("import os\n", "ceiling")
+        self.assertEqual(blind, [], "the fixture's python already carries a wrapper")
+        seen = DS.ceiling_guards("import os\n", "ceiling", also=[(beside, "draw.R")])
+        self.assertEqual([(r["wrapper"], r["guarded"]) for r in seen], [("npng", True)],
+                         f"a wrapper kept beside the plugin was not read: {seen}")
+
     def test_a_plugin_that_bounds_nothing_owes_no_guard(self):
         """A demand nobody can act on is worse than no demand. `unguarded` is reported only when
         the declaration actually carries a ceiling."""

@@ -1061,7 +1061,7 @@ def _around(rtext, i):
     return line if len(line) <= 110 else line[:107] + "..."
 
 
-def ceiling_guards(source, token, returns="return"):
+def ceiling_guards(source, token, returns="return", also=()):
     """Which draw wrappers CONSULT the declared ceiling, and which only carry it.
 
     A CEILING THE DRAWING CODE DOES NOT READ IS A COMMENT. Measured, on the plugin this was
@@ -1080,11 +1080,17 @@ def ceiling_guards(source, token, returns="return"):
     THE TOKEN IS NOT KNOWN HERE. `ceiling`, `at_most`, `budget` - whatever the repository's own
     format calls the thing, it declares it, exactly as it declares which field holds a legend.
 
-    THE SCAN IS ON THE MASK, so a wrapper that only NAMES the token in a comment does not pass.
-    That is the cheapest way to fake this check and it is the first one that had to be closed.
+    THE SCAN IS ON THE MASK, so a guard that exists only inside a STRING LITERAL does not pass.
+    (A commented-out guard is already excluded by the line having to start with `if`.)
+
+    `also` IS THE R THAT DOES NOT LIVE INSIDE THE PYTHON. A plugin may keep its wrapper in a file
+    beside itself and prepend it at run time - which is what `scprofile scaffold` now generates,
+    one definition instead of one copy per embedded script. Read only from the Python, this check
+    reported "no draw wrapper was found" for exactly those plugins and the stage called them done:
+    the generated form would have been invisible to the check that demands it.
     """
     out = []
-    for rtext, base in embedded_r(source):
+    for rtext, base in list(embedded_r(source)) + [(t, 0) for t, _n in (also or ())]:
         for w in r_wrappers(rtext):
             body = _mask(w.body or "")
             guarded = False
