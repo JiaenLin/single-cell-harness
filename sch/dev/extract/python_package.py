@@ -33,6 +33,40 @@ EXTRACT = {
 _NAMEY = ("plot", "pl_", "draw", "scatter", "heatmap", "violin", "umap", "embedding",
           "dotplot", "barplot", "matrixplot", "rank_genes", "show")
 
+#: A CALLABLE THAT TAKES AN AXES OR A FIGURE DRAWS ON IT. This is the second rule, and it is a
+#: SIGNATURE rule rather than a name one - the same class of evidence as the legend slot this
+#: family already finds in two languages by one language-neutral property ("the parameter whose
+#: default is the empty string"). `ax=` is matplotlib's ecosystem convention and belongs to no
+#: single package, which is the whole difference between it and the prefix list above.
+#:
+#: WHY A SECOND RULE AT ALL. In R, a name-only rule missed six of the thirty-seven upstream plots
+#: one plugin accounts for - measured by a blind conversion - and every one of them draws. This
+#: family's Python prefix list is the union of five packages' conventions, which is exactly the
+#: shape that stops working on the sixth.
+#:
+#: TWO ROUTES THAT DID NOT WORK, BOTH MEASURED, BOTH WORTH THE RECORD. Looking for the graphics
+#: package in the BODY - `gca(`, `plt.`, `matplotlib` - reported 133 of matplotlib.pyplot's 141
+#: public callables, because every helper touches the module; that is "touches" reported as
+#: "draws", the same substring-for-a-name error this suite has paid for elsewhere. Tightening it
+#: to figure-PRODUCING calls - `savefig(`, `subplots(` - then returned `ioff`, `gcf` and `xkcd`
+#: and MISSED `imshow`, `hexbin` and `radviz`, because a Python plotting function typically
+#: neither creates nor saves a figure: it draws on an axes it was handed. Which is what this rule
+#: reads instead.
+#:
+#: MEASURED ON pandas.plotting, which has no `pl` submodule: 13 of 15 public callables carry one
+#: of these, and the two that do not - `register_matplotlib_converters` and its inverse - are
+#: correctly not plotting functions. It reaches `radviz`, `andrews_curves` and
+#: `parallel_coordinates`, which the prefix list misses entirely.
+#:
+#: WHAT IT CANNOT REACH: a plotting LIBRARY's own drawing layer, where the axes is implicit -
+#: `matplotlib.pyplot.imshow` takes no `ax`. The subjects of this extractor are analysis packages
+#: that USE such a library, and for those the convention holds.
+#: `axis` IS NOT ON THIS LIST AND THE OMISSION IS MEASURED. In matplotlib `axis=` overwhelmingly
+#: means WHICH AXIS - `tick_params(axis="x")`, `autoscale(axis="both")`, `grid(axis=...)` - a
+#: string, not an object to draw on. Including it added five helpers of pyplot and no plotting
+#: function anywhere.
+_AXIS_PARAMS = ("ax", "axes", "fig", "figure")
+
 #: WHAT A DECISION NEEDS, not just what exists. The first version returned names, and a name is
 #: the one thing the person deciding already has. Thirty-two of cellchat's thirty-five accounting
 #: entries say WHERE THE OUTPUT LANDS and the other three say why the data cannot support the
@@ -97,20 +131,42 @@ if sub is not None:
     out["complete"] = True
 else:
     NAMEY = __NAMEY__
-    got = {a: v for a, v in public_callables(mod).items()
-           if any(a.lower().startswith(p) for p in NAMEY)}
+    DRAWS = __DRAWS__
+
+    def by_signature(v):
+        try:
+            ps = inspect.signature(v).parameters
+        except Exception:
+            return False
+        return any(n in DRAWS for n in ps)
+
+    pub = public_callables(mod)
+    byname = {a for a in pub if any(a.lower().startswith(p) for p in NAMEY)}
+    bybody = {a for a, v in pub.items() if by_signature(v)}
+    got = {a: pub[a] for a in sorted(byname | bybody)}
     if got:
         out["names"] = list(got)
         out["detail"] = {a: describe(v) for a, v in got.items()}
+        for a in got:
+            out["detail"][a]["found_by"] = ("both" if a in byname and a in bybody
+                                            else "name" if a in byname else "signature")
+        only_body = sorted(bybody - byname)
         out["how"] = ("public callables of %s whose names begin like plotting functions - a "
-                      "HEURISTIC, because this package has no pl/plotting submodule" % name)
+                      "HEURISTIC, because this package has no pl/plotting submodule - or whose "
+                      "signature takes an axes or a figure to draw on. %d of %d were "
+                      "reached by the signature rule%s"
+                      % (name, len(bybody), len(got),
+                         (", and %d ONLY by it: %s" % (len(only_body), ", ".join(only_body[:8])))
+                         if only_body else ""))
         out["complete"] = True
     else:
-        out["why_not"] = ("%s has no pl/plotting submodule and no public callable named like a "
-                          "plotting function, so this extractor cannot say where its figures "
-                          "live. It is not evidence that there are none." % name)
+        out["why_not"] = ("%s has no pl/plotting submodule, no public callable named like a "
+                          "plotting function, and none whose signature takes an axes or a "
+                          "figure, so this extractor "
+                          "cannot say where its figures live. It is not evidence that there are "
+                          "none." % name)
 print(json.dumps(out))
-""".replace("__NAMEY__", repr(list(_NAMEY)))
+""".replace("__NAMEY__", repr(list(_NAMEY))).replace("__DRAWS__", repr(list(_AXIS_PARAMS)))
 
 
 def inventory(tool, python="python3", timeout=180):

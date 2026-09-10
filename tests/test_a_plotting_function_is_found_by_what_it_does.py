@@ -103,6 +103,52 @@ class APlottingFunctionIsFoundByWhatItDoes(unittest.TestCase):
         self.assertIn("bannerplot", inv.names,
                       "a plotting export whose name follows no convention at all was missed")
 
+    # ---- and the same question one language over ----------------------------------------
+
+    def test_python_is_asked_by_signature_and_not_only_by_name(self):
+        """A callable that takes an axes or a figure draws on it.
+
+        THE PREFIX LIST IS THE UNION OF FIVE PACKAGES' CONVENTIONS, which is the shape that stops
+        working on the sixth - exactly what the blind conversion measured in R. Measured here on
+        pandas.plotting, which has no `pl` submodule: the NAME rule finds one of its thirteen
+        plotting functions. `radviz`, `andrews_curves`, `parallel_coordinates` and nine more are
+        reached only by the signature.
+        """
+        from sch.dev.extract import python_package as PP
+        inv = PP.inventory("pandas.plotting")
+        if not inv.complete:
+            self.skipTest(f"pandas is not installed here: {inv.why_not[:60]}")
+        by_sig = sorted(k for k, v in inv.detail.items() if v.get("found_by") == "signature")
+        self.assertIn("radviz", by_sig,
+                      "a plotting function following no naming convention was missed")
+        self.assertIn("parallel_coordinates", by_sig)
+        self.assertGreater(len(by_sig), 5,
+                           "the signature rule is not earning its place on a package whose "
+                           "names do not follow the list")
+        self.assertNotIn("register_matplotlib_converters", inv.names,
+                         "a converter registration was reported as a plotting function")
+
+    def test_which_axis_is_not_an_axis_to_draw_on(self):
+        """`axis=` in matplotlib means WHICH axis - a string, not an object to draw on.
+
+        Including it added five of pyplot's helpers and no plotting function anywhere.
+        """
+        from sch.dev.extract import python_package as PP
+        self.assertNotIn("axis", PP._AXIS_PARAMS)
+        self.assertIn("ax", PP._AXIS_PARAMS)
+
+    def test_the_python_probe_is_valid_python(self):
+        """IT IS SOURCE IN A STRING, and a bad edit to it fails at the far end of a subprocess.
+
+        Measured: a replacement left an unterminated string literal in the middle of the probe,
+        and the only symptom was every inventory returning "produced no answer" - a message about
+        the interpreter, for a defect in this file.
+        """
+        from sch.dev.extract import python_package as PP
+        body = (PP._PROBE.replace("__NAMEY__", repr(list(PP._NAMEY)))
+                .replace("__DRAWS__", repr(list(PP._AXIS_PARAMS))))
+        compile(body, "<probe>", "exec")
+
     @unittest.skipUnless(RSCRIPT, "no Rscript on this machine")
     def test_the_probe_survives_being_handed_to_r(self):
         # THE BACKSLASHES ARE THE POINT. The probe's lookbehind reached R with one backslash
