@@ -30,10 +30,19 @@
 #       above 30, since the finished plugin accounts for 35 and the extractor's pattern is wider
 #       than the set that was ruled on.
 #
-#   B3  EVERY PLOT THE FINISHED PLUGIN ACCOUNTS FOR IS ONE THE BLIND INVENTORY FOUND. This is the
-#       prediction that matters: it says the finished plugin's accounting could have been produced
-#       by the maker rather than by somebody reading CellChat's manual. A symbol in the plugin and
-#       not in the inventory is a decision the maker cannot reach, and is reported by name.
+#   B3  EVERY UPSTREAM PLOT THE FINISHED PLUGIN ACCOUNTS FOR IS ONE THE BLIND INVENTORY FOUND.
+#       This is the prediction that matters: it says the finished plugin's accounting could have
+#       been produced by the maker rather than by somebody reading CellChat's manual. A symbol in
+#       the plugin and not in the inventory is a decision the maker cannot reach, by name.
+#
+#       UPSTREAM, AND THE QUALIFIER IS THE WHOLE OF IT. The first version asked this of EVERY
+#       entry and reported a failure that was its own question being wrong: an entry declaring
+#       `drawn_by: plugin` is this plugin drawing the tool's NUMBERS itself - a derived matrix, a
+#       second scale - and asking whether it appears in the tool's namespace is asking whether
+#       the plugin's own work is the tool's. `interaction_lr` is not a CellChat export at all and
+#       must not be one. The distinction is the maker's own: the `legends` stage exists to rule
+#       exactly it, and a grader that ignored it was undoing that stage at the last step, which
+#       is verbatim the defect the stage was written for.
 #
 #   B4  A REFUSAL IS REPORTED AS A REFUSAL. Asked for the same inventory with NO interpreter, the
 #       maker must exit non-zero and say it could not look - never write an empty accounting. "No
@@ -137,7 +146,12 @@ spec = {}
 for n in ast.parse(open(held).read()).body:
     if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "PLUGIN":
         spec = ast.literal_eval(n.value)
-declared = sorted(spec.get("native_plots") or {})
+# ONLY WHAT THE PLUGIN CLAIMS IS THE TOOL'S. `drawn_by: plugin` is the plugin's own panel and
+# belongs to no namespace; `skip` entries were ruled on and are still accounted for.
+native = spec.get("native_plots") or {}
+declared = sorted(k for k, v in native.items()
+                  if (v or {}).get("drawn_by", "tool") != "plugin")
+own = sorted(set(native) - set(declared))
 text = open(inv_file).read()
 found = set(re.findall(r"[A-Za-z_][A-Za-z0-9_.]{2,}", text))
 
@@ -147,8 +161,11 @@ L.append(f"B1 scaffolded plugin owes everything: {'HELD' if b1 == '1' else 'FAIL
 n_found = len([w for w in found if re.match(r"^(netVisual|netAnalysis|plot|show|Stacked)", w)])
 L.append(f"B2 inventory found {n_found} plotting symbol(s), exit {b2_code}: "
          f"{'HELD' if n_found >= 30 and b2_code == '0' else 'FAILED'}")
-L.append(f"B3 {len(declared) - len(missing)} of {len(declared)} accounted plots are in the blind "
-         f"inventory: {'HELD' if not missing else 'FAILED'}")
+L.append(f"B3 {len(declared) - len(missing)} of {len(declared)} UPSTREAM plots accounted for "
+         f"are in the blind inventory: {'HELD' if not missing else 'FAILED'}")
+if own:
+    L.append(f"     drawn by the plugin and correctly not in the tool's namespace: "
+             f"{', '.join(own)}")
 for m in missing:
     L.append(f"     not reachable by the extractor: {m}")
 L.append(f"B4 refusal without an interpreter exits {b4_code}: "
