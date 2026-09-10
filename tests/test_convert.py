@@ -179,11 +179,26 @@ class Extractors(unittest.TestCase):
     @unittest.skipUnless(shutil.which("Rscript") or shutil.which("R"), "no R here")
     def test_the_r_pattern_is_an_argument_and_not_a_law(self):
         """A pattern that finds everything and one that finds nothing must give different answers,
-        or the pattern is not being used."""
+        or the pattern is not being used.
+
+        WHAT AN UNMATCHED PATTERN NOW LEAVES BEHIND. This asserted an EMPTY inventory, which was
+        right while a name was the only rule. There is a second one now - a function whose body
+        calls one of R's own plotting entry points draws, whatever it is called - so a pattern
+        matching nothing leaves exactly what BEHAVIOUR found, and every remaining row says so.
+        Asserting emptiness here would be asserting that the second rule does not work.
+        """
         from sch.dev.extract import r_namespace as RN
+        wide = RN.inventory("stats")
         none = RN.inventory("stats", pattern="^zzz_no_such_prefix")
+        if not wide.complete:
+            self.skipTest(f"no R namespace to read here: {wide.why_not[:60]}")
         self.assertTrue(none.complete, "an unmatched pattern is not a failure to look")
-        self.assertEqual(none.names, [])
+        self.assertNotEqual(sorted(none.names), sorted(wide.names),
+                            "the pattern changed and the answer did not, so it is not being used")
+        self.assertTrue(set(none.names) <= set(wide.names))
+        self.assertEqual({"body"}, set(none.detail.values()) or {"body"},
+                         "a pattern matching nothing left rows the NAME rule claims to have "
+                         "found, so the two rules are not separable")
 
 
 class Stages(unittest.TestCase):
