@@ -1095,7 +1095,17 @@ def _families(spec, rules):
                 # `nativecmp_signalingRole_heatmap_<pattern>` as a family of its own, so a rule
                 # placing `nativecmp_signalingRole_heatmap` would never have matched it.
                 stem = re.split(r"__|\{|<", fid)[0].rstrip("_")
-                out.append((stem, field, per, bound, rec.get(bound) if bound else None))
+                # A CEILING PER FAMILY, NOT PER ENTRY. `netVisual_aggregate` names both
+                # `native_aggregate_circle__<pathway>` (one per unit) and
+                # `nativecmp_aggregate_circle__<pathway>` (six per contrast) in one `use:`, and a
+                # single number bounded both - so the per-unit family was declared at 6 where it
+                # draws 1, and a plan computed from the declaration over-counted it by 90. A
+                # scalar still means "all the families in this entry", which is right when there
+                # is one.
+                cap = rec.get(bound) if bound else None
+                if isinstance(cap, dict):
+                    cap = cap.get(stem, cap.get(fid))
+                out.append((stem, field, per, bound, cap))
     seen, uniq = set(), []
     for row in out:
         if row[0] in seen:
@@ -1112,9 +1122,29 @@ def placement_debt(spec, st):
               (((spec or {}).get("report") or {}).get("figure_position") or {}).items()}
     keys = sorted(placed, key=len, reverse=True)
     ok_positions = [str(x) for x in (st.get("positions") or [])]
+    # WHAT A FAMILY MULTIPLIES OVER, read the same way a position is: a prefix map the plugin
+    # owns, longest match wins. Without it a ceiling is a number with no units - "at most 6" of
+    # what, per run or per unit or per contrast? - and no count can be computed from the
+    # declaration before anything is scheduled, which is the whole point of having one.
+    axis_field = str(st.get("axis_field") or "")
+    axes = [str(x) for x in (st.get("axes") or [])]
+    amap = {}
+    if axis_field:
+        node = spec or {}
+        for part in axis_field.split("."):
+            node = (node or {}).get(part) if isinstance(node, dict) else None
+        amap = {str(k): str(v) for k, v in (node or {}).items()}
+    akeys = sorted(amap, key=len, reverse=True)
+
     fams = _families(spec or {}, rules)
-    unplaced, unbounded, wrong = [], [], []
+    unplaced, unbounded, wrong, unaxised = [], [], [], []
     for stem, field, per, bound, value in fams:
+        if axis_field:
+            hit_a = next((k for k in akeys if stem.startswith(k)), "")
+            if not hit_a:
+                unaxised.append((stem, axis_field))
+            elif axes and amap[hit_a] not in axes:
+                wrong.append((stem, amap[hit_a]))
         hit = next((k for k in keys if stem.startswith(k)), "")
         if not hit:
             unplaced.append((stem, field))
@@ -1127,7 +1157,8 @@ def placement_debt(spec, st):
         if per and not value:
             unbounded.append((stem, field, bound))
     return {"looked": bool(rules), "families": fams, "unplaced": unplaced,
-            "unbounded": unbounded, "wrong": wrong, "positions": ok_positions}
+            "unbounded": unbounded, "wrong": wrong, "positions": ok_positions,
+            "unaxised": unaxised, "axes": axes, "axis_field": axis_field}
 
 
 def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
@@ -1145,6 +1176,8 @@ def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
     fams = d["families"]
     L = [f"{stage_name}: {len(fams)} figure family(ies) declared by {name or 'this plugin'}. "
          f"{len(fams) - len(d['unplaced'])} placed, {len(d['unplaced'])} not; "
+         f"{len(fams) - len(d['unaxised'] and d['unaxised'] or [])if False else len(fams) - len(d['unaxised'])}"
+         f" say what they multiply over, {len(d['unaxised'])} do not; "
          f"{len(d['unbounded'])} drawn per data item with no bound."]
     L += textwrap.wrap(
         "A POSITION IS NOT A RANKING. It says where in a result a figure is read - and "
@@ -1153,14 +1186,15 @@ def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
         "placed on the pages, still reviewable.", width=width, initial_indent="  ",
         subsequent_indent="  ")
     L += textwrap.wrap(
-        "A BOUND IS NOT A PREFERENCE. A family drawn once per pathway or per population has no "
-        "size until a cohort arrives: one contrast here drew 62 panels over the populations two "
-        "arms shared and 72 over pathways, and on a cohort with forty populations the same loop "
-        "draws 240. Declare the most this family may draw, and apply it where the loop is.",
+        "A BOUND IS THE MOST FILES THIS FAMILY WRITES PER OCCURRENCE OF ITS AXIS - not the most "
+        "items it iterates. A family drawing each of six pathways once per arm writes twelve "
+        "files per contrast, and declaring six under-counts it by half. The number has to mean "
+        "files or nothing can be multiplied by it.",
         width=width, initial_indent="  ", subsequent_indent="  ")
     L.append("")
-    if not d["unplaced"] and not d["unbounded"] and not d["wrong"]:
-        L.append("  Every declared figure family is placed, and every per-item family is bounded.")
+    if not (d["unplaced"] or d["unbounded"] or d["wrong"] or d["unaxised"]):
+        L.append("  Every declared figure family is placed, says what it multiplies over, and "
+                 "is bounded.")
         return "\n".join(L)
     for stem, field in d["unplaced"]:
         L.append(f"  PLACE     {stem}")
@@ -1168,6 +1202,11 @@ def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
                  f"one of {', '.join(d['positions']) or 'the positions this stage declares'}")
     for stem, pos in d["wrong"]:
         L.append(f"  NOT A POSITION  {stem} is placed {pos!r}, which this stage does not declare")
+    for stem, field in d["unaxised"]:
+        L.append(f"  AXIS      {stem}")
+        L.append(f"            add a `{field}` prefix rule - one of "
+                 f"{', '.join(d['axes']) or 'the axes this stage declares'}. A ceiling with no "
+                 f"axis is a number with no units, and no count can be computed from it")
     for stem, field, bound in d["unbounded"]:
         L.append(f"  BOUND     {stem}")
         L.append(f"            declared in {field} as one panel per data item and with no "
