@@ -223,3 +223,56 @@ header claims it ran — and a `FAILED` seal exited 0. Both are fixed and both a
 | `scProfile` | `kernel`, `panel` |
 
 `sch dev map --root <repo>` prints the current answer, which is the one to trust.
+
+---
+
+## 8. Conversion stages that rule on a declaration's entries
+
+A `convert:` stage names the fields it fills. Some stages rule on the field's PRESENCE; others
+rule on every entry of it, and a stage of the second kind reports itself unfinished while any
+entry is unanswered. The keys below are read from the target repository's own `DEVPOINTS.yaml` —
+nothing in `sch/` knows what a figure family or an upstream plot is.
+
+| key | what the stage then requires |
+|---|---|
+| `each_item_declares` | every entry of the filled field carries the named sub-keys |
+| `each_draw_site_describes` | every place the plugin's source produces a panel passes a legend |
+| `places_every` | every figure family named in the listed fields is placed by a rule in the field this stage fills |
+| `positions` / `axes` | the values those rules may take |
+| `axis_field` | the field mapping a family to what it multiplies over |
+
+`places_every` takes one entry per declaration that names figure families, each saying how to read
+an id out of it — a key, a value at a path, or filenames inside prose — and, where the format
+marks a family drawn once per data item, which sub-key carries its ceiling. The worksheet then
+lists what is unplaced, what has no axis and what is unbounded, and prints the edit for each.
+
+The stage is a BUILD stage: it reads declarations and source only, so it cannot be shaped around
+one cohort.
+
+---
+
+## 9. `sch dev jobcheck` — the shell defects this family has paid for
+
+Five job checks existed as assertions inside `tests/test_convert.py`, and every one of them
+globbed `<repo>/jobs/*.pbs`. They therefore guarded the jobs kept in a repository and nothing
+else, while the job actually being submitted is very often written beside a run and gets none of
+them. A job authored that way reproduced a documented defect — an exit code read into an echo,
+displayed and kept nowhere — and carried on past a refused install.
+
+`sch dev jobcheck` reads any job script named on the command line, and every `jobs/*.pbs` under `--root` when none is. The rules are one definition shared by the
+command and the ratchet, so the two cannot drift. Each exists because it once cost a submission;
+none is a style opinion:
+
+| rule | defect |
+|---|---|
+| `exit-displayed` | an exit code read into an echo is reset and kept nowhere |
+| `status-not-kept` | a command's status captured into a message and never tested |
+| `tee-without-pipefail` | `cmd \| tee log` exits with tee's status, so a failure reads as ok |
+| `unguarded-grep-substitution` | a substitution whose grep finds nothing ends a `set -e` shell |
+| `apostrophe-in-parameter-error` | an apostrophe inside `${VAR:?...}` ends the word |
+| `no-seal` | a job that writes no seal cannot be told from one that never ran |
+| `does-not-parse` | `bash -n` refuses it |
+
+A job may silence one rule by name with `jobcheck: allow <rule-id>` in the file, where a reader
+will see it. Anonymous suppression is how a check stops meaning anything.
+
