@@ -908,7 +908,11 @@ def draw_sites(name, source, where="", emits=None):
             ids[i] = key
         detail[key] = s
     return Inventory(name, ids, "; ".join(hows) or "no draw wrapper of any known kind was found",
-                     complete=True, detail=detail)
+                     complete=True, detail=detail,
+                     # MEASURED FROM THE SAME READ OF THE SAME SOURCE. A legend that is
+                     # present and will not evaluate is not a described site, and every
+                     # reader above this one counted it as one.
+                     defects=empty_argument_slots(source))
 
 
 def sites_of(inv):
@@ -925,3 +929,108 @@ def silent(inv):
 def unknown(inv):
     """The sites whose wrapper has no findable legend slot. NOT the same as silent."""
     return [s for s in sites_of(inv) if s.get("has_legend") is None]
+
+
+def _slots_mask(text):
+    """`text` with comments blanked and string CONTENT replaced by `s`, LENGTH PRESERVED.
+
+    NOT `_mask`, and the difference is the whole check. `_mask` blanks a string to spaces, which
+    is right when you are looking for brackets and wrong when you are looking for emptiness: it
+    turns `cat("database:", n, "genes")` into a call whose every argument is blank, and the first
+    version of this scan reported seven hundred and forty-two defects in a plugin that has one.
+    A string is an argument that is THERE, so it has to survive as something visible.
+    """
+    out, i, n, quote = [], 0, len(text), None
+    while i < n:
+        c = text[i]
+        if quote:
+            if c == "\\" and i + 1 < n:
+                out.append("ss")
+                i += 2
+                continue
+            out.append("\n" if c == "\n" else "s")
+            if c == quote:
+                quote = None
+            i += 1
+            continue
+        if c in "'\"`":
+            quote = c
+            out.append("s")
+            i += 1
+            continue
+        if c == "#":
+            while i < n and text[i] != "\n":
+                out.append(" ")
+                i += 1
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def empty_argument_slots(source):
+    """[(line, snippet)] for every call in this file's embedded R holding an argument that is
+    not there - `paste0(a,, b)`, `plot(x, y, )`.
+
+    WHY THIS IS NOT A PARSE CHECK: R PARSES IT. `f(a,, b)` is a well-formed call carrying a
+    missing argument, and R objects only when the call is EVALUATED - "argument is missing, with
+    no default". So `parse(text = ...)` comes back clean, the module imports, the environment
+    installs and the selftest passes. Measured: a legend this maker placed carried
+    `paste0("...", name_a,,` at a draw site only the COMPARE phase reaches. All eighteen units
+    drew all thirty-four of their panels, the plugin selftested ok, and the run then lost all six
+    arm-pair comparisons one at a time, forty minutes in.
+
+    WHY THE LEGENDS STAGE DID NOT ALREADY CATCH IT: it asks whether a site was GIVEN a legend,
+    and this site was. `_split_args` drops blank pieces, so the empty slot is invisible to every
+    reader above it - the legend is present, it is long, and it is not a thing R can run.
+
+    AND WHY IT IS NOT A REGEX. `x[cond, , drop = FALSE]` is the ordinary way to stop a data frame
+    collapsing to a vector; an empty slot in `[` means "every column" and is legitimate, common,
+    and textually identical to the defect. The two are told apart ONLY by the delimiter that
+    opened the list, so this carries a stack of openers. The regex written first reported four of
+    this one plugin's `, , drop = FALSE` lines beside the single real defect - the same shape as
+    the false positive `unguarded-grep-substitution` in sch/dev/jobcheck.py was fixed for, found
+    the same way, on the same night.
+
+    A NAMED SLOT IS NOT AN EMPTY ONE. `switch(x, a =, b = "both")` leaves `a =` deliberately
+    valueless so that branch falls through; the text between those commas is `a =`, which is not
+    blank, so it does not fire.
+    """
+    out = []
+    for rtext, base in embedded_r(source):
+        masked = _slots_mask(rtext)
+        stack = []                                  # (opener, index after the last separator)
+        for i, c in enumerate(masked):
+            if c in "([{":
+                stack.append([c, i + 1, 0])
+            elif c in ")]}":
+                if stack:
+                    opener, last, commas = stack.pop()
+                    if opener == "(" and commas and not masked[last:i].strip():
+                        out.append(_where(rtext, base, i))
+            elif c == "," and stack:
+                opener, last, commas = stack[-1]
+                if opener == "(" and not masked[last:i].strip():
+                    out.append(_where(rtext, base, i))
+                stack[-1][1] = i + 1
+                stack[-1][2] = commas + 1
+    return out
+
+
+def _where(rtext, base, i):
+    """(line in the PYTHON file, the offending line as written).
+
+    THE ARITHMETIC LIVES HERE ONCE. Both branches of the scan report a position and the first
+    version spelled the conversion out in each; a mutation that reverted one of the two survived
+    the suite untouched, because the fixture reaches only the other. A number computed in two
+    places is a number that can be wrong in one of them.
+    """
+    return base + rtext[:i].count("\n") + 1, _around(rtext, i)
+
+
+def _around(rtext, i):
+    """The offending line, as written, trimmed for a report."""
+    a = rtext.rfind("\n", 0, i) + 1
+    b = rtext.find("\n", i)
+    line = rtext[a:b if b >= 0 else len(rtext)].strip()
+    return line if len(line) <= 110 else line[:107] + "..."

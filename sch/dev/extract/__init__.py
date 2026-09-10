@@ -37,13 +37,19 @@ class Inventory:
     guess, before deciding which of them this wrapper should be using.
     """
 
-    def __init__(self, tool, names, how, complete=True, why_not="", detail=None):
+    def __init__(self, tool, names, how, complete=True, why_not="", detail=None,
+                 defects=()):
         self.tool = tool
         self.names = sorted(names)
         self.how = how
         #: {name: {signature, summary, deprecated}} where the extractor could get it. A NAME IS
         #: THE ONE THING THE DECIDER ALREADY HAS; what they need is what the function draws.
         self.detail = dict(detail or {})
+        #: [(line, text)] the extractor read and the LANGUAGE WILL NOT RUN. Not a name it
+        #: found and not a debt of any one call - a plugin can be complete, described and
+        #: unable to execute, which is how a legend carrying `paste0(a,, b)` passed every
+        #: gate this repository had and killed six comparisons on the cohort.
+        self.defects = list(defects)
         #: False when the extractor could not look. NOT the same as an empty inventory.
         self.complete = bool(complete)
         self.why_not = why_not
@@ -56,7 +62,8 @@ class Inventory:
 
     def as_dict(self):
         return {"tool": self.tool, "names": self.names, "how": self.how,
-                "complete": self.complete, "why_not": self.why_not, "detail": self.detail}
+                "complete": self.complete, "why_not": self.why_not, "detail": self.detail,
+                "defects": self.defects}
 
 
 def _load(path: Path, here: bool):

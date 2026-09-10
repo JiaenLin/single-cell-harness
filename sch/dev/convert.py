@@ -225,18 +225,27 @@ def draw_debt(inv):
     whose wrapper has no discoverable legend slot, which is a fact about the wrapper and not a
     debt of the call. Folding unknown into silent would invent 47 gaps out of a wrapper that
     requires its legend and therefore has none.
+
+    AND `broken`, WHICH IS NOT ONE OF THE THREE. A described site can still hold a legend the
+    language will not run, and it counts as described everywhere above here - correctly, because
+    the sentence IS there. Measured: one legend carrying `paste0(..., name_a,, ...)` at a site
+    only the compare phase reaches. R parses it, the plugin imports, the environment installs,
+    the selftest passes, eighteen units draw all their panels, and then every arm-pair comparison
+    dies and six declared plots are never drawn. It is a separate key because it is a separate
+    question: not "was this panel described" but "will this file run".
     """
     from .extract import draw_sites as DS
     if inv is None:
         return {"looked": False, "why_not": "nobody looked", "total": 0,
-                "silent": [], "unknown": [], "described": 0, "how": ""}
+                "silent": [], "unknown": [], "described": 0, "how": "", "broken": []}
     if not getattr(inv, "complete", False):
         return {"looked": False, "why_not": getattr(inv, "why_not", ""), "total": 0,
-                "silent": [], "unknown": [], "described": 0, "how": ""}
+                "silent": [], "unknown": [], "described": 0, "how": "", "broken": []}
     sites = DS.sites_of(inv)
     sil, unk = DS.silent(inv), DS.unknown(inv)
     return {"looked": True, "why_not": "", "total": len(sites), "silent": sil, "unknown": unk,
-            "described": len(sites) - len(sil) - len(unk), "how": getattr(inv, "how", "")}
+            "described": len(sites) - len(sil) - len(unk), "how": getattr(inv, "how", ""),
+            "broken": list(getattr(inv, "defects", []))}
 
 
 def draw_summary(debt):
@@ -245,6 +254,9 @@ def draw_summary(debt):
         return (f"the draw sites of this plugin were NOT looked at, so whether its panels go out "
                 f"described is unknown: {debt.get('why_not', '')}")
     parts = []
+    if debt.get("broken"):
+        parts.append(f"{len(debt['broken'])} call(s) the language will not run - "
+                     + ", ".join(f"line {n}" for n, _ in debt["broken"][:3]))
     if debt["silent"]:
         parts.append(f"{len(debt['silent'])} of {debt['total']} draw sites write no legend")
     if debt["unknown"]:
@@ -310,7 +322,8 @@ def status(spec, doc, point_name, name="", source=None):
         draws = {}
         if st.get(DRAWS_KEY):
             draws = draw_debt(drawn_inv)
-        owes_draws = bool(draws) and (not draws["looked"] or draws["silent"] or draws["unknown"])
+        owes_draws = bool(draws) and (not draws["looked"] or draws["silent"] or draws["unknown"]
+                                      or draws.get("broken"))
         out.append({"stage": st["name"],
                     "partial": partial,
                     "kind": st.get("kind", "mechanical"),
@@ -1149,8 +1162,24 @@ def draw_worksheet(doc, point_name, stage_name, name, source=None, width=96, inv
         "line number. Open the line.",
         width=width, initial_indent="  ", subsequent_indent="  ")
     L.append("")
+    # FIRST, AND ABOVE THE MISSING ONES. A legend that is absent costs a reader a sentence; a
+    # legend the language cannot run costs the run every panel downstream of it. This is printed
+    # before the worksheet proper because it is not worksheet work - nothing here is waiting on a
+    # sentence anybody has to think of.
+    for line, text in d.get("broken", []):
+        L.append(f"  WILL NOT RUN  {name}:{line}")
+        L += textwrap.wrap(_clip(text, 400), width=width,
+                           initial_indent="                ", subsequent_indent="                ")
+        L.append("                an argument slot in this call holds nothing. R PARSES IT: the "
+                 "file imports,")
+        L.append("                the environment installs and the selftest passes, and the call "
+                 "fails the moment")
+        L.append("                it is evaluated with \"argument is missing, with no default\". "
+                 "Fix the call.")
+        L.append("")
     if not d["silent"] and not d["unknown"]:
-        L.append("  Every draw site in this plugin passes a legend. Nothing to fill in.")
+        if not d.get("broken"):
+            L.append("  Every draw site in this plugin passes a legend. Nothing to fill in.")
         return "\n".join(L)
     for s in d["silent"]:
         L.append(f"  TO WRITE  {s['file']}:{s['line']}")

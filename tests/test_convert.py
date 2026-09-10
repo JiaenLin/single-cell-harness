@@ -2124,5 +2124,88 @@ class TheCommandsAPersonActuallyRunsCarryTheMeasuredHalf(unittest.TestCase):
         self.assertNotIn("---", after, "a stage ran behind the stop")
 
 
+SLOTS = '''
+"""A plugin does not open with its R. These lines exist so the embedded literal starts at a
+line number that is not zero - without them `base` is 0 and the line arithmetic below cannot
+be told from no arithmetic at all."""
+import os
+
+NAME = "widget"
+
+
+_R = """
+npng <- function(name, expr, w = 1800, h = 1400, legend = "") {
+  png(file.path(out, paste0(name, ".png")), width = w, height = h); print(expr); dev.off()
+}
+
+# THE DEFECT. R parses this; it fails only when the call is evaluated.
+npng("broken", plot(m), legend = paste0("a comparison of ", name_a,, " against ", name_b))
+
+# LEGITIMATE, and textually identical to a reader that is not counting brackets.
+.cr <- .fc[startsWith(.fc$k, "colour:"), , drop = FALSE]
+row <- frame[i, ]
+col <- frame[, j]
+
+# LEGITIMATE: the slot is named, not empty - `a` falls through to `b`.
+label <- switch(kind, a =, b = "shared", "other")
+
+# LEGITIMATE: a call with no arguments at all has no missing one.
+now <- Sys.time()
+
+# A STRING IS AN ARGUMENT THAT IS THERE.
+cat("database:", nrow(d), "interactions,", "genes")
+"""
+'''
+
+
+class EmptyArgumentSlots(unittest.TestCase):
+    """A legend the maker placed that R can parse and cannot run.
+
+    Found by a run, not by a check: eighteen units drew all their panels, the plugin selftested
+    ok, and all six arm-pair comparisons then died on `paste0(..., name_a,, ...)` at a draw site
+    only the compare phase reaches.
+    """
+
+    def test_an_empty_argument_slot_in_a_call_is_found(self):
+        hits = DS.empty_argument_slots(SLOTS)
+        self.assertEqual(len(hits), 1, f"expected the one defect, got {hits}")
+        self.assertIn("name_a,,", hits[0][1])
+
+    def test_an_empty_index_slot_is_not_a_defect(self):
+        """`x[cond, , drop = FALSE]` is how a data frame is kept from collapsing to a vector, and
+        `frame[i, ]` is a whole row. Only the delimiter that opened the list tells these from the
+        defect - the regex written first reported four of them in one real plugin."""
+        for legit in ("drop = FALSE", "frame[i,", "frame[,"):
+            self.assertFalse([h for h in DS.empty_argument_slots(SLOTS) if legit in h[1]],
+                             f"indexing reported as a missing argument: {legit}")
+
+    def test_a_named_slot_left_valueless_is_not_an_empty_one(self):
+        """`switch(kind, a =, b = "shared")` is the documented way to make a branch fall
+        through. The text between the commas is `a =`, which is not nothing."""
+        self.assertFalse([h for h in DS.empty_argument_slots(SLOTS) if "switch" in h[1]])
+
+    def test_a_string_argument_is_an_argument_that_is_there(self):
+        """The scan reads structure off a mask and EMPTINESS off the text. Reading both off a
+        mask that blanks strings reported 742 defects in a plugin that has one."""
+        self.assertFalse([h for h in DS.empty_argument_slots(SLOTS) if "database" in h[1]])
+
+    def test_a_call_with_no_arguments_has_no_missing_one(self):
+        self.assertFalse([h for h in DS.empty_argument_slots(SLOTS) if "Sys.time" in h[1]])
+
+    def test_a_trailing_comma_before_the_bracket_is_an_empty_slot(self):
+        """R has no trailing-comma grace: `paste0("a", )` is a missing argument. Python allows
+        it, which is exactly why a check written against Python habits would pass this."""
+        src = 'x = """\n.f <- function(a, b = "") { png(a); print(b); dev.off() }\n.f("p", legend = paste0("one", ))\n"""\n'
+        hits = DS.empty_argument_slots(src)
+        self.assertEqual(len(hits), 1, f"a trailing comma is a missing argument in R: {hits}")
+
+    def test_the_line_reported_is_the_python_files_line(self):
+        """A defect reported at "line 9 of the R" is a line nobody can open."""
+        ln = DS.empty_argument_slots(SLOTS)[0][0]
+        self.assertTrue(SLOTS.splitlines()[ln - 1].strip().startswith('npng("broken"'),
+                        f"reported line {ln}, which holds {SLOTS.splitlines()[ln - 1]!r}")
+
+
+
 if __name__ == "__main__":
     unittest.main()
