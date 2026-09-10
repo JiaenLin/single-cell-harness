@@ -38,6 +38,16 @@ import tempfile
 import unittest
 from pathlib import Path
 
+#: COMPUTE NODES ON THIS FAMILY'S CLUSTER HAVE NO GIT BINARY - `sch/dev/job.py` says so twice and
+#: reads its own commit from a FILE for that reason. Two of these rules are answered from history
+#: and there is no history to ask without it, so they skip; the other two need none and still run.
+#:
+#: THE FIRST VERSION HAD NO GUARD AND SIX TESTS ERRORED, on the machine the full ladder runs on.
+#: An absent tool reported as a failing check is exactly the confusion every other reader in this
+#: package is built to avoid, and it was introduced by the file that ratchets that distinction.
+HAVE_GIT = shutil.which("git") is not None
+NEEDS_GIT = "git is not installed here, and these two rules are git's answer or none"
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sch.dev import points as P                                            # noqa: E402
@@ -179,6 +189,7 @@ class TheRulesOfARoundAreCheckedNotPromised(unittest.TestCase):
                              capture_output=True, text=True)
         return out.stdout.strip()
 
+    @unittest.skipUnless(HAVE_GIT, NEEDS_GIT)
     def test_a_held_out_artefact_that_changed_is_reported(self):
         base = self.repo()
         self.write("beta", "polish(stock)  # improved")
@@ -186,12 +197,14 @@ class TheRulesOfARoundAreCheckedNotPromised(unittest.TestCase):
         self.assertEqual(RU.BROKEN, r["verdict"])
         self.assertTrue(any("beta" in d for d in r["detail"]))
 
+    @unittest.skipUnless(HAVE_GIT, NEEDS_GIT)
     def test_the_artefact_being_converted_is_in_scope(self):
         base = self.repo()
         self.write("alpha", "hone(stock)  # improved")
         self.assertEqual(RU.HELD, self.check(since=base)["in_place"]["verdict"],
                          "the round's own output was reported as outside its scope")
 
+    @unittest.skipUnless(HAVE_GIT, NEEDS_GIT)
     def test_a_generated_companion_is_in_scope_wherever_its_artefact_is(self):
         base = self.repo()
         (self.d / "seams" / "alpha.draw.R").write_text("draw <- function() NULL\n",
@@ -200,6 +213,7 @@ class TheRulesOfARoundAreCheckedNotPromised(unittest.TestCase):
                          "a file the maker generates beside the artefact was reported as scope "
                          "the round did not agree")
 
+    @unittest.skipUnless(HAVE_GIT, NEEDS_GIT)
     def test_a_change_outside_the_declared_mechanism_is_reported(self):
         base = self.repo()
         (self.d / "elsewhere.py").write_text("x = 2\n", encoding="utf-8")
@@ -212,10 +226,12 @@ class TheRulesOfARoundAreCheckedNotPromised(unittest.TestCase):
             self.assertEqual(RU.CANNOT_SAY, self.check(since="")[rule]["verdict"],
                              f"{rule} passed on silence")
 
+    @unittest.skipUnless(HAVE_GIT, NEEDS_GIT)
     def test_a_range_that_is_not_a_commit_is_cannot_say(self):
         self.repo()
         self.assertEqual(RU.CANNOT_SAY, self.check(since="not-a-commit")["held_out"]["verdict"])
 
+    @unittest.skipUnless(HAVE_GIT, NEEDS_GIT)
     def test_the_declaration_pins_the_range(self):
         base = self.repo()
         (self.d / "DEVPOINTS.yaml").write_text(
