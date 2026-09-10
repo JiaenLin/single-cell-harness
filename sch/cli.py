@@ -658,7 +658,8 @@ def cmd_dev(a):
             vocab = [(nm, OF.upstream_vocabulary(sp)) for nm, sp in specs]
             rows = OF.stage_corpus(doc, point, specs)
             lits = OF.fitted_literals(files, vocab)
-            print(OF.format_report(rows, lits, point, [nm for nm, _ in specs], vocab))
+            print(OF.format_report(rows, lits, point, [nm for nm, _ in specs], vocab,
+                                   OF.unmeasured(files, rows)))
             if len(specs) < 2:
                 print(f"\n  CANNOT SAY: this point holds {len(specs)}. Generality is a fact "
                       f"about a family.", file=sys.stderr)

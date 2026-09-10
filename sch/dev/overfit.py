@@ -322,7 +322,31 @@ def verdict(row):
     return ""
 
 
-def format_report(rows, lits, point_name, names, vocab=()):
+def unmeasured(maker_files, rows):
+    """[(module, why)] for maker elements this scan does not put a corpus number on.
+
+    A SCAN THAT DOES NOT SAY WHAT IT SKIPPED IS A SCAN THAT READS AS COMPLETE. The corpus half
+    below asks one question - what could this instrument look at, across the artefacts at a point -
+    and that question only has a meaning for an element that is asked PER ARTEFACT. A shell
+    checker reads job scripts; a ladder reads repositories; a fixture generator reads nothing at
+    all. Their corpus is real and it is not this family, so they get no row - and the way that
+    fact is kept honest is by naming them rather than by their absence.
+
+    The literal half above DOES cover them: it reads every file of the maker.
+    """
+    measured = {r["stage"].split("/")[0] for r in rows}
+    out = []
+    for f in maker_files:
+        if f.suffix != ".py" or f.name.startswith("_"):
+            continue
+        stem = f.stem
+        if stem in measured or stem in ("convert", "overfit", "points"):
+            continue
+        out.append((stem, "not asked per artefact at this point"))
+    return sorted(set(out))
+
+
+def format_report(rows, lits, point_name, names, vocab=(), skipped=()):
     L = [f"{len(names)} {point_name}(s) read: " + ", ".join(names),
          "  reads declarations and source; writes nothing, and shows no upstream surface", ""]
     L.append("  CORPUS AND DISCRIMINATION - what each stage could look at, and whether it has")
@@ -368,8 +392,15 @@ def format_report(rows, lits, point_name, names, vocab=()):
         L.append("")
         for n, v in sorted(vocab, key=lambda x: -len(x[1])):
             L.append(f"    {n:<12} {len(v):>4} symbol(s)   {100 * len(v) // tot:>3}% of the corpus")
+    if skipped:
+        L.append("")
+        L.append("  NOT GIVEN A CORPUS NUMBER HERE - these are maker elements that are not asked")
+        L.append("  per artefact, so the question above has no meaning for them. The literal scan")
+        L.append("  DOES read them. Their own corpus is job scripts, repositories or a fixture.")
+        L.append("")
+        L.append("    " + ", ".join(m for m, _w in skipped))
     L.append("")
-    L.append(f"  {bad} stage(s) with a corpus of one or a single answer; "
+    L.append(f"  {bad} element(s) with a corpus of one or a single answer; "
              f"{len(lits)} fitted literal(s)")
     L.append("")
     L.append("  WHAT THIS CANNOT SAY: that a stage with a wide corpus is RIGHT. Held-out")
