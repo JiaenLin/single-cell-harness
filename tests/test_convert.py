@@ -2215,5 +2215,119 @@ class EmptyArgumentSlots(unittest.TestCase):
 
 
 
+PLACEDECL = """
+tool: demo
+devpoints: 1
+points:
+  widget:
+    what: a widget
+    lives: widgets
+    must_declare: [name]
+    example: widgets/w.py
+    tests: [tests/test_x.py]
+    proves: "it works"
+    cannot_prove: "that it is right"
+    convert:
+      placeholder: "TODO"
+      upstream: wraps.tool
+      stages:
+        - name: placement
+          phase: build
+          fills: [report.figure_position]
+          places_every:
+            - field: native_plots
+              named_by: use
+              per_item: "<"
+              bound: at_most
+            - field: report.figures
+              named_by: id
+          positions: [overview, contrast, conclusion, appendix]
+          why: where a result places each figure, and how many of each there are
+"""
+
+
+class PlacementStage(unittest.TestCase):
+    """Which figures a result is written from, and how many of each family there are.
+
+    Both are read from the declaration, and neither is the host's to decide: measured on a sealed
+    run, one plugin drew 1187 figures of 81 kinds, of which the composed section cites 31 kinds.
+    Two families are drawn once per data item with no ceiling - 72 panels over pathways and 62
+    over shared populations on this cohort, 240 on one with forty populations.
+
+    The ids below are invented. A maker that passed by recognising a real panel name would fail.
+    """
+
+    def _st(self):
+        return {"name": "placement", "positions": ["overview", "contrast", "conclusion",
+                                                   "appendix"],
+                C.PLACES_KEY: [{"field": "native_plots", "named_by": "use", "per_item": "<",
+                                "bound": "at_most"},
+                               {"field": "report.figures", "named_by": "id"}]}
+
+    SPEC = {"native_plots": {
+                "fnA": {"use": "figures/thing_count.png and figures/thing_weight.png"},
+                "fnB": {"use": "figures/perthing__<item>.png, one per item"},
+                "fnC": {"use": "figures/bounded__<item>.png", "at_most": 8},
+                "fnD": {"skip": "not_applicable", "use": "figures/never.png"},
+                "fnE": {"use": "tables/only_numbers.csv"}},
+            "report": {"figures": [{"id": "P1_plate"}],
+                       "figure_position": {"thing": "contrast"}}}
+
+    def test_a_family_with_no_position_is_named(self):
+        d = C.placement_debt(self.SPEC, self._st())
+        self.assertIn("perthing", [x[0] for x in d["unplaced"]])
+        self.assertIn("P1_plate", [x[0] for x in d["unplaced"]])
+        self.assertNotIn("thing", [x[0] for x in d["unplaced"]],
+                         "a placed family was reported as unplaced")
+
+    def test_a_per_item_family_with_no_ceiling_is_named(self):
+        d = C.placement_debt(self.SPEC, self._st())
+        self.assertEqual([x[0] for x in d["unbounded"]], ["perthing"],
+                         f"expected only the unbounded per-item family: {d['unbounded']}")
+
+    def test_a_family_that_declares_its_ceiling_is_not_named(self):
+        """The fixture holds a bounded per-item family as well as an unbounded one, or the
+        assertion above passes for a check that never reports a bound at all."""
+        d = C.placement_debt(self.SPEC, self._st())
+        self.assertNotIn("bounded", [x[0] for x in d["unbounded"]])
+
+    def test_a_skipped_entry_owes_nothing(self):
+        """`skip: not_applicable` is a ruling that the plugin does not draw the thing. Asking it
+        for a position reports the accounting's own honesty as a defect."""
+        d = C.placement_debt(self.SPEC, self._st())
+        self.assertNotIn("never", [x[0] for x in d["unplaced"]])
+
+    def test_an_entry_naming_no_figure_owes_nothing(self):
+        """A `use:` may name a table. cellchat's netAnalysis_computeCentrality says
+        "tables/cellchat_centrality.csv (numbers only; its plot is not drawn)"."""
+        self.assertNotIn("only_numbers",
+                         [x[0] for x in C.placement_debt(self.SPEC, self._st())["unplaced"]])
+
+    def test_the_stem_stops_at_whatever_varies(self):
+        """`__<unit>`, a `{count,weight}` brace family and a bare `<pattern>` in the middle of a
+        name are three ways this format says "the rest of this varies". Missing the third
+        reported `nativecmp_signalingRole_heatmap_<pattern>` as its own family, which no rule
+        placing `nativecmp_signalingRole_heatmap` would ever have matched."""
+        spec = {"native_plots": {
+                    "fnOut": {"use": "figures/role_heatmap_<outgoing>.png"},
+                    "fnIn": {"use": "figures/role_heatmap_<incoming>.png"}},
+                "report": {}}
+        fams = [f[0] for f in C.placement_debt(spec, self._st())["families"]]
+        self.assertEqual(fams, ["role_heatmap"],
+                         f"one family written two ways was reported as two: {fams}")
+
+    def test_a_position_the_stage_does_not_declare_is_refused(self):
+        spec = {"native_plots": {"fn": {"use": "figures/x_thing.png"}},
+                "report": {"figure_position": {"x_thing": "somewhere"}}}
+        self.assertEqual([x[0] for x in C.placement_debt(spec, self._st())["wrong"]], ["x_thing"])
+
+    def test_the_worksheet_says_nothing_is_left_when_nothing_is(self):
+        spec = {"native_plots": {"fn": {"use": "figures/x_thing.png"}},
+                "report": {"figure_position": {"x_thing": "appendix"}}}
+        d = C.placement_debt(spec, self._st())
+        self.assertEqual((d["unplaced"], d["unbounded"], d["wrong"]), ([], [], []))
+
+
+
 if __name__ == "__main__":
     unittest.main()

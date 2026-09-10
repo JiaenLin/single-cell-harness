@@ -640,6 +640,22 @@ def cmd_dev(a):
             if rows and all(not r.complete for r in rows):
                 return CANNOT_RUN
             return OK
+        if a.action == "placement":
+            # WHERE A FIGURE GOES AND HOW MANY OF IT THERE ARE, both read from the declaration
+            # and neither answerable by the host. A run drew 1187 figures for one plugin; 50 of
+            # its 81 kinds are cited by no sentence and two families are drawn once per data
+            # item with no bound at all. The host cannot know which is which - it has no idea
+            # what a chord diagram per pathway is for - and a per-run judgement is not a
+            # property of the plugin. So the plugin says, once, here.
+            bad = 0
+            for nm, spec in specs:
+                print(f"\n{nm}")
+                try:
+                    print(CV.placement_worksheet(spec, doc, point, "placement", nm))
+                except CV.ConvertError as e:
+                    bad += 1
+                    print(f"{nm}: {e}", file=sys.stderr)
+            return FAILED if bad else OK
         if a.action == "legends":
             # TWO HALVES, AND A PLUGIN IS NOT FINISHED WHILE EITHER IS OWED. The declared half
             # rules on every figure the plugin DECLARES - who drew it. The measured half reads the
@@ -1048,7 +1064,7 @@ def build_parser():
     q.add_argument("action", nargs="?", default="status",
                    choices=["status", "freshness", "borrowed", "inventory", "account",
                             "measure", "promised", "defaults", "references", "contract", "legends",
-                            "build"])
+                            "placement", "build"])
     q.add_argument("--point", default=None)
     q.add_argument("--name", default=None,
                    help="the plugin being converted. REQUIRED for the actions that fill a "

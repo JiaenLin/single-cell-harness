@@ -49,6 +49,10 @@ STAGE_REQUIRED = ("name", "fills")
 #: one can be empty because nobody looked, and only the second needs `complete=False`.
 DRAWS_KEY = "each_draw_site_describes"
 
+#: A stage that rules on WHICH of a plugin's figures a result is written from, and on how many of
+#: each family it may draw. Both are properties of the declaration, so this is a build stage.
+PLACES_KEY = "places_every"
+
 
 class ConvertError(Exception):
     """The declaration cannot be read, or does not say enough to convert anything."""
@@ -1047,6 +1051,129 @@ def contract_in(source):
     for where, what in sorted(set(produces)):
         out[where].append(what)
     return out
+
+
+def _families(spec, rules):
+    """[(figure id, field it came from, is it drawn once per data item)] from a declaration.
+
+    THE FIELDS AND HOW TO READ THEM COME FROM THE REPOSITORY'S OWN DECLARATION, never from here.
+    One repository names its upstream plots in `native_plots` with the filenames written into a
+    prose `use:`; another will name them somewhere else in some other shape. A rule says which
+    field to read and whether the id is a key, a value at a path, or a filename inside text.
+    """
+    out = []
+    for rule in rules or []:
+        field = str(rule.get("field") or "")
+        if not field:
+            continue
+        node = spec or {}
+        for part in field.split("."):
+            node = (node or {}).get(part) if isinstance(node, dict) else None
+        if not node:
+            continue
+        named_by = str(rule.get("named_by") or "")
+        per_item_mark = str(rule.get("per_item") or "")
+        bound = str(rule.get("bound") or "")
+        entries = node.items() if isinstance(node, dict) else enumerate(node)
+        for key, rec in entries:
+            rec = rec if isinstance(rec, dict) else {}
+            if rec.get("skip"):
+                continue
+            text = str(rec.get(named_by) or "") if named_by else str(key)
+            if named_by == "id" or not named_by:
+                ids = [text] if text else []
+            else:
+                # THE FILENAMES INSIDE THE TEXT, including a brace family written as one token.
+                ids = []
+                for m in re.finditer(r"figures/([A-Za-z0-9_{},<>-]+?)\.(?:png|pdf|svg)", text):
+                    ids.append(m.group(1))
+            for fid in ids:
+                per = bool(per_item_mark) and per_item_mark in fid
+                # THE STEM STOPS AT THE FIRST THING THAT VARIES, whichever way this format
+                # writes it: `__<unit>`, a `{count,weight}` brace family, or a bare `<pattern>`
+                # in the middle of the name. Missing the third reported
+                # `nativecmp_signalingRole_heatmap_<pattern>` as a family of its own, so a rule
+                # placing `nativecmp_signalingRole_heatmap` would never have matched it.
+                stem = re.split(r"__|\{|<", fid)[0].rstrip("_")
+                out.append((stem, field, per, bound, rec.get(bound) if bound else None))
+    seen, uniq = set(), []
+    for row in out:
+        if row[0] in seen:
+            continue
+        seen.add(row[0])
+        uniq.append(row)
+    return uniq
+
+
+def placement_debt(spec, st):
+    """What a plugin still owes on WHERE its figures go and HOW MANY of each it draws."""
+    rules = st.get(PLACES_KEY) or []
+    placed = {str(k): str(v) for k, v in
+              (((spec or {}).get("report") or {}).get("figure_position") or {}).items()}
+    keys = sorted(placed, key=len, reverse=True)
+    ok_positions = [str(x) for x in (st.get("positions") or [])]
+    fams = _families(spec or {}, rules)
+    unplaced, unbounded, wrong = [], [], []
+    for stem, field, per, bound, value in fams:
+        hit = next((k for k in keys if stem.startswith(k)), "")
+        if not hit:
+            unplaced.append((stem, field))
+        elif ok_positions and placed[hit] not in ok_positions:
+            wrong.append((stem, placed[hit]))
+        # A FAMILY DRAWN ONCE PER DATA ITEM HAS NO SIZE UNTIL A COHORT ARRIVES, which is exactly
+        # why the bound belongs in the declaration and not in the run. Measured: one contrast
+        # drew 62 panels of one family over the populations two arms shared, and 72 of another
+        # over pathways; on a cohort with forty populations the same loop draws 240.
+        if per and not value:
+            unbounded.append((stem, field, bound))
+    return {"looked": bool(rules), "families": fams, "unplaced": unplaced,
+            "unbounded": unbounded, "wrong": wrong, "positions": ok_positions}
+
+
+def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
+    """One row per figure family this plugin has not said where it goes, or how many it draws."""
+    import textwrap
+    _ph, _up, stages = plan(doc, point_name)
+    st = next((x for x in stages if x["name"] == stage_name), None)
+    if st is None:
+        raise ConvertError(f"no stage named {stage_name!r} in point {point_name!r}")
+    if not st.get(PLACES_KEY):
+        raise ConvertError(
+            f"stage {stage_name!r} declares no `{PLACES_KEY}:`, so this repository has not said "
+            f"which declarations name a figure family. This worksheet is for a stage that has.")
+    d = placement_debt(spec, st)
+    fams = d["families"]
+    L = [f"{stage_name}: {len(fams)} figure family(ies) declared by {name or 'this plugin'}. "
+         f"{len(fams) - len(d['unplaced'])} placed, {len(d['unplaced'])} not; "
+         f"{len(d['unbounded'])} drawn per data item with no bound."]
+    L += textwrap.wrap(
+        "A POSITION IS NOT A RANKING. It says where in a result a figure is read - and "
+        "`appendix` says a result is not written from it at all, which keeps it out of the "
+        "paper's numbering and out of what the writing step waits on. It is still drawn, still "
+        "placed on the pages, still reviewable.", width=width, initial_indent="  ",
+        subsequent_indent="  ")
+    L += textwrap.wrap(
+        "A BOUND IS NOT A PREFERENCE. A family drawn once per pathway or per population has no "
+        "size until a cohort arrives: one contrast here drew 62 panels over the populations two "
+        "arms shared and 72 over pathways, and on a cohort with forty populations the same loop "
+        "draws 240. Declare the most this family may draw, and apply it where the loop is.",
+        width=width, initial_indent="  ", subsequent_indent="  ")
+    L.append("")
+    if not d["unplaced"] and not d["unbounded"] and not d["wrong"]:
+        L.append("  Every declared figure family is placed, and every per-item family is bounded.")
+        return "\n".join(L)
+    for stem, field in d["unplaced"]:
+        L.append(f"  PLACE     {stem}")
+        L.append(f"            declared in {field}; add a `report.figure_position` rule - "
+                 f"one of {', '.join(d['positions']) or 'the positions this stage declares'}")
+    for stem, pos in d["wrong"]:
+        L.append(f"  NOT A POSITION  {stem} is placed {pos!r}, which this stage does not declare")
+    for stem, field, bound in d["unbounded"]:
+        L.append(f"  BOUND     {stem}")
+        L.append(f"            declared in {field} as one panel per data item and with no "
+                 f"`{bound}:` - add it, and cap the loop that draws it")
+    L.append("")
+    return "\n".join(L)
 
 
 def items_worksheet(spec, doc, point_name, stage_name, width=96):
