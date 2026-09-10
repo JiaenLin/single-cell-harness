@@ -37,6 +37,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import re
 import time
 from pathlib import Path
 
@@ -93,6 +94,12 @@ def _fill(template, **kw):
     return out
 
 
+#: A line that says what went wrong rather than where. Python names its exceptions
+#: `SomethingError:` / `AssertionError:` at column 0 of the last frame, and unittest banners its
+#: failures `ERROR:` / `FAIL:`; a runner of runners prints `FAIL <name>`.
+_NAMES_A_FAULT = re.compile(r"^(?:[A-Za-z_.]*(?:Error|Exception|Exit)\b.*:|ERROR:|FAIL:?\s)")
+
+
 def _excerpt(out: str, head: int = 6, tail: int = 14) -> list:
     """The beginning AND the end of a runner's output.
 
@@ -105,7 +112,26 @@ def _excerpt(out: str, head: int = 6, tail: int = 14) -> list:
     lines = [ln for ln in out.splitlines() if ln.strip()]
     if len(lines) <= head + tail:
         return lines
-    return lines[:head] + [f"        … {len(lines) - head - tail} line(s) not shown …"] + lines[-tail:]
+    # AND THE LINES THAT NAME THE ERROR, WHICH ARE IN THE MIDDLE. A unittest failure block is
+    # dots, then a banner, then a traceback, then `SomeError: what happened` - and head-plus-tail
+    # keeps the dots and the innermost frames and drops the one line that says what went wrong.
+    # Measured: six errors in one tier, diagnosed across three cluster submissions, and the
+    # exception type was never once printed. An excerpt that omits the finding is the pipe this
+    # function's own docstring is about, one level in.
+    keep = [i for i, ln in enumerate(lines[head:-tail], head)
+            if _NAMES_A_FAULT.match(ln.strip())]
+    if not keep:
+        return lines[:head] + [f"        … {len(lines) - head - tail} line(s) not shown …"] \
+            + lines[-tail:]
+    out_lines, prev = lines[:head], head - 1
+    for i in keep[:12]:
+        if i > prev + 1:
+            out_lines.append(f"        … {i - prev - 1} line(s) not shown …")
+        out_lines.append(lines[i])
+        prev = i
+    if len(lines) - tail > prev + 1:
+        out_lines.append(f"        … {len(lines) - tail - prev - 1} line(s) not shown …")
+    return out_lines + lines[-tail:]
 
 
 def _jobs() -> int:
