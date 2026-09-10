@@ -109,7 +109,11 @@ out = Path(sys.argv[1]); fx = out / "fixture"
 a = json.loads((fx / "FIXTURE_a.json").read_text())
 b = json.loads((fx / "FIXTURE_b.json").read_text())
 A = ad.read_h5ad(fx / "fixture_a.h5ad"); B = ad.read_h5ad(fx / "fixture_b.h5ad")
-R = {r: (n["a"], n["b"]) for r, n in F.ROLES.items()}
+# THE ROLES THIS SHAPE ACTUALLY CARRIES. Walking every entry of `F.ROLES` demanded `timepoint`
+# of a fixture whose own declaration says it is written only in the crossed form - so this job
+# failed at step 0, before a single tier ran, from the commit that added that role. The fixture
+# declares which roles belong to which shape; ask it.
+R = {r: (n["a"], n["b"]) for r, n in F.roles(crossed=False).items()}
 
 checks = {
   "digests are equal":        a["digest"] == b["digest"],

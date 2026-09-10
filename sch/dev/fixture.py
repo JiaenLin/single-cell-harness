@@ -53,9 +53,21 @@ ROLES = {
     "covariate": {"a": "age_weeks",   "b": "age_at_collection"},
     # ONLY IN THE CROSSED FIXTURE. Absent by default, so `_rename` simply finds nothing to
     # rename and the one-factor object is byte-identical to what every baseline was recorded on.
-    "stratum":   {"a": "timepoint",   "b": "visit"},
+    #
+    # `crossed_only` SAYS SO IN THE DECLARATION, and it is here because the fact was known to
+    # `_rename` and to nobody else. `jobs/dev_suite.pbs` asserts that each shape carries every
+    # role it declares, walked this dict, and demanded `timepoint` of a fixture that says two
+    # lines up it does not have one - so the full ladder job failed at step 0, before running a
+    # single tier, from the commit that added this role. A property one function knows and no
+    # reader can ask for is a property that goes stale the first time somebody else needs it.
+    "stratum":   {"a": "timepoint",   "b": "visit", "crossed_only": True},
     "counts":    {"a": "counts",      "b": "raw_counts"},
 }
+
+def roles(crossed=False):
+    """{role: {a, b}} for the shape actually being written. Not every role is in every shape."""
+    return {r: n for r, n in ROLES.items() if crossed or not n.get("crossed_only")}
+
 
 HAZARDS = {
     "tiny_sample":            "one sample carries 7 cells - too few for a per-sample fit",
@@ -342,9 +354,12 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
     # THE ROLES ARE WHAT THIS OBJECT ACTUALLY CARRIES. Listing `stratum` on a one-factor
     # fixture would promise a column that is not there, and a resolver believing it would report
     # the absence as the tool's fault.
+    #
+    # READ FROM THE DECLARATION, NOT SPELLED AGAIN. This condition named `stratum` by hand, so
+    # the fact that a role can be crossed-only lived in two places and a third reader - the job
+    # that runs the whole ladder - had neither and asserted the opposite.
     _crossed = bool(c.get("crossed"))
-    roles = {r: names[shape] for r, names in ROLES.items()
-             if r != "stratum" or _crossed}
+    roles = {r: names[shape] for r, names in globals()["roles"](_crossed).items()}
     rec = {"shape": shape, "seed": c["seed"], "cells": int(A.n_obs), "genes": int(A.n_vars),
            # RECORDED BECAUSE THE REUSE CHECK READS IT. Without `splice` on the record, a run
            # that asked for the layers would match a record written without them and be handed
