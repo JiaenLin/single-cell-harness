@@ -38,7 +38,7 @@ class Inventory:
     """
 
     def __init__(self, tool, names, how, complete=True, why_not="", detail=None,
-                 defects=()):
+                 defects=(), defects_read=""):
         self.tool = tool
         self.names = sorted(names)
         self.how = how
@@ -50,6 +50,9 @@ class Inventory:
         #: unable to execute, which is how a legend carrying `paste0(a,, b)` passed every
         #: gate this repository had and killed six comparisons on the cohort.
         self.defects = list(defects)
+        #: What was READ to produce `defects`, as a sentence. An empty list means nothing was
+        #: found OR that there was nothing to look at, and those are different answers.
+        self.defects_read = defects_read
         #: False when the extractor could not look. NOT the same as an empty inventory.
         self.complete = bool(complete)
         self.why_not = why_not
@@ -63,7 +66,7 @@ class Inventory:
     def as_dict(self):
         return {"tool": self.tool, "names": self.names, "how": self.how,
                 "complete": self.complete, "why_not": self.why_not, "detail": self.detail,
-                "defects": self.defects}
+                "defects": self.defects, "defects_read": self.defects_read}
 
 
 def _load(path: Path, here: bool):

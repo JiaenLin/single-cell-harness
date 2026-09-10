@@ -912,7 +912,8 @@ def draw_sites(name, source, where="", emits=None):
                      # MEASURED FROM THE SAME READ OF THE SAME SOURCE. A legend that is
                      # present and will not evaluate is not a described site, and every
                      # reader above this one counted it as one.
-                     defects=empty_argument_slots(source))
+                     defects=empty_argument_slots(source),
+                     defects_read=slots_read(source))
 
 
 def sites_of(inv):
@@ -996,9 +997,33 @@ def empty_argument_slots(source):
     valueless so that branch falls through; the text between those commas is `a =`, which is not
     blank, so it does not fire.
     """
-    out = []
+    return _slots(source)[0]
+
+
+def slots_read(source):
+    """What `empty_argument_slots` actually looked at, as a sentence.
+
+    FOUND-NOTHING IS NOT LOOKED-AND-FOUND-NOTHING, and this check has already been reported the
+    wrong way round once - by me, in the commit that added it. "One hit across all nine plugins,
+    the eight held-out ones clean" is true and means nothing: EIGHT OF THE NINE EMBED NO R AT ALL,
+    so the scan read zero calls in them. The evidence is 1,645 calls inside the ninth. Every other
+    reader in this package carries this distinction - `Inventory.complete`, freshness's CANNOT
+    SAY, the LOWER BOUND line on a borrowed report - and a silent empty list here was the one
+    place it was missing.
+    """
+    _, scripts, calls = _slots(source)
+    if not scripts:
+        return "no embedded R in this file, so no call was read for a missing argument"
+    return f"{calls} call(s) in {scripts} embedded R script(s)"
+
+
+def _slots(source):
+    """(defects, number of R scripts read, number of calls read)."""
+    out, scripts, calls = [], 0, 0
     for rtext, base in embedded_r(source):
+        scripts += 1
         masked = _slots_mask(rtext)
+        calls += masked.count("(")
         stack = []                                  # (opener, index after the last separator)
         for i, c in enumerate(masked):
             if c in "([{":
@@ -1014,7 +1039,7 @@ def empty_argument_slots(source):
                     out.append(_where(rtext, base, i))
                 stack[-1][1] = i + 1
                 stack[-1][2] = commas + 1
-    return out
+    return out, scripts, calls
 
 
 def _where(rtext, base, i):

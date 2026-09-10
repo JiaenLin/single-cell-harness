@@ -237,15 +237,18 @@ def draw_debt(inv):
     from .extract import draw_sites as DS
     if inv is None:
         return {"looked": False, "why_not": "nobody looked", "total": 0,
-                "silent": [], "unknown": [], "described": 0, "how": "", "broken": []}
+                "silent": [], "unknown": [], "described": 0, "how": "", "broken": [],
+                "broken_read": ""}
     if not getattr(inv, "complete", False):
         return {"looked": False, "why_not": getattr(inv, "why_not", ""), "total": 0,
-                "silent": [], "unknown": [], "described": 0, "how": "", "broken": []}
+                "silent": [], "unknown": [], "described": 0, "how": "", "broken": [],
+                "broken_read": ""}
     sites = DS.sites_of(inv)
     sil, unk = DS.silent(inv), DS.unknown(inv)
     return {"looked": True, "why_not": "", "total": len(sites), "silent": sil, "unknown": unk,
             "described": len(sites) - len(sil) - len(unk), "how": getattr(inv, "how", ""),
-            "broken": list(getattr(inv, "defects", []))}
+            "broken": list(getattr(inv, "defects", [])),
+            "broken_read": getattr(inv, "defects_read", "")}
 
 
 def draw_summary(debt):
@@ -1166,6 +1169,10 @@ def draw_worksheet(doc, point_name, stage_name, name, source=None, width=96, inv
     # legend the language cannot run costs the run every panel downstream of it. This is printed
     # before the worksheet proper because it is not worksheet work - nothing here is waiting on a
     # sentence anybody has to think of.
+    if d.get("broken_read"):
+        L += textwrap.wrap(f"calls read for a missing argument: {d['broken_read']}",
+                           width=width, initial_indent="  ", subsequent_indent="    ")
+        L.append("")
     for line, text in d.get("broken", []):
         L.append(f"  WILL NOT RUN  {name}:{line}")
         L += textwrap.wrap(_clip(text, 400), width=width,

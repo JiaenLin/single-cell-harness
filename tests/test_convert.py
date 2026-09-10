@@ -2189,6 +2189,14 @@ class EmptyArgumentSlots(unittest.TestCase):
         mask that blanks strings reported 742 defects in a plugin that has one."""
         self.assertFalse([h for h in DS.empty_argument_slots(SLOTS) if "database" in h[1]])
 
+    def test_a_file_with_no_r_in_it_says_so_rather_than_reporting_clean(self):
+        """FOUND-NOTHING IS NOT LOOKED-AND-FOUND-NOTHING, and this check was reported the wrong
+        way round the day it was written: "one hit across all nine plugins, the other eight
+        clean" - when eight of the nine embed no R at all and the scan read zero calls in them.
+        The whole of the evidence is 1,645 calls inside the ninth."""
+        self.assertIn("no embedded R", DS.slots_read("x = 1\ny = 'not r'\n"))
+        self.assertIn("call(s) in 1 embedded R script(s)", DS.slots_read(SLOTS))
+
     def test_a_call_with_no_arguments_has_no_missing_one(self):
         self.assertFalse([h for h in DS.empty_argument_slots(SLOTS) if "Sys.time" in h[1]])
 
