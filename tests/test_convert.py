@@ -113,11 +113,16 @@ class Extractors(unittest.TestCase):
         self.assertIn("python_package", got)
         self.assertIn("r_namespace", got)
         self.assertIn("draw_sites", got)
+        self.assertIn("shared_env", got)
         # THE KINDS ARE LISTED RATHER THAN COUNTED, so adding one is a deliberate edit here.
-        # `draw_sites` reads the PLUGIN and the other two read the upstream it wraps, which is
-        # why it declares a third kind rather than pretending to be one of theirs.
+        # `draw_sites` reads the PLUGIN and the first two read the upstream it wraps, which is
+        # why it declares a third kind rather than pretending to be one of theirs. `shared_env`
+        # declares a fourth for the same reason and it is the sharpest case: it reads neither the
+        # plugin's source alone nor an upstream package, but the ENVIRONMENT a plugin resolves
+        # into - which exists only in the repository's own resolver and in no file either of the
+        # other kinds can open.
         self.assertEqual({m.EXTRACT["reads"] for m in got.values()},
-                         {"python-package", "r-package", "plugin-source"})
+                         {"python-package", "r-package", "plugin-source", "plugin-environment"})
 
     def test_every_extractor_declares_what_it_reads(self):
         for name, mod in extract.discover(strict=True).items():

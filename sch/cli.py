@@ -543,6 +543,10 @@ def cmd_dev(a):
         # NOT - it walks the build phase and runs every mechanical stage in it, which would have
         # left the widest door open behind a closed one.
         #
+        # `borrowed` is exempt on the same ground and for the same reason it is useless on one
+        # plugin: what a shared environment lends is a fact about a FAMILY, and a report on one
+        # member cannot say whether the loan is this plugin's alone or everybody's.
+        #
         # `freshness` is exempt for the same reason `status` is: it reads the declarations and
         # this repository's own git history, and shows nobody an upstream surface. It is also
         # the one action that is USELESS on a single plugin - the question "has anybody here
@@ -604,6 +608,24 @@ def cmd_dev(a):
             # any plugin has to say so in the status as well as in the text - otherwise a job
             # that greps the exit code reads "no repository, no history" as "all fresh".
             if rows and all(r.verdict == FR.CANNOT_SAY for r in rows):
+                return CANNOT_RUN
+            return OK
+        if a.action == "borrowed":
+            # WHAT A SHARED ENVIRONMENT LENDS, AND WHAT GOES AWAY WHEN A PLUGIN IS ALONE. Measured
+            # from declarations only: the repository's own resolver is asked twice, once over the
+            # whole family and once per plugin, and the difference is the loan. Nothing is run and
+            # no environment is built - which is the point, because the failure this prevents only
+            # shows up in a run that has already been paid for.
+            #
+            # IT EXITS 0 ON A LOAN. A lent package is exposure and not a defect, and a check that
+            # went red on one would be a false-alarm generator on a seven-member environment that
+            # lends its members a hundred names each. The exit code speaks only for whether
+            # anything could be established at all.
+            from .dev.extract import shared_env as SE
+            rows = SE.survey(doc, point, a.root, python=a.python or "python3",
+                             only=(a.name or ""))
+            print(SE.format_report(rows, point, a.root))
+            if rows and all(not r.complete for r in rows):
                 return CANNOT_RUN
             return OK
         if a.action == "legends":
@@ -839,23 +861,36 @@ def cmd_dev(a):
                                         pins=(spec.get("requires") or {}).get("packages")))
         return OK
 
-    if a.action == "measure":
-        # THE STAGE DECLARES ITS OWN COMMAND, the way `tests` and `fixture` already do. The
-        # harness does not know what a run directory of this tool looks like and must not learn.
-        cmd = CV.stage_command(doc, point, "measure")
-        if not cmd:
-            print(f"sch dev convert: point {point!r} declares no command for the measure stage, "
-                  f"so there is nothing to run. Add `command:` to that stage in DEVPOINTS.yaml.",
-                  file=sys.stderr)
-            return CANNOT_RUN
-        if not a.run:
-            print("sch dev convert measure: pass --run RUNDIR, a completed run of this plugin. "
-                  "The measurement is fitted from what a real run cost; nothing here can invent "
-                  "it.", file=sys.stderr)
-            return CANNOT_RUN
-        argv = CV.fill(cmd, {"python": sys.executable, "run": str(a.run), "root": str(a.root)})
-        print("  " + " ".join(argv))
-        return subprocess.run(argv, cwd=a.root).returncode
+    # ANY STAGE THAT DECLARES A COMMAND IS RUN BY ITS OWN NAME. This branch used to be
+    # `if a.action == "measure"`, and the comment under it said the harness "does not know what a
+    # run directory of this tool looks like and must not learn" - which was true of the COMMAND
+    # and false of the NAME sitting in the `if`. The second command stage this repository declared
+    # was unreachable: `promised` was in DEVPOINTS, printed by `status`, and no way to run it.
+    #
+    # A stage is a command stage because it DECLARES a command, which is a fact this module can
+    # read. (`--action` still enumerates the stage names it will accept, which is the same leak one
+    # level up and is not fixed here; it is written down in tests/test_convert.py.)
+    # EVERY ACTION THAT REACHES HERE IS A COMMAND-STAGE ATTEMPT. Each build action above returns,
+    # so what is left is a stage this repository declares a `command:` for - and the guard here
+    # must NOT be "is it a declared stage", because a point that declares no such stage at all
+    # would then fall past this branch and out of the dispatcher with "unknown dev subcommand".
+    cmd = CV.stage_command(doc, point, a.action)
+    if not cmd:
+        # A STAGE THAT IS NOT A COMMAND STAGE SAYS SO. Reached when this repository declares
+        # the stage but no `command:` for it - which is the ordinary case for every build
+        # stage, and an error only for an action the caller asked to RUN.
+        print(f"sch dev convert: point {point!r} declares no command for the {a.action} "
+              f"stage, so there is nothing to run. Add `command:` to that stage in "
+              f"DEVPOINTS.yaml.", file=sys.stderr)
+        return CANNOT_RUN
+    if not a.run:
+        print(f"sch dev convert {a.action}: pass --run RUNDIR, a completed run of this "
+              f"plugin. This stage is in the TEST phase - it reads back from something that "
+              f"actually ran, and nothing here can invent it.", file=sys.stderr)
+        return CANNOT_RUN
+    argv = CV.fill(cmd, {"python": sys.executable, "run": str(a.run), "root": str(a.root)})
+    print("  " + " ".join(argv))
+    return subprocess.run(argv, cwd=a.root).returncode
 
 
 
@@ -992,8 +1027,9 @@ def build_parser():
     # same one, and it is computed from the file rather than remembered.
     q = rooted(ds.add_parser("convert"))
     q.add_argument("action", nargs="?", default="status",
-                   choices=["status", "freshness", "inventory", "account", "measure",
-                            "defaults", "references", "contract", "legends", "build"])
+                   choices=["status", "freshness", "borrowed", "inventory", "account",
+                            "measure", "promised", "defaults", "references", "contract", "legends",
+                            "build"])
     q.add_argument("--point", default=None)
     q.add_argument("--name", default=None,
                    help="the plugin being converted. REQUIRED for the actions that fill a "
