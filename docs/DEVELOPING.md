@@ -243,6 +243,8 @@ nothing in `sch/` knows what a figure family or an upstream plot is.
 | `axis_field` | the field mapping a family to what it multiplies over |
 | `enforced_by` | the drawing code must READ the ceiling: a conditional naming the token that returns |
 | `generated_by` | a command that writes the stage's mechanism, so the check can regenerate it and compare |
+| `every_requirement_declared` | no package the artefact LOADS is one only its neighbours declare |
+| `version_is_current` | the field this repository calls its reuse key moved when the artefact did |
 
 `places_every` takes one entry per declaration that names figure families, each saying how to read
 an id out of it — a key, a value at a path, or filenames inside prose — and, where the format
@@ -277,6 +279,34 @@ hand-written.
 
 A generated companion belongs to ONE artefact and is named for it — `kernels/cellchat.draw.R`,
 never a bare `draw.R` beside nine plugins that would answer the requirement for all of them.
+
+### A command with no stage gates on nothing
+
+Two of this suite's own checks were commands and not stages, and both had already been paid for.
+
+`sch dev convert borrowed` resolves a plugin alone, resolves it with its family and subtracts, so
+a plugin that USES a package its own declaration never asks for is answerable with no run at all.
+It was a command. A plugin spent its whole life in a seven-member environment depending on two
+packages it declared neither of; its selftest passed, because neither is imported at module scope;
+`build: 7 of 7 complete` was printed over it; and two drawing paths died forty minutes into a
+cohort run. `every_requirement_declared` makes it a stage. **A lent package is exposure and a
+LOADED one is a debt** — a shared environment lends its members a hundred names each and a stage
+owing on a loan would be red on every member of every shared environment at once.
+
+`sch dev convert freshness` asks git whether the reuse key moved when the artefact did. It was a
+command. A commit rewrote a plugin's drawing protocol and left the key standing still, and an
+audit found it *afterwards* — which as a stage is found before. `version_is_current` makes it a
+stage. **STALE is the only debt**: `CANNOT SAY` — uncommitted, computed, no history — is a fact
+about the checkout, not about the plugin.
+
+### What the stages cover, which is not whether they are done
+
+`sch dev convert status` prints a coverage line whenever a key in the point's `must_declare` is
+filled by no stage at all. Measured on the repository this was written for: seventeen required
+keys, **nine** filled by a stage, and `build: 7 of 7 complete` printed over the other eight. A
+complete build and a covered declaration are two different claims and only one of them was ever
+shown. An unowned field is not automatically a defect — a conversion's *input* cannot be its
+output — but not saying so is.
 
 ---
 

@@ -55,6 +55,11 @@ DRAWS_KEY = "each_draw_site_describes"
 #: A stage that rules on WHICH of a plugin's figures a result is written from, and on how many of
 #: each family it may draw. Both are properties of the declaration, so this is a build stage.
 PLACES_KEY = "places_every"
+#: A stage may ask whether this plugin USES anything its declaration does not name,
+#: and whether the field this repository calls its reuse key has kept up with the code.
+#: Both were commands with no stage, so nothing gated on either.
+LOAN_KEY = "every_requirement_declared"
+VERSION_KEY = "version_is_current"
 
 
 class ConvertError(Exception):
@@ -300,7 +305,7 @@ def draw_summary(debt):
     return "; ".join(parts)
 
 
-def status(spec, doc, point_name, name="", source=None):
+def status(spec, doc, point_name, name="", source=None, python=""):
     """[{stage, kind, done, missing, why}] in declared order. The whole resume mechanism.
 
     `name` IS OPTIONAL AND ITS ABSENCE IS AN ANSWER. A stage that rules on draw sites needs the
@@ -373,8 +378,17 @@ def status(spec, doc, point_name, name="", source=None):
             owes_place = bool(places["unplaced"] or places["unbounded"] or places["wrong"]
                               or places["unaxised"] or places.get("unguarded")
                               or places.get("ungenerated"))
+        # AND THE TWO DEBTS THAT WERE COMMANDS WITH NO STAGE: a package this plugin uses and does
+        # not declare, and a reuse key that stood still while the code moved. Both are computed
+        # only when the point's declaration asks a stage to carry them.
+        loan = loan_debt(st, doc, point_name, name, python=python)
+        vers = version_debt(st, spec, doc, point_name, name)
+        owes_loan = bool(loan.get("owes"))
+        owes_vers = bool(vers.get("owes"))
         out.append({"stage": st["name"],
                     "partial": partial,
+                    "loan": loan,
+                    "version": vers,
                     "kind": st.get("kind", "mechanical"),
                     # BUILD OR TEST, and the split is the point. A BUILD stage reads source - the
                     # plugin's own code, or the wrapped tool's signatures and namespace - and
@@ -396,10 +410,156 @@ def status(spec, doc, point_name, name="", source=None):
                     # half of this stage can only look at a plugin that draws in a second
                     # language, and in the family it was written for that is one plugin of nine.
                     "places": places,
-                    "done": not missing and not partial and not owes_draws and not owes_place,
+                    "done": (not missing and not partial and not owes_draws and not owes_place
+                             and not owes_loan and not owes_vers),
                     "missing": missing,
                     "why": st.get("why", "")})
     return out
+
+
+#: THE LOAN SURVEY RESOLVES THE WHOLE FAMILY, so it is computed once per process and not once
+#: per plugin. `status` is asked of every artefact at a point by `overfit` and by the family
+#: status, and nine resolves of the same landscape is the same answer nine times.
+_LOANS: dict = {}
+
+
+def loan_debt(st, doc, point_name, name, python=""):
+    """{owes, loaded, says} - does this plugin USE a package its own declaration never asks for?
+
+    A LENT PACKAGE IS EXPOSURE; A LOADED ONE IS A DEFECT. A seven-member environment lends its
+    members a hundred names each and almost none is ever touched, so a stage that owed on a LOAN
+    would be red on every member of every shared environment at once. What is owed on is a name
+    the plugin's own source LOADS and its own declaration does not ask for - the plugin works
+    today, inside the group, and loses it the day it is deployed alone.
+
+    MEASURED, AND IT COST AN END-TO-END RUN: a plugin spent its whole life in a seven-member
+    environment and depended on two packages it declared neither of. Its selftest passed, because
+    neither is imported at module scope. Unplugged, two drawing paths died - 54 panels of 711 -
+    forty minutes into a cohort run.
+
+    THE ANSWER IS THE SURVEY'S, INCLUDING "I COULD NOT LOOK". A resolver that cannot be reached
+    gives `owes=False, says=<why>` and the stage reports that it could not be established, which
+    is not the same as a plugin that declares everything.
+    """
+    if not st.get(LOAN_KEY) or not name:
+        return {}
+    from .extract import shared_env as _SE
+    root = str(doc.get("_root") or ".")
+    key = (root, point_name, python or "python3")
+    if key not in _LOANS:
+        try:
+            _LOANS[key] = _SE.survey(doc, point_name, root, python=python or "python3")
+        except Exception as e:                                            # noqa: BLE001
+            _LOANS[key] = e
+    got = _LOANS[key]
+    if isinstance(got, Exception):
+        return {"owes": False, "loaded": [], "complete": False,
+                "says": f"the loan survey could not run: {type(got).__name__}: {got}"}
+    mine = next((l for l in got if l.plugin == name), None)
+    if mine is None or not mine.complete:
+        return {"owes": False, "loaded": [], "complete": False,
+                "says": (mine.why_not if mine is not None else
+                         f"{name!r} is not in this repository's own catalogue")}
+    loaded = [r for r in mine.rows if r.get("loaded")]
+    return {"owes": bool(loaded), "loaded": loaded, "complete": True,
+            "says": (f"{len(loaded)} package(s) this plugin LOADS are lent by "
+                     f"{mine.environment} and declared by nothing it owns: "
+                     + ", ".join(sorted({r['entry'] for r in loaded}))
+                     if loaded else
+                     (f"nothing lent by {mine.environment} is loaded here"
+                      if not mine.alone else
+                      f"alone in {mine.environment}: nothing is lent, so nothing can be lost"))}
+
+
+def version_debt(st, spec, doc, point_name, name):
+    """{owes, says} - has the field this repository calls its reuse key kept up with the code?
+
+    A DECLARED VERSION IS A CLAIM ABOUT CODE AND NOTHING GATED ON IT. The command existed and was
+    a command: `sch dev convert freshness` asks git whether the field moved when the file did.
+    Nothing ran it, so a plugin could be rewritten, committed and reported `build complete` with
+    its reuse key standing still - and this suite did exactly that, in the commit that moved a
+    plugin's drawing protocol into a generated file. The audit found it afterwards. As a stage it
+    is found before.
+
+    STALE IS THE ONLY DEBT. `CANNOT SAY` - an uncommitted change, a computed value, no history -
+    is reported and does not owe, because it is a fact about the checkout and not about the
+    plugin.
+    """
+    if not st.get(VERSION_KEY) or not name:
+        return {}
+    from . import freshness as _FR
+    try:
+        f = _FR.check(spec, doc, point_name, name)
+    except Exception as e:                                                # noqa: BLE001
+        return {"owes": False, "says": f"freshness could not be established: {e}"}
+    if not f.complete:
+        return {"owes": False, "verdict": f.verdict,
+                "says": f"{f.verdict}, and that is an answer and not a pass: {f.why_not}"}
+    since = ", ".join(c.get("short", "?") for c in f.commits_since[:4])
+    return {"owes": f.verdict == _FR.STALE, "verdict": f.verdict,
+            "says": (f"`{f.field}` = {f.declared!r}, set by "
+                     f"{(f.set_by or {}).get('short', '?')}, and "
+                     f"{len(f.commits_since)} commit(s) have touched this artefact since"
+                     + (f": {since}" if since else "")
+                     if f.verdict == _FR.STALE else
+                     f"`{f.field}` = {f.declared!r} is {f.verdict}")}
+
+
+def coverage(doc, point_name):
+    """{field: [stage]} for what a point REQUIRES, and [] for a field no stage fills.
+
+    `status` ANSWERS "ARE THE STAGES DONE" AND NOT "IS THE DECLARATION COVERED", and the two look
+    identical from a green report. Measured on the repository this was written for: seventeen keys
+    in `must_declare`, nine of them filled by a stage, and `build: 7 of 7 complete` printed over
+    the other EIGHT - fields a conversion is required to carry that no stage ever mentions. Two of
+    them are the ones this suite has already paid for:
+
+      `requires` - the environment. `sch dev convert borrowed` answers it from declarations alone,
+      and a plugin that borrows an undeclared package from a shared environment passes every stage
+      and dies the day it is deployed alone. That cost an end-to-end run.
+
+      `version` - the reuse key. `sch dev convert freshness` asks git whether it moved when the
+      code did, and a stale one makes every reusing run serve last week's products and seal clean.
+
+    Both were COMMANDS and neither was a stage, so nothing gated on either. A field with a command
+    and no stage is help you have to know exists.
+
+    AN UNOWNED FIELD IS NOT AUTOMATICALLY A DEFECT. `wraps.tool` is the conversion's INPUT - the
+    upstream it is driven by - and cannot be an output of it. What is a defect is not saying so:
+    this reports the coverage and the reader rules on it.
+    """
+    pt = pts.point(doc, point_name)
+    try:
+        _ph, _up, stages = plan(doc, point_name)
+    except ConvertError:
+        stages = []
+    fills = {}
+    for st in stages:
+        for f in st["fills"]:
+            fills.setdefault(str(f).split(".")[0], []).append(st["name"])
+    out = {}
+    for k in (pt.get("must_declare") or []):
+        k = str(k)
+        if not pts._KEYISH.match(k):
+            continue                       # a sentence for a person, not a field
+        out[k] = list(fills.get(k, ()))
+    return out
+
+
+def coverage_report(cov, point_name):
+    """One line, or several when something a point REQUIRES is filled by nothing."""
+    if not cov:
+        return ""
+    unowned = sorted(k for k, v in cov.items() if not v)
+    n = len(cov) - len(unowned)
+    if not unowned:
+        return (f"every one of the {len(cov)} key(s) this point requires is filled by a stage")
+    return (f"{n} of {len(cov)} key(s) this point requires are filled by a stage. "
+            f"NO STAGE FILLS: {', '.join(unowned)}\n"
+            f"  A field no stage fills is one a person must invent unaided, and a complete build "
+            f"says nothing about it.\n"
+            f"  Give it a stage in `convert.stages`, or accept it as the conversion's INPUT - "
+            f"but decide, rather than not asking.")
 
 
 def next_stage(spec, doc, point_name, name=""):
@@ -537,11 +697,26 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
                              f"`finished_by:` on the stage")
                     L.append(f"       once something can do the work.")
             elif not r["done"]:
+                if r.get("loan", {}).get("owes"):
+                    L.append(f"       {r['loan']['says']}")
+                    for row in r["loan"]["loaded"][:6]:
+                        L.append(f"         LOADED  {row['entry']}  at {row['written_in']}"
+                                 f":{row.get('at', '?')}  ({row.get('times', 1)} site(s))")
+                if r.get("version", {}).get("owes"):
+                    L.append(f"       {r['version']['says']}")
                 if r["missing"]:
                     L.append(f"       unfilled: {', '.join(r['missing'])}")
                 if r["why"]:
                     L.append(f"       {r['why']}")
         L.append("")
+    # WHAT THE STAGES COVER, WHICH IS A DIFFERENT QUESTION FROM WHETHER THEY ARE DONE. A complete
+    # build over a declaration eight of whose required keys no stage mentions is a complete build
+    # and an incomplete conversion, and only one of those two facts was ever printed.
+    if doc:
+        cov = coverage_report(coverage(doc, point_name), point_name)
+        if cov and "NO STAGE FILLS" in cov:
+            L.append("  " + cov.replace("\n", "\n  "))
+            L.append("")
     todo = [r for r in rows if not r["done"]]
     if not todo:
         L.append("  nothing left to convert")
