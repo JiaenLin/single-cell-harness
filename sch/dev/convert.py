@@ -173,6 +173,32 @@ def item_gaps(spec, stage):
 # that offers a legend and passes none.
 # -----------------------------------------------------------------------------------------------
 
+def _convert_specs_for_ladder(doc, point_name, only=""):
+    """[(name, declaration)] for the artefacts at a point. Parsed, never imported.
+
+    THE SAME READER THE CLI USES, exported so the ladder does not grow a second one. A half-built
+    plugin is exactly the kind that does not import - its `run()` raises and its dependencies are
+    not installed - which is the state a conversion exists to get it out of.
+    """
+    pt = pts.point(doc, point_name)
+    d = Path(str(doc.get("_root") or ".")) / str(pt.get("lives") or ".")
+    out = []
+    for f in sorted(d.glob("*.py")):
+        if f.stem.startswith("_") or (only and f.stem != only):
+            continue
+        try:
+            tree = ast.parse(f.read_text(encoding="utf-8"))
+        except SyntaxError:
+            continue
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "PLUGIN":
+                try:
+                    out.append((f.stem, ast.literal_eval(node.value)))
+                except ValueError:
+                    pass
+    return out
+
+
 def artefact(doc, point_name, name):
     """The file this point says one artefact lives in, or None. Never raises on a missing tree."""
     try:

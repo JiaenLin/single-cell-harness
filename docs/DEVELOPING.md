@@ -128,6 +128,7 @@ it cannot prove.
 | tier | question | cost |
 |---|---|---|
 | `declaration` | is the point declared, and is the thing registered in every table it names? | ms |
+| `rules` | do the rules this round declared still hold? (§10) — skipped where none are declared | ms |
 | `contract` | `sch conform` on the repository | ms |
 | `unit` | the repository's own suite, run the way the repository runs it | seconds |
 | `fixture_a` | does it run end to end and leave a valid status behind? | seconds |
@@ -312,6 +313,12 @@ more than in their code.
 
 Silence is never a pass: no `rules:` block, or a range that is not a commit, reports `cannot say`
 and exits 3.
+
+It is also a **tier of the ladder**, because a command you have to remember to type is not
+enforcement. A repository declaring no rules is not failed by that tier and is not passed by it
+either: the tier reports that it could not run, and the ladder ends with `COULD NOT run: rules —
+so this is not a full check`. Inventing rules for a repository that has declared none would be
+this tool deciding how somebody else's round works.
 
 ---
 

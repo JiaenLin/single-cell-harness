@@ -44,7 +44,8 @@ from . import baseline as bl
 from . import fixture as fx
 from . import points as pts
 
-TIERS = ("declaration", "contract", "unit", "fixture_a", "fixture_b", "leak", "baseline")
+TIERS = ("declaration", "rules", "contract", "unit", "fixture_a", "fixture_b", "leak",
+         "baseline")
 
 
 def _t(results, tier, ok, evidence, cannot="", skipped=False, seconds=0.0, applicable=True):
@@ -194,6 +195,44 @@ def t0_declaration(doc, point_name, name, results):
     return _t(results, "declaration", ok, ev,
               cannot="that a declared key is TRUE - only that it is there. A sentence in "
                      "`must_declare` is printed and not checked; a bare key name is checked.",
+              seconds=time.time() - t0)
+
+
+def t_rules(doc, point_name, results):
+    """The rules of the ROUND, if this repository declares any.
+
+    A COMMAND YOU HAVE TO REMEMBER TO TYPE IS NOT ENFORCEMENT. The rules of a development round -
+    which artefacts are held out, where a change may land, that general mechanism inside an
+    artefact is generated and never copied - are worth what checks them on the way past, not what
+    checks them when somebody asks. So they are a tier.
+
+    A REPOSITORY THAT DECLARES NONE IS NOT FAILED BY THIS, and is not passed by it either: the
+    tier reports that it could not run, which is the same answer the ladder already gives for a
+    fixture nobody declared. Four of the five repositories this suite serves are in that state,
+    and inventing rules for them here would be this tool deciding how somebody else's round works.
+
+    THE RANGE COMES FROM THE DECLARATION. Passing one here would let the tier choose the answer.
+    """
+    from . import rules as RU
+    from .convert import _convert_specs_for_ladder as _specs
+    t0 = time.time()
+    if not RU.declared(doc):
+        return _t(results, "rules", True, [], skipped=True,
+                  cannot=f"anything: {doc['_root']} declares no `rules:` block, so this round has "
+                         f"stated no rules")
+    try:
+        specs = _specs(doc, point_name)
+    except Exception as e:                                                # noqa: BLE001
+        return _t(results, "rules", False, [f"could not read the artefacts at {point_name!r}: {e}"],
+                  seconds=time.time() - t0)
+    rows = RU.check(doc, point_name, specs, root=doc["_root"], since=RU.since_of(doc))
+    bad = [f"{r['rule']}: {r['says']}" + ("".join("\n      " + d for d in r["detail"][:6]))
+           for r in rows if r["verdict"] == RU.BROKEN]
+    mute = [f"{r['rule']}: {r['says']}" for r in rows if r["verdict"] == RU.CANNOT_SAY]
+    ev = bad + mute or [f"{len(rows)} rule(s) of this round hold"]
+    return _t(results, "rules", not bad, ev,
+              cannot="that the rules DECLARED are the right ones - only that what is declared "
+                     "still holds. A round that declares an easy rule passes easily.",
               seconds=time.time() - t0)
 
 
@@ -451,6 +490,8 @@ def run(root=".", point_name=None, name=None, only=None, skip=(), keep_going=Fal
 
     if point_name and name and want("declaration"):
         t0_declaration(doc, point_name, name, results)
+    if not stop() and want("rules"):
+        t_rules(doc, point_name, results)
     if not stop() and want("contract"):
         t1_contract(doc, results, terms)
     if not stop() and want("unit"):
