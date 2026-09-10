@@ -1,0 +1,161 @@
+#!/bin/bash
+#PBS -N sch_blind_convert
+#PBS -q short
+#PBS -l select=1:ncpus=8:mem=32gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#
+# ============================================================================================
+# THE BLIND TEST: CAN THE MAKER REBUILD A PLUGIN'S ACCOUNTING FROM THE TOOL'S OWN NAMESPACE?
+# ============================================================================================
+#
+# RULE ONE OF THIS ROUND SAYS A PLUGIN IS MAKER OUTPUT. The claim is only worth what can be
+# demonstrated, and the demonstration is this: hide a finished plugin's answers, scaffold it from
+# nothing, point the maker at the wrapped tool in the plugin's OWN environment, and compare what
+# the maker surfaces with what the finished plugin declares.
+#
+# WHY IT HAS TO RUN HERE. The mechanical stages read the wrapped tool's real surface - an R
+# namespace, a Python plotting submodule - in the interpreter the plugin runs in. On a workstation
+# with no CellChat installed the maker correctly refuses and says so, which proves the refusal and
+# nothing else. The environment exists on this machine and nowhere else.
+#
+# THE PREDICTIONS, WRITTEN BEFORE THE RUN:
+#
+#   B1  THE SCAFFOLD PRODUCES A PLUGIN THE MAKER CAN READ, and reports it as owing everything:
+#       `build: 0 of 7`. A scaffold whose output the maker calls finished has written a plugin
+#       that claims answers nobody gave.
+#
+#   B2  THE INVENTORY IS NOT EMPTY, AND IT IS NOT A GUESS. Pointed at CellChat in the plugin's own
+#       environment, the extractor lists the tool's exported plotting functions. Predicted at or
+#       above 30, since the finished plugin accounts for 35 and the extractor's pattern is wider
+#       than the set that was ruled on.
+#
+#   B3  EVERY PLOT THE FINISHED PLUGIN ACCOUNTS FOR IS ONE THE BLIND INVENTORY FOUND. This is the
+#       prediction that matters: it says the finished plugin's accounting could have been produced
+#       by the maker rather than by somebody reading CellChat's manual. A symbol in the plugin and
+#       not in the inventory is a decision the maker cannot reach, and is reported by name.
+#
+#   B4  A REFUSAL IS REPORTED AS A REFUSAL. Asked for the same inventory with NO interpreter, the
+#       maker must exit non-zero and say it could not look - never write an empty accounting. "No
+#       extractor could look" and "this tool draws nothing" are the two answers that must never be
+#       confused, and the second is the one that certifies a wrapper as having nothing to account
+#       for.
+#
+# NOT A REPRODUCTION. Nothing here touches the cohort, and no result from this run is about the
+# biology.
+#
+# rule-one: no-removal. Writes only inside $RUNDIR.
+# Authored on the workstation and pushed (rule H1). No `git` runs below.
+#
+#   qsub -v RUNDIR=...,HARNESS=...,TOOL=...,ENVDIR=... jobs/blind_convert.pbs
+
+set -euo pipefail
+
+RUNDIR="${RUNDIR:?pass -v RUNDIR=<run directory>}"
+HARNESS="${HARNESS:?pass -v HARNESS=<the harness checkout>}"
+TOOL="${TOOL:?pass -v TOOL=<the cellchat-only scProfile tree>}"
+ENVDIR="${ENVDIR:?pass -v ENVDIR=<the plugin environment holding CellChat>}"
+NAME="${NAME:-cellchat}"
+
+mkdir -p "$RUNDIR/logs"
+exec >> "$RUNDIR/logs/blind.log" 2>&1
+
+seal() {
+  s=$?
+  {
+    echo "exit=$s"
+    echo "jobid=${PBS_JOBID:-interactive}"
+    echo "purpose=can the maker rebuild ${NAME}'s accounting from the wrapped tool's own namespace"
+    hostname
+    date -u +%Y-%m-%dT%H:%M:%SZ
+    [ -s "$RUNDIR/VERDICT.txt" ] && cat "$RUNDIR/VERDICT.txt"
+  } > "$RUNDIR/$([ "$s" -eq 0 ] && echo SEALED.txt || echo FAILED.txt)"
+}
+trap seal EXIT
+
+echo "=== blind conversion of $NAME - $(date -u)"
+echo "=== node $(hostname) - PBS ${PBS_JOBID:-interactive}"
+
+set +eu
+source /etc/profile 2>/dev/null || true
+module load anaconda3/3.0.0 2>/dev/null || true
+set -eu
+
+PY="$ENVDIR/bin/python"
+RS="$ENVDIR/bin/Rscript"
+for f in "$PY" "$RS" "$TOOL/kernels/$NAME.py" "$HARNESS/sch"; do
+  [ -e "$f" ] || { echo "MISSING: $f"; exit 2; }
+done
+
+# THE CLEAN ROOM. A copy, so nothing here can touch the tree the real runs use, and the finished
+# plugin is moved OUT OF SIGHT before the maker is asked anything.
+BLIND="$RUNDIR/blind"
+rm -rf "$BLIND"
+mkdir -p "$BLIND"
+cp -R "$TOOL/." "$BLIND/"
+mkdir -p "$RUNDIR/held"
+mv "$BLIND/kernels/$NAME.py" "$RUNDIR/held/$NAME.py"
+rm -f "$BLIND/kernels/$NAME.draw.R"
+rm -rf "$BLIND/kernels/__pycache__"
+echo "=== held out of the clean room: $(ls "$RUNDIR/held")"
+echo "=== clean room kernels: $(ls "$BLIND/kernels" 2>/dev/null || echo empty)"
+
+cd "$BLIND"
+export PYTHONPATH="$HARNESS"
+
+echo; echo "=== B1  scaffold from nothing, and ask the maker what it owes"
+python3 -m scprofile.cli scaffold "$NAME" --new
+python3 -m sch dev convert status --root . --point kernel --name "$NAME" > "$RUNDIR/status_blind.txt" 2>&1
+head -12 "$RUNDIR/status_blind.txt"
+B1="$(grep -c 'build: 0 of 7' "$RUNDIR/status_blind.txt" || true)"
+
+echo; echo "=== B4  the same question with NO interpreter: a refusal must read as a refusal"
+set +e
+python3 -m sch dev convert inventory --root . --point kernel --name "$NAME" --tool CellChat \
+        > "$RUNDIR/inventory_norscript.txt" 2>&1
+B4_CODE=$?
+set -e
+echo "  exit=$B4_CODE"
+tail -4 "$RUNDIR/inventory_norscript.txt"
+
+echo; echo "=== B2  the inventory, in the plugin's own environment"
+set +e
+python3 -m sch dev convert inventory --root . --point kernel --name "$NAME" --tool CellChat \
+        --python "$PY" --rscript "$RS" > "$RUNDIR/inventory_blind.txt" 2>&1
+B2_CODE=$?
+set -e
+echo "  exit=$B2_CODE"
+head -30 "$RUNDIR/inventory_blind.txt"
+
+echo; echo "=== B3  every plot the finished plugin accounts for, against what the maker found"
+python3 - "$RUNDIR/held/$NAME.py" "$RUNDIR/inventory_blind.txt" "$RUNDIR/VERDICT.txt" \
+         "$B1" "$B2_CODE" "$B4_CODE" <<'PYEOF'
+import ast, re, sys
+held, inv_file, out, b1, b2_code, b4_code = sys.argv[1:7]
+
+spec = {}
+for n in ast.parse(open(held).read()).body:
+    if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "PLUGIN":
+        spec = ast.literal_eval(n.value)
+declared = sorted(spec.get("native_plots") or {})
+text = open(inv_file).read()
+found = set(re.findall(r"[A-Za-z_][A-Za-z0-9_.]{2,}", text))
+
+missing = [d for d in declared if d.split(".")[-1] not in found and d not in found]
+L = []
+L.append(f"B1 scaffolded plugin owes everything: {'HELD' if b1 == '1' else 'FAILED'}")
+n_found = len([w for w in found if re.match(r"^(netVisual|netAnalysis|plot|show|Stacked)", w)])
+L.append(f"B2 inventory found {n_found} plotting symbol(s), exit {b2_code}: "
+         f"{'HELD' if n_found >= 30 and b2_code == '0' else 'FAILED'}")
+L.append(f"B3 {len(declared) - len(missing)} of {len(declared)} accounted plots are in the blind "
+         f"inventory: {'HELD' if not missing else 'FAILED'}")
+for m in missing:
+    L.append(f"     not reachable by the extractor: {m}")
+L.append(f"B4 refusal without an interpreter exits {b4_code}: "
+         f"{'HELD' if b4_code != '0' else 'FAILED'}")
+open(out, "w").write("\n".join(L) + "\n")
+print("\n".join(L))
+PYEOF
+
+grep -q FAILED "$RUNDIR/VERDICT.txt" && { echo; echo "=== at least one prediction did not hold"; exit 2; }
+echo; echo "=== every prediction held"
