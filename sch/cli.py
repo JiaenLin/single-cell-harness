@@ -542,6 +542,11 @@ def cmd_dev(a):
         # `status` is exempt: it reads the declarations and shows nobody an upstream. `build` is
         # NOT - it walks the build phase and runs every mechanical stage in it, which would have
         # left the widest door open behind a closed one.
+        #
+        # `freshness` is exempt for the same reason `status` is: it reads the declarations and
+        # this repository's own git history, and shows nobody an upstream surface. It is also
+        # the one action that is USELESS on a single plugin - the question "has anybody here
+        # kept this field up to date" is answered by the family or not at all.
         FILLS = ("inventory", "account", "defaults", "references", "contract", "legends",
                  "build")
         specs = []
@@ -582,6 +587,24 @@ def cmd_dev(a):
                 out.append(CV.format_status(CV.status(spec, doc, point, nm), nm, point,
                                             doc=doc, root=a.root, python=a.python or ""))
             print("\n\n".join(out))
+            return OK
+        if a.action == "freshness":
+            # A DECLARED VERSION IS A CLAIM ABOUT CODE AND NOTHING CHECKED IT. Where the field is
+            # a reuse key, a plugin that changes what it draws and leaves the field alone makes
+            # every later run adopt the old products and report success. This reports; it writes
+            # nothing and bumps nothing.
+            from .dev import freshness as FR
+            _field, _means = FR.declared_field(doc, point)
+            rows = FR.check_all(doc, point, specs)
+            print(FR.format_report(rows, point, _means, a.root))
+            if any(r.verdict == FR.STALE for r in rows):
+                return FAILED
+            # EVERY ROW A "CANNOT SAY" IS NOT A PASS. The ladder already exits 3 rather than 0
+            # when nothing it asked for could run, and a check that established nothing about
+            # any plugin has to say so in the status as well as in the text - otherwise a job
+            # that greps the exit code reads "no repository, no history" as "all fresh".
+            if rows and all(r.verdict == FR.CANNOT_SAY for r in rows):
+                return CANNOT_RUN
             return OK
         if a.action == "legends":
             # TWO HALVES, AND A PLUGIN IS NOT FINISHED WHILE EITHER IS OWED. The declared half
@@ -969,7 +992,7 @@ def build_parser():
     # same one, and it is computed from the file rather than remembered.
     q = rooted(ds.add_parser("convert"))
     q.add_argument("action", nargs="?", default="status",
-                   choices=["status", "inventory", "account", "measure",
+                   choices=["status", "freshness", "inventory", "account", "measure",
                             "defaults", "references", "contract", "legends", "build"])
     q.add_argument("--point", default=None)
     q.add_argument("--name", default=None,
