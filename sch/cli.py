@@ -500,6 +500,34 @@ def cmd_dev(a):
         print(f"  {bad} of {len(paths)} with at least one problem")
         return FAILED if bad else OK
 
+    if a.sub == "rules":
+        # THE RULES OF A ROUND, CHECKED RATHER THAN PROMISED. A round states which files are
+        # OUTPUT, which are HELD OUT and which are the mechanism it may work on, and that
+        # statement is worth exactly what checks it. Reads git and the artefacts; writes nothing.
+        from .dev import rules as RU
+        try:
+            doc = P.load(a.root)
+        except D.DevpointsError as e:
+            print(f"sch dev rules: {e}", file=sys.stderr)
+            return CANNOT_RUN
+        point = a.point or next(iter(doc.get("points") or {}), None)
+        if not point:
+            print(f"sch dev rules: {a.root} declares no extension points.", file=sys.stderr)
+            return CANNOT_RUN
+        specs = _convert_specs(doc, point, a.root, "")
+        # THE DECLARATION PINS THE RANGE, and `--since` overrides it. Two of these rules are
+        # answered from history, so whoever picks the range picks the answer.
+        since = a.since or RU.since_of(doc)
+        rows = RU.check(doc, point, specs, root=a.root, since=since)
+        print(RU.format_report(rows, point, since))
+        if any(r["verdict"] == RU.BROKEN for r in rows):
+            return FAILED
+        # NOTHING ESTABLISHED IS NOT A PASS. A repository with no `rules:` block and a range that
+        # is not a commit both land here, and both used to be reported by exit 0.
+        if all(r["verdict"] == RU.CANNOT_SAY for r in rows):
+            return CANNOT_RUN
+        return OK
+
     if a.sub == "convert":
         from .dev import convert as CV
         try:
@@ -604,6 +632,38 @@ def cmd_dev(a):
                                             doc=doc, root=a.root, python=a.python or ""))
             print("\n\n".join(out))
             return OK
+        if a.action == "overfit":
+            # IS THIS MAKER GENERAL, OR WAS IT FITTED TO THE ONE ARTEFACT IT WAS BUILT ON. The
+            # held-out conversion is the gold standard and it is spent once; this is what can be
+            # read off a family with no run and no conversion, so that the question can be asked
+            # while that evidence is still unspent.
+            #
+            # IT IS EXEMPT FROM THE ONE-AT-A-TIME RULE for the same reason `borrowed` is, and it
+            # has to be: whether a stage has ever distinguished two artefacts is not a fact about
+            # one artefact. It shows no upstream surface - only this repository's own
+            # declarations and its own source - which is the line that rule actually draws.
+            from .dev import overfit as OF
+            # THE MAKER IS THIS SUITE **AND** THE REPOSITORY'S OWN DECLARATION. DEVPOINTS is
+            # what tells a general stage which field of this format it fills, so a member's
+            # upstream named there would fit the maker just as surely as one named in `sch/`.
+            # THE MAKER IS `sch/dev/**` AND THE DISPATCH THAT DRIVES IT - not the kernel, the
+            # registry or the services, which are a different tool and share this package.
+            # Scanning those reported `gate` and `Stack` from the stack machinery as one
+            # plugin's vocabulary.
+            here = Path(__file__).resolve().parent
+            files = sorted((here / "dev").rglob("*.py")) + [here / "cli.py"]
+            dp = Path(str(doc.get("_root") or a.root)) / "DEVPOINTS.yaml"
+            if dp.is_file():
+                files.append(dp)
+            vocab = [(nm, OF.upstream_vocabulary(sp)) for nm, sp in specs]
+            rows = OF.stage_corpus(doc, point, specs)
+            lits = OF.fitted_literals(files, vocab)
+            print(OF.format_report(rows, lits, point, [nm for nm, _ in specs], vocab))
+            if len(specs) < 2:
+                print(f"\n  CANNOT SAY: this point holds {len(specs)}. Generality is a fact "
+                      f"about a family.", file=sys.stderr)
+                return CANNOT_RUN
+            return FAILED if (lits or any(OF.verdict(r) for r in rows)) else OK
         if a.action == "freshness":
             # A DECLARED VERSION IS A CLAIM ABOUT CODE AND NOTHING CHECKED IT. Where the field is
             # a reuse key, a plugin that changes what it draws and leaves the field alone makes
@@ -1061,10 +1121,12 @@ def build_parser():
     jc.set_defaults(fn=cmd_dev)
 
     q = rooted(ds.add_parser("convert"))
-    q.add_argument("action", nargs="?", default="status",
-                   choices=["status", "freshness", "borrowed", "inventory", "account",
-                            "measure", "promised", "defaults", "references", "contract", "legends",
-                            "placement", "build"])
+    # ONE REGISTRATION SITE. The choices are `convert.ACTIONS`, which is also what decides
+    # whether a stage can be advanced by a command - see the note on it. Two hand-kept copies of
+    # this list is how `placement` came to be a mechanical stage the maker described as
+    # "nothing runs this - it is what only you can answer".
+    from .dev.convert import ACTIONS as _CONVERT_ACTIONS
+    q.add_argument("action", nargs="?", default="status", choices=list(_CONVERT_ACTIONS))
     q.add_argument("--point", default=None)
     q.add_argument("--name", default=None,
                    help="the plugin being converted. REQUIRED for the actions that fill a "
@@ -1075,6 +1137,12 @@ def build_parser():
     q.add_argument("--python", default=None, help="the interpreter the plugin's own env uses")
     q.add_argument("--rscript", default=None)
     q.add_argument("--run", default=None, help="a completed run, for `measure`")
+    q.set_defaults(fn=cmd_dev)
+    q = rooted(ds.add_parser("rules"))
+    q.add_argument("--point", default=None)
+    q.add_argument("--since", default=None,
+                   help="the commit the round started at. Without it the two history rules "
+                        "report `cannot say` rather than passing on silence")
     q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("baseline")); q.add_argument("action", choices=["record", "check"])
     q.add_argument("rundir"); q.add_argument("--path", required=True); q.set_defaults(fn=cmd_dev)

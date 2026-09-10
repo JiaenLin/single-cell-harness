@@ -245,8 +245,11 @@ def embedded_r(source):
 class Wrapper:
     """One discovered draw wrapper: what it is called, what it takes, where its legend goes."""
 
-    def __init__(self, name, params, legend, line, lang, how, body=""):
+    def __init__(self, name, params, legend, line, lang, how, body="", span=None):
         self.name = name
+        #: (start, end) offsets of the body inside the script it was found in, or None. A call
+        #: to a wrapper INSIDE another wrapper's body is delegation and not a panel.
+        self.span = span
         #: [(name, default-as-written or None)] in declaration order.
         self.params = list(params)
         #: The parameter a legend is passed as, or None when the wrapper offers no findable slot.
@@ -353,7 +356,63 @@ def r_wrappers(rtext):
         if why:
             how += ", but " + why
         out.append(Wrapper(name, params, legend, rtext[:mo.start()].count("\n") + 1, "R", how,
-                           body))
+                           body, span=(brace, end + 1)))
+    return out + _delegating(rtext, masked, out)
+
+
+def _delegating(rtext, masked, direct):
+    """[Wrapper] for functions that produce a panel by HANDING IT TO one of `direct`.
+
+    A DRAW WRAPPER IS RECOGNISED BY WHAT IT DOES, and two wrappers that differ in one line are
+    normally written as one body plus two thin faces over it - which is exactly what a plugin gets
+    when the mechanism is generated rather than typed twice. `npng` and `ndev` differ only in
+    whether the expression is printed or forced; factored, neither of them opens a device any more
+    and the rule above stopped seeing either. Every call site in the plugin then read as a call to
+    an unknown function, and the panel each one draws became invisible to the legends stage.
+
+    SO THE RULE FOLLOWS ONE HOP AND NOT A GRAPH. A function that does not open a device itself,
+    but whose body calls one that does, produces a panel. Two hops would start finding the callers
+    of the wrapper - the draw SITES - and report them as wrappers of their own.
+
+    IT ADDS AND NEVER REMOVES: a plugin whose wrappers open their own devices is read exactly as
+    before, which is what made this safe to add to a family already measured.
+    """
+    if not direct:
+        return []
+    known = {w.name for w in direct}
+    dev = r"(?<![\w.])(?:[\w.]+:::?)?(?:" + "|".join(re.escape(d) for d in R_DEVICES) + r")\s*\("
+    out = []
+    for mo in re.finditer(r"(?m)^[ \t]*([.\w]+)\s*<-\s*function\s*\(", masked):
+        name = mo.group(1)
+        if name in known:
+            continue
+        op = masked.index("(", mo.end() - 1)
+        cl = _closing(masked, op)
+        if cl < 0:
+            continue
+        brace = masked.find("{", cl)
+        if brace < 0:
+            continue
+        end = _closing(masked, brace, "{}")
+        if end < 0:
+            continue
+        body_m, body = masked[brace:end + 1], rtext[brace:end + 1]
+        if re.search(dev, body_m):
+            continue                                    # it opens its own device: already found
+        hit = next((k for k in sorted(known)
+                    if re.search(r"(?<![\w.])" + re.escape(k) + r"\s*\(", body_m)), "")
+        if not hit:
+            continue
+        params = _params(rtext[op + 1:cl])
+        used = {n for n, _d in params if re.search(r"(?<![\w.])" + re.escape(n) + r"(?![\w.])",
+                                                   body_m)}
+        legend, why = _legend_param(params, used)
+        how = (f"defined in this plugin's embedded R and draws by handing the expression to "
+               f"`{hit}`, which opens the device")
+        if why:
+            how += ", but " + why
+        out.append(Wrapper(name, params, legend, rtext[:mo.start()].count("\n") + 1, "R", how,
+                           body, span=(brace, end + 1)))
     return out
 
 
@@ -577,6 +636,11 @@ def _r_sites(rtext, base_line, where, wrappers):
             continue
         seen.add(w.name)
         unique.append(w)
+    # A WRAPPER CALLING A WRAPPER IS DELEGATION, NOT A PANEL. Two wrappers that differ in one
+    # line are normally one body with two thin faces over it, and the face's call to the body
+    # would otherwise be counted as a draw site of its own - a panel whose name is a variable,
+    # in a plugin that draws nothing there.
+    bodies = [w.span for w in wrappers if w.span]
     for w in unique:
         rx = re.compile(r"(?<![\w.$@])" + re.escape(w.name) + r"\s*\(")
         # NO GUARD AGAINST "THE DEFINITION, NOT A USE" IS NEEDED, AND THE ONE THAT WAS HERE COST
@@ -587,6 +651,8 @@ def _r_sites(rtext, base_line, where, wrappers):
         # written with R's other assignment operator - `keep = draw(...)` - was found. Pure false
         # negative: removing it left this corpus's counts unchanged and found the assigned case.
         for mo in rx.finditer(masked):
+            if any(a <= mo.start() < b for a, b in bodies):
+                continue
             op = mo.end() - 1
             cl = _closing(masked, op)
             if cl < 0:
@@ -1091,7 +1157,9 @@ def ceiling_guards(source, token, returns="return", also=()):
     """
     out = []
     for rtext, base in list(embedded_r(source)) + [(t, 0) for t, _n in (also or ())]:
-        for w in r_wrappers(rtext):
+        ws = r_wrappers(rtext)
+        own = {}
+        for w in ws:
             body = _mask(w.body or "")
             guarded = False
             for line in body.splitlines():
@@ -1103,7 +1171,24 @@ def ceiling_guards(source, token, returns="return", also=()):
                 if returns in s:
                     guarded = True
                     break
-            out.append({"wrapper": w.name, "line": base + w.line, "guarded": guarded})
+            own[w.name] = guarded
+        for w in ws:
+            guarded, via = own[w.name], ""
+            # A WRAPPER THAT DELEGATES IS GUARDED BY WHAT IT DELEGATES TO, and demanding
+            # otherwise would demand the guard be written twice - which is the defect this whole
+            # stage exists to catch, asked for by the check itself. `npng` and `ndev` differ in
+            # one line; factored onto one guarded body, each of them refuses exactly when it
+            # does. ONE HOP, matching the wrapper rule next door.
+            if not guarded:
+                body = _mask(w.body or "")
+                for other, ok in own.items():
+                    if other == w.name or not ok:
+                        continue
+                    if re.search(r"(?<![\w.])" + re.escape(other) + r"\s*\(", body):
+                        guarded, via = True, other
+                        break
+            out.append({"wrapper": w.name, "line": base + w.line, "guarded": guarded,
+                        "via": via})
     return out
 
 
@@ -1113,5 +1198,8 @@ def guard_report(rows, token):
         return ("no draw wrapper was found in this plugin's embedded scripts, so nothing was "
                 "read for a ceiling guard")
     n = sum(1 for r in rows if r["guarded"])
+    via = sorted({r["via"] for r in rows if r.get("via")})
     return (f"{n} of {len(rows)} draw wrapper(s) refuse past the declared ceiling, by a "
-            f"conditional naming {token!r} that returns")
+            f"conditional naming {token!r} that returns"
+            + (f" ({len([r for r in rows if r.get('via')])} of them through "
+               + ", ".join(f"`{v}`" for v in via) + ")" if via else ""))

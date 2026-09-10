@@ -27,6 +27,9 @@ from __future__ import annotations
 
 import ast
 import re
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 from . import points as pts
@@ -336,11 +339,14 @@ def status(spec, doc, point_name, name="", source=None):
         # reported build 7 of 7 complete - a debt reported and gated on by nothing, which is the
         # defect `finished_by` exists to prevent, one level up from where it was found before.
         owes_place = False
+        places = {}
         if st.get(PLACES_KEY):
-            _pd = placement_debt(spec, st, source_text=_source_of(doc, point_name, name),
-                                 also_r=_r_beside(doc, point_name, name))
-            owes_place = bool(_pd["unplaced"] or _pd["unbounded"] or _pd["wrong"]
-                              or _pd["unaxised"] or _pd.get("unguarded"))
+            places = placement_debt(spec, st, source_text=_source_of(doc, point_name, name),
+                                    also_r=_r_beside(doc, point_name, name),
+                                    generated=generated_drift(st, doc, point_name, name))
+            owes_place = bool(places["unplaced"] or places["unbounded"] or places["wrong"]
+                              or places["unaxised"] or places.get("unguarded")
+                              or places.get("ungenerated"))
         out.append({"stage": st["name"],
                     "partial": partial,
                     "kind": st.get("kind", "mechanical"),
@@ -358,6 +364,12 @@ def status(spec, doc, point_name, name="", source=None):
                     "finished_by": finished_by,
                     "fills": list(st["fills"]),
                     "draws": draws,
+                    # THE DEBT ITSELF, NOT ONLY WHETHER THERE IS ONE. `owes_place` is the gate;
+                    # this is what the gate read, and `sch dev convert overfit` needs it to tell
+                    # a stage that PASSED from one that had nothing to look at. The ceiling-guard
+                    # half of this stage can only look at a plugin that draws in a second
+                    # language, and in the family it was written for that is one plugin of nine.
+                    "places": places,
                     "done": not missing and not partial and not owes_draws and not owes_place,
                     "missing": missing,
                     "why": st.get("why", "")})
@@ -1125,7 +1137,83 @@ def _families(spec, rules):
     return uniq
 
 
-def placement_debt(spec, st, source_text="", also_r=()):
+def generated_drift(st, doc, point_name, name, python=""):
+    """[{file, verdict, note}] - does each generated companion still match what generates it?
+
+    DEMANDED, CHECKED, AND GENERATED ARE THREE DIFFERENT CLAIMS. A stage can require that a
+    plugin's drawing code refuses past its declared ceilings; it can find the code that does; and
+    neither of those says the code is the maker's OUTPUT rather than a hand-written file that
+    satisfies the check. The difference matters because the whole reason to generate mechanism is
+    that one definition serves every plugin - and a hand-written look-alike is one definition
+    again the moment somebody edits it.
+
+    So this RUNS the generator into a scratch directory and compares, byte for byte.
+
+    THE GENERATOR RUNS IN THE HOST'S INTERPRETER, not the plugin's. It is the repository's own
+    tool and it is the same tool whatever the plugin is written in; `{python}` here is this
+    process, and a plugin's pinned environment - which may not have the host installed at all -
+    is the wrong place to ask for it.
+
+    An absent declaration is an absent question: a repository that generates nothing gets no rows
+    and no verdict, exactly as it did before this existed.
+    """
+    cfg = st.get("generated_by") or {}
+    argv = cfg.get("command")
+    if not argv or not name:
+        return []
+    target = artefact(doc, point_name, name)
+    if target is None:
+        return [{"file": "", "verdict": "cannot say",
+                 "note": f"no {point_name} named {name!r} to compare against"}]
+    root = str(doc.get("_root") or ".")
+    with tempfile.TemporaryDirectory(prefix="sch-generated-") as tmp:
+        cmd = fill(list(argv), {"python": sys.executable, "name": name, "root": root, "out": tmp})
+        try:
+            r = subprocess.run(cmd, cwd=root, capture_output=True, text=True, timeout=300)
+        except (OSError, subprocess.SubprocessError) as e:                # noqa: BLE001
+            return [{"file": "", "verdict": "cannot say",
+                     "note": f"{' '.join(cmd)} could not run: {e}"}]
+        if r.returncode != 0:
+            return [{"file": "", "verdict": "cannot say",
+                     "note": f"{' '.join(cmd)} exited {r.returncode}: "
+                             f"{(r.stderr or r.stdout).strip().splitlines()[-1:] or ['']}"[2:-2]}]
+        made = sorted(p for p in Path(tmp).rglob("*") if p.is_file())
+        if not made:
+            return [{"file": "", "verdict": "none",
+                     "note": f"{' '.join(cmd)} wrote nothing, so this {point_name} has no "
+                             f"generated companion to drift from"}]
+        out = []
+        for g in made:
+            beside = Path(target).parent / g.name
+            if not beside.is_file():
+                out.append({"file": g.name, "verdict": "MISSING",
+                            "note": f"the generator writes {g.name} and it is not beside this "
+                                    f"{point_name}"})
+            elif beside.read_bytes() != g.read_bytes():
+                out.append({"file": g.name, "verdict": "DRIFTED",
+                            "note": f"{g.name} beside this {point_name} is not what the "
+                                    f"generator writes - it has been edited in place, so the "
+                                    f"next regeneration silently reverts it"})
+            else:
+                out.append({"file": g.name, "verdict": "generated", "note": ""})
+        return out
+
+
+def generated_report(rows):
+    """A sentence for `generated_drift`, including when there was nothing to ask about."""
+    if not rows:
+        return ""
+    bad = [r for r in rows if r["verdict"] in ("MISSING", "DRIFTED")]
+    mute = [r for r in rows if r["verdict"] in ("cannot say", "none")]
+    if mute:
+        return "; ".join(r["note"] for r in mute)
+    if not bad:
+        return (f"{len(rows)} generated companion(s) match what generates them, byte for byte: "
+                + ", ".join(r["file"] for r in rows))
+    return "; ".join(f"{r['verdict']} {r['file']}: {r['note']}" for r in bad)
+
+
+def placement_debt(spec, st, source_text="", also_r=(), generated=()):
     """What a plugin still owes on WHERE its figures go, HOW MANY of each, and whether the code
     that draws them reads the ceiling."""
     rules = st.get(PLACES_KEY) or []
@@ -1186,25 +1274,75 @@ def placement_debt(spec, st, source_text="", also_r=()):
             # reporting one would be a demand nobody could act on.
             "unguarded": ([g for g in guards if not g["guarded"]]
                           if any(v for _s, _f, _p, _b, v in fams) else []),
-            "guard_says": guard_says}
+            # EVERY WRAPPER THE CHECK FOUND, not only the ones that failed. An empty list here
+            # and an empty `unguarded` mean opposite things - nothing to look at, and nothing
+            # wrong - and only the first of them is a corpus of zero.
+            "guards": guards,
+            "enforces": bool(enf.get("token")),
+            "guard_says": guard_says,
+            # AND WHETHER THE CODE THAT HONOURS THE CEILING IS THE MAKER'S OUTPUT. Computed at
+            # the call site because it RUNS a command, and `placement_debt` is called from a
+            # status that must stay cheap enough to run on every edit.
+            "generated": list(generated),
+            "ungenerated": [g for g in generated if g["verdict"] in ("MISSING", "DRIFTED")],
+            "generated_says": generated_report(generated)}
+
+
+def _companions(path, suffix):
+    """Files carrying `suffix` that belong to THIS artefact, by name. Never a shared sibling.
+
+    A COMPANION IS NAMED FOR ITS PLUGIN OR IT IS SOMEBODY ELSE'S. Two shapes count, and only
+    two: a file inside a directory named for the artefact (`kernels/cellchat/draw.R`), and a
+    sibling whose name is the artefact's own stem and then a separator
+    (`kernels/cellchat.draw.R`, or `kernels/cellchat.R`).
+
+    THE SEPARATOR IS LOAD-BEARING. Written as a bare prefix this borrowed one stem further along
+    the alphabet: `alphabet.draw.R` answered for `alpha`, because `alpha` is a prefix of
+    `alphabet`. The suite caught it on the first run of the rule it was written for.
+
+    THE FIRST VERSION GLOBBED THE WHOLE DIRECTORY and it is the borrowing defect this repository
+    already keeps a test for, one point over. Nine one-file plugins live in one `kernels/`, so a
+    single `kernels/draw.R` written by whichever of them was scaffolded first would have answered
+    the ceiling-guard requirement for ALL NINE - including the eight that never read it. The
+    check would then be green for a plugin that is unbounded, and go red the day that plugin was
+    deployed alone, which is exactly when nobody is looking at this stage any more.
+    """
+    out = []
+    for f in companion_paths(path, suffix):
+        try:
+            out.append((f.read_text(encoding="utf-8", errors="replace"), f.name))
+        except OSError:
+            continue
+    return out
+
+
+def companion_paths(path, suffix=""):
+    """[Path] for the files that belong to THIS artefact by name. Reads no content.
+
+    Separate from `_companions` because the RULE checker needs the names and not the text: a
+    generated companion of the artefact a round is converting is in that round's scope by the
+    same definition the artefact is, and reading every one of them to find that out would make
+    a path question depend on a file being readable.
+    """
+    p = Path(path)
+    stem = p.stem
+    beside = sorted(set(p.parent.glob(f"{stem}.*{suffix}")) | set(p.parent.glob(f"{stem}{suffix}")))
+    return sorted(p.parent.glob(f"{stem}/*" + suffix)) + [f for f in beside if f != p]
 
 
 def _r_beside(doc, point_name, name):
     """[(text, filename)] for R kept in a file next to the plugin rather than inside it.
 
-    The scaffolded form is one `draw.R` prepended to every embedded script, so the wrapper is
+    The scaffolded form is one draw wrapper prepended to every embedded script, so the wrapper is
     defined once. A check that read only the Python would not see it.
     """
     path = artefact(doc, point_name, name) if name else None
     if path is None:
         return []
-    out = []
     try:
-        for f in sorted(Path(path).parent.glob("*.R")):
-            out.append((f.read_text(encoding="utf-8", errors="replace"), f.name))
+        return _companions(path, ".R")
     except OSError:
         return []
-    return out
 
 
 def _source_of(doc, point_name, name):
@@ -1228,7 +1366,8 @@ def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
             f"stage {stage_name!r} declares no `{PLACES_KEY}:`, so this repository has not said "
             f"which declarations name a figure family. This worksheet is for a stage that has.")
     d = placement_debt(spec, st, source_text=_source_of(doc, point_name, name),
-                       also_r=_r_beside(doc, point_name, name))
+                       also_r=_r_beside(doc, point_name, name),
+                       generated=generated_drift(st, doc, point_name, name))
     fams = d["families"]
     L = [f"{stage_name}: {len(fams)} figure family(ies) declared by {name or 'this plugin'}. "
          f"{len(fams) - len(d['unplaced'])} placed, {len(d['unplaced'])} not; "
@@ -1248,6 +1387,10 @@ def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
         "files or nothing can be multiplied by it.",
         width=width, initial_indent="  ", subsequent_indent="  ")
     L.append("")
+    if d.get("generated_says"):
+        L += textwrap.wrap(f"generated: {d['generated_says']}", width=width,
+                           initial_indent="  ", subsequent_indent="    ")
+        L.append("")
     if d.get("guard_says"):
         L += textwrap.wrap(f"ceiling guards: {d['guard_says']}", width=width,
                            initial_indent="  ", subsequent_indent="    ")
@@ -1261,10 +1404,23 @@ def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
         L.append(f"                if (<the family is full>) return(invisible(NULL))")
         L.append("            A declaration the drawing code does not read is a comment.")
         L.append("")
+    if d.get("ungenerated"):
+        for g in d["ungenerated"]:
+            L.append(f"  GENERATE  {g['file']}")
+            L.append(f"            {g['note']}")
+            L.append(f"            Regenerate it - the stage declares the command under "
+                     f"`generated_by` - and put the change in the GENERATOR.")
+            L.append("")
+    # EVERY DEBT OF THIS STAGE, NOT THE THREE IT STARTED WITH. The closing sentence read
+    # "Every declared figure family is placed, says what it multiplies over, and is bounded"
+    # while the generated companion sat DELETED four lines above it, because the condition had
+    # not grown with the stage. A summary that is true of part of a check reads as a pass.
     if not (d["unplaced"] or d["unbounded"] or d["wrong"] or d["unaxised"]
-            or d.get("unguarded")):
+            or d.get("unguarded") or d.get("ungenerated")):
         L.append("  Every declared figure family is placed, says what it multiplies over, and "
                  "is bounded.")
+        return "\n".join(L)
+    if not (d["unplaced"] or d["unbounded"] or d["wrong"] or d["unaxised"]):
         return "\n".join(L)
     for stem, field in d["unplaced"]:
         L.append(f"  PLACE     {stem}")
@@ -1452,8 +1608,19 @@ def draw_worksheet(doc, point_name, stage_name, name, source=None, width=96, inv
     return "\n".join(L)
 
 
-#: The convert actions that advance a stage of the same name. `judgement` has none and never will.
-ADVANCES = ("contract", "defaults", "references", "inventory", "legends", "measure")
+#: EVERY ACTION `sch dev convert` HAS, IN ONE PLACE. `sch/cli.py` builds the parser's `choices`
+#: from this, and `advance_command` below decides from it whether a stage can be advanced by a
+#: command: a stage advances by the action of the same name, when this tool has one.
+#:
+#: IT WAS TWO LISTS AND THAT IS THE DEFECT THIS FILE ALREADY RECORDS ONE LEVEL UP. `sch/cli.py`
+#: names its `specs` set BY EXCLUSION because an inclusive one was "a second place to register an
+#: action and `legends` was added to the parser and not to it". The very next list in the same
+#: file was inclusive, hand-maintained and named `ADVANCES` - and `placement` and `promised` were
+#: added to the parser, to DEVPOINTS and not to it. Both then reported "nothing runs this - it is
+#: what only you can answer" about a MECHANICAL stage whose `finished_by` names the exact command
+#: to type. Found by generating a plugin from nothing and reading what the maker said to do next.
+ACTIONS = ("status", "freshness", "borrowed", "inventory", "account", "measure", "promised",
+           "defaults", "references", "contract", "legends", "placement", "overfit", "build")
 
 
 def advance_command(row, doc, point_name, root, name, python="", run=""):
@@ -1469,7 +1636,7 @@ def advance_command(row, doc, point_name, root, name, python="", run=""):
     if declared:
         return " ".join(fill(declared, {"python": python or "python3", "run": run or "<RUNDIR>",
                                         "root": root, "name": name}))
-    if stage in ADVANCES:
+    if stage in ACTIONS:
         # `inventory` IS SEEN WITH ONE ACTION AND DECIDED WITH ANOTHER. `inventory` lists what the
         # tool exports; `account` turns that into the worksheet with the evidence attached, which
         # is the one somebody actually works from.

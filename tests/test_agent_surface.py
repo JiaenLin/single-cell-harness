@@ -165,15 +165,30 @@ if __name__ == "__main__":
 
 
 def _path_exists(parser, toks):
-    """Does this sequence of words name a real subcommand path?"""
+    """Does this sequence of words name a real command path?
+
+    A POSITIONAL WITH `choices` IS PART OF THE PATH TOO, and reading only subparsers meant this
+    check could not express half of this tool's own surface. `sch dev convert legends`,
+    `sch dev convert placement` and every other conversion stage are a subcommand and then a
+    positional argument, so each of them was silently unverifiable: the walk ran out of
+    subparsers at `convert` and returned False for anything after it - which reads as "that
+    command does not exist" for the commands that do, and left the ones that do NOT exist
+    unchecked in exactly the same way.
+    """
     import argparse as _a
-    for t in toks:
+    for i, t in enumerate(toks):
         subs = [x for x in parser._actions if isinstance(x, _a._SubParsersAction)]
-        if not subs:
-            return False
-        if t not in subs[0].choices:
-            return False
-        parser = subs[0].choices[t]
+        if subs and t in subs[0].choices:
+            parser = subs[0].choices[t]
+            continue
+        # The remaining words must be values this parser accepts positionally, in order.
+        rest = list(toks[i:])
+        for act in parser._actions:
+            if act.option_strings or not act.choices:
+                continue
+            if rest and rest[0] in act.choices:
+                rest.pop(0)
+        return not rest
     return True
 
 

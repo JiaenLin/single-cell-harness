@@ -1121,7 +1121,7 @@ class RulingOnEveryEntry(unittest.TestCase):
             C.items_worksheet({}, self.doc, "widget", "contract")
 
     def test_the_stage_advances_like_any_other(self):
-        self.assertIn("legends", C.ADVANCES)
+        self.assertIn("legends", C.ACTIONS)
         row = self._row({})
         cmd = C.advance_command(row, self.doc, "widget", ".", "w")
         self.assertIn("convert legends", cmd)
