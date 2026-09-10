@@ -188,10 +188,20 @@ def build(seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520,
     lam = np.outer(lib, gene_mu)
     # A population signature, so the embedding is not noise and a clustering step has something
     # to find. Its magnitude is arbitrary and means nothing.
+    # CLIPPED TO THE OBJECT THAT EXISTS. Twenty markers per type needs 20 x len(TYPES) genes, and
+    # `n_genes` is a documented parameter: `build(n_genes=60)` indexed column 60 of a 60-column
+    # array and raised. Six tests of this module's own suite call it that way and had errored
+    # since the commit that wrote this line - invisibly, because they SKIP on a workstation with
+    # no anndata and only run where the full ladder runs, which is a machine nobody was reading.
+    #
+    # THE WIDTH IS NOT DERIVED FROM `n_genes`, deliberately. Making the block scale would change
+    # the default object and every baseline recorded against it; clipping changes nothing at the
+    # default, where 120 markers fit inside 520 genes with room to spare.
     for k, t in enumerate(TYPES):
         idx = np.flatnonzero(ctype == t)
-        if len(idx):
-            lam[np.ix_(idx, np.arange(k * 20, k * 20 + 20))] *= 3.5
+        lo, hi = k * 20, min(k * 20 + 20, n_genes)
+        if len(idx) and lo < hi:
+            lam[np.ix_(idx, np.arange(lo, hi))] *= 3.5
     X = rng.poisson(lam).astype("float32")
 
     genes = REAL_GENES + [f"GENE{i:04d}" for i in range(n_genes - len(REAL_GENES))]
