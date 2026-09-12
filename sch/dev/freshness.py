@@ -50,7 +50,7 @@ from . import convert as CV
 from . import points as pts
 
 #: Where the point names the field, inside its own `convert:` block. THE HARNESS'S KEY, NOT A
-#: REPOSITORY'S FIELD - the same arrangement as `outstanding_if` and `each_draw_site_describes`.
+#: REPOSITORY'S FIELD - the same arrangement as `outstanding_if` and `entry_keys`.
 KEY = "version_field"
 #: Optional prose the repository writes about what that field is FOR. Printed in the advice,
 #: because "bump it" without "and here is what silently reuses it" is a chore and not a reason.

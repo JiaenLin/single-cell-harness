@@ -189,8 +189,7 @@ class Migrate(unittest.TestCase):
         self.d = _repo(LEGACY)
         self.doc = P.load(self.d)
         self.spec = _spec(self.d)
-        self.text = CV.migrate_worksheet(self.spec, self.doc, "seam", "alpha",
-                                         source=(self.d / "seams" / "alpha.py").read_text())
+        self.text = CV.migrate_worksheet(self.spec, self.doc, "seam", "alpha")
         body = self.text.split("\n", 2)[2]          # drop the two comment lines
         self.plan = ast.literal_eval("{" + body + "}")
         self.by_id = {e["id"]: e for e in self.plan["figures"]}
@@ -212,28 +211,6 @@ class Migrate(unittest.TestCase):
         self.assertEqual(self.by_id["nativecmp_chord"]["axis"], "contrast")
         self.assertEqual(self.by_id["nativecmp_chord"]["position"], "contrast")
 
-    def test_the_call_is_read_from_the_site(self):
-        self.assertEqual(self.by_id["native_heat_count"]["args"],
-                         'cc, measure = "count", color = "Blues"')
-        self.assertEqual(self.by_id["native_heat_weight"]["args"], 'cc, measure = "weight"')
-
-    def test_a_literal_legend_is_the_template_and_a_paste0_of_names_becomes_one(self):
-        self.assertEqual(self.by_id["native_heat_count"]["legend"],
-                         "Counts between every ordered pair of populations.")
-        # `paste0("Weights for ", n, " populations.")` is a template with one fact the method
-        # must record; a legend built with a CALL inside would stay a decision for a person.
-        self.assertEqual(self.by_id["native_heat_weight"]["legend"], "Weights for {n} populations.")
-        self.assertNotIn("facts", self.by_id["native_heat_weight"])
-
-    def test_a_per_item_site_names_its_items_vector_and_keeps_its_ceiling(self):
-        e = self.by_id["nativecmp_chord"]
-        self.assertEqual(e["items"], "shared")
-        self.assertEqual(e["file"], 'paste0("chord__", p)',
-                         "the file stem is the site's own expression, kept verbatim")
-        self.assertEqual(e["at_most"], 6)
-        self.assertEqual(e["args"], "merged, signaling = p")
-        self.assertTrue(e["legend"].startswith("TODO"))
-
     def test_the_existing_entry_is_carried_with_its_axis_and_position_made_explicit(self):
         e = self.by_id["F1_coverage"]
         self.assertEqual(e["drawn_by"], "plugin")
@@ -247,8 +224,6 @@ class Migrate(unittest.TestCase):
 
     def test_the_worksheet_counts_what_a_person_still_owes(self):
         head = self.text.splitlines()[0]
-        self.assertIn("11 draw site(s) read", head)
-        self.assertIn("4 named by no legacy field", head)
         self.assertIn("left for a person", head)
         self.assertGreaterEqual(self.text.count("TODO"), 3)
 
@@ -259,17 +234,10 @@ class Migrate(unittest.TestCase):
         self.assertIn("native_ring_weight", self.by_id)
         e = self.by_id["native_ring_weight"]
         self.assertEqual(e["fn"], "quarry_ring")
-        self.assertEqual(e["args"], 'cc, measure = "weight"')
-        self.assertEqual(e["legend"], "Rings by weight.")
-
-    def test_a_device_size_that_is_an_expression_is_carried_as_one(self):
-        # `w = .bw`, `w = max(1500, 340 * length(objs))`: a width computed by the method. Read
-        # as "an integer or nothing", three of one plugin's sites lost their width and the
-        # generated site would have drawn them at the script's default - a change to a figure
-        # nobody asked for, invisible to every count.
-        e = self.by_id["native_ring_weight"]
-        self.assertEqual(e["w"], ".bw")
-        self.assertEqual(e["h"], 1200)
+        # the call and the legend are a person's to write: the draw-site half of the migration
+        # retired with the extractor (ADR-0016 step 5)
+        self.assertTrue(e["args"].startswith("TODO"), e["args"])
+        self.assertTrue(e["legend"].startswith("TODO"), e["legend"])
 
     def test_the_profile_flag_reaches_the_unit_family_and_not_the_contrast_one(self):
         # `profile: True` was the FUNCTION's flag in the older form and the reader applied it
@@ -278,61 +246,6 @@ class Migrate(unittest.TestCase):
         # them off the arm pages, and the reproduction delivered 13 plates fewer.
         self.assertTrue(self.by_id["native_role"].get("profile"))
         self.assertNotIn("profile", self.by_id["nativecmp_role_pair"])
-
-    def test_two_sites_sharing_a_literal_head_are_two_entries(self):
-        # `paste0("bars_", ms)` and `paste0("bars_", ms, "_per1k")` in one loop: two panels per
-        # item, one family by prefix. Read as one id, the second site was silently dropped and
-        # a plan generated from the worksheet would have stopped drawing it - the 47th of a
-        # plugin's sites, found by the one `npng(` left after the other 46 were replaced.
-        self.assertIn("nativecmp_bars", self.by_id)
-        self.assertIn("nativecmp_bars_per1k", self.by_id)
-        e = self.by_id["nativecmp_bars_per1k"]
-        self.assertEqual(e["file"], 'paste0("bars_", ms, "_per1k")')
-        # a literal INSIDE a call is not a piece of the name: `gsub("[^A-Za-z0-9]+", "_", nm)`
-        self.assertIn("nativecmp_solo", self.by_id)
-        self.assertEqual(self.by_id["nativecmp_solo"]["file"],
-                         'paste0("solo__", gsub("[^A-Za-z0-9]+", "_", nm))')
-        self.assertEqual(e["items"], 'c("count", "weight")')
-        self.assertEqual(e["legend"], "Bars per thousand cells.")
-
-    def test_a_call_to_the_plans_interpreter_is_not_a_hand_written_site(self):
-        # `.draw("<id>")` is where a site USED to stand. Read as a site of its own - the
-        # companion defines `.draw` and it delegates to the device path, which is exactly what
-        # a draw wrapper looks like - its argument became a panel name, the script's prefix
-        # was put in front of it a second time, and a rerun of the migration rewrote two
-        # already-migrated calls to ids that exist nowhere.
-        (self.d / "seams" / "alpha.draw.R").write_text(
-            'npng <- function(id, expr, legend = "") {\n'
-            '  png(paste0(id, ".png")); print(expr); dev.off()\n}\n'
-            ".draw <- function(id, item = NULL, env = parent.frame()) {\n"
-            "  npng(id, eval(.plan[[id]]$expr, env))\n}\n", encoding="utf-8")
-        found = CV._legacy_sites(P.load(self.d), "seam", "alpha",
-                                 (self.d / "seams" / "alpha.py").read_text())
-        self.assertIn("native_ring_count", found, "the companion's wrappers no longer reach the scan")
-        self.assertNotIn("native_native_already_on_the_plan", found)
-        self.assertNotIn("native_already_on_the_plan", found)
-
-    def test_a_brace_block_keeps_its_statement_boundaries(self):
-        # `{ f(x) g() }` on one line is not R. The block is carried with its lines, indented
-        # one space, so the generated site is the site that was read.
-        e = self.by_id["native_ring_count"]
-        self.assertNotIn("args", e)
-        self.assertEqual(e["expr"], '{\n quarry_ring(cc, measure = "count")\n stamp()\n }')
-
-    def test_a_site_no_legacy_field_names_is_printed_and_never_dropped(self):
-        # A draw site is a figure a run draws. One that no prose names is not a site to lose:
-        # after the migration the sites are generated from the plan, and an entry that is not
-        # there is a panel that stops existing - silently, because nothing counted it.
-        self.assertIn("nativecmp_orphan_log", self.by_id)
-        e = self.by_id["nativecmp_orphan_log"]
-        self.assertEqual(e["drawn_by"], "plugin", "the site's own `by =` is the provenance")
-        self.assertEqual(e["file"], 'paste0("orphan_log__", safe)')
-        self.assertEqual(e["fn"], "quarry_orphan")
-        self.assertTrue(e["args"].startswith("pos, title = paste0("), e["args"])
-        self.assertEqual(e["axis"], "contrast")
-        self.assertEqual(e["position"], "contrast")
-        self.assertEqual(e["legend"], "The same question on the log scale.")
-        self.assertTrue(str(e["at_most"]).startswith("TODO"), e["at_most"])
 
     def test_nothing_is_decided_that_was_not_read(self):
         # the count of TODOs is the count of decisions; every one names what it is for
@@ -519,35 +432,6 @@ class TheAccountingIsReadFromThePlan(unittest.TestCase):
         self.assertIn("report.figures", w)                  # where a USED function goes
         self.assertIn("'quarry_new'", w)
         self.assertIn("TODO", w)
-
-
-class TheCompanionsWrappersReachTheScan(unittest.TestCase):
-    """A plugin whose draw wrappers were generated into a file beside it defines none in its
-    embedded scripts. The scan must read the companion's, or the plugin draws nothing."""
-
-    def test_sites_are_found_through_the_companion(self):
-        text = LEGACY.replace(
-            'npng <- function(id, expr, legend = "") {\n  png(paste0(id, ".png")); print(expr); dev.off()\n}\n',
-            "")
-        # the embedded scripts must still be recognised as R: keep one function definition
-        text = text.replace('.figures(prefix = "native_", what = "native plot")',
-                            '.figures(prefix = "native_", what = "native plot")\n'
-                            '.ttl <- function(x) x')
-        d = _repo(text)
-        try:
-            (d / "seams" / "alpha.draw.R").write_text(
-                'npng <- function(id, expr, legend = "") {\n'
-                '  png(paste0(id, ".png")); print(expr); dev.off()\n}\n', encoding="utf-8")
-            doc = P.load(d)
-            src = (d / "seams" / "alpha.py").read_text()
-            found = CV._legacy_sites(doc, "seam", "alpha", src)
-            self.assertIn("native_heat_count", found)
-            inv = CV.measure_draw_sites(doc, "seam", "alpha", src)
-            self.assertTrue(inv.complete)
-            self.assertGreaterEqual(len(inv.names), 2,
-                                    "the companion's wrapper did not reach the site scan")
-        finally:
-            shutil.rmtree(d, ignore_errors=True)
 
 
 if __name__ == "__main__":

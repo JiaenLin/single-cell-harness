@@ -562,7 +562,7 @@ def cmd_dev(a):
         # ONE PLUGIN AT A TIME, AND THE SUITE ENFORCES IT RATHER THAN TRUSTING IT.
         #
         # THE ACTIONS THAT FILL A DECLARATION ARE HELD-OUT ACTIONS. `account`, `inventory`,
-        # `defaults`, `references`, `contract`, `legends` and `build` all put the wrapped tool's
+        # `defaults`, `references`, `contract` and `build` all put the wrapped tool's
         # own surface in front of whoever is converting. Run across a whole family at once they
         # show every answer before any of them has been decided - and any change made to THIS
         # TOOL afterwards is fitted to all of them at once, with nothing left over to test
@@ -591,8 +591,7 @@ def cmd_dev(a):
         # this repository's own git history, and shows nobody an upstream surface. It is also
         # the one action that is USELESS on a single plugin - the question "has anybody here
         # kept this field up to date" is answered by the family or not at all.
-        FILLS = ("inventory", "account", "defaults", "references", "contract", "legends",
-                 "build")
+        FILLS = ("inventory", "account", "defaults", "references", "contract", "build")
         specs = []
         if a.action not in ("measure",):
             specs = _convert_specs(doc, point, a.root, a.name)
@@ -710,14 +709,13 @@ def cmd_dev(a):
             # THE FIGURE PLAN, AS A TABLE A PERSON ADJUSTS - one row per family, what it lacks,
             # and with --python the upstream function's parameters beside each `fn`. With
             # --migrate, the paste-ready plan for a plugin still on prose and prefix maps, built
-            # from its legacy fields and its hand-written draw sites (ADR-0016).
+            # from its legacy fields (ADR-0016).
             bad = 0
             for nm, spec in specs:
                 print(f"\n{nm}")
                 try:
                     if getattr(a, "migrate", False):
-                        print(CV.migrate_worksheet(spec, doc, point, nm,
-                                                   source=CV._source_of(doc, point, nm)))
+                        print(CV.migrate_worksheet(spec, doc, point, nm))
                         continue
                     inv = None
                     if a.python or a.rscript:
@@ -732,47 +730,6 @@ def cmd_dev(a):
                 except CV.ConvertError as e:
                     bad += 1
                     print(f"{nm}: {e}", file=sys.stderr)
-            return FAILED if bad else OK
-        if a.action == "placement":
-            # WHERE A FIGURE GOES AND HOW MANY OF IT THERE ARE, both read from the declaration
-            # and neither answerable by the host. A run drew 1187 figures for one plugin; 50 of
-            # its 81 kinds are cited by no sentence and two families are drawn once per data
-            # item with no bound at all. The host cannot know which is which - it has no idea
-            # what a chord diagram per pathway is for - and a per-run judgement is not a
-            # property of the plugin. So the plugin says, once, here.
-            bad = 0
-            for nm, spec in specs:
-                print(f"\n{nm}")
-                try:
-                    print(CV.placement_worksheet(spec, doc, point, "placement", nm))
-                except CV.ConvertError as e:
-                    bad += 1
-                    print(f"{nm}: {e}", file=sys.stderr)
-            return FAILED if bad else OK
-        if a.action == "legends":
-            # TWO HALVES, AND A PLUGIN IS NOT FINISHED WHILE EITHER IS OWED. The declared half
-            # rules on every figure the plugin DECLARES - who drew it. The measured half reads the
-            # plugin's own source and asks where it PRODUCES a panel without describing one, which
-            # nothing in a declaration can answer because a draw site is not declared anywhere.
-            #
-            # NEITHER HALF IS REQUIRED. A point may declare one, the other, or both; a stage that
-            # declares neither is the error, and it is reported as one rather than printing an
-            # empty worksheet that reads as no work left.
-            bad = 0
-            for nm, spec in specs:
-                print(f"\n{nm}")
-                said, last = 0, "this stage declares neither half"
-                for fn in (lambda: CV.items_worksheet(spec, doc, point, "legends"),
-                           lambda: CV.draw_worksheet(doc, point, "legends", nm)):
-                    try:
-                        print(fn())
-                        print("")
-                        said += 1
-                    except CV.ConvertError as e:
-                        last = e
-                if not said:
-                    bad += 1
-                    print(f"{nm}: {last}", file=sys.stderr)
             return FAILED if bad else OK
         # GUARDED, because it was not. This block had no `if` on it and returned at the end, so
         # the `account` branch below was unreachable and `convert account` silently printed an
@@ -864,12 +821,11 @@ def cmd_dev(a):
                     if r["why"]:
                         print(f"       {r['why'].strip()}")
                     break
-                if r.get("partial") or r.get("draws", {}).get("looked") is not None:
-                    # A DEBT MEASURED FROM SOURCE STOPS THE BUILD TOO. `partial` is what the
-                    # plugin admits about itself; the draw-site half is what its source says
-                    # whether it admits it or not, and a driver that walked past it would run
-                    # every later stage and report a build that has 35 undescribed panels in it.
-                    said = r.get("partial") or CV.draw_summary(r.get("draws") or {})
+                if r.get("partial"):
+                    # A STARTED STAGE STOPS THE BUILD TOO: `partial` is what the plugin's own
+                    # entries say is still unruled, and a driver that walked past it would run
+                    # every later stage and report a build with unruled panels in it.
+                    said = r.get("partial")
                     if said:
                         print(f"\n  STOP at {r['stage']}: started, and the source says what is "
                               f"left.")
@@ -1180,7 +1136,7 @@ def build_parser():
     q.add_argument("--rscript", default=None)
     q.add_argument("--migrate", action="store_true",
                    help="with `plan`: print the paste-ready plan for a plugin still on the "
-                        "prose-and-prefix-map form, built from its legacy fields and draw sites")
+                        "prose-and-prefix-map form, built from its legacy fields")
     q.add_argument("--run", default=None,
                    help="a completed run. `status --run` runs every test-phase stage's command "
                         "against it and reads the exit code as the verdict; a command stage "

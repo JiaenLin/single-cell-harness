@@ -50,7 +50,6 @@ STAGE_REQUIRED = ("name", "fills")
 #: in the plugin where a panel is produced - which is a different kind of fact with a different
 #: failure mode. A declared list can be empty because the author has not written it; a measured
 #: one can be empty because nobody looked, and only the second needs `complete=False`.
-DRAWS_KEY = "each_draw_site_describes"
 
 #: A stage that rules on WHICH of a plugin's figures a result is written from, and on how many of
 #: each family it may draw. Both are properties of the declaration, so this is a build stage.
@@ -222,95 +221,6 @@ def artefact(doc, point_name, name):
     return target if target.is_file() else None
 
 
-def measure_draw_sites(doc, point_name, name, source=None):
-    """Where this plugin produces a panel, and whether each site offers a legend.
-
-    THE ANSWER IS THE EXTRACTOR'S, INCLUDING WHEN IT IS "I COULD NOT LOOK". Nothing here turns a
-    failure to read the plugin into an empty list of draw sites - which is what would let a stage
-    that cannot see the source report itself finished.
-
-    THE HOST'S EMIT PATH IS NOT NAMED HERE. `doc['tool']` is what the repository calls its own
-    package, in its own DEVPOINTS.yaml; the extractor measures the emit path out of that package.
-    A point may override it with `draws_through:` when the measurement cannot see it, and the
-    inventory's `how` says which of the two answered.
-    """
-    from .extract import Inventory, draw_sites as DS
-    if not name:
-        return Inventory("", [], "", complete=False,
-                         why_not="this status was asked without naming a plugin, so no source "
-                                 "was read and no draw site was looked at. Pass --name.")
-    path = artefact(doc, point_name, name)
-    if source is None:
-        if path is None:
-            return Inventory(name, [], "", complete=False,
-                             why_not=f"no artefact for {name!r} under the directory this point "
-                                     f"declares, so its draw sites could not be read.")
-        try:
-            source = path.read_text(encoding="utf-8")
-        except OSError as e:
-            return Inventory(name, [], "", complete=False,
-                             why_not=f"{path}: {type(e).__name__}: {e}")
-    root = Path(str(doc.get("_root") or "."))
-    declared = []
-    try:
-        conv = pts.point(doc, point_name).get(KEY) or {}
-        declared = list(conv.get("draws_through") or [])
-    except Exception:                                                     # noqa: BLE001
-        pass
-    emits = DS.host_emits(root, doc.get("tool") or "", declared)
-    where = str(path.relative_to(root)) if path else f"{name}.py"
-    return DS.draw_sites(name, source, where, emits, also=_r_beside(doc, point_name, name))
-
-
-def draw_debt(inv):
-    """What one plugin's draw sites owe. `{looked, why_not, total, silent, unknown, described}`.
-
-    THREE ANSWERS AND NOT TWO. A site is DESCRIBED, SILENT, or UNKNOWN - the last being a site
-    whose wrapper has no discoverable legend slot, which is a fact about the wrapper and not a
-    debt of the call. Folding unknown into silent would invent 47 gaps out of a wrapper that
-    requires its legend and therefore has none.
-
-    AND `broken`, WHICH IS NOT ONE OF THE THREE. A described site can still hold a legend the
-    language will not run, and it counts as described everywhere above here - correctly, because
-    the sentence IS there. Measured: one legend carrying `paste0(..., name_a,, ...)` at a site
-    only the compare phase reaches. R parses it, the plugin imports, the environment installs,
-    the selftest passes, eighteen units draw all their panels, and then every arm-pair comparison
-    dies and six declared plots are never drawn. It is a separate key because it is a separate
-    question: not "was this panel described" but "will this file run".
-    """
-    from .extract import draw_sites as DS
-    if inv is None:
-        return {"looked": False, "why_not": "nobody looked", "total": 0,
-                "silent": [], "unknown": [], "described": 0, "how": "", "broken": [],
-                "broken_read": ""}
-    if not getattr(inv, "complete", False):
-        return {"looked": False, "why_not": getattr(inv, "why_not", ""), "total": 0,
-                "silent": [], "unknown": [], "described": 0, "how": "", "broken": [],
-                "broken_read": ""}
-    sites = DS.sites_of(inv)
-    sil, unk = DS.silent(inv), DS.unknown(inv)
-    return {"looked": True, "why_not": "", "total": len(sites), "silent": sil, "unknown": unk,
-            "described": len(sites) - len(sil) - len(unk), "how": getattr(inv, "how", ""),
-            "broken": list(getattr(inv, "defects", [])),
-            "broken_read": getattr(inv, "defects_read", "")}
-
-
-def draw_summary(debt):
-    """The one sentence a status line carries, or "" when there is nothing outstanding."""
-    if not debt.get("looked"):
-        return (f"the draw sites of this plugin were NOT looked at, so whether its panels go out "
-                f"described is unknown: {debt.get('why_not', '')}")
-    parts = []
-    if debt.get("broken"):
-        parts.append(f"{len(debt['broken'])} call(s) the language will not run - "
-                     + ", ".join(f"line {n}" for n, _ in debt["broken"][:3]))
-    if debt["silent"]:
-        parts.append(f"{len(debt['silent'])} of {debt['total']} draw sites write no legend")
-    if debt["unknown"]:
-        parts.append(f"{len(debt['unknown'])} draw at a wrapper with no legend parameter to pass")
-    return "; ".join(parts)
-
-
 def status(spec, doc, point_name, name="", source=None, python="", run=""):
     """[{stage, kind, done, missing, why}] in declared order. The whole resume mechanism.
 
@@ -326,9 +236,6 @@ def status(spec, doc, point_name, name="", source=None, python="", run=""):
     """
     placeholder, _up, stages = plan(doc, point_name)
     out = []
-    drawn_inv = None
-    if any(st.get(DRAWS_KEY) for st in stages):
-        drawn_inv = measure_draw_sites(doc, point_name, name, source)
     for st in stages:
         missing = unfilled(spec, list(st["fills"]), placeholder)
         # A FIELD THAT IS PRESENT IS NOT ALWAYS A STAGE THAT IS FINISHED. velocity's `native_plots`
@@ -363,32 +270,20 @@ def status(spec, doc, point_name, name="", source=None, python="", run=""):
             partial = (f"{len(ig['gaps'])} of {ig['total']} entries in `{ig['field']}` have not "
                        f"been ruled on: " + shown
                        + (f", and {len(ig['gaps']) - 3} more" if len(ig["gaps"]) > 3 else ""))
-        # AND THE HALF THAT IS NOT DECLARED ANYWHERE. `unfilled` asks whether a field is there,
-        # `item_gaps` asks whether every entry of it has been ruled on, and both of them read the
-        # plugin's DECLARATION. Neither can see a panel that is produced and never described,
-        # because a draw site is a line of code and not an entry in a list.
-        #
-        # ITS OWN KEY IN THE ROW, NOT `partial`. `partial` is one sentence that the report clips
-        # at 150 characters, and this debt is 35 named lines - the whole value of it is that a
-        # reader can open them. Folded into `partial` it would print as "35 of 47 draw sit…".
-        draws = {}
-        if st.get(DRAWS_KEY):
-            draws = draw_debt(drawn_inv)
-        owes_draws = bool(draws) and (not draws["looked"] or draws["silent"] or draws["unknown"]
-                                      or draws.get("broken"))
         # AND A PLACEMENT STAGE IS NOT DONE WHILE A FAMILY IS UNPLACED, UNAXISED, UNBOUNDED, OR
-        # ITS CEILING UNREAD. The worksheet named all six unguarded wrappers and `status` still
+        # ITS COMPANION UNGENERATED. The worksheet named every unplaced family and `status` still
         # reported build 7 of 7 complete - a debt reported and gated on by nothing, which is the
         # defect `finished_by` exists to prevent, one level up from where it was found before.
+        # (The half that read a hand-written draw wrapper for its ceiling guard retired with the
+        # draw-site extractor, harness ADR-0016 step 5: the generated companion reads the plan's
+        # ceiling, and `generated_by` is what proves the companion is generated.)
         owes_place = False
         places = {}
         if st.get(PLACES_KEY):
-            places = placement_debt(spec, st, source_text=_source_of(doc, point_name, name),
-                                    also_r=_r_beside(doc, point_name, name),
+            places = placement_debt(spec, st,
                                     generated=generated_drift(st, doc, point_name, name))
             owes_place = bool(places["unplaced"] or places["unbounded"] or places["wrong"]
-                              or places["unaxised"] or places.get("unguarded")
-                              or places.get("ungenerated"))
+                              or places["unaxised"] or places.get("ungenerated"))
         # AND THE TWO DEBTS THAT WERE COMMANDS WITH NO STAGE: a package this plugin uses and does
         # not declare, and a reuse key that stood still while the code moved. Both are computed
         # only when the point's declaration asks a stage to carry them.
@@ -436,14 +331,11 @@ def status(spec, doc, point_name, name="", source=None, python="", run=""):
                     "phase": st.get("phase", "build"),
                     "finished_by": finished_by,
                     "fills": list(st["fills"]),
-                    "draws": draws,
                     # THE DEBT ITSELF, NOT ONLY WHETHER THERE IS ONE. `owes_place` is the gate;
                     # this is what the gate read, and `sch dev convert overfit` needs it to tell
-                    # a stage that PASSED from one that had nothing to look at. The ceiling-guard
-                    # half of this stage can only look at a plugin that draws in a second
-                    # language, and in the family it was written for that is one plugin of nine.
+                    # a stage that PASSED from one that had nothing to look at.
                     "places": places,
-                    "done": (not missing and not partial and not owes_draws and not owes_place
+                    "done": (not missing and not partial and not owes_place
                              and not owes_loan and not owes_vers and not owes_run
                              and not unasked),
                     "missing": missing,
@@ -682,51 +574,6 @@ def inventory(tool, python=None, rscript=None):
     return got
 
 
-def _draw_lines(row, limit=40):
-    """The draw-site half of one status row, as lines. Empty when the stage owes nothing there.
-
-    THE SITES ARE NAMED AND NOT COUNTED - UP TO `limit` OF THEM, AND THEN SAID TO BE MORE. The
-    whole difference between this and the check it replaces is that a count of 642 undescribed
-    panels names a directory and 35 named lines name the work, so truncating the list back down
-    to three hands the reader the count again.
-
-    IT IS A CAP AND NOT A PROMISE, and the prose used to say otherwise. Past `limit` the row says
-    how many it did not name, and that one line is all that stands between a shorter cap and
-    sites leaving the report with no trace - so the two constants are tested against each other
-    WITH a truncation, which is the only state in which they can disagree.
-    """
-    d = row.get("draws") or {}
-    if not d:
-        return []
-    if not d.get("looked"):
-        return [f"       COULD NOT LOOK at this plugin's draw sites, so whether its panels go "
-                f"out described is unknown -",
-                f"       {d.get('why_not', '')}",
-                f"       An answer of zero silent draw sites from here would be a fact about "
-                f"this checkout, not about the plugin."]
-    if not (d.get("silent") or d.get("unknown")):
-        return []
-    L = []
-    if d.get("silent"):
-        L.append(f"       {len(d['silent'])} of {d['total']} draw sites write no legend "
-                 f"({d['described']} do). Each is a panel the page will describe by its "
-                 f"filename:")
-        for s in d["silent"][:limit]:
-            panel = _clip(s.get("panel") or "(unnamed)", 46)
-            call = (s.get("calls") or [""])[0] or _clip(s.get("draws", ""), 40)
-            L.append(f"         {s['file']}:{s['line']:<6} {s['wrapper']}({panel})"
-                     + (f"   -> {call}" if call else ""))
-        if len(d["silent"]) > limit:
-            L.append(f"         ... and {len(d['silent']) - limit} more")
-    if d.get("unknown"):
-        L.append(f"       {len(d['unknown'])} site(s) draw through a wrapper with no legend "
-                 f"parameter at all, so no call could pass one:")
-        for s in d["unknown"][:6]:
-            L.append(f"         {s['file']}:{s['line']:<6} {s['wrapper']} defined at "
-                     f"{s.get('wrapper_at', '?')}")
-    return L
-
-
 def format_status(rows, name, point_name, doc=None, root=".", python="", run=""):
     """The line-per-stage a person reads to know where a conversion stands.
 
@@ -759,11 +606,9 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
         for r in group:
             mark = ("done" if r["done"]
                     else "RUN?" if r.get("unasked")
-                    else "PART" if r.get("partial") or r.get("draws", {}).get("silent")
+                    else "PART" if r.get("partial")
                     else "ASK " if r["kind"] == "judgement" else "todo")
             L.append(f"  {mark} {r['stage']:12s} {', '.join(r['fills'])}")
-            d = r.get("draws") or {}
-            L += _draw_lines(r)
             if r.get("unasked"):
                 L.append(f"       not asked: this stage verifies a run, and none was named. "
                          f"Pass --run RUNDIR")
@@ -781,15 +626,11 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
                     L.append(f"         {line}")
             if r.get("partial"):
                 L.append(f"       started, and the plugin says so: {r['partial'][:150]}")
-            if r.get("partial") or d.get("silent") or d.get("unknown"):
+            if r.get("partial"):
                 # AND WHAT WOULD FINISH IT, or that this repository declares nothing that
                 # would. The second case is the one worth printing: a stage whose remaining
                 # work no command in the suite can do is a gap in the SUITE, and it was
                 # invisible - the maker printed the debt and stopped, every time, forever.
-                #
-                # THE DRAW-SITE DEBT GOES THROUGH THE SAME GATE, because it is the same
-                # failure: 35 sites reported as owing a legend, and nothing anywhere saying
-                # what pays them, is a report an agent reads and cannot act on.
                 if r.get("finished_by"):
                     L.append(f"       to finish it:  {r['finished_by']}")
                 else:
@@ -1652,9 +1493,9 @@ def generated_report(rows):
     return "; ".join(f"{r['verdict']} {r['file']}: {r['note']}" for r in bad)
 
 
-def placement_debt(spec, st, source_text="", also_r=(), generated=()):
-    """What a plugin still owes on WHERE its figures go, HOW MANY of each, and whether the code
-    that draws them reads the ceiling."""
+def placement_debt(spec, st, generated=()):
+    """What a plugin still owes on WHERE its figures go, HOW MANY of each, and whether the
+    companion that draws them is the generator's own output."""
     rules = st.get(PLACES_KEY) or []
     placed = {str(k): str(v) for k, v in
               (((spec or {}).get("report") or {}).get("figure_position") or {}).items()}
@@ -1690,18 +1531,6 @@ def placement_debt(spec, st, source_text="", also_r=(), generated=()):
     keys = sorted(placed, key=len, reverse=True)
     akeys = sorted(amap, key=len, reverse=True)
 
-    # AND WHETHER THE DRAWING CODE READS THE CEILING AT ALL. A declaration the code ignores is a
-    # comment: one plugin declared 49 ceilings, enforced none of them, and the whole build phase
-    # reported finished. Deleting a declaration turns this stage red at once; until now, deleting
-    # the code that honours it turned nothing red.
-    guards, guard_says = [], ""
-    enf = st.get("enforced_by") or {}
-    if enf.get("token") and source_text:
-        from .extract import draw_sites as _DS
-        guards = _DS.ceiling_guards(source_text, str(enf["token"]),
-                                    str(enf.get("returns") or "return"), also=also_r)
-        guard_says = _DS.guard_report(guards, str(enf["token"]))
-
     fams = _families(spec or {}, rules)
     unplaced, unbounded, wrong, unaxised = [], [], [], []
     for stem, field, per, bound, value in fams:
@@ -1725,16 +1554,6 @@ def placement_debt(spec, st, source_text="", also_r=(), generated=()):
     return {"looked": bool(rules), "families": fams, "unplaced": unplaced,
             "unbounded": unbounded, "wrong": wrong, "positions": ok_positions,
             "unaxised": unaxised, "axes": axes, "axis_field": axis_field,
-            # ONLY WHEN A CEILING IS DECLARED. A plugin that bounds nothing owes no guard, and
-            # reporting one would be a demand nobody could act on.
-            "unguarded": ([g for g in guards if not g["guarded"]]
-                          if any(v for _s, _f, _p, _b, v in fams) else []),
-            # EVERY WRAPPER THE CHECK FOUND, not only the ones that failed. An empty list here
-            # and an empty `unguarded` mean opposite things - nothing to look at, and nothing
-            # wrong - and only the first of them is a corpus of zero.
-            "guards": guards,
-            "enforces": bool(enf.get("token")),
-            "guard_says": guard_says,
             # AND WHETHER THE CODE THAT HONOURS THE CEILING IS THE MAKER'S OUTPUT. Computed at
             # the call site because it RUNS a command, and `placement_debt` is called from a
             # status that must stay cheap enough to run on every edit.
@@ -1785,284 +1604,6 @@ def companion_paths(path, suffix=""):
     return sorted(p.parent.glob(f"{stem}/*" + suffix)) + [f for f in beside if f != p]
 
 
-def _r_beside(doc, point_name, name):
-    """[(text, filename)] for R kept in a file next to the plugin rather than inside it.
-
-    The scaffolded form is one draw wrapper prepended to every embedded script, so the wrapper is
-    defined once. A check that read only the Python would not see it.
-    """
-    path = artefact(doc, point_name, name) if name else None
-    if path is None:
-        return []
-    try:
-        return _companions(path, ".R")
-    except OSError:
-        return []
-
-
-def _source_of(doc, point_name, name):
-    """The plugin's own source, or "" - the same artefact `measure_draw_sites` reads."""
-    path = artefact(doc, point_name, name) if name else None
-    try:
-        return path.read_text(encoding="utf-8") if path else ""
-    except OSError:
-        return ""
-
-
-def placement_worksheet(spec, doc, point_name, stage_name, name="", width=96):
-    """One row per figure family this plugin has not said where it goes, or how many it draws."""
-    import textwrap
-    _ph, _up, stages = plan(doc, point_name)
-    st = next((x for x in stages if x["name"] == stage_name), None)
-    if st is None:
-        raise ConvertError(f"no stage named {stage_name!r} in point {point_name!r}")
-    if not st.get(PLACES_KEY):
-        raise ConvertError(
-            f"stage {stage_name!r} declares no `{PLACES_KEY}:`, so this repository has not said "
-            f"which declarations name a figure family. This worksheet is for a stage that has.")
-    d = placement_debt(spec, st, source_text=_source_of(doc, point_name, name),
-                       also_r=_r_beside(doc, point_name, name),
-                       generated=generated_drift(st, doc, point_name, name))
-    fams = d["families"]
-    L = [f"{stage_name}: {len(fams)} figure family(ies) declared by {name or 'this plugin'}. "
-         f"{len(fams) - len(d['unplaced'])} placed, {len(d['unplaced'])} not; "
-         f"{len(fams) - len(d['unaxised'] and d['unaxised'] or [])if False else len(fams) - len(d['unaxised'])}"
-         f" say what they multiply over, {len(d['unaxised'])} do not; "
-         f"{len(d['unbounded'])} drawn per data item with no bound."]
-    L += textwrap.wrap(
-        "A POSITION IS NOT A RANKING. It says where in a result a figure is read - and "
-        "`appendix` says a result is not written from it at all, which keeps it out of the "
-        "paper's numbering and out of what the writing step waits on. It is still drawn, still "
-        "placed on the pages, still reviewable.", width=width, initial_indent="  ",
-        subsequent_indent="  ")
-    L += textwrap.wrap(
-        "A BOUND IS THE MOST FILES THIS FAMILY WRITES PER OCCURRENCE OF ITS AXIS - not the most "
-        "items it iterates. A family drawing each of six pathways once per arm writes twelve "
-        "files per contrast, and declaring six under-counts it by half. The number has to mean "
-        "files or nothing can be multiplied by it.",
-        width=width, initial_indent="  ", subsequent_indent="  ")
-    L.append("")
-    if d.get("generated_says"):
-        L += textwrap.wrap(f"generated: {d['generated_says']}", width=width,
-                           initial_indent="  ", subsequent_indent="    ")
-        L.append("")
-    if d.get("guard_says"):
-        L += textwrap.wrap(f"ceiling guards: {d['guard_says']}", width=width,
-                           initial_indent="  ", subsequent_indent="    ")
-        L.append("")
-    for g in d.get("unguarded", []):
-        L.append(f"  READS NO CEILING  {g['wrapper']}  at line {g['line']}")
-        L.append(f"            this plugin declares ceilings and this wrapper draws without "
-                 f"consulting one.")
-        L.append(f"            Add an early exit at the top of the body, before the panel is "
-                 f"computed:")
-        L.append(f"                if (<the family is full>) return(invisible(NULL))")
-        L.append("            A declaration the drawing code does not read is a comment.")
-        L.append("")
-    if d.get("ungenerated"):
-        for g in d["ungenerated"]:
-            L.append(f"  GENERATE  {g['file']}")
-            L.append(f"            {g['note']}")
-            L.append(f"            Regenerate it - the stage declares the command under "
-                     f"`generated_by` - and put the change in the GENERATOR.")
-            L.append("")
-    # EVERY DEBT OF THIS STAGE, NOT THE THREE IT STARTED WITH. The closing sentence read
-    # "Every declared figure family is placed, says what it multiplies over, and is bounded"
-    # while the generated companion sat DELETED four lines above it, because the condition had
-    # not grown with the stage. A summary that is true of part of a check reads as a pass.
-    if not (d["unplaced"] or d["unbounded"] or d["wrong"] or d["unaxised"]
-            or d.get("unguarded") or d.get("ungenerated")):
-        L.append("  Every declared figure family is placed, says what it multiplies over, and "
-                 "is bounded.")
-        return "\n".join(L)
-    if not (d["unplaced"] or d["unbounded"] or d["wrong"] or d["unaxised"]):
-        return "\n".join(L)
-    for stem, field in d["unplaced"]:
-        L.append(f"  PLACE     {stem}")
-        L.append(f"            declared in {field}; add a `report.figure_position` rule - "
-                 f"one of {', '.join(d['positions']) or 'the positions this stage declares'}")
-    for stem, pos in d["wrong"]:
-        L.append(f"  NOT A POSITION  {stem} is placed {pos!r}, which this stage does not declare")
-    for stem, field in d["unaxised"]:
-        L.append(f"  AXIS      {stem}")
-        L.append(f"            add a `{field}` prefix rule - one of "
-                 f"{', '.join(d['axes']) or 'the axes this stage declares'}. A ceiling with no "
-                 f"axis is a number with no units, and no count can be computed from it")
-    for stem, field, bound in d["unbounded"]:
-        L.append(f"  BOUND     {stem}")
-        L.append(f"            declared in {field} as one panel per data item and with no "
-                 f"`{bound}:` - add it, and cap the loop that draws it")
-    L.append("")
-    return "\n".join(L)
-
-
-def items_worksheet(spec, doc, point_name, stage_name, width=96):
-    """The worksheet for any stage that rules on every entry of a list, not just on the field.
-
-    WHAT IT DOES NOT CHECK, AND WHY THAT IS THE RIGHT LINE. For legends this rules on the
-    PROVENANCE - a fact about the figure that is true before the run and is therefore a build
-    stage's business. It does not check that a sentence was written, because the sentence is
-    written where the figure is DRAWN, out of numbers that do not exist until something runs: how
-    many pairs there were before the cap, which populations were dropped, what n is. A build
-    stage that demanded the sentence would be asking for one that could only be a guess, and a
-    guessed legend is worse than an absent one - it is believed. The sentence is proved at test
-    time, by reading back what the run wrote beside its figures.
-    """
-    _ph, _up, stages = plan(doc, point_name)
-    st = next((x for x in stages if x["name"] == stage_name), None)
-    if st is None:
-        raise ConvertError(f"no stage named {stage_name!r} in point {point_name!r}")
-    if not st.get("each_item_declares"):
-        raise ConvertError(
-            f"stage {stage_name!r} declares no `each_item_declares:`, so there is nothing to rule "
-            f"on entry by entry. This worksheet is for a stage whose field is a LIST and whose "
-            f"work is one decision per item.")
-    ig = item_gaps(spec, st) or {}
-    lines = [f"{stage_name}: {ig.get('total', 0)} entries in `{ig.get('field', '?')}`, "
-             f"{len(ig.get('gaps', ()))} still to rule on"]
-    for k, allowed in (st.get("each_item_declares") or {}).items():
-        lines.append(f"  every entry must declare  {k}: "
-                     + (" | ".join(str(x) for x in allowed) if allowed else "<any non-empty>"))
-    why = " ".join(str(st.get("why", "")).split())
-    if why:
-        import textwrap
-        lines += textwrap.wrap(why, width=width, initial_indent="  ", subsequent_indent="  ")
-    lines.append("")
-    items = _dotted(spec, ig.get("field") or "") or []
-    bad = dict(ig.get("gaps") or ())
-    for i, it in enumerate(items):
-        d = it if isinstance(it, dict) else {}
-        who = str(d.get("id") or d.get("name") or f"entry {i + 1}")
-        mark = "TO RULE" if who in bad else "     ok"
-        lines.append(f"  {mark}  {who}")
-        # THE PLUGIN'S OWN WORDS ARE THE PROMPT. Whoever fills this in needs to know what the
-        # panel is FOR, and the plugin already says so; making them go and look it up is how a
-        # worksheet gets filled in by pattern rather than by reading.
-        for key in ("question", "shows", "what"):
-            if d.get(key):
-                import textwrap
-                lines += textwrap.wrap(f"{key}: {d[key]}", width=width,
-                                       initial_indent="           ", subsequent_indent="           ")
-                break
-        for reason in bad.get(who, ()):
-            lines.append(f"           -> {reason}")
-    return "\n".join(lines)
-
-
-def draw_worksheet(doc, point_name, stage_name, name, source=None, width=96, inv=None):
-    """The half of a legends worksheet that is measured from the plugin's source.
-
-    WHAT A WORKSHEET IS FOR, AND WHAT THIS ONE HAS TO CARRY. `items_worksheet` above rules on a
-    DECLARED list and its rows are labelled by the plugin's own ids, so a person filling it in
-    already knows what each row is. A draw site has no id and no declaration: it is a line of
-    code, and the only reason somebody can write a true sentence about it is that the line says
-    what is being plotted. So each row carries the panel name AS WRITTEN - a literal or the
-    `paste0(...)` that makes one name per pathway - the plotting call underneath it, and the file
-    and line to open.
-
-    IT WRITES NOTHING AND DECIDES NOTHING, for the same reason `worksheet` does not: this can see
-    that a legend is absent and cannot see what the panel shows. A sentence generated from a
-    function name would be a label in the place a description goes, which is the exact defect the
-    host's caption module was written to remove - and a wrong legend is believed where an absent
-    one is noticed.
-
-    THE EDIT IS SHOWN, NOT MADE. Each row prints the argument to add and where to add it, because
-    the fix is one keyword argument at a call site whose wrapper already has the parameter.
-    """
-    import textwrap
-    _ph, _up, stages = plan(doc, point_name)
-    st = next((x for x in stages if x["name"] == stage_name), None)
-    if st is None:
-        raise ConvertError(f"no stage named {stage_name!r} in point {point_name!r}")
-    if not st.get(DRAWS_KEY):
-        raise ConvertError(
-            f"stage {stage_name!r} does not declare `{DRAWS_KEY}:`, so this repository has not "
-            f"said that a panel produced without a legend is unfinished work. This worksheet is "
-            f"for a stage that has.")
-    if inv is None:
-        inv = measure_draw_sites(doc, point_name, name, source)
-    d = draw_debt(inv)
-    if not d["looked"]:
-        return "\n".join([
-            f"{stage_name}: COULD NOT LOOK at {name}'s draw sites.",
-            f"  {d['why_not']}",
-            "  An empty worksheet here would read as a plugin whose every panel is described.",
-        ])
-    L = [f"{stage_name}: {d['total']} draw site(s) in {name}. {d['described']} pass a legend, "
-         f"{len(d['silent'])} do not"
-         + (f", {len(d['unknown'])} draw through a wrapper that has no legend parameter"
-            if d["unknown"] else "") + "."]
-    L += textwrap.wrap(f"how they were found: {d['how']}", width=width,
-                       initial_indent="  ", subsequent_indent="    ")
-    L += textwrap.wrap(
-        "A legend is written HERE, at the draw site, because here is where the numbers that "
-        "describe the panel still exist - the n, the cap that was applied, the populations that "
-        "were dropped. Written anywhere else it can only be a guess, and a guessed legend is "
-        "worse than an absent one: the page prints it in the space a description goes, and a "
-        "reader believes it.", width=width, initial_indent="  ", subsequent_indent="  ")
-    # WHAT THE THIRD COLUMN IS, SAID ON THE PAGE THAT PRINTS IT. It is a filtered list of the
-    # names called in the expression, not a measurement of which of them draws - a plotting call
-    # assigned to a variable on the line above is not in the expression at all. Measured on the
-    # plugin this was built against, 2 of 35 rows name the wrong function. The file, the line and
-    # the count do not come from it.
-    L += textwrap.wrap(
-        "`names called` is what the drawn expression calls, with helpers and language "
-        "scaffolding filtered out BY A LIST - a guess at which of them draws the panel and not a "
-        "measurement of it, wrong on a small minority of rows, and no part of the count or the "
-        "line number. Open the line.",
-        width=width, initial_indent="  ", subsequent_indent="  ")
-    L.append("")
-    # FIRST, AND ABOVE THE MISSING ONES. A legend that is absent costs a reader a sentence; a
-    # legend the language cannot run costs the run every panel downstream of it. This is printed
-    # before the worksheet proper because it is not worksheet work - nothing here is waiting on a
-    # sentence anybody has to think of.
-    if d.get("broken_read"):
-        L += textwrap.wrap(f"calls read for a missing argument: {d['broken_read']}",
-                           width=width, initial_indent="  ", subsequent_indent="    ")
-        L.append("")
-    for line, text in d.get("broken", []):
-        L.append(f"  WILL NOT RUN  {name}:{line}")
-        L += textwrap.wrap(_clip(text, 400), width=width,
-                           initial_indent="                ", subsequent_indent="                ")
-        L.append("                an argument slot in this call holds nothing. R PARSES IT: the "
-                 "file imports,")
-        L.append("                the environment installs and the selftest passes, and the call "
-                 "fails the moment")
-        L.append("                it is evaluated with \"argument is missing, with no default\". "
-                 "Fix the call.")
-        L.append("")
-    if not d["silent"] and not d["unknown"]:
-        if not d.get("broken"):
-            L.append("  Every draw site in this plugin passes a legend. Nothing to fill in.")
-        return "\n".join(L)
-    for s in d["silent"]:
-        L.append(f"  TO WRITE  {s['file']}:{s['line']}")
-        L.append(f"            panel name as written:  {_clip(s.get('panel') or '?', width - 36)}")
-        if s.get("calls"):
-            L.append(f"            {'names called:':<24}{', '.join(s['calls'])}")
-        # WHAT TO SHOW IS NOT THE SAME IN THE TWO LANGUAGES. Where the wrapper is handed the
-        # plotting expression, that expression IS the panel and it is what a reader needs. Where
-        # the wrapper is handed a finished figure object, the expression is the variable's name
-        # and says nothing - so the whole call is shown, and the line number is what takes the
-        # reader to the drawing above it.
-        shown = s.get("draws") if s.get("lang") == "R" else s.get("call")
-        if shown:
-            L += textwrap.wrap(_clip(shown, 600), width=width,
-                               initial_indent="            call:   ",
-                               subsequent_indent="                    ")
-        L.append(f"            add:                    {s['legend_param']} = \"...\"   "
-                 f"(the wrapper is {s['wrapper']}, defined at {s.get('wrapper_at', '?')})")
-        L.append("")
-    for s in d["unknown"]:
-        L.append(f"  NO SLOT   {s['file']}:{s['line']}  {s['wrapper']}({_clip(s.get('panel'), 40)})")
-        L.append(f"            {s['wrapper']} is defined at {s.get('wrapper_at', '?')} and no "
-                 f"parameter of it defaults to the empty string,")
-        L.append("            so no call to it can pass a legend. The wrapper is what has to "
-                 "change, not these call sites.")
-        L.append("")
-    return "\n".join(L)
-
-
 #: EVERY ACTION `sch dev convert` HAS, IN ONE PLACE. `sch/cli.py` builds the parser's `choices`
 #: from this, and `advance_command` below decides from it whether a stage can be advanced by a
 #: command: a stage advances by the action of the same name, when this tool has one.
@@ -2075,8 +1616,7 @@ def draw_worksheet(doc, point_name, stage_name, name, source=None, width=96, inv
 #: what only you can answer" about a MECHANICAL stage whose `finished_by` names the exact command
 #: to type. Found by generating a plugin from nothing and reading what the maker said to do next.
 ACTIONS = ("status", "freshness", "borrowed", "inventory", "account", "measure", "promised",
-           "defaults", "references", "contract", "legends", "placement", "plan", "overfit",
-           "build")
+           "defaults", "references", "contract", "plan", "overfit", "build")
 
 
 # -----------------------------------------------------------------------------------------------
@@ -2089,9 +1629,6 @@ ACTIONS = ("status", "freshness", "borrowed", "inventory", "account", "measure",
 
 #: What a plan stage declares: the maker's word for a thing -> this format's key for it.
 ENTRY_KEYS = "entry_keys"
-#: The plan's interpreter, as the generated companion names it (harness ADR-0016): a call to
-#: either is a site already on the plan, never a hand-written one.
-PLAN_INTERPRETER = (".draw", ".draw_all")
 
 
 def plan_stage(doc, point_name):
@@ -2246,159 +1783,6 @@ def _routes_reach(routes, entries, fn_key="fn"):
     return reached, nothing
 
 
-def _r_prefix_of(rtext):
-    """The `prefix = "..."` the script's protocol was configured with, or ""."""
-    m = re.search(r'\.figures\s*\(.*?prefix\s*=\s*"([^"]*)"', rtext, re.S)
-    return m.group(1) if m else ""
-
-
-def _legacy_sites(doc, point_name, name, source):
-    """{figure id: site record} from a plugin's hand-written draw sites, id = prefix + panel.
-
-    THE LAST USE OF THE DRAW-SITE EXTRACTOR: it reads the sites so that the plan can be written
-    from them once, after which there are no sites to read. A panel named by a literal is the
-    id; one named `paste0("stem__", var)` is a per-item family with `var` as its items.
-    """
-    from .extract import draw_sites as DS
-    out = {}
-    blocks = list(DS.embedded_r(source))
-    beside = DS.foreign(w for text, _n in _r_beside(doc, point_name, name)
-                        for w in DS.r_wrappers(text))
-    for rtext, base in blocks:
-        prefix = _r_prefix_of(rtext)
-        own = DS.r_wrappers(rtext)
-        ws = own + [w for w in beside if w.name not in {x.name for x in own}]
-        for site in DS._r_sites(rtext, base, "", ws):
-            # A CALL TO THE PLAN'S INTERPRETER IS NOT A HAND-WRITTEN SITE. `.draw(id)` and
-            # `.draw_all(axis)` are where sites used to stand (harness ADR-0016); the companion
-            # defines both and they delegate to the device path, so the wrapper scan finds
-            # them. Read as sites, their ids were prefixed a second time and a rerun of the
-            # migration rewrote two already-migrated calls.
-            if str(site.get("wrapper") or "") in PLAN_INTERPRETER:
-                continue
-            panel = site.get("panel") or ""
-            m = re.match(r'^"([^"]+)"$', panel)
-            items = ""
-            if m:
-                fid = prefix + m.group(1)
-            else:
-                # A PANEL NAMED BY paste0: the first literal is the family, the rest is what it
-                # is drawn once per. A bare name is the items vector; anything else - a gsub, a
-                # second key - is shown to the person, because a plan entry iterates ONE vector
-                # and a site that iterates two is a decision about which one the family is.
-                pm = re.match(r'^paste0\(\s*"([^"]+?)"\s*,\s*(.+)\)\s*$', panel, re.S)
-                if not pm:
-                    continue
-                # THE ID IS EVERY LITERAL PIECE OF THE NAME, not the first: `paste0("bars_", ms)`
-                # and `paste0("bars_", ms, "_per1k")` are two sites of one family, and read by
-                # their head alone they were one id, so the second was silently dropped - the
-                # 47th of a plugin's sites, found by the one call left after the other 46 were
-                # replaced. Underscores that only separated a variable are collapsed.
-                # TOP-LEVEL PIECES ONLY: a literal inside a call - the pattern of a `gsub` - is
-                # not a piece of the name.
-                from .extract import draw_sites as _DSn
-                lits = [x.strip()[1:-1] for x in _DSn._split_args(pm.group(1).join(['"', '"'])
-                                                                    + ", " + pm.group(2))
-                        if re.fullmatch(r'\s*"[^"]*"\s*', x)]
-                fid = prefix + re.sub(r"_+", "_", "".join(lits)).strip("_")
-                # THE FILE STEM IS THE SITE'S OWN EXPRESSION, kept verbatim. `paste0("patterns_",
-                # pat)`, `paste0("chord__", pw)`, `paste0("interaction_flow__", safe)` and a
-                # two-key `paste0("chord_cell__", safe, "__", gsub(...))` all name files a sealed
-                # run holds; the generated draw evaluates the expression in the frame it is
-                # called from, so the names cannot change. A migration that normalised them
-                # would not be the same plan.
-                rest = pm.group(2).strip()
-                # THE VARIABLE AMONG THE PIECES. `paste0("bars_", ms, "_per1k")` iterates `ms`
-                # and carries a trailing literal; the pieces that are not string literals are
-                # what varies, and when exactly one of them is a bare name it is the loop's
-                # variable.
-                from .extract import draw_sites as _DSx
-                _var = [x.strip() for x in _DSx._split_args(pm.group(2))
-                        if not re.fullmatch(r'\s*"[^"]*"\s*', x)]
-                if len(_var) == 1:
-                    rest = _var[0]
-                # `items` IS THE LOOP'S VECTOR, WHEN THERE IS A LOOP. `for (p in shared)
-                # npng(paste0("chord__", p), ...)` iterates `shared`: the plan names the vector
-                # and `.draw_all` binds `.item`. A per-item site with no enclosing `for` - the
-                # unit's top pathway, drawn once under an `if` - names no items: the method
-                # calls `.draw(id, item = pw)` where the site stood, and `file` names the file.
-                items = ""
-                if re.match(r"^[.\w]+$", rest):
-                    before = "\n".join(rtext.splitlines()[:max(0, int(site.get("line", 0)) - base)])
-                    # THE VECTOR MAY CARRY PARENTHESES OF ITS OWN - `c("outgoing", "incoming")` -
-                    # so the `for (` is closed by counting, not by the first `)`.
-                    for fm in reversed(list(re.finditer(r"for\s*\(\s*" + re.escape(rest)
-                                                        + r"\s+in\s+", before))):
-                        start, depth, j = fm.end(), 1, fm.end()
-                        while j < len(before) and depth:
-                            depth += {"(": 1, ")": -1}.get(before[j], 0)
-                            j += 1
-                        if not depth:
-                            items = before[start:j - 1].strip()
-                            break
-            out.setdefault(fid, dict(site, items=items, prefix=prefix, base=base,
-                                     file=("" if m else " ".join(panel.split()))))
-    return out
-
-
-def _template_of(legend):
-    """(template, placeholders) from a site's legend, or ("", []) when it cannot be one.
-
-    A LEGEND IS A TEMPLATE WHOSE PLACEHOLDERS ARE R EXPRESSIONS, evaluated where the draw is
-    called (ADR-0016). `paste0("The ", pw, " pathway")` becomes `"The {pw} pathway"`;
-    `paste0("Does the ", fac, " response depend on ", as.character(rows$stratum_factor[1]), "?")`
-    becomes the same sentence with both expressions in braces - readable, editable at the plan,
-    and evaluated in the same frame the site evaluated it in. A part that itself carries a brace
-    cannot be placed in one and leaves the legend a decision for a person.
-    """
-    leg = (legend or "").strip()
-    m = re.match(r'^"((?:[^"\\]|\\.)*)"$', leg, re.S)
-    if m:
-        return m.group(1).replace('\\"', '"'), []
-    pm = re.match(r"^paste0\((.*)\)$", leg, re.S)
-    if not pm:
-        return "", []
-    from .extract import draw_sites as DS
-    parts, holes, out = DS._split_args(pm.group(1)), [], []
-    for part in parts:
-        part = " ".join(part.split())
-        lm = re.match(r'^"((?:[^"\\]|\\.)*)"$', part, re.S)
-        if lm:
-            out.append(lm.group(1).replace('\\"', '"'))
-        elif part and "{" not in part and "}" not in part:
-            out.append("{" + part + "}")
-            holes.append(part)
-        else:
-            return "", []
-    return "".join(out), holes
-
-
-def _sizes_into(e, site):
-    """The device size a site asks for - `w`, `h`, `res` - into the entry, as the site wrote it.
-
-    AN INTEGER STAYS AN INTEGER AND AN EXPRESSION STAYS AN EXPRESSION. `w = .bw` and
-    `w = max(1500, 340 * length(objs))` are widths the method computes; read as "an integer or
-    nothing", three sites lost theirs and the generated site would have drawn them at the
-    script's default. The generated draw evaluates a string where the site evaluated the
-    expression, so the width is the width the run had.
-    """
-    named = (site or {}).get("named") or {}
-    for wh in ("w", "h", "res"):
-        v = str(named.get(wh) or "").strip()
-        if not v:
-            continue
-        e[wh] = int(v) if re.fullmatch(r"\d+", v) else v
-
-
-def _site_text(site):
-    """A site's drawn expression as the plan should carry it: one line for a call, the line
-    structure kept for a brace block, where a newline is a statement boundary."""
-    raw = str((site or {}).get("raw") or "")
-    if raw.startswith("{"):
-        return raw
-    return str((site or {}).get("draws") or "")
-
-
 def _r_parse_failures(texts, rscript):
     """{index: message} for the call texts R cannot parse. One interpreter start for all of them.
 
@@ -2437,45 +1821,17 @@ def _r_parse_failures(texts, rscript):
         _sh.rmtree(d, ignore_errors=True)
 
 
-def _by_of(site, vocab=("tool", "plugin")):
-    """The provenance a draw site states itself, or "".
-
-    THE ARGUMENT THAT NAMES A PROVENANCE IS THE ONE WHOSE VALUE IS A PROVENANCE: no parameter
-    name is assumed, because the wrapper is the plugin's and the vocabulary is the stage's
-    (`each_item_declares.drawn_by`). A literal outside the vocabulary names nothing.
-    """
-    for _k, v in ((site or {}).get("named") or {}).items():
-        m = re.fullmatch(r'"([^"]*)"', str(v).strip())
-        if m and m.group(1) in vocab:
-            return m.group(1)
-    return ""
-
-
-def _call_of(draws, fn):
-    """(args, expr): the arguments inside `fn(...)` when the expression IS that call, else the
-    whole expression as `expr`. Balanced parentheses, read with the extractor's own mask."""
-    from .extract import draw_sites as DS
-    text = draws or ""
-    if fn:
-        m = re.match(r"^\s*(?:[.\w]+::)?" + re.escape(fn) + r"\s*\(", text)
-        if m:
-            op = m.end() - 1
-            cl = DS._closing(DS._mask(text), op)
-            if cl == len(text) - 1:
-                return text[op + 1:cl].strip(), ""
-    return "", text.strip()
-
-
-def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
+def migrate_worksheet(spec, doc, point_name, name="", width=96):
     """A paste-ready plan for a plugin still on the prose-and-prefix-map form.
 
-    BUILT FROM WHAT THE PLUGIN ALREADY SAYS, in four places: the families the legacy rules name
+    BUILT FROM WHAT THE PLUGIN ALREADY SAYS, in three places: the families the legacy rules name
     (`places_every`, ids parsed out of prose - the same parser the old placement stage used),
-    their ceilings, the two prefix maps, the existing entries - and the hand-written draw sites,
-    read one last time, for the call, the items, the device and the legend. Nothing is decided:
-    every field that could not be read is the placeholder, and a legend that was built at the
-    site out of runtime values is printed as a TODO with the expression beside it, because a
-    template is a decision.
+    their ceilings and the two prefix maps, and the existing entries. Nothing is decided: every
+    field that only a person can write - the call, the legend, a ceiling nobody declared - is
+    the placeholder, because a template is a decision. (The half that read a plugin's
+    hand-written R draw sites for the call and the legend retired with the draw-site extractor,
+    harness ADR-0016 step 5: no plugin here has a hand-written site left, and the eight still on
+    this form embed no R.)
 
     PRINTED, NEVER WRITTEN. The person pastes it in place of the legacy fields, then `status`,
     `validate` and the plan's own baseline test say whether it is the same plan.
@@ -2487,7 +1843,7 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
     keys = {str(k): str(v) for k, v in (st.get(ENTRY_KEYS) or {}).items()}
     fn_key, items_key = keys.get("upstream", "fn"), keys.get("items", "items")
     bound_key, call_key = keys.get("bound", "at_most"), keys.get("call", "args")
-    expr_key, skips_key = keys.get("expression", "expr"), keys.get("skips", "report.skips")
+    skips_key = keys.get("skips", "report.skips")
     rules = st.get(PLACES_KEY) or []
     field, existing = _entries(spec, st)
     axis_field = str(st.get("axis_field") or "")
@@ -2502,9 +1858,6 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
                 return m[k]
         return default
 
-    sites = _legacy_sites(doc, point_name, name, source) if source else {}
-    vocab = tuple(str(x) for x in ((st.get("each_item_declares") or {}).get("drawn_by") or ())) \
-        or ("tool", "plugin")
     entries, todo = [], 0
     # 1. the families the legacy rules name, one entry per member of a brace family
     for stem, rfield, per_item, bound, cap in _families(spec, rules):
@@ -2524,28 +1877,17 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
                 opts = rest.split("}", 1)[0]
                 members = [head_ + o.strip() for o in opts.split(",") if o.strip()]
                 break
-        # A BRACE FAMILY DRAWN BY ONE LOOP IS ONE ENTRY. `native_patterns_{outgoing,incoming}`
-        # is two files and one site - `for (pat in c(...)) ndev(paste0("patterns_", pat), ...)`
-        # - so the plan says one family, its items and a ceiling of two, and the generated loop
-        # names the files exactly as the site did.
-        n_members = len(members)
-        if len(members) > 1 and stem in sites and sites[stem].get("items"):
-            members = [stem]
         for fid in members:
-            site = sites.get(fid) or {}
-            # THE SITE'S OWN `by =` IS THE PROVENANCE, when it says one: it is what the run
-            # wrote into captions.tsv. The prose record's word is second; "tool" is last.
-            e = {"id": fid, "drawn_by": _by_of(site, vocab) or str(rec.get("drawn_by") or "tool")}
+            # THE PROSE RECORD'S WORD IS THE PROVENANCE; "tool" is what the older form meant
+            # when it said nothing.
+            e = {"id": fid, "drawn_by": str(rec.get("drawn_by") or "tool")}
             if fn:
                 e[fn_key] = fn
             e["axis"] = longest(axis_map, fid, "unit")
             e["position"] = longest(pos_map, fid, "contrast")
-            if site.get("items"):
-                e[items_key] = site["items"]
-            elif per_item and not site.get("file"):
-                e[items_key] = f"{ph} - the R name of the vector this is drawn once per item of"
+            if per_item:
+                e[items_key] = f"{ph} - the name of the vector this is drawn once per item of"
                 todo += 1
-            if per_item or site.get("items") or site.get("file"):
                 e[bound_key] = int(cap) if cap else f"{ph} - files per {e['axis']}"
                 if not cap:
                     todo += 1
@@ -2557,89 +1899,11 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
             # arm pages - thirteen plates fewer on one reproduction.
             if rec.get("profile") and e["axis"] == "unit":
                 e["profile"] = True
-            if site:
-                if len(members) == 1 and site.get("items") and stem == fid and not per_item:
-                    e[items_key] = site["items"]
-                    e[bound_key] = int(cap) if cap else n_members
-                if site.get("file"):
-                    e["file"] = site["file"]
-                args, expr = _call_of(_site_text(site), fn)
-                if args:
-                    e[call_key] = args
-                elif expr:
-                    e[expr_key] = expr
-                if site.get("wrapper") and site["wrapper"] != "npng":
-                    e["device"] = site["wrapper"]
-                _sizes_into(e, site)
-                leg = str(site.get("legend") or "").strip()
-                tpl, _holes = _template_of(leg)
-                if tpl:
-                    e["legend"] = tpl
-                elif leg:
-                    e["legend"] = f"{ph} - a template for: {leg[:200]}"
-                    todo += 1
-                else:
-                    e["legend"] = f"{ph} - what this panel shows, as a template"
-                    todo += 1
-            else:
-                e["legend"] = f"{ph} - what this panel shows, as a template"
-                e[call_key] = f"{ph} - the arguments this plugin passes {fn or 'the function'}"
-                todo += 2
-            entries.append(e)
-    # 1b. A DRAW SITE NO LEGACY FIELD NAMES IS PRINTED, NEVER DROPPED. A site is a figure the
-    # run draws; after the migration the sites are generated from the plan, so an entry that is
-    # not here is a panel that stops existing. Two of a plugin's forty-six were named by no
-    # prose - the second file of an "X.png and Y.png" sentence, and the log-scale companion
-    # drawn under an `if` beside its sibling - and the first worksheet lost both, silently.
-    # Read from the site: the call, the file, the device, the legend, the site's own `by =`.
-    # Decided by nobody: the ceiling, and the provenance when the site does not say it.
-    seen = {e["id"] for e in entries}
-    unnamed = 0
-    for fid, site in sites.items():
-        if fid in seen:
-            continue
-        unnamed += 1
-        head = re.match(r"^\s*(?:[.\w]+::)?([.\w]+)\s*\(", site.get("draws") or "")
-        fn = head.group(1) if head else ""
-        e = {"id": fid, "drawn_by": _by_of(site, vocab)
-             or f"{ph} - {' or '.join(vocab)}: no legacy field names this site"}
-        if not _by_of(site, vocab):
-            todo += 1
-        if fn:
-            args, _expr = _call_of(_site_text(site), fn)
-            if not args and _expr:
-                fn = ""
-        if fn:
-            e[fn_key] = fn
-        e["axis"] = longest(axis_map, fid, "unit")
-        e["position"] = longest(pos_map, fid, "contrast")
-        if site.get("items"):
-            e[items_key] = site["items"]
-        if site.get("items") or site.get("file"):
-            e[bound_key] = f"{ph} - files per {e['axis']}"
-            todo += 1
-        if site.get("file"):
-            e["file"] = site["file"]
-        args, expr = _call_of(_site_text(site), fn)
-        if args:
-            e[call_key] = args
-        elif expr:
-            e[expr_key] = expr
-        if site.get("wrapper") and site["wrapper"] != "npng":
-            e["device"] = site["wrapper"]
-        _sizes_into(e, site)
-        leg = str(site.get("legend") or "").strip()
-        tpl, _holes = _template_of(leg)
-        if tpl:
-            e["legend"] = tpl
-        elif leg:
-            e["legend"] = f"{ph} - a template for: {leg[:200]}"
-            todo += 1
-        else:
             e["legend"] = f"{ph} - what this panel shows, as a template"
-            todo += 1
-        entries.append(e)
-        seen.add(fid)
+            e[call_key] = f"{ph} - the arguments this plugin passes {fn or 'the function'}"
+            todo += 2
+            entries.append(e)
+    seen = {e["id"] for e in entries}
     # 2. the existing entries, carried through with their axis and position made explicit
     for e in existing:
         fid = str(e.get("id") or "")
@@ -2661,8 +1925,7 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
             if isinstance(r, dict) and r.get("skip"):
                 skips[str(k)] = {kk: vv for kk, vv in r.items()}
     L = [f"    # THE FIGURE PLAN for {name or 'this plugin'}: {len(entries)} entries from "
-         f"{len(rules)} legacy field(s), {len(sites)} draw site(s) read, {unnamed} named by no "
-         f"legacy field, {todo} field(s) left for a person.",
+         f"{len(rules)} legacy field(s), {todo} field(s) left for a person.",
          f"    # Paste in place of {', '.join(sorted({str(r.get('field')) for r in rules if r.get('field')}))}, "
          f"`{axis_field or 'the axis map'}` and `figure_position`. A `{ph}` does not validate.",
          f'    "{field.split(".")[-1]}": [']

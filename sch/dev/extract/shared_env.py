@@ -63,13 +63,47 @@ everything else about a repository. What is here is the SHAPE of the question.
 from __future__ import annotations
 
 import ast
+import ast
 import json
 import re
 import subprocess
 from pathlib import Path
 
 from . import Inventory
-from . import draw_sites as DS
+
+def embedded_r(source):
+    """[(R text, line of its first content line)] for every embedded R script in a Python file.
+
+    FOUND BY WHAT IS IN IT, not by the name of the variable holding it. `_R_RUN`, `_R_COMPARE`
+    and `_R_COHORT` are one plugin's habit; a scan keyed on that prefix finds nothing in the next
+    plugin that embeds R and reports it as having no draw sites.
+
+    THE LINE NUMBERS ARE THE PYTHON FILE'S. A load reported at "line 61 of the R" is a line
+    number nobody can open. The mapping is arithmetic and is checked before it is used: a literal
+    holding more newlines than the lines it spans has escapes in it, the arithmetic would be
+    wrong, and such a literal is skipped rather than reported at a plausible wrong line.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+    out = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+            continue
+        text = node.value
+        if node.end_lineno is None or node.lineno is None:
+            continue
+        newlines = text.count("\n")
+        if newlines > (node.end_lineno - node.lineno):
+            continue
+        if not re.search(r"(?m)^[ \t]*[.\w]+\s*<-\s*function\s*\(", text):
+            continue
+        # The literal's last content line sits on the line the literal ends on, so content line k
+        # is `end_lineno - newlines - 1 + k`. Stored as the base; `+ k` is applied at each site.
+        out.append((text, node.end_lineno - newlines - 1))
+    return out
+
 
 EXTRACT = {
     "reads": "plugin-environment",
@@ -89,12 +123,12 @@ FIELD, WHAT, SPELLED, AS, WRITTEN_IN = "field", "what", "spelled", "as", "writte
 
 #: THE TWO TEXTS A PLUGIN IS MADE OF, and this suite's own words for them - not a repository's.
 #: `HOST` is the plugin file itself; `EMBEDDED` is a script of another language sitting inside it,
-#: found the way `draw_sites` finds one. A spelling declares which text it belongs to, because a
+#: found the way `embedded_r` below finds one. A spelling declares which text it belongs to, because a
 #: name searched in the wrong one is either invisible or an English word.
 HOST, EMBEDDED = "host", "embedded"
 
 #: How an embedded script of another language ATTACHES a package. A PATTERN, with the same status
-#: as `draw_sites.R_DEVICES`: a script attaching a package some other way is invisible to it, and
+#: as a graphics device is: a script attaching a package some other way is invisible to it, and
 #: the row then reads `mentioned` rather than LOADED, which understates and never overstates.
 EMBEDDED_LOADERS = ("library", "require", "requireNamespace", "loadNamespace", "attachNamespace")
 
@@ -349,7 +383,7 @@ def provided(contents, holds):
 class Source:
     """One plugin's two texts, and what each of them loads.
 
-    THE EMBEDDED SCRIPTS ARE FOUND BY `draw_sites`, which already reads them out of a plugin and
+    THE EMBEDDED SCRIPTS ARE FOUND BY `embedded_r`, which reads them out of a plugin and
     keeps the arithmetic that turns a line of the script into a line of the file. Reusing it means
     a plugin needs no declaration of where its other language lives, and it inherits that rule's
     stated limit: a literal holding no function definition is not recognised as a script.
@@ -360,7 +394,7 @@ class Source:
         self.path = path
         self.text = text
         self.lines = text.splitlines()
-        self.blocks = DS.embedded_r(text)
+        self.blocks = embedded_r(text)
         self.host_loads = _imported(text)
         self.embedded_loads = _attached([b for b, _base in self.blocks])
         self.readable = True

@@ -145,33 +145,21 @@ conservative values and prints that it is guessing; a pure rate attributes the f
 cells and asks for less than the import costs on a small object, so the job is sized to be killed.
 Where the run had one size only, the command prints the rate commented out. Leave it commented.
 
-**`legends` — who drew each panel.**
+**Who drew each panel, and what it says: the plan's own entry.** Every figure is an entry of
+`report.figures` (see "The figure plan" below). `drawn_by` says `tool` — the wrapped tool's own
+plotting function, unmodified — or `plugin` — this plugin drawing the tool's NUMBERS itself, a
+second scale, a derived matrix, an annotation layer. Those are different claims about provenance
+and the distinction is what the upstream-plot accounting exists to protect; the reporter asserts
+nothing on the plugin's behalf. Check it against the source rather than guessing: a plugin that
+calls no upstream plotting function has every entry `plugin`.
 
-```
-sch dev convert legends --root . --point kernel --name <plugin>
-```
-
-A build stage: it reads the declaration and no data. Every declared figure says `tool` — the
-wrapped tool's own plotting function, unmodified — or `plugin` — this plugin drawing the tool's
-NUMBERS itself, a second scale, a derived matrix, an annotation layer. Those are different claims
-about provenance and the distinction is what the upstream-plot accounting exists to protect.
-Undeclared, the reporter asserted `tool` for anything undescribed, so a plugin-drawn panel was
-reported as the tool's own encoding and the accounting was undone at the last step.
-
-Check it against the source rather than guessing: across all nine shipped plugins not one declared
-figure calls an upstream plotting function, so all fifty-six are `plugin`. A tenth plugin that
-wraps a tool's own figure into its report is the case this stage exists for.
-
-**The legend itself is not declared here, and that is deliberate.** It is written where the figure
-is DRAWN, out of numbers no build stage has — the n, the cap that was applied, the populations
-that were dropped. A build stage demanding the sentence would be asking for a guess, and a guessed
-legend is worse than an absent one because it is believed. So the stage rules the provenance now
-and the sentence is proved at test time, by reading back what the run wrote beside its figures.
-
-**Write the sentence at the emit site.** `emit_figure(..., caption=...)`, or the tool's own
-`captions.tsv` beside the figures when it draws in its own interpreter. A panel emitted without
-one now says so in the log while you are still there to fix it, and the page states plainly that
-no legend was written rather than printing the filename with its underscores removed.
+**The legend is the entry's `legend`: a template whose `{...}` placeholders are R expressions
+evaluated where the draw is called** — the n, the cap that was applied, the populations that were
+dropped, filled from the numbers that exist at the site and nowhere else. A panel the host's emit
+path writes passes its caption at `emit_figure(..., caption=...)`. A panel with no legend says so
+in the log while you are still there to fix it, and the page states plainly that none was written
+rather than printing the filename with its underscores removed; `sch dev convert plan` names every
+entry that lacks one.
 
 **`contract`, `defaults`, `references`** — read from the tool's own source. Declare the wrapped
 tool's OWN defaults rather than inheriting them silently; declare every resource consulted that did
@@ -200,8 +188,9 @@ The status confirms the companion is *generated*, not *drifted*. **Never edit a 
 sites are generated from the entries, and a site edited by hand is exactly the drift the
 `generated_by` check refuses. A plugin still on the older form — figure ids inside prose, two
 prefix maps — is brought onto the plan with `--migrate`, which prints the paste-ready entries
-built from what it already declares and from its draw sites; every field the maker could not
-read is a placeholder for you to decide, and a placeholder does not validate.
+built from what it already declares; every field only a person can write - the call, the
+legend, an undeclared ceiling - is a placeholder for you to decide, and a placeholder does not
+validate.
 
 ## The judgement stage: what no command can do
 

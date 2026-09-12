@@ -237,11 +237,9 @@ nothing in `sch/` knows what a figure family or an upstream plot is.
 | key | what the stage then requires |
 |---|---|
 | `each_item_declares` | every entry of the filled field carries the named sub-keys |
-| `each_draw_site_describes` | every place the plugin's source produces a panel passes a legend |
 | `places_every` | every figure family named in the listed fields is placed by a rule in the field this stage fills |
 | `positions` / `axes` | the values those rules may take |
 | `axis_field` | the field mapping a family to what it multiplies over |
-| `enforced_by` | the drawing code must READ the ceiling: a conditional naming the token that returns |
 | `generated_by` | a command that writes the stage's mechanism, so the check can regenerate it and compare |
 | `every_requirement_declared` | no package the artefact LOADS is one only its neighbours declare |
 | `version_is_current` | the field this repository calls its reuse key moved when the artefact did |
@@ -266,21 +264,20 @@ generates the draw sites from the entries, so adjusting a figure never touches m
 
 `sch dev convert plan --migrate --name <plugin>` prints the paste-ready plan for a plugin still
 on the older form — figure ids parsed out of prose, ceilings per function, two prefix maps —
-built from those fields and from its hand-written draw sites, read one last time. Every field
-that could not be read is the placeholder; nothing is decided by the maker. The legacy rules
+built from those fields alone. Every field only a person can write - the call, the legend, an
+undeclared ceiling - is the placeholder; nothing is decided by the maker. The legacy rules
 (`places_every`, `axis_field`, `positions`, `axes`) stay on the stage until the last such plugin
 is migrated, because they are how the maker reads one.
 
-### Demanded, checked and generated are three different claims
+### Demanded and generated are two different claims
 
-`enforced_by` closes an asymmetry: deleting a DECLARATION turned the maker red at once, while
-deleting the code that honoured it turned nothing red — one plugin declared 49 ceilings, enforced
-none of them, and reported `build: 7 of 7 complete`. The stage now requires that a draw wrapper
-refuses past its ceiling, in whatever language the plugin draws in, and a wrapper that DELEGATES
-is guarded by what it delegates to — otherwise the check would be demanding the guard be written
-twice.
+A ceiling the drawing code does not read is a comment: one plugin declared 49 ceilings, enforced
+none of them, and reported `build: 7 of 7 complete`. The check that read a hand-written draw
+wrapper for its guard (`enforced_by`) retired with the draw-site extractor (harness ADR-0016
+step 5): the generated companion reads the plan's ceiling, so the question left is whether the
+companion IS generated.
 
-`generated_by` closes the next one. A stage that requires mechanism, and finds mechanism, still
+`generated_by` answers it. A stage that requires mechanism, and finds mechanism, still
 does not know the mechanism is the maker's OUTPUT rather than a hand-written file that satisfies
 the check. The command is run into a scratch directory and the result compared byte for byte;
 `{out}` is that directory and `{python}` is the HOST's interpreter, because a generator is the

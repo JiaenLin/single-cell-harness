@@ -257,30 +257,18 @@ def _answer(row):
 def checks_of(row):
     """[(element, answer)] for one stage on one artefact - the stage, and each instrument in it.
 
-    A STAGE IS NOT THE UNIT. `placement` asks three separate questions with three separate
-    instruments: where a family goes, how many of it there are, and whether the DRAWING CODE
-    reads the ceiling at all. The first two read a declaration, so their corpus is every artefact;
-    the third has to find code in whatever language the plugin draws in, and in the family this
-    was written for exactly one plugin of nine embeds one. Rolled into a single stage row the
-    corpus reads 9 and the answer is wrong.
+    A STAGE IS NOT THE UNIT. A stage may ask more than one question with more than one
+    instrument, and an instrument whose corpus is narrower than the stage's - one that reads
+    code in a second language only one plugin of nine embeds - must be its own row, or the stage
+    row reads a corpus of nine and the answer is wrong. Two such instruments lived here, both
+    reading hand-written R draw sites (the silent-site count and the ceiling guard); both
+    retired with the draw-site extractor (harness ADR-0016 step 5), and the stage rows are what
+    is left. The shape stays, for the next instrument that is narrower than its stage.
 
     BLIND IS NOT DONE AND IT IS NOT A DEBT. An instrument that found nothing to look at has not
     passed; it has abstained. Keeping that as its own word is this module's whole subject.
     """
-    out = [(row["stage"], _answer(row))]
-    d = row.get("draws") or {}
-    if d:
-        out.append((row["stage"] + "/draw-sites",
-                    "blind" if not d.get("looked") else
-                    ("silent:%d" % len(d.get("silent") or ()) if d.get("silent") else "described")))
-    pl = row.get("places") or {}
-    if pl.get("enforces"):
-        g = pl.get("guards") or []
-        out.append((row["stage"] + "/ceiling-guard",
-                    "blind" if not g else
-                    ("unguarded:%d" % len(pl.get("unguarded") or ()) if pl.get("unguarded")
-                     else "guarded:%d" % len(g))))
-    return out
+    return [(row["stage"], _answer(row))]
 
 
 def stage_corpus(doc, point_name, specs):

@@ -68,7 +68,7 @@ class TheCompanionBelongsToItsOwnPlugin(unittest.TestCase):
         shutil.rmtree(self.d, ignore_errors=True)
 
     def names(self, who):
-        return [fn for _text, fn in CV._r_beside(self.doc, "seam", who)]
+        return [p.name for p in CV.companion_paths(CV.artefact(self.doc, "seam", who), ".R")]
 
     def test_a_file_shared_by_the_whole_directory_is_nobodys(self):
         (self.seams / "draw.R").write_text("draw <- function() NULL\n", encoding="utf-8")
