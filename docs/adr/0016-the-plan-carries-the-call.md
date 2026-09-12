@@ -689,6 +689,17 @@ which requires every `.draw`/`npng`/`ndev` site to name an entry of the plan. Th
 worksheet's plan form was done early (it was a live defect for the migrated plugin). Follow-up
 still open from step 4: `Inventory` carrying every export and `native.account(every=...)`.
 
+*Step 5, 2026-09-13, done (harness 4a2d4d7, scProfile b361da9).* Exactly the amended list: the
+draw-site extractor (its embedded-R reader moved to the environment extractor, the one reader
+that still needs it), the draws debt and its worksheet, the ceiling-guard half of the placement
+debt with `enforced_by`, the placement and legends actions and worksheets, and - not in the list
+above because it was written after it - the migration worksheet's site half, `_legacy_sites`
+and its helpers, since the eight held-out plugins embed no R and no plugin here has a
+hand-written site left. The two overfit sub-instruments went with them. `_families` and the
+placement maps stay. The gate held as the status row records it; the line counts in the
+record (7,918 and 5,414) were written before steps 2-4 added the plan's readers, so the honest
+comparison is 8,977 before this step and 7,012 after.
+
 ## Step 6 — `kind` binds the rules (ADR-0015's P4)
 
 `standard.py`: for each entry with a `kind`, check the caption against the kind's rules where a
@@ -754,6 +765,6 @@ which only `validate` refuses. The plugin is captured as produced in scProfile
 | 2 schema, reader, validator, migrate worksheet | done | harness: this commit; scProfile: the commit after 043a60c | found on the way: the draw-site scan had been blind to cellchat's R sites since the companion move (wrappers read from the companion now); foreign wrapper spans hid a script's first sites; `DRAWN_BY` had two definitions; the record itself carried workstation paths |
 | 3 cellchat declaration migrated | done | harness: this commit; scProfile: the commit after d8cb913 | the baseline held on files, vector copies and total, and moved on one position - see the amendment under step 3; `capacity --promised` on the sealed run is asked by the step 1 job (cluster unreachable again on 2026-09-12) |
 | 4 generated sites, `ctx.rscript`, sites deleted | **4a-4e done: PBS 710981 sealed 11 of 12, capacity identical to the reference (the one FAIL was the grader's phrase)**, after 710971 (3 of 10) and 710973 (9 of 11) each found the migration's defects - see the results under step 4; **4f done locally (scProfile 892593c) and submitted as the fourth reproduction, predictions R12-R15 in the job header** | harness: 582ff44, b366be4, 51c02e0, 6abdbe9 and this commit; scProfile: the commits after 44a5541 through e41d6f7 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the `plan:<id>` route reaches the plugin's own panels; the manifest half of 4b is 4f (see the amendment) |
-| 5 retire the extractor, maps, prose, glue | not started; one item done early | harness: the commit after ff60907 | `sch dev convert account` printed a `native_plots` block for a plugin that has none: `declared_of` reads the plan's `fn`s and skips, and the worksheet speaks the plan form (`"skips": {`, a USED function is an entry). The rest waits for 4e - and see the amendment: `_families` and the placement maps stay until the eight migrate |
+| 5 retire the extractor, maps, prose, glue | **done** (2026-09-13), as amended: what served hand-written R sites alone | harness: 4a2d4d7 (and the commit after ff60907 for the account worksheet); scProfile: b361da9 | the draw-site extractor, the draws debt and worksheet, the ceiling-guard half, the placement and legends actions, the legacy site reader and the migration worksheet's site half are gone; `_families` and the placement maps stay until the eight migrate. Gate as run: both suites green; overfit 3 corpus-of-one elements and 7 fitted literals from 4 and 8; rules 4 held; `sch/dev` 7,012 lines from 8,977 (7,918 in this record, before steps 2-4); cellchat.py 5,183 from 5,414 |
 | 6 `kind` binds rules | done locally; measured on the next reproduction's report | scProfile: the commit after 22ff988 | every entry carries a kind (nine `other`); the standard's `kinds` criterion holds a caption to R3/R4; thirteen legends now state their count at the plan; `{.entry$at_most}` names a ceiling from the plan; F2/F10 keep their emit captions - see the amendment |
 | 7 evidence: enrichment test phase, blind 0003 | **7a done: PBS 710976 sealed 6 of 6** after three runs that each found one defect (710972 the validator, 710974 the host's failed map and the fixture's missing layer, 710975 anndata 0.13's None layer key); **7b done: blind 0003 graded 7 of 9, 0 draw sites by hand, 2 host defects fixed** | harness: f0148b1 | the enrichment-only export `~/tools/scProfile-smoke` is the cellchat-only tree's pattern |
