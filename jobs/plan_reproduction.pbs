@@ -30,8 +30,13 @@
 #       family keeps finding in its own checks.
 #   R1  945 PNG and 24 PDF under kernels/, the reference's counts exactly.
 #   R2  THE SAME FILES BY NAME: the set of run-relative panel paths (png and pdf) is identical
-#       to the reference's. A per-item family names its files by the entry's own expression,
-#       evaluated where the site evaluated it, so the names cannot move.
+#       to the reference's, EXCEPT the two per-thousand panels, renamed on purpose from
+#       `nativecmp_compareInteractions_<measure>_per1k.png` to
+#       `nativecmp_compareInteractions_per1k_<measure>.png` (step 1's second grading found
+#       that no family's id prefixed the old name, so every reader of the plan attributed the
+#       four compareInteractions files to the raw family and its ceiling of two). Every other
+#       per-item family names its files by the entry's own expression, evaluated where the
+#       site evaluated it, so no other name can move.
 #   R3  90 of 90 numeric per-unit tables identical to the reference (cellchat_net_embedding.csv
 #       excluded: an unseeded UMAP, a layout and not a number).
 #   R4  chord_cell per contrast [8, 8, 8, 8, 8, 8]: the ceiling is the plan's and the generated
@@ -211,9 +216,16 @@ say(len(png_n) == 945 and len(pdf_n) == 24, "R1  945 PNG and 24 PDF, the referen
     f"{len(png_n)} png, {len(pdf_n)} pdf (reference measured: {len(png_r)} png, {len(pdf_r)} pdf)")
 only_new = sorted(set(png_n + pdf_n) - set(png_r + pdf_r))
 only_ref = sorted(set(png_r + pdf_r) - set(png_n + pdf_n))
-say(not only_new and not only_ref and bool(png_n), "R2  the same files by name",
-    f"{len(only_new)} only in this run, {len(only_ref)} only in the reference"
-    + (f"; new: {only_new[:5]}" if only_new else "") + (f"; missing: {only_ref[:5]}" if only_ref else ""))
+# the one predicted rename: the two per-thousand panels, and nothing else
+RENAMED = {"nativecmp_compareInteractions_count_per1k.png": "nativecmp_compareInteractions_per1k_count.png",
+           "nativecmp_compareInteractions_weight_per1k.png": "nativecmp_compareInteractions_per1k_weight.png"}
+exp_ref = sorted(p for p in png_r if os.path.basename(p) in RENAMED)
+exp_new = sorted(os.path.join(os.path.dirname(p), RENAMED[os.path.basename(p)]) for p in exp_ref)
+say(only_new == exp_new and only_ref == exp_ref and bool(png_n) and len(exp_ref) == 2,
+    "R2  the same files by name, except the two per-thousand panels renamed",
+    f"{len(only_new)} only in this run, {len(only_ref)} only in the reference; predicted exactly the "
+    f"two renames" + (f"; new: {only_new[:5]}" if only_new != exp_new else "")
+    + (f"; missing: {only_ref[:5]}" if only_ref != exp_ref else ""))
 
 def units(d):
     return sorted(os.path.basename(u) for u in glob.glob(os.path.join(d, "kernels", "cellchat", "*")) if os.path.isdir(u))

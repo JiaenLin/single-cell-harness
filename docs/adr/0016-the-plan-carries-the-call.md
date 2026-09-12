@@ -279,7 +279,27 @@ What the tails carried was two defects in the target and one wrong prediction:
   Not a defect; recorded. S9 was not in the grader (added to the header after the first
   version) and its substance is S6's.
 
-Resubmitted with the two fixes: see the status table.
+*Second submission (PBS 710970, `20260912T135705Z__status-on-run`, sealed FAILED, exit 2).*
+S1, S3, S4, S5 HELD. The two fixes did what they were for: every stage ran and answered in
+its own words. What the answers said:
+
+- **S6 FAILED, and it is a finding about the plan.** `capacity --promised` now runs on the
+  sealed run and refuses it: `nativecmp_compareInteractions 4 drew more than they declare`.
+  The migration split that family's ceiling two and two across the raw and the per-thousand
+  entries, but the per-thousand site named its files `compareInteractions_<measure>_per1k` -
+  and every reader of the plan attributes a file to the LONGEST id it begins with, so all
+  four fell to the raw family and exceeded its two. A family's files must carry its id in
+  front; that is the plan's own form (`<id>__<item>`), and the one figure whose file name
+  the migration changes on purpose: `compareInteractions_per1k_<measure>`. Predicted for the
+  next reproduction as exactly two renamed files.
+- **S7 FAILED, and it is a fact about the reference.** `capacity --memory` says the reference's
+  `report.json` records no memory mode: the run predates the field. The stage OWES with the
+  reason in its own words, which is the spine working.
+- **S2 FAILED for the display.** The station's line is the last line now, and the maker
+  clips each tail line at 150 characters - the count of panels drawn and not measured sits
+  past the clip. The loop's JSON carries it (765). Fixed in the maker: a tail line is printed
+  whole.
+- S8 as before.
 
 ## Step 2 — the plan schema, one reader, the validator, the migration worksheet
 
@@ -589,10 +609,10 @@ criterion (a page that must fail it).
 | step | status | commit(s) | note |
 |---|---|---|---|
 | 0 record | done | harness (this commit) | |
-| 1 spine on a sealed run | submitted twice: 710969 (FAILED, two target defects found and fixed), resubmission pending | harness: `jobs/status_on_run.pbs`; scProfile: the commit after eabe490 | S1 held; S2-S7 failed on a read-only stamp and a buried tail, both fixed; S8's prediction was wrong on a single run - see the results under step 1 |
+| 1 spine on a sealed run | submitted twice: 710969 (FAILED, two target defects found and fixed), 710970 (FAILED: S1, S3-S5 held; S6 found the per-thousand family's files unattributable, S7 the reference records no memory mode, S2 a clipped tail) | harness: `jobs/status_on_run.pbs`; scProfile: the commit after eabe490 | S1 held; S2-S7 failed on a read-only stamp and a buried tail, both fixed; S8's prediction was wrong on a single run - see the results under step 1 |
 | 2 schema, reader, validator, migrate worksheet | done | harness: this commit; scProfile: the commit after 043a60c | found on the way: the draw-site scan had been blind to cellchat's R sites since the companion move (wrappers read from the companion now); foreign wrapper spans hid a script's first sites; `DRAWN_BY` had two definitions; the record itself carried workstation paths |
 | 3 cellchat declaration migrated | done | harness: this commit; scProfile: the commit after d8cb913 | the baseline held on files, vector copies and total, and moved on one position - see the amendment under step 3; `capacity --promised` on the sealed run is asked by the step 1 job (cluster unreachable again on 2026-09-12) |
-| 4 generated sites, `ctx.rscript`, sites deleted | **4a-4d done locally; 4e not run** | harness: 582ff44, b366be4, 51c02e0 and this commit; scProfile: the four commits after 44a5541 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the manifest half of 4b is deferred to 4f (see the amendment); the reproduction waits for the cluster, unreachable all day on 2026-09-12 |
+| 4 generated sites, `ctx.rscript`, sites deleted | **4a-4d done; 4e submitted: PBS 710971, run `20260912T135705Z__scprofile-df9f005__04_profile__plan`, predictions R0-R9 in `jobs/plan_reproduction.pbs`** | harness: 582ff44, b366be4, 51c02e0 and this commit; scProfile: the four commits after 44a5541 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the manifest half of 4b is deferred to 4f (see the amendment); the reproduction waits for the cluster, unreachable all day on 2026-09-12 |
 | 5 retire the extractor, maps, prose, glue | not started; one item done early | harness: the commit after ff60907 | `sch dev convert account` printed a `native_plots` block for a plugin that has none: `declared_of` reads the plan's `fn`s and skips, and the worksheet speaks the plan form (`"skips": {`, a USED function is an entry). The rest waits for 4e - and see the amendment: `_families` and the placement maps stay until the eight migrate |
 | 6 `kind` binds rules | not started | | |
 | 7 evidence: enrichment test phase, blind 0003 | not started | | |

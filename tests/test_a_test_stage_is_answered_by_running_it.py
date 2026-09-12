@@ -180,6 +180,21 @@ class AnsweredByRunning(unittest.TestCase):
         self.assertIn("could not run", text)
         self.assertIn("test: 2 of 4 complete", text)
 
+    def test_a_tail_line_is_printed_whole(self):
+        # THE COUNT SAT PAST THE CLIP. On the sealed reference the station's one line was
+        # `43 drawing issue(s) across 5 panel(s) - 43 text_overlap; 765 drawn and NOT measured
+        # by any machine (...)`, and the maker printed the first 160 characters of it - the
+        # number the prediction was about was the part it cut. A tail line is the command's
+        # own answer; it is printed whole.
+        long = "6b drawing   " + "x" * 200 + " 765 drawn and NOT measured by any machine"
+        rows = [{"stage": "audited", "kind": "mechanical", "phase": "test", "fills": [],
+                 "done": False, "missing": [], "partial": "", "loan": {}, "version": {},
+                 "unasked": False, "draws": {}, "places": {}, "finished_by": "",
+                 "why": "w", "ran": {"argv": ["true"], "rc": 1, "owes": True, "says": [long]}}]
+        text = CV.format_status(rows, "alpha", "seam", doc=self.doc, root=str(self.d),
+                                run=str(self.run))
+        self.assertIn("765 drawn and NOT measured by any machine", text)
+
 
 class AStageFillsOrRuns(unittest.TestCase):
     def test_a_stage_that_fills_nothing_and_runs_nothing_is_refused(self):

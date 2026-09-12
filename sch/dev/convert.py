@@ -775,8 +775,10 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
                 ran = r["ran"]
                 L.append(f"       ran:  {' '.join(ran['argv'])}")
                 L.append(f"       {'answered' if not ran['owes'] else 'OWES'}  (exit {ran['rc']})")
+                # WHOLE, NOT CLIPPED. The count a prediction was about sat past the 160th
+                # character of a station's one line; a tail line is the command's own answer.
                 for line in ran["says"][-5:]:
-                    L.append(f"         {line[:160]}")
+                    L.append(f"         {line}")
             if r.get("partial"):
                 L.append(f"       started, and the plugin says so: {r['partial'][:150]}")
             if r.get("partial") or d.get("silent") or d.get("unknown"):
