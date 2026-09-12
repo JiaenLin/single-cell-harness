@@ -2034,7 +2034,7 @@ def _entries(spec, st):
     return str((st.get("fills") or [""])[0]), []
 
 
-def plan_worksheet(spec, doc, point_name, name="", inv=None, width=96):
+def plan_worksheet(spec, doc, point_name, name="", inv=None, width=96, rscript=""):
     """Every entry of the plan, what it lacks, and the upstream function's parameters beside it.
 
     A TABLE, NOT A VERDICT. `status` says whether the stage is done; this shows the plan a person
@@ -2050,13 +2050,28 @@ def plan_worksheet(spec, doc, point_name, name="", inv=None, width=96):
     want = st.get("each_item_declares") or {}
     field, entries = _entries(spec, st)
     gaps = item_gaps(spec, st).get("gaps") or []
-    lacking = {who: bad for who, bad in gaps}
+    lacking = {who: list(bad) for who, bad in gaps}
     detail = (getattr(inv, "detail", None) or {}) if inv is not None else {}
     fn_key = keys.get("upstream", "fn")
     items_key = keys.get("items", "items")
     bound_key = keys.get("bound", "at_most")
     call_key = keys.get("call", "args")
     expr_key = keys.get("expression", "expr")
+    # AND WHETHER EACH CALL IS R AT ALL, when R is at hand (`--rscript`). A call the plan
+    # carries is pasted into a generated site verbatim; one that does not parse takes the whole
+    # script down at the first figure, on the cluster.
+    if rscript:
+        calls = []
+        for e in entries:
+            fid = str(e.get("id") or e.get("name") or "?")
+            expr = str(e.get(expr_key) or "").strip()
+            call = str(e.get(call_key) or "").strip()
+            if expr:
+                calls.append((fid, expr))
+            elif call and str(e.get(fn_key) or "").strip():
+                calls.append((fid, f"{e[fn_key]}({call})"))
+        for i, msg in sorted(_r_parse_failures([t for _f, t in calls], rscript).items()):
+            lacking.setdefault(calls[i][0], []).append(f"does not parse as R: {msg}")
     cols = ["id", "drawn_by"] + [k for k in ("axis", "position") if k in want] + \
            [fn_key, items_key, bound_key, "kind", "legend"]
     L = [f"{name or 'this plugin'}: {len(entries)} entr{'y' if len(entries) == 1 else 'ies'} "
@@ -2195,6 +2210,53 @@ def _template_of(legend):
     return "".join(out), holes
 
 
+def _site_text(site):
+    """A site's drawn expression as the plan should carry it: one line for a call, the line
+    structure kept for a brace block, where a newline is a statement boundary."""
+    raw = str((site or {}).get("raw") or "")
+    if raw.startswith("{"):
+        return raw
+    return str((site or {}).get("draws") or "")
+
+
+def _r_parse_failures(texts, rscript):
+    """{index: message} for the call texts R cannot parse. One interpreter start for all of them.
+
+    THE MAKER CANNOT PARSE R AND DOES NOT PRETEND TO: it asks R, when told where R is. Without
+    this the first parser a transcribed expression met was the run's, on the cluster, three
+    steps after the worksheet that wrote it.
+    """
+    import shutil as _sh
+    import subprocess as _sp
+    import tempfile as _tf
+    if not texts or not rscript:
+        return {}
+    d = Path(_tf.mkdtemp(prefix="sch-parse-"))
+    try:
+        files = []
+        for i, t in enumerate(texts):
+            f = d / f"{i}.R"
+            f.write_text(str(t) + "\n", encoding="utf-8")
+            files.append(str(f))
+        prog = ('for (f in commandArgs(trailingOnly = TRUE)) {'
+                ' m <- tryCatch({ parse(text = readLines(f, warn = FALSE)); "" },'
+                ' error = function(e) conditionMessage(e));'
+                ' cat(basename(f), "\\t", gsub("[[:space:]]+", " ", m), "\\n", sep = "") }')
+        try:
+            p = _sp.run([rscript, "-e", prog] + files, capture_output=True, text=True,
+                        timeout=300)
+        except (OSError, _sp.SubprocessError) as e:
+            return {i: f"R could not be run: {e}" for i in range(len(texts))}
+        out = {}
+        for line in (p.stdout or "").splitlines():
+            f, _t, msg = line.partition("\t")
+            if _t and msg.strip() and f.endswith(".R"):
+                out[int(f[:-2])] = msg.strip()
+        return out
+    finally:
+        _sh.rmtree(d, ignore_errors=True)
+
+
 def _by_of(site, vocab=("tool", "plugin")):
     """The provenance a draw site states itself, or "".
 
@@ -2317,7 +2379,7 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
                     e[bound_key] = int(cap) if cap else n_members
                 if site.get("file"):
                     e["file"] = site["file"]
-                args, expr = _call_of(site.get("draws", ""), fn)
+                args, expr = _call_of(_site_text(site), fn)
                 if args:
                     e[call_key] = args
                 elif expr:
@@ -2363,7 +2425,7 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
         if not _by_of(site, vocab):
             todo += 1
         if fn:
-            args, _expr = _call_of(site.get("draws", ""), fn)
+            args, _expr = _call_of(_site_text(site), fn)
             if not args and _expr:
                 fn = ""
         if fn:
@@ -2377,7 +2439,7 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
             todo += 1
         if site.get("file"):
             e["file"] = site["file"]
-        args, expr = _call_of(site.get("draws", ""), fn)
+        args, expr = _call_of(_site_text(site), fn)
         if args:
             e[call_key] = args
         elif expr:

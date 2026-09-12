@@ -113,7 +113,10 @@ npng("heat_count", quarry_heat(cc, measure = "count", color = "Blues"),
      legend = "Counts between every ordered pair of populations.")
 npng("heat_weight", quarry_heat(cc, measure = "weight"),
      legend = paste0("Weights for ", n, " populations."))
-npng("ring_count", quarry_ring(cc, measure = "count"), legend = "Rings by count.")
+npng("ring_count", {
+  quarry_ring(cc, measure = "count")
+  stamp()
+}, legend = "Rings by count.")
 npng("ring_weight", quarry_ring(cc, measure = "weight"), legend = "Rings by weight.")
 """
 
@@ -245,6 +248,13 @@ class Migrate(unittest.TestCase):
         self.assertEqual(e["args"], 'cc, measure = "weight"')
         self.assertEqual(e["legend"], "Rings by weight.")
 
+    def test_a_brace_block_keeps_its_statement_boundaries(self):
+        # `{ f(x) g() }` on one line is not R. The block is carried with its lines, indented
+        # one space, so the generated site is the site that was read.
+        e = self.by_id["native_ring_count"]
+        self.assertNotIn("args", e)
+        self.assertEqual(e["expr"], '{\n quarry_ring(cc, measure = "count")\n stamp()\n }')
+
     def test_a_site_no_legacy_field_names_is_printed_and_never_dropped(self):
         # A draw site is a figure a run draws. One that no prose names is not a site to lose:
         # after the migration the sites are generated from the plan, and an entry that is not
@@ -296,6 +306,19 @@ class PlanTable(unittest.TestCase):
         self.assertIn("quarry_heat(cc, measure = 'count', ...)", text)
         self.assertIn('quarry_heat(cc, measure = "count")', text)
         self.assertNotIn("LACKS", text)
+
+    @unittest.skipUnless(shutil.which("Rscript"), "no R on this machine")
+    def test_a_call_r_cannot_parse_is_a_lack_when_r_is_at_hand(self):
+        spec = dict(self.spec)
+        spec["report"] = dict(spec["report"], figures=[
+            {"id": "native_broken", "drawn_by": "tool", "fn": "quarry_heat", "axis": "unit",
+             "position": "appendix", "legend": "L", "expr": "{ quarry_heat(cc) stamp() }"},
+            {"id": "native_fine", "drawn_by": "tool", "fn": "quarry_heat", "axis": "unit",
+             "position": "appendix", "legend": "L", "args": 'cc, measure = "count"'}])
+        text = CV.plan_worksheet(spec, self.doc, "seam", "alpha", rscript=shutil.which("Rscript"))
+        self.assertEqual(text.count("LACKS  does not parse as R"), 1, text)
+        self.assertIn("1 lack something", text.splitlines()[0])
+        self.assertLess(text.index("native_broken"), text.index("does not parse"))
 
     def test_a_point_without_a_plan_stage_says_so(self):
         doc = P.load(self.d)

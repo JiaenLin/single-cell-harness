@@ -130,6 +130,17 @@ def _mask(text):
     return "".join(out)
 
 
+def _reflow(text):
+    """`text` with blank lines dropped and each line's indentation cut to one space.
+
+    The line structure is kept - a newline inside a brace block separates statements - and the
+    indentation is not, because a site sits at whatever depth its loop put it and the plan
+    should not carry that.
+    """
+    lines = [ln.strip() for ln in str(text).splitlines()]
+    return "\n ".join(ln for ln in lines if ln)
+
+
 def _code_only(text):
     """`text` with its R comments removed and its strings kept. For SHOWING an expression.
 
@@ -699,6 +710,11 @@ def _site(w, where, line, named, positional, text, op, cl, defined_at=""):
             "legend_param": w.legend or "", "has_legend": has,
             "legend": named.get(w.legend, "") if w.legend else "",
             "call": call[:400], "wrapper_at": defined_at, "how": w.how,
+            # THE EXPRESSION WITH ITS LINES. In a brace block a newline is a statement boundary,
+            # and `draws` above joins the lines with a space: `{ f(x) g() }` is not R. Eleven of
+            # one plugin's forty-six sites were transcribed into a plan that way, and the first
+            # thing that could have said so was an R parser three steps later.
+            "raw": _reflow(_code_only(raw)),
             # THE NAMED ARGUMENTS, EACH ON ITS OWN, because `call` is cut at 400 characters for
             # a worksheet's sake and a `by = "plugin"` written after a long expression was cut
             # with it - read as absent, on the one site whose provenance nothing else named.

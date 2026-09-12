@@ -727,7 +727,8 @@ def cmd_dev(a):
                             if _inv.complete:
                                 inv = _inv
                                 break
-                    print(CV.plan_worksheet(spec, doc, point, nm, inv=inv))
+                    print(CV.plan_worksheet(spec, doc, point, nm, inv=inv,
+                                            rscript=a.rscript or ""))
                 except CV.ConvertError as e:
                     bad += 1
                     print(f"{nm}: {e}", file=sys.stderr)
