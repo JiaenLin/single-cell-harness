@@ -77,6 +77,16 @@ each command's own last lines as the reason. What it prints under "what is left"
 to run yourself, with the run filled in. A green build with the test phase unasked is a plugin
 finished as code and untested as a run; the status says so and does not count them together.
 
+**The run's agent half happens on a writing replay, never on the sealed run.** A sealed run is
+read-only; the looks, the claims and the section are written. Bring the run's light half across
+writable under the same run key (`scprofile agenda --out <RUNDIR>` prints the rsync, heavy
+objects excluded), point every command at that copy - `status --run`, `review`, `paper` - and
+clear `looked_at` (the scan set the review command prints and splits), `written` (the composed
+claims defended by a second agent, your own added, the section carried in with `paper --write`
+and rendered) and `delivered`. Then send the written layer back as a writing run:
+`jobs/submit_writing_seal.sh --prepare <sealed run>` names its `incoming/`, and `--seal` grades
+it with this same status and seals it.
+
 ## The rules of a round, and where a fix goes
 
 A repository may declare the rules of its current round under `rules:` in `DEVPOINTS.yaml` —

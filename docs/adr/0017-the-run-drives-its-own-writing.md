@@ -155,10 +155,10 @@ host, never a reason to help the agent by hand.
 | step | state | commits | notes |
 |---|---|---|---|
 | 0 record | done | this commit | |
-| 1 the two debts | | | |
-| 2 stations 7-9, one kind, one selection | | | |
-| 3 one brief, one carry-in | | | |
-| 4 reviewer rule, measure, agenda text | | | |
-| 5 the writing run's job, the skill | | | |
+| 1 the two debts | done | harness 8d2321d; scProfile 6a3f5b3 | a build stage's command runs on every status; `judgement` declares `scprofile validate`; the seal reads HEAD.txt |
+| 2 stations 7-9, one kind, one selection | done | scProfile af5c48f | `review.scan_set` (139 of 945 on the cohort); station 8 per plugin; station 9 at the run's report dir; the loop's `_kind` gone |
+| 3 one brief, one carry-in | done | scProfile a3ce98f | `paper --brief` prints WRITING_BRIEF.md, which gained the panel's headings and the contrasts' references; every text names `paper --write`; `run --section` stays for a rerun |
+| 4 reviewer rule, measure, agenda text | done | scProfile 8e64eba | a round needs a named reviewer who is not the author; `measure` names its way out; the agenda's pbs look task is the replay; the stages' `finished_by` in one vocabulary |
+| 5 the writing run's job, the skill | done | harness: this commit | `jobs/writing_seal.pbs` + `submit_writing_seal.sh --prepare/--seal`; the skill's test-phase paragraph |
 | 6 gates on the replay of 710985 | | | |
 | 7 blind 0004 | | | |

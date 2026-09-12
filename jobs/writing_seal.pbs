@@ -1,0 +1,133 @@
+#!/bin/bash
+#PBS -N sch_writing_seal
+#PBS -q short
+#PBS -l select=1:ncpus=4:mem=16gb
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#
+# ============================================================================================
+# THE WRITING RUN: a sealed run's light half, the written layer an agent produced on it, graded
+# by the maker and sealed (harness ADR-0017, step 5)
+# ============================================================================================
+#
+# A sealed run is never written to. The agent works on a replay - the run's light half, copied
+# writable under the same run key on the agent's side - opens the figures, writes the section,
+# records the claims and their rounds, renders. The written layer comes back to the cluster
+# into $RUNDIR/incoming (the submitter prints the path); this job rebuilds the replay from the
+# sealed run, lays the written layer over it, asks the maker whether the plugin's test phase is
+# answered on it, and seals the result as a run of its own.
+#
+# THE PREDICTIONS, WRITTEN BEFORE THE RUN:
+#   W1  the replay is the sealed run's light half: the same figure count under kernels/ as $REF.
+#   W2  the written layer is present per plugin: FIGURE_REVIEW.jsonl, PAPER.<plugin>.md,
+#       PAPER_CLAIMS.<plugin>.jsonl under kernels/<plugin>/, and report/<plugin>_paper.html.
+#   W3  `sch dev convert status --run` reads `looked_at`, `written` and `delivered` DONE, and
+#       `promised` done; `audited` and `measure` may owe (the plugin's drawing debt and the
+#       job's shape are not the writing's).
+#
+# rule-one: no-removal. Reads $REF; writes only inside $RUNDIR.
+# Authored on the workstation and pushed (rule H1). No `git` runs below.
+#
+#   bash jobs/submit_writing_seal.sh --prepare REF        # makes RUNDIR and prints incoming/
+#   ... the agent sends the written layer into RUNDIR/incoming/ ...
+#   bash jobs/submit_writing_seal.sh --seal RUNDIR        # validates and submits this job
+
+set -euo pipefail
+
+RUNDIR="${RUNDIR:?pass -v RUNDIR=<the writing run directory>}"
+REF="${REF:?pass -v REF=<the sealed run the writing was done on>}"
+HARNESS="${HARNESS:?pass -v HARNESS=<the harness checkout>}"
+TOOL="${TOOL:?pass -v TOOL=<the scProfile tree the maker reads>}"
+PLUGIN="${PLUGIN:-cellchat}"
+
+mkdir -p "$RUNDIR/logs"
+exec >> "$RUNDIR/logs/writing_seal.log" 2>&1
+
+seal() {
+  s=$?
+  {
+    echo "exit=$s"
+    echo "jobid=${PBS_JOBID:-interactive}"
+    echo "runkey=$(basename "$RUNDIR")"
+    echo "purpose=the written layer of a sealed run, graded by the maker and sealed as a run of its own"
+    echo "ref=$REF"
+    hostname
+    date -u +%Y-%m-%dT%H:%M:%SZ
+    [ -s "$RUNDIR/PREDICTIONS.txt" ] && cat "$RUNDIR/PREDICTIONS.txt"
+  } > "$RUNDIR/$([ "$s" -eq 0 ] && echo SEALED.txt || echo FAILED.txt)"
+  # THE SEAL: every file read-only, the logs excepted.
+  find "$RUNDIR" -type f -not -path "$RUNDIR/logs/*" -exec chmod a-w {} + 2>/dev/null || true
+}
+trap seal EXIT
+
+echo "=== the writing run - $(date -u)"
+echo "=== node $(hostname) - PBS ${PBS_JOBID:-interactive}"
+set +eu
+source /etc/profile 2>/dev/null || true
+module load anaconda3/3.0.0 2>/dev/null || true
+set -eu
+PY="${PY:-python3}"
+for f in "$REF/report.json" "$REF/SEALED.txt" "$HARNESS/sch" "$TOOL/scprofile" "$RUNDIR/incoming"; do
+  [ -e "$f" ] || { echo "MISSING: $f"; exit 2; }
+done
+echo "=== harness: $(cat "$HARNESS/HEAD.txt" 2>/dev/null || echo unknown)"
+echo "=== scProfile: $(cat "$TOOL/HEAD.txt" 2>/dev/null || echo unknown)"
+
+echo; echo "=== the replay: the sealed run's light half, writable"
+rsync -rlt --no-p --chmod=Du+rwx,Fu+rw \
+      --exclude 'objects/' --exclude '*.h5ad' --exclude '*.rds' --exclude '*.h5' \
+      --exclude 'cache/' --exclude '_cache/' --exclude 'logs/' \
+      --exclude 'SEALED.txt' --exclude 'FAILED.txt' --exclude 'RUNNING.txt' \
+      "$REF"/ "$RUNDIR/replay"/ > "$RUNDIR/logs/copy.txt" 2>&1
+chmod -R u+rwX "$RUNDIR/replay"
+echo "  replay: $(du -sh "$RUNDIR/replay" | cut -f1)"
+
+echo; echo "=== the written layer, laid over the replay"
+rsync -rlt --no-p --chmod=Du+rwx,Fu+rw "$RUNDIR/incoming"/ "$RUNDIR/replay"/ > "$RUNDIR/logs/overlay.txt" 2>&1
+find "$RUNDIR/incoming" -type f | sed "s#$RUNDIR/incoming/##" | sort > "$RUNDIR/logs/written_files.txt"
+echo "  $(wc -l < "$RUNDIR/logs/written_files.txt") file(s) in the written layer"
+
+echo; echo "=== the maker's reading of the plugin's test phase, on the replay"
+set +e
+PYTHONPATH="$HARNESS" "$PY" -m sch dev convert status --root "$TOOL" --point kernel \
+    --name "$PLUGIN" --run "$RUNDIR/replay" > "$RUNDIR/logs/maker_status.txt" 2>&1
+src=$?
+# THE EXIT CODE IS KEPT IN THE FILE THE GRADER READS, never only displayed.
+echo "  status exit: $src" >> "$RUNDIR/logs/maker_status.txt"
+set -e
+tail -30 "$RUNDIR/logs/maker_status.txt"
+
+echo; echo "=== grading"
+"$PY" - "$RUNDIR" "$REF" "$PLUGIN" > "$RUNDIR/PREDICTIONS.txt" 2>&1 <<'PYEOF'
+import glob, os, re, sys
+new, ref, plugin = sys.argv[1:4]
+out, bad = [], []
+def say(ok, tag, msg):
+    out.append(f"{'PASS' if ok else 'FAIL'}  {tag}  {msg}")
+    if not ok:
+        bad.append(tag)
+def read(p):
+    return open(p, encoding="utf-8", errors="replace").read() if os.path.exists(p) else ""
+def pngs(d):
+    return len(glob.glob(os.path.join(d, "kernels", "**", "*.png"), recursive=True))
+n_new, n_ref = pngs(os.path.join(new, "replay")), pngs(ref)
+say(n_new == n_ref and n_new > 0, "W1", f"{n_new} png in the replay, {n_ref} in the sealed run")
+rep = os.path.join(new, "replay")
+want = [f"kernels/{plugin}/FIGURE_REVIEW.jsonl", f"kernels/{plugin}/PAPER.{plugin}.md",
+        f"kernels/{plugin}/PAPER_CLAIMS.{plugin}.jsonl", f"report/{plugin}_paper.html"]
+gone = [w for w in want if not os.path.exists(os.path.join(rep, w))]
+say(not gone, "W2", "the written layer is present" if not gone else f"missing: {gone}")
+st = read(os.path.join(new, "logs", "maker_status.txt"))
+def verdict(name):
+    m = re.search(r"^\s*(\S+)\s+" + name + r"\b", st, re.M)
+    return m.group(1) if m else "?"
+v = {n: verdict(n) for n in ("promised", "audited", "looked_at", "written", "delivered", "measure")}
+ex = re.search(r"status exit: (\d+)", st)
+say(bool(ex) and ex.group(1) == "0" and all(v[n] == "done" for n in ("promised", "looked_at", "written", "delivered")),
+    "W3", f"the maker reads {v}; exit {ex.group(1) if ex else '?'}")
+print("\n".join(out)); print()
+print(f"VERDICT: {len(out) - len(bad)} of {len(out)} predictions held" + (f"; FAILED: {bad}" if bad else ""))
+PYEOF
+cat "$RUNDIR/PREDICTIONS.txt"
+grep -q FAILED "$RUNDIR/PREDICTIONS.txt" && { echo; echo "=== at least one prediction did not hold"; exit 2; }
+echo; echo "=== every prediction held"
