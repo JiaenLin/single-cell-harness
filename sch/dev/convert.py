@@ -89,9 +89,15 @@ def plan(doc, point_name):
     if not stages:
         raise ConvertError(f"point {point_name!r} declares `{KEY}:` with no stages")
     for i, st in enumerate(stages):
-        missing = [k for k in STAGE_REQUIRED if not st.get(k)]
+        missing = [k for k in STAGE_REQUIRED if k not in st]
         if missing:
             raise ConvertError(f"point {point_name!r}: stage {i} declares no {missing}")
+        # A STAGE FILLS FIELDS OR RUNS A COMMAND, and may do both; one that does neither is a
+        # name. `fills: []` is legitimate for a stage that VERIFIES a run - the loop's stations
+        # declared as test-phase stages fill nothing and answer from what a run left behind.
+        if not st.get("fills") and not st.get("command"):
+            raise ConvertError(f"point {point_name!r}: stage {st.get('name', i)!r} fills no "
+                               f"field and runs no command, so it can never be done or not")
     return conv.get("placeholder", "TODO"), conv.get("upstream", ""), list(stages)
 
 
@@ -305,13 +311,18 @@ def draw_summary(debt):
     return "; ".join(parts)
 
 
-def status(spec, doc, point_name, name="", source=None, python=""):
+def status(spec, doc, point_name, name="", source=None, python="", run=""):
     """[{stage, kind, done, missing, why}] in declared order. The whole resume mechanism.
 
     `name` IS OPTIONAL AND ITS ABSENCE IS AN ANSWER. A stage that rules on draw sites needs the
     plugin's source, and a caller that names no plugin has not supplied one - so such a stage
     reports "not looked at" rather than done. A status that quietly skipped the half it could not
     measure would be the same defect this module has fixed in four other places.
+
+    `run` IS HOW THE TEST PHASE IS ANSWERED. A stage that declares a `command:` is RUN against
+    the run directory, and its exit code is its verdict - the loop's own stations, declared as
+    stages, are answered by the loop's own script. Without `run` a command stage is judged by the
+    presence of what it fills, as before, and the command is printed as the way to answer it.
     """
     placeholder, _up, stages = plan(doc, point_name)
     out = []
@@ -385,10 +396,24 @@ def status(spec, doc, point_name, name="", source=None, python=""):
         vers = version_debt(st, spec, doc, point_name, name)
         owes_loan = bool(loan.get("owes"))
         owes_vers = bool(vers.get("owes"))
+        # A COMMAND STAGE IS ANSWERED BY RUNNING IT, when there is a run to run it against. Until
+        # this, `measure` and `promised` were judged by whether the field they fill was PRESENT -
+        # a run-side check read as a declaration check - and the four run-side stations of the
+        # loop had no way in at all: the loop said BLOCKED at 6b while this printed the test
+        # phase as 2 of 2 complete about the same run.
+        ran = run_stage(st, doc, name, run) if (run and st.get("command")) else {}
+        owes_run = bool(ran.get("owes"))
+        # A STAGE THAT VERIFIES A RUN AND WAS GIVEN NONE IS UNASKED, NOT DONE. `fills: []` means
+        # nothing is missing, and "nothing missing" read as complete - so a status with no run
+        # printed the run-side stages as finished about a run nobody named. Unasked is its own
+        # state: not done, and the command that would answer it is what is printed.
+        unasked = bool(st.get("command")) and not run and not st.get("fills")
         out.append({"stage": st["name"],
                     "partial": partial,
                     "loan": loan,
                     "version": vers,
+                    "ran": ran,
+                    "unasked": unasked,
                     "kind": st.get("kind", "mechanical"),
                     # BUILD OR TEST, and the split is the point. A BUILD stage reads source - the
                     # plugin's own code, or the wrapped tool's signatures and namespace - and
@@ -411,7 +436,8 @@ def status(spec, doc, point_name, name="", source=None, python=""):
                     # language, and in the family it was written for that is one plugin of nine.
                     "places": places,
                     "done": (not missing and not partial and not owes_draws and not owes_place
-                             and not owes_loan and not owes_vers),
+                             and not owes_loan and not owes_vers and not owes_run
+                             and not unasked),
                     "missing": missing,
                     "why": st.get("why", "")})
     return out
@@ -704,8 +730,11 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
     L = []
     for phase, headline in (("build", "BUILD - reads source only, so it cannot be fitted to a "
                                       "cohort"),
-                            ("test", "TEST - needs something to run on: the fixture, or a "
-                                     "dataset you already have")):
+                            ("test", (f"TEST - answered by running each stage's command against "
+                                      f"{run}" if run else
+                                      "TEST - needs something to run on: the fixture, or a "
+                                      "dataset you already have; pass --run RUNDIR and each "
+                                      "stage's command is run for you"))):
         group = [r for r in rows if r.get("phase", "build") == phase]
         if not group:
             continue
@@ -713,11 +742,25 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
         L.append(f"{name}  ({point_name})  {phase}: {done} of {len(group)} complete    {headline}")
         for r in group:
             mark = ("done" if r["done"]
+                    else "RUN?" if r.get("unasked")
                     else "PART" if r.get("partial") or r.get("draws", {}).get("silent")
                     else "ASK " if r["kind"] == "judgement" else "todo")
             L.append(f"  {mark} {r['stage']:12s} {', '.join(r['fills'])}")
             d = r.get("draws") or {}
             L += _draw_lines(r)
+            if r.get("unasked"):
+                L.append(f"       not asked: this stage verifies a run, and none was named. "
+                         f"Pass --run RUNDIR")
+            # WHAT A COMMAND STAGE SAID WHEN IT WAS RUN. The argv, so the reader can run it
+            # again; the verdict, so the mark above is explained; the tail, because the
+            # command's own last lines are the reason and this module does not know their
+            # vocabulary.
+            if r.get("ran"):
+                ran = r["ran"]
+                L.append(f"       ran:  {' '.join(ran['argv'])}")
+                L.append(f"       {'answered' if not ran['owes'] else 'OWES'}  (exit {ran['rc']})")
+                for line in ran["says"][-5:]:
+                    L.append(f"         {line[:160]}")
             if r.get("partial"):
                 L.append(f"       started, and the plugin says so: {r['partial'][:150]}")
             if r.get("partial") or d.get("silent") or d.get("unknown"):
@@ -974,6 +1017,30 @@ def callsites(source, names, window=3):
         if best:
             out[name] = best
     return out
+
+
+def run_stage(st, doc, name, run, timeout=1800):
+    """Run a command stage against `run`. {argv, rc, owes, says} - `says` is the output's tail.
+
+    THE EXIT CODE IS THE VERDICT AND THE TAIL IS THE REASON. The maker knows nothing about what
+    the command prints - a loop station's prose, a capacity fit, a ledger count - so it keeps the
+    last lines for the reader and rules on nothing but zero or not. `{python}` is the HOST's
+    interpreter: these are the repository's own tools whatever language its plugins draw in.
+
+    A COMMAND THAT CANNOT RUN OWES, AND SAYS WHY. Nothing here can turn "could not run" into a
+    pass, which is the same rule every other reader in this module keeps.
+    """
+    argv = fill(list(st.get("command") or []), {"python": sys.executable, "run": str(run),
+                                                "root": str(doc.get("_root") or "."),
+                                                "name": name or ""})
+    try:
+        p = subprocess.run(argv, cwd=str(doc.get("_root") or "."), capture_output=True,
+                           text=True, timeout=timeout)
+    except (OSError, subprocess.SubprocessError) as e:
+        return {"argv": argv, "rc": None, "owes": True, "says": [f"could not run: {e}"]}
+    lines = [l.rstrip() for l in ((p.stdout or "") + "\n" + (p.stderr or "")).splitlines()
+             if l.strip()]
+    return {"argv": argv, "rc": p.returncode, "owes": p.returncode != 0, "says": lines[-8:]}
 
 
 def stage_command(doc, point_name, stage_name):

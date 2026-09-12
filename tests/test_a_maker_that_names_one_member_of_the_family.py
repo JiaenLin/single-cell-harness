@@ -102,6 +102,22 @@ class AMakerThatNamesOneMemberOfTheFamily(unittest.TestCase):
         r["kind"] = "judgement"
         self.assertEqual("", OF.verdict(r))
 
+    def test_a_run_side_stage_this_scan_could_not_ask_is_a_note_and_not_a_finding(self):
+        # A stage that verifies a RUN and was given none has abstained on every artefact. Read
+        # as "corpus 0, fitted by construction" it would fail the scan on a stage it never ran;
+        # it is measured by `status --run RUNDIR`, and the report says so instead.
+        r = rows_for({"weighed": {"blind": ["ka", "ki", "ko"]}})[0]
+        r["phase"] = "test"
+        self.assertTrue(OF.unasked(r))
+        self.assertEqual("", OF.verdict(r))
+        rep = OF.format_report([r], [], "seal", ["ka", "ki", "ko"])
+        self.assertIn("not asked", rep)
+        self.assertIn("0 element(s) with a corpus", rep)
+        # and a BUILD stage blind everywhere is still the corpus finding it always was
+        b = rows_for({"shaped": {"blind": ["ka", "ki", "ko"]}})[0]
+        self.assertFalse(OF.unasked(b))
+        self.assertIn("CORPUS 0 of 3", OF.verdict(b))
+
     # ---- the literal half ------------------------------------------------------------
 
     #: `turn` is a CONVENTION here - two members spell a symbol with it. `hewStone` is one

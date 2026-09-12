@@ -628,8 +628,13 @@ def cmd_dev(a):
                 # the plugin DRAWS is measured from that plugin's source, and a status that did
                 # not pass the name would report "could not look" for every one of them - which
                 # is honest, and useless, on the one command a person types first.
-                out.append(CV.format_status(CV.status(spec, doc, point, nm), nm, point,
-                                            doc=doc, root=a.root, python=a.python or ""))
+                #
+                # AND THE RUN, when there is one: every test-phase stage with a command is run
+                # against it and answered by its exit code, so one status reads both phases.
+                out.append(CV.format_status(CV.status(spec, doc, point, nm, python=a.python or "",
+                                                      run=a.run or ""),
+                                            nm, point, doc=doc, root=a.root,
+                                            python=a.python or "", run=a.run or ""))
             print("\n\n".join(out))
             return OK
         if a.action == "overfit":
@@ -1126,6 +1131,11 @@ def build_parser():
     # whether a stage can be advanced by a command - see the note on it. Two hand-kept copies of
     # this list is how `placement` came to be a mechanical stage the maker described as
     # "nothing runs this - it is what only you can answer".
+    # A REPOSITORY'S OWN RUN-SIDE STAGES ARE NOT VERBS HERE, ON PURPOSE. `audited`, `looked_at`,
+    # `written` and `delivered` are one repository's declared command stages; `status --run
+    # RUNDIR` runs them and prints each one's own command as the way to answer it, so they need
+    # no name in this parser - and a name here would be the stage-name leak the note below
+    # already records, one level up.
     from .dev.convert import ACTIONS as _CONVERT_ACTIONS
     q.add_argument("action", nargs="?", default="status", choices=list(_CONVERT_ACTIONS))
     q.add_argument("--point", default=None)
@@ -1137,7 +1147,10 @@ def build_parser():
     q.add_argument("--tool", default=None, help="override the upstream named in the declaration")
     q.add_argument("--python", default=None, help="the interpreter the plugin's own env uses")
     q.add_argument("--rscript", default=None)
-    q.add_argument("--run", default=None, help="a completed run, for `measure`")
+    q.add_argument("--run", default=None,
+                   help="a completed run. `status --run` runs every test-phase stage's command "
+                        "against it and reads the exit code as the verdict; a command stage "
+                        "named as the action is run against it directly")
     q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("rules"))
     q.add_argument("--point", default=None)

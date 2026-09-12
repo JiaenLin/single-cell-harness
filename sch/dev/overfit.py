@@ -237,7 +237,14 @@ def fitted_literals(maker_files, vocab, min_len=4):
 
 
 def _answer(row):
-    """One stage's verdict on one artefact, reduced to something comparable."""
+    """One stage's verdict on one artefact, reduced to something comparable.
+
+    UNASKED IS BLIND. A stage that verifies a run and was given none has abstained, not
+    answered: counting it as `owes` on every artefact would report one answer over the whole
+    family and call the stage a constant, when the stage was never run at all.
+    """
+    if row.get("unasked"):
+        return "blind"
     if row.get("done"):
         return "done"
     if row.get("missing"):
@@ -298,9 +305,19 @@ def stage_corpus(doc, point_name, specs):
     return rows
 
 
+def unasked(row):
+    """A run-side stage this scan could not ask: every artefact blind, and a test-phase stage."""
+    return (row.get("phase") == "test" and row["n"] > 0 and row["blind"] == row["n"])
+
+
 def verdict(row):
     """The sentence a reader acts on, or "" when there is nothing to say about this element."""
     if row["kind"] == "judgement":
+        return ""
+    if unasked(row):
+        # NOT A CORPUS STATEMENT. A run-side stage this scan handed no run has abstained on
+        # every artefact; calling that "corpus 0, fitted by construction" would fail the scan
+        # on a stage it never ran. `status --run RUNDIR` is where such a stage is measured.
         return ""
     if row["seen"] <= 1:
         return (f"CORPUS {row['seen']} of {row['n']}: its instrument could look at "
@@ -359,7 +376,10 @@ def format_report(rows, lits, point_name, names, vocab=(), skipped=()):
         v = verdict(r)
         bad += bool(v)
         L.append(f"    {r['stage']:<{w}} {r['phase']:<6} {r['seen']:>5} {r['blind']:>6} "
-                 f"{r['distinct']:>8}   " + (v.split(" - ")[0] if v else "ok"))
+                 f"{r['distinct']:>8}   "
+                 + (v.split(" - ")[0] if v else
+                    "not asked: a run-side stage; `status --run RUNDIR` measures it"
+                    if unasked(r) else "ok"))
         if v:
             for tail in v.split(" - ")[1:]:
                 L.append(f"    {'':<{w}} {'':<6} {'':>5} {'':>6} {'':>8}   ...{tail}")

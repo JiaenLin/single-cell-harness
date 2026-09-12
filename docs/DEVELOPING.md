@@ -299,6 +299,24 @@ audit found it *afterwards* — which as a stage is found before. `version_is_cu
 stage. **STALE is the only debt**: `CANNOT SAY` — uncommitted, computed, no history — is a fact
 about the checkout, not about the plugin.
 
+### A test stage is answered by running it
+
+A stage that declares a `command:` is a **test-phase** stage: it needs something that ran. Given
+`--run RUNDIR`, `sch dev convert status` runs every such command against that directory, with
+`{python}` the host's interpreter and `{run}` the directory, and reads the exit code as the
+verdict — zero is answered, anything else owes, and a command that cannot run owes and says why.
+The command's last lines are printed under the stage, because the maker does not know their
+vocabulary and does not need to. Without `--run` a command stage is judged by the presence of
+what it fills, as before, and the command is printed as the way to answer it.
+
+This is how the loop's own stations became stages of the conversion (ADR-0015). The repository
+this was written for declares `audited`, `looked_at`, `written` and `delivered` as test-phase
+stages whose command is its loop driver with `--run {run} --station N` — one implementation,
+two callers — so one status reads, per plugin, whether it is finished as code *and* whether the
+run it produced has been measured, looked at, written from and delivered. A stage may declare
+`fills: []` when it verifies rather than fills; a stage that fills nothing and runs nothing is
+refused when the declaration loads.
+
 ### What the stages cover, which is not whether they are done
 
 `sch dev convert status` prints a coverage block whenever a key in the point's `must_declare` is
