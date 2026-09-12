@@ -296,7 +296,13 @@ def status(spec, doc, point_name, name="", source=None, python="", run=""):
         # a run-side check read as a declaration check - and the four run-side stations of the
         # loop had no way in at all: the loop said BLOCKED at 6b while this printed the test
         # phase as 2 of 2 complete about the same run.
-        ran = run_stage(st, doc, name, run) if (run and st.get("command")) else {}
+        # A BUILD STAGE'S COMMAND IS ANSWERED FROM THE DECLARATION ALONE, so it runs whether or
+        # not a run is named (ADR-0017): the repository's own validator on the judgement stage
+        # is one, and a build status that never ran it read 8 of 8 complete for a plugin the
+        # validator refused. A test stage's command verifies a run and stays unasked without one.
+        needs_run = str(st.get("phase", "build")) == "test"
+        ran = (run_stage(st, doc, name, run) if st.get("command") and (run or not needs_run)
+               else {})
         owes_run = bool(ran.get("owes"))
         # A STAGE THAT VERIFIES A RUN AND WAS GIVEN NONE IS UNASKED, NOT DONE. `fills: []` means
         # nothing is missing, and "nothing missing" read as complete - so a status with no run
@@ -310,7 +316,7 @@ def status(spec, doc, point_name, name="", source=None, python="", run=""):
         # a cold agent's status showed it (docs/blind/0002-gseapy.md, "test: 1 of 6 complete"
         # about a plugin that had never run). A command is the stage's question; without a run
         # it is unasked, and what it fills being present says only that somebody wrote it down.
-        unasked = bool(st.get("command")) and not run
+        unasked = needs_run and not run
         out.append({"stage": st["name"],
                     "partial": partial,
                     "loan": loan,

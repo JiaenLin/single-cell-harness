@@ -104,8 +104,9 @@ nothing else. Concretely:
   per process, and that until then they stay undeclared and the allocator's conservative default
   applies - which is the tool's existing rule for an absent declaration.
 - **The build's status runs the validator.** The `judgement` stage declares
-  `command: scprofile validate {name}`; the maker runs a command stage without `--run` when its
-  argv does not mention `{run}`, and the stage reads done only if the validator exits 0. Not a
+  `command: scprofile validate {name}`; the maker runs a BUILD stage's command without `--run`
+  (a test stage's still verifies a run), and the stage reads done only if the validator exits
+  0. Not a
   new stage: the judgement is still the agent's, and the validator says whether it is well formed.
 - **The seal reads `HEAD.txt`** where there is no git.
 

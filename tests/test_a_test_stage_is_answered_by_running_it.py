@@ -169,6 +169,40 @@ class AnsweredByRunning(unittest.TestCase):
         rows = self._rows(run=self.run)
         self.assertEqual(rows["shaping"]["ran"], {})
 
+    def test_a_command_that_needs_no_run_is_run_without_one(self):
+        """THE REPOSITORY'S OWN VALIDATOR ON THE JUDGEMENT STAGE (ADR-0017, step 1). A build
+        status read 8 of 8 complete for a per-unit plugin the repository's validator refused;
+        the validator was run by nobody until an agent thought to. A BUILD stage's command is
+        answered from the declaration alone, so it is run whether or not a run is named, and
+        the stage is done only when it exits 0. A TEST stage's command verifies a run and stays
+        unasked without one, as before."""
+        extra = (
+            "        - name: judged" + "\n"
+            "          phase: build" + "\n"
+            "          fills: [api]" + "\n"
+            "          kind: judgement" + "\n"
+            "          command: [false]" + "\n"
+            "          why: the validator refuses it" + "\n"
+            "        - name: welformed" + "\n"
+            "          phase: build" + "\n"
+            "          fills: [api]" + "\n"
+            "          command: [true]" + "\n"
+            "          why: the validator accepts it" + "\n")
+        d = _repo(extra=extra)
+        try:
+            doc = P.load(d)
+            rows = {r["stage"]: r
+                    for r in CV.status({"api": 1}, doc, "seam", "alpha", run="")}
+            self.assertFalse(rows["judged"]["unasked"], "a command needing no run read as unasked")
+            self.assertTrue(rows["judged"]["ran"].get("owes"), rows["judged"]["ran"])
+            self.assertFalse(rows["judged"]["done"])
+            self.assertTrue(rows["welformed"]["done"], rows["welformed"])
+            self.assertTrue(rows["holds"]["unasked"], "a test stage must stay unasked without a run")
+            out = CV.format_status(list(rows.values()), "alpha", "seam")
+            self.assertIn("OWES", out)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
     def test_the_status_prints_the_verdict_and_the_tail(self):
         rows = CV.status({"api": 1}, self.doc, "seam", "alpha", run=str(self.run))
         text = CV.format_status(rows, "alpha", "seam", doc=self.doc, root=str(self.d),
