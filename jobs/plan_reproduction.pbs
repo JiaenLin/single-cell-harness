@@ -101,6 +101,17 @@
 #   R15 the driver log carries 0 "declares figure ... did not emit" lines; 710981's carried
 #       1,728 - every contrast and cohort entry of the plan charged to every unit, twice.
 #
+#   FIFTH SUBMISSION, after 710982 held 15 of 16 (R12-R14 exactly as predicted). R15 was the
+#   finding: 396 lines left, eleven per-item families on every unit twice - `native_river`,
+#   `native_aggregate_circle`, `native_chord_gene` and their like, whose records are their files
+#   (`native_river_outgoing`, `native_chord_gene__LAMININ`) and whose entry is the family's id -
+#   plus the rank-estimation PDFs the tool writes as a side effect (`generated: False`, no
+#   caption, no record). And 432 of those files reported as "emitted, not declared". The
+#   feedback now matches records to entries by the plan's own file rule (`native.names_file`),
+#   both ways, and charges nobody for a side-effect file. PREDICTED: R15 0 lines, and
+#   R16 0 "emitted figure ... does not declare" lines (the `produces` table lines are a
+#   different, older reading and are not counted). Everything else as 710982.
+#
 # rule-one: no-removal - everything this writes goes inside $RUNDIR.
 # Authored on the workstation and pushed (rule H1). No `git` runs below. Submit with
 # jobs/submit_plan_reproduction.sh, never qsub directly: the run key is built there.
@@ -422,8 +433,11 @@ say(got14 == want14, "R14 the pages carry 710981's panels, none twice, none lost
 
 drv = read(os.path.join(new, "logs", "driver.log"))
 n15 = drv.count("declares figure")
-say(bool(drv) and n15 == 0, "R15 the feedback charges no contrast or cohort panel to a unit",
-    f"{n15} 'declares figure' line(s) in the driver log (710981: 1728)" + ("" if drv else "; no driver log"))
+say(bool(drv) and n15 == 0, "R15 the feedback charges no panel a unit could not have drawn",
+    f"{n15} 'declares figure' line(s) in the driver log (710981: 1728; 710982: 396)" + ("" if drv else "; no driver log"))
+n16 = drv.count("emitted figure")
+say(bool(drv) and n16 == 0, "R16 the feedback reports no per-item file as undeclared",
+    f"{n16} 'emitted figure' line(s) in the driver log (710982: 432)" + ("" if drv else "; no driver log"))
 
 print("\n".join(out))
 print()

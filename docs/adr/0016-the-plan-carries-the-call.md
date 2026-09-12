@@ -568,6 +568,23 @@ without regressing, and an identical run prints "identical" - the numbers it rea
 prediction's exactly. The job now accepts both phrases. The plan draws what the hand-written
 sites drew, and the documents carry the same plates.
 
+*Results, 2026-09-13, fourth reproduction (PBS 710982, run
+`20260912T160643Z__scprofile-892593c__04_profile__plan`, sealed and graded 15 of 16).* 4f's
+mechanism held exactly as predicted: 432 records over 18 units, one per captioned native panel
+and none for a compare-phase panel or an uncaptioned file (R12); station 6b reads 765 unmeasured
+as 432 recorded by the companion and 333 by nothing, and 0 and 765 on the reference (R13); every
+page's image count is 710981's - 10, 537, 260, 144, 83, 90 - so no panel rendered twice and none
+lost (R14); R0-R11 as before, capacity identical. R15 was the finding: 396 "declares figure"
+lines left of 1,728 - eleven per-item families on every unit, twice, whose records are their
+files (`native_river_outgoing`, `native_chord_gene__LAMININ`) and whose entry is the family's
+id, plus the rank-estimation PDFs the tool writes as a side effect (`generated: False`: no
+caption, no record); and, unpredicted, 432 of those files reported as "emitted, not declared".
+The feedback matched records to entries by exact id. It matches by the plan's own file rule
+now, `native.names_file`, in both directions - the rule `promised` and the paper's index already
+read - and charges nobody for a side-effect file; seen to fail first on the eleven's shape.
+Fifth submission predicts R15 at 0 and R16 (no per-item file reported undeclared) at 0, all
+else as 710982.
+
 *Results, 2026-09-12, step 7a first run (PBS 710972, sealed with 3 of 6).* E1 held: the
 environment built (scprofile-env-2800f396e8) and the plugin's own selftest passed. E3 held:
 every run-side stage ran and answered. E2 failed before the plugin was reached: `run` REFUSED
