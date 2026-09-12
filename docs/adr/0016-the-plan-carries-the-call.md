@@ -584,6 +584,21 @@ entries get their `kind` in step 3 already; this step only makes the host read i
 **Gate:** `check --deep` green; the standard's own `selfcheck()` gains one mutation per new
 criterion (a page that must fail it).
 
+*Amendment, 2026-09-12, step 6 as done.* No kind in the registry carries R10, so the two
+rules with a mechanical form are R3 (a cut names what it removed) and R4 (the denominator is
+declared), and both come down to one check: the caption states a count or a fraction. `kinds`
+is a criterion of the exit standard, read from the plan beside the report through
+`native.names_file`; n/a where no plan is beside the page. Held to it, thirteen of cellchat's
+legends named no count - the chord drawn for the first eight of forty-nine shared pathways
+said "one per arm" - and each now states it at the plan. Two consequences worth writing down:
+the interpreter binds `.entry` in the caller's frame and the plan's R entry carries `at_most`,
+so a legend names its ceiling as `{.entry$at_most}` rather than retyping a number the plan
+owns; and the two host-drawn panels the criterion binds (F2 `unit_presence`, F10 `similarity`)
+keep the captions their `emit_figure` call passes - the plan's `legend` for a host-drawn
+panel is dead text while the emit caption wins. That is a gap, not a fix: the criterion will
+name F2 and F10 on the next report, and "the host reads a host-drawn panel's legend from the
+plan when the plugin passes none" belongs with step 4f, the one-place-for-captions work.
+
 ## Step 7 — the evidence
 
 7a. enrichment's test phase: one PBS job that builds its environment, runs the fixture through
@@ -614,5 +629,5 @@ criterion (a page that must fail it).
 | 3 cellchat declaration migrated | done | harness: this commit; scProfile: the commit after d8cb913 | the baseline held on files, vector copies and total, and moved on one position - see the amendment under step 3; `capacity --promised` on the sealed run is asked by the step 1 job (cluster unreachable again on 2026-09-12) |
 | 4 generated sites, `ctx.rscript`, sites deleted | **4a-4d done; 4e submitted: PBS 710971, run `20260912T135705Z__scprofile-df9f005__04_profile__plan`, predictions R0-R9 in `jobs/plan_reproduction.pbs`** | harness: 582ff44, b366be4, 51c02e0 and this commit; scProfile: the four commits after 44a5541 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the manifest half of 4b is deferred to 4f (see the amendment); the reproduction waits for the cluster, unreachable all day on 2026-09-12 |
 | 5 retire the extractor, maps, prose, glue | not started; one item done early | harness: the commit after ff60907 | `sch dev convert account` printed a `native_plots` block for a plugin that has none: `declared_of` reads the plan's `fn`s and skips, and the worksheet speaks the plan form (`"skips": {`, a USED function is an entry). The rest waits for 4e - and see the amendment: `_families` and the placement maps stay until the eight migrate |
-| 6 `kind` binds rules | not started | | |
+| 6 `kind` binds rules | done locally; measured on the next reproduction's report | scProfile: the commit after 22ff988 | every entry carries a kind (nine `other`); the standard's `kinds` criterion holds a caption to R3/R4; thirteen legends now state their count at the plan; `{.entry$at_most}` names a ceiling from the plan; F2/F10 keep their emit captions - see the amendment |
 | 7 evidence: enrichment test phase, blind 0003 | not started | | |

@@ -1,0 +1,214 @@
+#!/bin/bash
+#PBS -N sch_enrichment_test
+#PBS -q short
+#PBS -l select=1:ncpus=4:mem=24gb
+#PBS -l walltime=03:00:00
+#PBS -j oe
+#
+# =============================================================================================
+# THE TEST PHASE OF A PLUGIN THE MAKER NEVER RAN: enrichment (gseapy), on the fixture
+# =============================================================================================
+#
+# Harness ADR-0016, step 7a. `tests/smoke/plugins/enrichment.py` was written by a cold agent
+# in a clean room (docs/blind/0002-gseapy.md) and reached build 9 of 9 without ever running.
+# This job builds its environment, runs the harness's fixture through it, and asks the maker's
+# six run-side stages of the result - the same spine step 1 proved on cellchat's sealed run.
+#
+# THE TREE. A smoke plugin lives under tests/smoke/plugins and the maker reads a plugin from
+# the point's own `lives` directory, so this runs on an export of scProfile whose kernels/
+# holds the enrichment plugin alone - the pattern the cellchat-only tree already uses.
+#
+# THE PREDICTIONS, WRITTEN BEFORE THE RUN:
+#
+#   E1  the environment installs: gseapy 1.3.x resolves with the pins the plugin declares, and
+#       the plugin's own selftest passes inside it (it plants a signal and requires prerank to
+#       find it).
+#   E2  the run REACHES the plugin and ends in one of two honest states: it draws its panels,
+#       or it refuses with a named reason. The likely reason is the library: the plugin fetches
+#       an Enrichr library by name at run time and a compute node may have no route out; a
+#       refusal saying so is a result. A crash is neither.
+#   E3  `sch dev convert status --run` exits 0 and every one of the six run-side stages
+#       answers in its own words (ran: ... answered/OWES); none says PermissionError.
+#   E4  `promised`: either every declared upstream plot drew (0 gaps) or the run refused - a
+#       refused run promises nothing, and the stage says which.
+#   E5  `audited` (station 6b): every panel the run drew was measured - 0 drawn and NOT
+#       measured - because this plugin draws through the host's emit path alone.
+#   E6  the loop's first blocked station on a single run is `2 landscape` (no licence), as
+#       step 1 found; `first_blocked` is never `6b drawing` here.
+#
+# rule-one: no-removal. Writes only inside $RUNDIR.
+# Authored on the workstation and pushed (rule H1). No `git` runs below. Submit with
+# jobs/submit_enrichment_test_phase.sh.
+# =============================================================================================
+set -euo pipefail
+
+HOME_=/data/wangyb/home/jiaen.lin
+PROJ="$HOME_/projects/SAMBO"
+: "${RUNDIR:?submit with jobs/submit_enrichment_test_phase.sh}"
+: "${RUNKEY:?submit with jobs/submit_enrichment_test_phase.sh}"
+TOOL="${TOOL:-$HOME_/tools/scProfile-smoke}"
+HARNESS="${HARNESS:-$HOME_/tools/single-cell-harness}"
+HOSTENV="$PROJ/env/scprofile-host"
+PY="$HOSTENV/bin/python"
+[ -d "$RUNDIR/logs" ] || { echo "$RUNDIR/logs does not exist; the submitter creates it"; exit 3; }
+
+finish() {
+  s=$?
+  {
+    echo "exit=$s"
+    echo "jobid=${PBS_JOBID:-interactive}"
+    echo "runkey=$RUNKEY"
+    echo "purpose=the test phase of a plugin the maker never ran (ADR-0016 step 7a)"
+    hostname
+    date -u +%Y-%m-%dT%H:%M:%SZ
+    [ -s "$RUNDIR/PREDICTIONS.txt" ] && cat "$RUNDIR/PREDICTIONS.txt"
+  } > "$RUNDIR/$([ "$s" -eq 0 ] && echo SEALED.txt || echo FAILED.txt)"
+}
+trap finish EXIT
+exec >> "$RUNDIR/logs/driver.log" 2>&1
+echo "=== enrichment test phase - $RUNKEY - node $(hostname) - $(date -u) - PBS ${PBS_JOBID:-interactive}"
+[ -x "$PY" ] || { echo "host interpreter missing: $PY"; exit 2; }
+for f in "$TOOL/kernels/enrichment.py" "$HARNESS/sch" "$TOOL/tests/loop_stations.py"; do
+  [ -e "$f" ] || { echo "MISSING: $f"; exit 2; }
+done
+n_kernels=$(find "$TOOL/kernels" -maxdepth 1 -name "*.py" -not -name "_*" | wc -l | tr -d ' ')
+[ "$n_kernels" = "1" ] || { echo "REFUSING: the tree carries $n_kernels kernels; this is the enrichment-only test"; exit 3; }
+echo "=== scProfile (smoke export): $(cat "$TOOL/HEAD.txt" 2>/dev/null || echo unknown)"
+echo "=== harness: $(cat "$HARNESS/HEAD.txt" 2>/dev/null || echo unknown)"
+cp "$TOOL/HEAD.txt" "$RUNDIR/TOOL_HEAD.txt" 2>/dev/null || true
+
+set +eu
+source /etc/profile 2>/dev/null || true
+module load anaconda3/3.0.0 2>/dev/null || true
+set -eu
+SYSPY="$(command -v python3)"
+
+echo; echo "=== FIXTURE (the harness's, shape a)"
+PYTHONPATH="$HARNESS" "$PY" -m sch dev fixture "$RUNDIR/fixture" > "$RUNDIR/logs/fixture.txt" 2>&1 || {
+  echo "fixture FAILED:"; cat "$RUNDIR/logs/fixture.txt"; exit 1; }
+tail -4 "$RUNDIR/logs/fixture.txt"
+H5AD="$RUNDIR/fixture/fixture_a.h5ad"; DESIGN="$RUNDIR/fixture/design_a.csv"
+read -r LABEL SAMPLE BATCH COUNTS < <("$PY" - "$RUNDIR/fixture/FIXTURE_a.json" <<'PYEOF'
+import json, sys
+r = json.load(open(sys.argv[1]))["roles"]
+print(r["cell_type"], r["sample"], r["batch"], r.get("counts", "counts"))
+PYEOF
+)
+echo "  label=$LABEL sample=$SAMPLE batch=$BATCH counts=$COUNTS"
+
+echo; echo "=== INSTALL"
+set +e
+PYTHONPATH="$TOOL" "$PY" -m scprofile.cli install enrichment --prefix "$PROJ/env" \
+    2>&1 | tee "$RUNDIR/logs/install.txt" | tail -20
+inst=${PIPESTATUS[0]}
+set -e
+echo "  install exit: $inst" >> "$RUNDIR/logs/install.txt"
+if [ "$inst" -ne 0 ]; then
+  echo "THE INSTALL FAILED (exit $inst); the run is not attempted. E1 is graded from install.txt."
+fi
+
+RUNRC=99
+if [ "$inst" -eq 0 ]; then
+  echo; echo "=== RUN on the fixture"
+  set +e
+  PYTHONPATH="$TOOL" "$PY" -m scprofile.cli run \
+      --h5ad "$H5AD" --out "$RUNDIR" --kernel enrichment \
+      --prefix "$PROJ/env" --design "$DESIGN" \
+      --label-key "$LABEL" --sample-key "$SAMPLE" --batch-key "$BATCH" \
+      --counts-layer "$COUNTS" \
+      --organism human --assay cell --timeout 3600 --no-cache \
+      > "$RUNDIR/logs/run.txt" 2>&1
+  RUNRC=$?
+  set -e
+  echo "  run exit: $RUNRC" >> "$RUNDIR/logs/run.txt"
+  tail -12 "$RUNDIR/logs/run.txt"
+  echo; echo "=== REPORT"
+  set +e
+  PYTHONPATH="$TOOL" "$PY" -m scprofile.cli report --out "$RUNDIR" --prefix "$PROJ/env" \
+      > "$RUNDIR/logs/report.txt" 2>&1
+  reprc=$?
+  echo "  report exit: $reprc" >> "$RUNDIR/logs/report.txt"
+  set -e
+  tail -4 "$RUNDIR/logs/report.txt"
+fi
+
+echo; echo "=== THE MAKER'S RUN-SIDE STAGES"
+set +e
+PYTHONPATH="$HARNESS" "$SYSPY" -m sch dev convert status --root "$TOOL" --point kernel \
+    --name enrichment --run "$RUNDIR" > "$RUNDIR/logs/maker_status.txt" 2>&1
+src_=$?
+echo "  status exit: $src_" >> "$RUNDIR/logs/maker_status.txt"
+PYTHONPATH="$TOOL" "$SYSPY" "$TOOL/tests/loop_stations.py" --run "$RUNDIR" --json \
+    > "$RUNDIR/loop.json" 2> "$RUNDIR/logs/loop.err"
+looprc=$?
+echo "  loop exit: $looprc" >> "$RUNDIR/logs/loop.err"
+set -e
+sed -n '1,60p' "$RUNDIR/logs/maker_status.txt"
+
+echo; echo "=== GRADING"
+set +e
+"$PY" - "$RUNDIR" "$RUNRC" > "$RUNDIR/PREDICTIONS.txt" 2>&1 <<'PYEOF'
+import glob, json, os, re, sys
+run, runrc = sys.argv[1], sys.argv[2]
+out, bad = [], []
+def say(v, name, detail):
+    out.append(f"{'PASS' if v else 'FAIL'}  {name}  {detail}")
+    if not v: bad.append(name.split()[0])
+def read(p):
+    return open(p, encoding="utf-8", errors="replace").read() if os.path.exists(p) else ""
+ins = read(os.path.join(run, "logs", "install.txt"))
+ie = re.search(r"install exit: (\d+)", ins)
+say(bool(ie) and ie.group(1) == "0" and "selftest passed" in ins,
+    "E1  the environment installs and the plugin's selftest passes",
+    f"install exit {ie.group(1) if ie else '?'}; selftest {'passed' if 'selftest passed' in ins else 'not seen'}")
+rj = {}
+try:
+    rj = json.load(open(os.path.join(run, "report.json"), encoding="utf-8"))
+except Exception as e:                                                    # noqa: BLE001
+    pass
+kern = ((rj.get("kernels") or {}).get("enrichment") or {}) if isinstance(rj, dict) else {}
+pngs = glob.glob(os.path.join(run, "kernels", "enrichment", "**", "*.png"), recursive=True)
+status = str(kern.get("status") or (rj.get("status") if isinstance(rj, dict) else "") or "")
+absent = kern.get("absent") or (rj.get("absent") if isinstance(rj, dict) else None) or []
+runtxt = read(os.path.join(run, "logs", "run.txt"))
+crashed = "Traceback" in runtxt
+drew = len(pngs) > 0
+refused = ("refus" in status.lower()) or bool(absent) or ("refuse" in runtxt.lower())
+say(bool(rj) and not crashed and (drew or refused),
+    "E2  the run reaches the plugin and ends honestly",
+    f"run exit {runrc}; {len(pngs)} panel(s); status {status!r}; "
+    + ("refused: " + "; ".join(str(a.get('why', a))[:90] for a in absent[:2]) if absent else "")
+    + ("; TRACEBACK in the run log" if crashed else ""))
+st = read(os.path.join(run, "logs", "maker_status.txt"))
+se = re.search(r"status exit: (\d+)", st)
+stages = ("measure", "promised", "audited", "looked_at", "written", "delivered")
+ran = {s_: bool(re.search(r"^\s*\S+\s+" + s_ + r"\b[\s\S]*?ran:", st, re.M)) for s_ in stages}
+say(bool(se) and se.group(1) == "0" and all(ran.values()) and "PermissionError" not in st,
+    "E3  every run-side stage ran and answered in its own words",
+    f"status exit {se.group(1) if se else '?'}; ran {ran}")
+prom = re.search(r"promised[\s\S]*?ran:.*\n\s+(answered|OWES)\s+\(exit (\d+)\)", st)
+say(bool(prom) and (prom.group(1) == "answered" or refused),
+    "E4  the promises are kept, or the run refused",
+    f"promised {prom.group(1) if prom else 'not seen'} exit {prom.group(2) if prom else '?'}")
+lj = {}
+try:
+    lj = json.load(open(os.path.join(run, "loop.json"), encoding="utf-8"))
+except Exception:                                                         # noqa: BLE001
+    pass
+d6b = ((lj.get("stations") or {}).get("6b drawing") or {}).get("detail", "")
+um = re.search(r"(\d+) drawn and NOT measured", d6b)
+say(bool(lj) and (um is None or um.group(1) == "0"),
+    "E5  every panel drawn was measured",
+    f"6b: {d6b[:160]!r}")
+say(bool(lj) and lj.get("first_blocked") == "2 landscape",
+    "E6  a single run blocks first at the licence",
+    f"first_blocked={lj.get('first_blocked')!r}")
+print("\n".join(out)); print()
+print(f"VERDICT: {len(out) - len(bad)} of {len(out)} predictions held" + (f"; FAILED: {bad}" if bad else ""))
+PYEOF
+grade=$?
+set -e
+cat "$RUNDIR/PREDICTIONS.txt"
+[ "$grade" -eq 0 ] || { echo "THE GRADER ITSELF FAILED (exit $grade); predictions UNGRADED"; exit 2; }
+BAD=$(grep -c '^FAIL' "$RUNDIR/PREDICTIONS.txt" || true)
+echo; echo "=== done $(date -u) - $RUNKEY - failed predictions: ${BAD:-0}"

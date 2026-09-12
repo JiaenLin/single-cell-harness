@@ -48,6 +48,10 @@
 #       a legend from its entry), and no page says NO LEGEND WAS WRITTEN.
 #   R8  the environment is REUSED, not rebuilt: `requires` did not change, so the install names
 #       the reference's own scprofile-env-d077909e49.
+#   R10 the exit standard's `kinds` criterion (ADR-0016 step 6), read from the plan beside this
+#       report, names no R-drawn panel: every caption a kind holds to a count states one. The
+#       only figures it may name are the two host-drawn plates whose captions are not on the
+#       plan yet, F2_population_power and F10_pathway_similarity.
 #   R9  the maker's run-side stages answer the same as on the reference:
 #       `sch dev convert status --run` exits 0; `promised` and `measure` answered; `audited`,
 #       `looked_at`, `written`, `delivered` owe; the `audited` line's count of panels drawn and
@@ -184,6 +188,14 @@ echo "  promised exit: $prc, against exit: $arc"
 set -e
 tail -6 "$RUNDIR/logs/promised.txt"; tail -8 "$RUNDIR/logs/against.txt"
 
+echo; echo "=== THE EXIT STANDARD, with the plan beside the report ==="
+set +e
+PYTHONPATH="$TOOL" "$PY" -m scprofile.cli standard --out "$RUNDIR" > "$RUNDIR/logs/standard.txt" 2>&1
+stdrc=$?
+echo "  standard exit: $stdrc" >> "$RUNDIR/logs/standard.txt"
+set -e
+grep -n "kinds" "$RUNDIR/logs/standard.txt" | head -12
+
 echo; echo "=== THE MAKER'S RUN-SIDE STAGES, on this run and on the reference ==="
 set +e
 PYTHONPATH="$HARNESS" "$SYSPY" -m sch dev convert status --root "$TOOL" --point kernel \
@@ -287,6 +299,14 @@ ins = read(os.path.join(new, "logs", "install.txt"))
 envs = sorted(set(re.findall(r"scprofile-env-[0-9a-f]+", ins)))
 say(envs == ["scprofile-env-d077909e49"], "R8  the environment is the reference's, reused",
     f"install names {envs or 'no environment'}")
+
+std = read(os.path.join(new, "logs", "standard.txt"))
+kind_fails = [l for l in std.splitlines() if re.match(r"\s+\S+\s+kinds\s", l)]
+named = sorted({n for l in kind_fails for n in re.findall(r"([A-Za-z0-9_]+\.png)", l)})
+only_host = all(n.startswith(("F2_", "F10_")) for n in named)
+say(bool(std) and "kinds" in std and only_host, "R10 the kinds criterion names no R-drawn panel",
+    f"{len(kind_fails)} page(s) failing `kinds`; named: {named[:8] or 'none'}"
+    + ("" if std else "; standard.txt is empty"))
 
 st_new, st_ref = read(os.path.join(new, "logs", "maker_status_new.txt")), read(os.path.join(new, "logs", "maker_status_ref.txt"))
 def verdicts(txt):
