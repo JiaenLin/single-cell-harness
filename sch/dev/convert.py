@@ -2150,6 +2150,10 @@ def plan_worksheet(spec, doc, point_name, name="", inv=None, width=96, rscript="
                 calls.append((fid, f"{e[fn_key]}({call})"))
         for i, msg in sorted(_r_parse_failures([t for _f, t in calls], rscript).items()):
             lacking.setdefault(calls[i][0], []).append(f"does not parse as R: {msg}")
+    routes_key = str(keys.get("routes") or "")
+    routes = _dotted(spec, routes_key) if routes_key else None
+    routes = routes if isinstance(routes, dict) else {}
+    reached, to_nothing = _routes_reach(routes, entries, fn_key)
     cols = ["id", "drawn_by"] + [k for k in ("axis", "position") if k in want] + \
            [fn_key, items_key, bound_key, "kind", "legend"]
     L = [f"{name or 'this plugin'}: {len(entries)} entr{'y' if len(entries) == 1 else 'ies'} "
@@ -2182,10 +2186,64 @@ def plan_worksheet(spec, doc, point_name, name="", inv=None, width=96, rscript="
             L.append(f"      expr: {_clip(expr, width - 12)}")
         for bad in lacking.get(fid, ()):
             L.append(f"      LACKS  {bad}")
+        if reached.get(fid):
+            L.append(f"      routed: {', '.join(reached[fid])}")
+    # THE PANELS THE PLUGIN DRAWS ITSELF THAT NO ROUTE REACHES, with the route to paste. A
+    # unit-axis figure is the profile's own page and is not placed by need; the contrast and
+    # cohort ones are placed by nothing else. Only asked of a plugin that routes at all.
+    if routes:
+        own = [e for e in entries
+               if str(e.get("drawn_by") or "tool") != "tool"
+               and str(e.get("axis") or "") in ("contrast", "cohort")
+               and str(e.get("id") or "") not in reached]
+        if own:
+            L.append("")
+            L.append(f"  UNROUTED  {len(own)} panel(s) the plugin draws itself, off the unit "
+                     f"axis, that no route in `{routes_key}` reaches - drawn on every run and "
+                     f"placed in no document. Route each under the need it answers:")
+            for e in own:
+                L.append(f"      plan:{e.get('id')}    ({e.get('axis')}, "
+                         f"{e.get('position') or '-'})")
+        if to_nothing:
+            L.append("")
+            L.append(f"  ROUTES TO NOTHING  {len(to_nothing)} route(s) naming what no entry of "
+                     f"the plan carries:")
+            for need, r in to_nothing:
+                L.append(f"      {need}: {r}")
     if inv is None:
         L.append("")
         L.append("  (pass --python <the plugin's own interpreter> to see each function's parameters)")
     return "\n".join(L)
+
+
+def _routes_reach(routes, entries, fn_key="fn"):
+    """({entry id: [need]}, [(need, route)]) - which need reaches each entry of the plan, and
+    the routes that reach nothing on it.
+
+    THE PLAN'S PANELS ARE PLACED BY NEED. A route is `native:<fn>` (every entry the tool draws
+    with that function), `plan:<id>` (that entry itself) or `host:<kind>` (the host's own
+    panels, which are not on the plan and are not read here). A panel no route reaches is drawn
+    on every run and placed in no document, and nothing on the run says so: eleven of them on
+    one reproduction, every one described, every one unseen.
+    """
+    reached, nothing = {}, []
+    for need, rs in sorted((routes or {}).items()):
+        for r in (rs if isinstance(rs, (list, tuple)) else [rs]):
+            kind, _, who = str(r).partition(":")
+            if kind == "native":
+                hits = [str(e.get("id")) for e in entries
+                        if str(e.get("drawn_by") or "tool") == "tool"
+                        and str(e.get(fn_key) or "").strip() == who]
+            elif kind == "plan":
+                hits = [str(e.get("id")) for e in entries if str(e.get("id") or "") == who]
+            else:
+                continue
+            if not hits:
+                nothing.append((str(need), str(r)))
+            for fid in hits:
+                if str(need) not in reached.setdefault(fid, []):
+                    reached[fid].append(str(need))
+    return reached, nothing
 
 
 def _r_prefix_of(rtext):

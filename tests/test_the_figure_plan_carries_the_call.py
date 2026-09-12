@@ -66,6 +66,7 @@ points:
             call: args
             expression: expr
             skips: report.skips
+            routes: report.provides_evidence
           each_item_declares:
             drawn_by: [tool, plugin]
             axis: [unit, contrast, cohort]
@@ -369,6 +370,53 @@ class PlanTable(unittest.TestCase):
         self.assertIn("quarry_heat(cc, measure = 'count', ...)", text)
         self.assertIn('quarry_heat(cc, measure = "count")', text)
         self.assertNotIn("LACKS", text)
+
+    def test_the_routes_are_read_beside_the_plan_and_an_unrouted_own_panel_is_named(self):
+        """A panel the plugin draws itself, off the unit axis, that no route reaches is drawn on
+        every run and placed in no document (scProfile PBS 710973: eleven of them). The table
+        says which need reaches each entry, names the unrouted ones with the route to paste,
+        and names a route that reaches nothing on the plan."""
+        spec = dict(self.spec)
+        spec["report"] = dict(spec["report"], figures=[
+            {"id": "native_heat_count", "drawn_by": "tool", "fn": "quarry_heat", "axis": "unit",
+             "position": "appendix", "legend": "Counts.", "args": 'cc, measure = "count"'},
+            {"id": "nativecmp_diff", "drawn_by": "tool", "fn": "quarry_diff", "axis": "contrast",
+             "position": "contrast", "legend": "Diff.", "args": "m"},
+            {"id": "nativecmp_interaction", "drawn_by": "plugin", "axis": "cohort",
+             "position": "conclusion", "legend": "Ix.", "expr": "{ draw(M) }",
+             "file": 'paste0("interaction__", safe)'},
+            {"id": "nativecmp_flow", "drawn_by": "plugin", "axis": "cohort",
+             "position": "conclusion", "legend": "Flow.", "expr": "{ draw(F) }"},
+            {"id": "own_unit_view", "drawn_by": "plugin", "axis": "unit",
+             "position": "appendix", "legend": "Per unit.", "expr": "{ draw(U) }"}],
+            provides_evidence={"who_changed": ["native:quarry_diff", "plan:nativecmp_flow"],
+                               "specificity": ["native:quarry_ghost", "host:matrix"]})
+        text = CV.plan_worksheet(spec, self.doc, "seam", "alpha")
+
+        def block(fid):
+            lines = text.splitlines()
+            start = next(i for i, l in enumerate(lines) if l.startswith(f"  {fid} "))
+            body = []
+            for l in lines[start + 1:]:
+                if not l.startswith("      "):
+                    break
+                body.append(l.strip())
+            return body
+        self.assertIn("routed: who_changed", block("nativecmp_diff"))
+        self.assertIn("routed: who_changed", block("nativecmp_flow"))
+        self.assertFalse([l for l in block("nativecmp_interaction") if l.startswith("routed")])
+        tail = text.split("UNROUTED", 1)[1]
+        self.assertIn("plan:nativecmp_interaction", tail)
+        self.assertNotIn("plan:nativecmp_flow", tail)
+        self.assertNotIn("plan:own_unit_view", tail)       # the unit axis is the profile's page
+        self.assertIn("ROUTES TO NOTHING", tail)
+        self.assertIn("specificity: native:quarry_ghost", tail)
+        self.assertNotIn("host:matrix", tail)              # the host's panels are not on the plan
+
+    def test_a_plugin_that_declares_no_routes_is_asked_nothing_about_them(self):
+        text = CV.plan_worksheet(self.spec, self.doc, "seam", "alpha")
+        self.assertNotIn("UNROUTED", text)
+        self.assertNotIn("routed:", text)
 
     @unittest.skipUnless(shutil.which("Rscript"), "no R on this machine")
     def test_a_call_r_cannot_parse_is_a_lack_when_r_is_at_hand(self):
