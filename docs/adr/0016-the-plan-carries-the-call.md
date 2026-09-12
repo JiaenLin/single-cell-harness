@@ -518,6 +518,13 @@ plugin emitted, and nothing had asked them for a function. The rule is the plan'
 applies to an entry ON the plan; `drawn_by_companion` reads what an entry carries, not who
 draws it. E5 and E6 failed as consequences (no run, no loop). Resubmitted.
 
+*Step 7a second run (PBS 710974, 2 of 6).* The validator accepted the plugin; the host skipped
+it before any instance - it requires `lognorm` and the harness's fixture carried counts alone -
+and then died building its failed map with `x["unit"]` over a skip that has no unit. Two
+findings: `merge.failed_units` reads a plugin-level skip as the plugin's (seen to fail first),
+and the fixture now carries a `lognorm` layer in both shapes, so a plugin that ranks expression
+can run on it at all. Third submission: 710975.
+
 *Amendment, 2026-09-12, after 4a-4d — what generating the sites found, and one deferral.*
 
 1. **Eleven of the 46 transcribed calls did not parse as R.** The extractor's one-line form of
@@ -664,4 +671,4 @@ plan when the plugin passes none" belongs with step 4f, the one-place-for-captio
 | 4 generated sites, `ctx.rscript`, sites deleted | **4a-4d done; 4e run twice: PBS 710971 graded 3 of 10 (see the results under step 4), PBS 710973 resubmitted at 5aa7952 (`20260912T143039Z__scprofile-5aa7952__04_profile__plan`, R0-R10)** | harness: 582ff44, b366be4, 51c02e0 and this commit; scProfile: the four commits after 44a5541 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the manifest half of 4b is deferred to 4f (see the amendment); the reproduction waits for the cluster, unreachable all day on 2026-09-12 |
 | 5 retire the extractor, maps, prose, glue | not started; one item done early | harness: the commit after ff60907 | `sch dev convert account` printed a `native_plots` block for a plugin that has none: `declared_of` reads the plan's `fn`s and skips, and the worksheet speaks the plan form (`"skips": {`, a USED function is an entry). The rest waits for 4e - and see the amendment: `_families` and the placement maps stay until the eight migrate |
 | 6 `kind` binds rules | done locally; measured on the next reproduction's report | scProfile: the commit after 22ff988 | every entry carries a kind (nine `other`); the standard's `kinds` criterion holds a caption to R3/R4; thirteen legends now state their count at the plan; `{.entry$at_most}` names a ceiling from the plan; F2/F10 keep their emit captions - see the amendment |
-| 7 evidence: enrichment test phase, blind 0003 | 7a run twice: PBS 710972 graded 3 of 6 (the validator refused a pre-plan plugin; fixed), PBS 710974 resubmitted at 5aa7952 (`20260912T143039Z__scprofile-5aa7952__04_profile__enrichment-test`); 7b not started | harness: f0148b1 | the enrichment-only export `~/tools/scProfile-smoke` is the cellchat-only tree's pattern |
+| 7 evidence: enrichment test phase, blind 0003 | 7a run three times: 710972 (the validator refused a pre-plan plugin), 710974 (the host died on a plugin-level skip; the fixture carried no log-normalised layer), 710975 at scProfile 9f4c05b + harness 59bd199 (`20260912T143607Z__scprofile-9f4c05b__04_profile__enrichment-test`); 7b not started | harness: f0148b1 | the enrichment-only export `~/tools/scProfile-smoke` is the cellchat-only tree's pattern |

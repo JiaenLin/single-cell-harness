@@ -385,7 +385,9 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
            # an object missing the only thing it needs.
            "splice": bool(splice),
            # THE LAYERS THE OBJECT CARRIES, by name, so a reader can ask without opening it.
-           "layers": sorted(A.layers.keys()),
+           # anndata 0.13 lists the main matrix among them under the key None; the named
+           # layers are what a plugin resolves, and None sorts against no string.
+           "layers": sorted(str(k) for k in A.layers.keys() if k is not None),
            "roles": roles,
            "factors": [roles["condition"]] + ([roles["stratum"]] if _crossed else []),
            "crossed": _crossed,
