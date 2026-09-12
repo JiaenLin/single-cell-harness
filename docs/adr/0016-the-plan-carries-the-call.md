@@ -523,7 +523,23 @@ it before any instance - it requires `lognorm` and the harness's fixture carried
 and then died building its failed map with `x["unit"]` over a skip that has no unit. Two
 findings: `merge.failed_units` reads a plugin-level skip as the plugin's (seen to fail first),
 and the fixture now carries a `lognorm` layer in both shapes, so a plugin that ranks expression
-can run on it at all. Third submission: 710975.
+can run on it at all. Third submission: 710975 - which died in `sch dev fixture` itself:
+anndata 0.13.3 on the cluster lists the main matrix in `layers.keys()` under the key None, and
+the record sorted it against strings; the workstation's 0.10 does not. The record lists the
+named layers. Fourth submission: 710976.
+
+*Step 7a fourth run (PBS 710976, run `20260912T143908Z__scprofile-9f4c05b__04_profile__enrichment-test`,
+sealed 6 of 6).* The environment built and the plugin's selftest passed (E1); the run reached
+the plugin, which REFUSED with a named reason - none of its configured library's terms
+resolved on the fixture, whose genes are nine real symbols and five hundred synthetic ones (E2);
+the maker's six run-side stages all ran and answered in their own words on a plugin the maker
+never ran, `promised` owing because a refused run draws nothing (E3, E4); 6b: no figures in
+any run (E5); a single run blocks first at the licence (E6). **Judgement against the letter of
+7a's rule:** the plugin is kept as test material. "If it cannot run, remove it" was written for
+code that never executes; this plugin executed end to end and refused honestly on data that
+cannot be enriched, which is the behaviour a wrapper is supposed to have. What remains unproven
+is its drawing code, and that needs a fixture carrying real gene symbols - written down here
+rather than manufactured.
 
 *Amendment, 2026-09-12, after 4a-4d — what generating the sites found, and one deferral.*
 
@@ -671,4 +687,4 @@ plan when the plugin passes none" belongs with step 4f, the one-place-for-captio
 | 4 generated sites, `ctx.rscript`, sites deleted | **4a-4d done; 4e run twice: PBS 710971 graded 3 of 10 (see the results under step 4), PBS 710973 resubmitted at 5aa7952 (`20260912T143039Z__scprofile-5aa7952__04_profile__plan`, R0-R10)** | harness: 582ff44, b366be4, 51c02e0 and this commit; scProfile: the four commits after 44a5541 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the manifest half of 4b is deferred to 4f (see the amendment); the reproduction waits for the cluster, unreachable all day on 2026-09-12 |
 | 5 retire the extractor, maps, prose, glue | not started; one item done early | harness: the commit after ff60907 | `sch dev convert account` printed a `native_plots` block for a plugin that has none: `declared_of` reads the plan's `fn`s and skips, and the worksheet speaks the plan form (`"skips": {`, a USED function is an entry). The rest waits for 4e - and see the amendment: `_families` and the placement maps stay until the eight migrate |
 | 6 `kind` binds rules | done locally; measured on the next reproduction's report | scProfile: the commit after 22ff988 | every entry carries a kind (nine `other`); the standard's `kinds` criterion holds a caption to R3/R4; thirteen legends now state their count at the plan; `{.entry$at_most}` names a ceiling from the plan; F2/F10 keep their emit captions - see the amendment |
-| 7 evidence: enrichment test phase, blind 0003 | 7a run three times: 710972 (the validator refused a pre-plan plugin), 710974 (the host died on a plugin-level skip; the fixture carried no log-normalised layer), 710975 at scProfile 9f4c05b + harness 59bd199 (`20260912T143607Z__scprofile-9f4c05b__04_profile__enrichment-test`); 7b not started | harness: f0148b1 | the enrichment-only export `~/tools/scProfile-smoke` is the cellchat-only tree's pattern |
+| 7 evidence: enrichment test phase, blind 0003 | **7a done: PBS 710976 sealed 6 of 6** after three runs that each found one defect (710972 the validator, 710974 the host's failed map and the fixture's missing layer, 710975 anndata 0.13's None layer key); 7b not started | harness: f0148b1 | the enrichment-only export `~/tools/scProfile-smoke` is the cellchat-only tree's pattern |
