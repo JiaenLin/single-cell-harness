@@ -93,6 +93,9 @@ LEGACY = '''PLUGIN = {
         "quarry_palette": {"skip": "not_applicable", "evidence": "returns colours; draws nothing"},
         # THE DIRECTORY IS WRITTEN ONCE AND THE FILES FOLLOW IT, in English
         "quarry_ring": {"use": "figures/native_ring_count.png and native_ring_weight.png"},
+        # ONE FUNCTION, A UNIT FAMILY AND A CONTRAST FAMILY, and the profile flag is the unit's
+        "quarry_role": {"profile": True,
+                        "use": "figures/native_role.png per unit and figures/nativecmp_role_pair.png per arm pair"},
     },
     "report": {
         "figures": [
@@ -117,6 +120,7 @@ npng("ring_count", {
   quarry_ring(cc, measure = "count")
   stamp()
 }, legend = "Rings by count.")
+npng("role", quarry_role(cc), legend = "Roles.")
 .draw("native_already_on_the_plan")
 npng("ring_weight", quarry_ring(cc, measure = "weight"), w = .bw, h = 1200,
      legend = "Rings by weight.")
@@ -128,6 +132,7 @@ npng <- function(id, expr, legend = "") {
   png(paste0(id, ".png")); print(expr); dev.off()
 }
 for (p in shared) npng(paste0("chord__", p), quarry_chord(merged, signaling = p))
+npng("role_pair", quarry_role(merged, pair = TRUE), legend = "Roles, both arms.")
 npng(paste0("solo__", gsub("[^A-Za-z0-9]+", "_", nm)), quarry_solo(merged), legend = "Solo.")
 for (ms in c("count", "weight")) {
   npng(paste0("bars_", ms), quarry_bars(merged, measure = ms), legend = "Bars.")
@@ -241,7 +246,7 @@ class Migrate(unittest.TestCase):
 
     def test_the_worksheet_counts_what_a_person_still_owes(self):
         head = self.text.splitlines()[0]
-        self.assertIn("9 draw site(s) read", head)
+        self.assertIn("11 draw site(s) read", head)
         self.assertIn("4 named by no legacy field", head)
         self.assertIn("left for a person", head)
         self.assertGreaterEqual(self.text.count("TODO"), 3)
@@ -264,6 +269,14 @@ class Migrate(unittest.TestCase):
         e = self.by_id["native_ring_weight"]
         self.assertEqual(e["w"], ".bw")
         self.assertEqual(e["h"], 1200)
+
+    def test_the_profile_flag_reaches_the_unit_family_and_not_the_contrast_one(self):
+        # `profile: True` was the FUNCTION's flag in the older form and the reader applied it
+        # to files in a unit's own figures directory. Copied onto every family the function
+        # names, six contrast families of one plugin were marked profile, the reporter kept
+        # them off the arm pages, and the reproduction delivered 13 plates fewer.
+        self.assertTrue(self.by_id["native_role"].get("profile"))
+        self.assertNotIn("profile", self.by_id["nativecmp_role_pair"])
 
     def test_two_sites_sharing_a_literal_head_are_two_entries(self):
         # `paste0("bars_", ms)` and `paste0("bars_", ms, "_per1k")` in one loop: two panels per

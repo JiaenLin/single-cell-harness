@@ -2493,7 +2493,11 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
                     todo += 1
             elif len(members) > 1 or cap:
                 e[bound_key] = 1 if len(members) > 1 else int(cap)
-            if rec.get("profile"):
+            # THE PROFILE FLAG IS THE UNIT'S. In the older form it sat on the FUNCTION, and the
+            # reader applied it to files in a unit's own directory; copied onto every family
+            # the function names, six contrast families were marked profile and kept off the
+            # arm pages - thirteen plates fewer on one reproduction.
+            if rec.get("profile") and e["axis"] == "unit":
                 e["profile"] = True
             if site:
                 if len(members) == 1 and site.get("items") and stem == fid and not per_item:

@@ -47,15 +47,19 @@
 #   R7  every panel is described: captions.tsv rows equal the reference's (every `.draw` writes
 #       a legend from its entry), and no page says NO LEGEND WAS WRITTEN.
 #   R8  the environment is REUSED, not rebuilt: `requires` did not change, so the install names
-#       the reference's own scprofile-env-d077909e49.
+#       the same scprofile-env-<hash> the reference's own install log names. (The first
+#       submission predicted a hash copied from an older record; the substance held - both
+#       runs used scprofile-env-2d8b9a3b36 - and the number was mine to have read.)
 #   R10 the exit standard's `kinds` criterion (ADR-0016 step 6), read from the plan beside this
 #       report, names no R-drawn panel: every caption a kind holds to a count states one. The
 #       only figures it may name are the two host-drawn plates whose captions are not on the
 #       plan yet, F2_population_power and F10_pathway_similarity.
-#   R9  the maker's run-side stages answer the same as on the reference:
-#       `sch dev convert status --run` exits 0; `promised` and `measure` answered; `audited`,
-#       `looked_at`, `written`, `delivered` owe; the `audited` line's count of panels drawn and
-#       NOT measured by any machine equals the count on the reference.
+#   R9  the maker's run-side stages answer the same as on the reference: `sch dev convert
+#       status --run` exits 0 on both, every stage's verdict is the same on both, and the
+#       `audited` line's count of panels drawn and NOT measured by any machine is the same.
+#       (`measure` OWES on both: eighteen instances shared one job, so no per-instance memory
+#       was fitted - the first submission predicted "answered" and the stage said, correctly,
+#       why not. `promised` answers on both once the rank-estimation PDFs count as drawn.)
 #
 # rule-one: no-removal - everything this writes goes inside $RUNDIR.
 # Authored on the workstation and pushed (rule H1). No `git` runs below. Submit with
@@ -297,8 +301,10 @@ say(cn == cr and cn > 0 and noleg == 0, "R7  every panel is described, as in the
 
 ins = read(os.path.join(new, "logs", "install.txt"))
 envs = sorted(set(re.findall(r"scprofile-env-[0-9a-f]+", ins)))
-say(envs == ["scprofile-env-d077909e49"], "R8  the environment is the reference's, reused",
-    f"install names {envs or 'no environment'}")
+renvs = sorted(set(re.findall(r"scprofile-env-[0-9a-f]+", read(os.path.join(ref, "logs", "install.txt")))))
+say(bool(envs) and envs == renvs and "exists and matches" in ins,
+    "R8  the environment is the reference's, reused",
+    f"install names {envs or 'no environment'}; the reference's names {renvs or 'unknown'}")
 
 std = read(os.path.join(new, "logs", "standard.txt"))
 kind_fails = [l for l in std.splitlines() if re.match(r"\s+\S+\s+kinds\s", l)]
@@ -319,8 +325,8 @@ def verdicts(txt):
     return v
 vn, vr = verdicts(st_new), verdicts(st_ref)
 ex = re.search(r"status\(new\) exit: (\d+)", st_new)
-say(bool(ex) and ex.group(1) == "0" and vn == vr and vn.get("promised") == "done" and vn.get("measure") == "done"
-    and all(vn.get(k) not in ("done", "?") for k in ("audited", "looked_at", "written", "delivered")),
+say(bool(ex) and ex.group(1) == "0" and vn == vr and "?" not in vn.values()
+    and vn.get("promised") == "done",
     "R9  the maker's run-side stages answer as on the reference",
     f"new {vn}; reference {vr}; exit {ex.group(1) if ex else '?'}")
 
