@@ -256,6 +256,31 @@ pull `$RUNDIR/logs` back, grade the predictions in the job's own seal.
 and the results line of this step. Record what did not hold. If `status --run` crashed on the
 real run directory, fix the maker first — that is the finding.
 
+*Results, 2026-09-12, first submission (PBS 710969, run `20260912T134811Z__status-on-run`,
+sealed FAILED, exit 2).* The spine works: `status --run` exited 0, ran every one of the six
+run-side stages against the sealed reference, and kept each one's exit code and tail (S1 HELD).
+What the tails carried was two defects in the target and one wrong prediction:
+
+- **S6, S7 FAILED - `capacity --promised` and `--memory` died with PermissionError** in
+  `status.begin`, rewriting `STATUS.capacity.json` in a run whose seal had made every file
+  read-only, before reading anything. A sealed run is a run the contract must still read: when
+  the record is sealed, `begin` says so once on stderr and returns, `finish` returns the sealed
+  record. Fixed in scProfile, seen to fail first.
+- **S2-S5 FAILED for the tail, not the substance.** `loop_stations.py --station 6b` printed
+  the station's line and then the whole round's goal restatement and missing-outputs block, so
+  the eight-line tail the maker keeps was the round's prose. The loop's own JSON (S8's file)
+  carried the substance: 6b BLOCKED, `43 drawing issue(s) across 5 panel(s) - 43 text_overlap;
+  765 drawn and NOT measured by any machine` - inside the 700-800 predicted; eye 0 of 149.
+  One station asked is one station answered now; the help under it is one line.
+- **S8 FAILED, and the prediction was wrong.** On ONE run the loop's `first_blocked` is
+  `2 landscape` ("no run carries a granted licence"), not `6b drawing`: stations 2-5 are about
+  licences, adoption and merges across runs, and the 2026-09-10 reading that the prediction was
+  written from was the loop pointed at the runs directory, where an older run carried a licence.
+  Not a defect; recorded. S9 was not in the grader (added to the header after the first
+  version) and its substance is S6's.
+
+Resubmitted with the two fixes: see the status table.
+
 ## Step 2 — the plan schema, one reader, the validator, the migration worksheet
 
 All in scProfile unless marked *harness*. Tests first where a shape is stated.
@@ -564,7 +589,7 @@ criterion (a page that must fail it).
 | step | status | commit(s) | note |
 |---|---|---|---|
 | 0 record | done | harness (this commit) | |
-| 1 spine on a sealed run | **authored, not submitted** | harness: `jobs/status_on_run.pbs` (jobcheck clean) | the cluster was unreachable from the workstation on 2026-09-12 (`ssh` timed out twice); submit when it answers, then grade S1-S8 in the seal |
+| 1 spine on a sealed run | submitted twice: 710969 (FAILED, two target defects found and fixed), resubmission pending | harness: `jobs/status_on_run.pbs`; scProfile: the commit after eabe490 | S1 held; S2-S7 failed on a read-only stamp and a buried tail, both fixed; S8's prediction was wrong on a single run - see the results under step 1 |
 | 2 schema, reader, validator, migrate worksheet | done | harness: this commit; scProfile: the commit after 043a60c | found on the way: the draw-site scan had been blind to cellchat's R sites since the companion move (wrappers read from the companion now); foreign wrapper spans hid a script's first sites; `DRAWN_BY` had two definitions; the record itself carried workstation paths |
 | 3 cellchat declaration migrated | done | harness: this commit; scProfile: the commit after d8cb913 | the baseline held on files, vector copies and total, and moved on one position - see the amendment under step 3; `capacity --promised` on the sealed run is asked by the step 1 job (cluster unreachable again on 2026-09-12) |
 | 4 generated sites, `ctx.rscript`, sites deleted | **4a-4d done locally; 4e not run** | harness: 582ff44, b366be4, 51c02e0 and this commit; scProfile: the four commits after 44a5541 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the manifest half of 4b is deferred to 4f (see the amendment); the reproduction waits for the cluster, unreachable all day on 2026-09-12 |
