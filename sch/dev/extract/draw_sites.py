@@ -928,8 +928,27 @@ def _py_sites(source, where, emits):
     return sites
 
 
-def draw_sites(name, source, where="", emits=None):
+def foreign(wrappers):
+    """Wrappers read from ANOTHER text, with their body spans dropped.
+
+    A span is an offset into the text the wrapper was read from. Applied to a different script it
+    is a random window, and `_r_sites` skips every call inside a wrapper's body - so a companion's
+    wrappers, read from the companion and applied to an embedded script, silently dropped the
+    first sites of that script: whatever fell within the first few thousand characters. Measured
+    on a two-site fixture: the first site gone, the second found.
+    """
+    return [Wrapper(w.name, w.params, w.legend, w.line, w.lang, w.how, w.body, None)
+            for w in wrappers]
+
+
+def draw_sites(name, source, where="", emits=None, also=()):
     """Inventory of one plugin's draw sites. `names` are `file:line`; `detail` is the record.
+
+    `also` IS THE R KEPT BESIDE THE PLUGIN - the generated companion that now defines the draw
+    wrappers once. Read only from the Python, this scan found no wrapper in any embedded script
+    of a plugin whose protocol had been moved out to its companion, and reported its 47 R draw
+    sites as none - while the stage that reads it printed done. `[(text, name)]`, the shape
+    `convert._r_beside` returns.
 
     COULD NOT PARSE IS NOT ZERO DRAW SITES. A plugin whose Python will not parse gets
     `complete=False` and says so; returning an empty list would file it as a plugin that draws
@@ -953,10 +972,16 @@ def draw_sites(name, source, where="", emits=None):
         elif emits is not None and not getattr(emits, "complete", True):
             hows.append(f"Python: NOT LOOKED AT - {getattr(emits, 'why_not', '')}")
     nwrap = 0
+    beside = foreign(w for text, _n in (also or ()) for w in r_wrappers(text))
     for rtext, base in embedded_r(source):
         ws = r_wrappers(rtext)
         nwrap += len(ws)
-        sites += _r_sites(rtext, base, where, ws)
+        # THE COMPANION'S WRAPPERS ARE THIS SCRIPT'S TOO: it is prepended at run time. A wrapper
+        # the script defines itself shadows the companion's of the same name, which is what R
+        # would do; `_r_sites` keeps the first definition per name.
+        sites += _r_sites(rtext, base, where, ws + [w for w in beside
+                                                     if w.name not in {x.name for x in ws}])
+    nwrap += len(beside)
     if nwrap:
         hows.append(f"R: {nwrap} wrapper definition(s) found by what they do - a function defined "
                     f"in the embedded R that opens a graphics device, evaluates an expression and "

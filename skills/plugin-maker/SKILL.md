@@ -178,6 +178,31 @@ tool's OWN defaults rather than inheriting them silently; declare every resource
 not come from the user's object, with its tier. If there are genuinely none, declare the empty
 container: `"references": {}` says you looked, absent says nobody has.
 
+## The figure plan: where a figure is adjusted
+
+```
+sch dev convert plan --root . --point kernel --name <plugin> --python <the plugin's own interpreter>
+```
+
+One row per figure family the plugin declares — who draws it, over which axis, the upstream
+function with its parameters printed beside it, the items it is drawn once per, its ceiling,
+where a result places it, its kind, whether it carries a legend — and under each row what it
+still lacks. **This table is the plugin's figures.** To change what a figure shows, how many of
+a family there are, what a call is passed or how a panel is described, edit the entry; then:
+
+```
+scprofile plan --h5ad <object> --kernel <plugin>       # the count and placement, before a job
+scprofile scaffold <plugin> --force                    # regenerates the companion from the plan
+sch dev convert status --root . --point kernel --name <plugin>
+```
+
+The status confirms the companion is *generated*, not *drifted*. **Never edit a draw site**: the
+sites are generated from the entries, and a site edited by hand is exactly the drift the
+`generated_by` check refuses. A plugin still on the older form — figure ids inside prose, two
+prefix maps — is brought onto the plan with `--migrate`, which prints the paste-ready entries
+built from what it already declares and from its draw sites; every field the maker could not
+read is a placeholder for you to decide, and a placeholder does not validate.
+
 ## The judgement stage: what no command can do
 
 `summary`, `when_to_use`, `cannot_show`, and the question under each figure. Do this LAST, because

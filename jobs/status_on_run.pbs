@@ -1,0 +1,129 @@
+#!/bin/bash
+#PBS -N sch_status_on_run
+#PBS -q short
+#PBS -l select=1:ncpus=2:mem=8gb
+#PBS -l walltime=00:30:00
+#PBS -j oe
+#
+# ============================================================================================
+# THE SPINE, ASKED OF A SEALED RUN: does `sch dev convert status --run` answer from a real run?
+# ============================================================================================
+#
+# ADR-0015 made the loop's run-side stations test-phase stages of a plugin's conversion, each
+# answered by running the loop driver on one run. Every test of that mechanism so far has been
+# against `true`, `false`, `echo` and synthetic run directories with three PNGs. This job points
+# it at the sealed reference run and reads what it says. It reads only - no tool computes, no
+# figure is drawn, nothing under the run changes. ADR-0016 step 1.
+#
+# THE PREDICTIONS, WRITTEN BEFORE THE RUN (the reference is 20260910T130619Z__scprofile-9211f81,
+# PBS 710085, which the loop on 2026-09-10 read as BLOCKED at 6b with 43 text_overlap):
+#
+#   S1  the status command exits 0. It REPORTS a run; a stage that owes is a line, not a failure.
+#   S2  `audited` OWES: the 6b line names 43 drawing issue(s) across 5 panel(s), and now also
+#       says how many panels were drawn and NOT measured by any machine - predicted between
+#       700 and 800 of the run's 945 PNGs (every R-drawn panel).
+#   S3  `looked_at` OWES: 0 of 149 of the named scan set.
+#   S4  `written` OWES: no claim written from this run.
+#   S5  `delivered` OWES: 2 required output(s) missing, FIGURE_REVIEW.jsonl and the paper page.
+#   S6  `promised` is ANSWERED (exit 0): 0 declared-and-never-drawn - the run was sealed 18 of 18.
+#   S7  `measure` is ANSWERED (exit 0): `capacity --memory` fits both terms and prints them.
+#   S8  the loop's own JSON has first_blocked == "6b drawing" and eye.done == 0.
+#
+# A prediction that does not hold is the finding, and the fix goes to the maker or the loop
+# driver - never to the run.
+#
+# rule-one: no-removal. Reads $SEALED; writes only inside $RUNDIR.
+# Authored on the workstation and pushed (rule H1). No `git` runs below.
+#
+#   qsub -v RUNDIR=...,HARNESS=...,TOOL=...,SEALED=... jobs/status_on_run.pbs
+
+set -euo pipefail
+
+RUNDIR="${RUNDIR:?pass -v RUNDIR=<where this job writes>}"
+HARNESS="${HARNESS:?pass -v HARNESS=<the harness checkout>}"
+TOOL="${TOOL:?pass -v TOOL=<the scProfile checkout>}"
+SEALED="${SEALED:?pass -v SEALED=<the sealed run directory to read>}"
+
+mkdir -p "$RUNDIR/logs"
+exec >> "$RUNDIR/logs/status.log" 2>&1
+
+seal() {
+  s=$?
+  {
+    echo "exit=$s"
+    echo "jobid=${PBS_JOBID:-interactive}"
+    echo "purpose=does the conversion status answer its test phase from a sealed run"
+    echo "sealed=$SEALED"
+    hostname
+    date -u +%Y-%m-%dT%H:%M:%SZ
+    [ -s "$RUNDIR/VERDICT.txt" ] && cat "$RUNDIR/VERDICT.txt"
+  } > "$RUNDIR/$([ "$s" -eq 0 ] && echo SEALED.txt || echo FAILED.txt)"
+}
+trap seal EXIT
+
+echo "=== the spine on a sealed run - $(date -u)"
+echo "=== node $(hostname) - PBS ${PBS_JOBID:-interactive}"
+
+set +eu
+source /etc/profile 2>/dev/null || true
+module load anaconda3/3.0.0 2>/dev/null || true
+set -eu
+
+PY="${PY:-python3}"
+for f in "$HARNESS/sch" "$TOOL/tests/loop_stations.py" "$SEALED/report.json"; do
+  [ -e "$f" ] || { echo "MISSING: $f"; exit 2; }
+done
+echo "=== harness: $(cat "$HARNESS/HEAD.txt" 2>/dev/null || echo unknown)"
+echo "=== scProfile: $(cat "$TOOL/HEAD.txt" 2>/dev/null || echo unknown)"
+
+echo; echo "=== S1-S7  sch dev convert status --run"
+set +e
+PYTHONPATH="$HARNESS" "$PY" -m sch dev convert status --root "$TOOL" --point kernel \
+    --name cellchat --run "$SEALED" > "$RUNDIR/status.txt" 2>&1
+S1_CODE=$?
+set -e
+echo "  exit=$S1_CODE"
+cat "$RUNDIR/status.txt"
+
+echo; echo "=== S8  the loop driver's own JSON on the same run"
+set +e
+PYTHONPATH="$TOOL" "$PY" "$TOOL/tests/loop_stations.py" --run "$SEALED" --json \
+    > "$RUNDIR/loop.json" 2> "$RUNDIR/logs/loop.err"
+LOOP_CODE=$?
+set -e
+echo "  exit=$LOOP_CODE (1 means a station is BLOCKED, which is a result)"
+
+echo; echo "=== grading"
+"$PY" - "$RUNDIR/status.txt" "$RUNDIR/loop.json" "$RUNDIR/VERDICT.txt" "$S1_CODE" <<'PYEOF'
+import json, re, sys
+status, loop, out, s1 = sys.argv[1:5]
+txt = open(status).read()
+try:
+    lj = json.load(open(loop))
+except Exception:
+    lj = {}
+L = []
+def held(name, ok, detail):
+    L.append(f"{name} {detail}: {'HELD' if ok else 'FAILED'}")
+held("S1", s1 == "0", f"status exits {s1}")
+m = re.search(r"(\d+) drawing issue\(s\) across (\d+) panel", txt)
+um = re.search(r"(\d+) drawn and NOT measured", txt)
+held("S2", bool(m) and m.group(1) == "43" and bool(um) and 700 <= int(um.group(1)) <= 800,
+     f"audited owes {m.group(1) + ' issues' if m else 'nothing found'}, unmeasured "
+     f"{um.group(1) if um else 'not printed'}")
+held("S3", "0/149" in txt or re.search(r"0/\d+ of the named scan set", txt) is not None,
+     "looked_at owes 0 of the scan set")
+held("S4", "no claim written" in txt, "written owes")
+held("S5", "required output(s) missing" in txt, "delivered owes")
+held("S6", re.search(r"promised.*\n\s+ran:.*\n\s+answered", txt) is not None,
+     "promised answered")
+held("S7", re.search(r"measure.*\n\s+ran:.*\n\s+answered", txt) is not None,
+     "measure answered")
+held("S8", lj.get("first_blocked") == "6b drawing" and (lj.get("eye") or {}).get("done") == 0,
+     f"loop first_blocked={lj.get('first_blocked')!r} eye={lj.get('eye')}")
+open(out, "w").write("\n".join(L) + "\n")
+print("\n".join(L))
+PYEOF
+
+grep -q FAILED "$RUNDIR/VERDICT.txt" && { echo; echo "=== at least one prediction did not hold"; exit 2; }
+echo; echo "=== every prediction held"

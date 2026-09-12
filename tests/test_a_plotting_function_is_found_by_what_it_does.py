@@ -84,7 +84,7 @@ class APlottingFunctionIsFoundByWhatItDoes(unittest.TestCase):
     def test_behaviour_reaches_what_the_convention_cannot_on_another_package(self):
         inv = RN.inventory("lattice")
         self.assertTrue(inv.complete)
-        by_body_only = [k for k, v in inv.detail.items() if v == "body"]
+        by_body_only = [k for k, v in inv.detail.items() if v.get("found_by") == "body"]
         self.assertTrue(by_body_only,
                         "the body rule found nothing in lattice that the name pattern missed, so "
                         "it is not earning its place on a package this maker was not built for")
@@ -94,7 +94,11 @@ class APlottingFunctionIsFoundByWhatItDoes(unittest.TestCase):
     def test_each_export_says_which_rule_found_it(self):
         inv = RN.inventory("lattice")
         self.assertEqual(sorted(inv.names), sorted(inv.detail))
-        self.assertTrue(set(inv.detail.values()) <= {"name", "body", "both"}, inv.detail)
+        self.assertTrue({v.get("found_by") for v in inv.detail.values()} <= {"name", "body", "both"},
+                        inv.detail)
+        # AND THE SIGNATURE TRAVELS WITH THE NAME, in the shape the Python probe uses.
+        self.assertTrue(any(str(v.get("signature") or "").startswith("function")
+                            for v in inv.detail.values()), inv.detail)
 
     @unittest.skipUnless(RSCRIPT and has("cluster"), "cluster is not installed here")
     def test_a_package_with_one_plot_and_no_convention_is_still_read(self):

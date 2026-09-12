@@ -259,7 +259,7 @@ def measure_draw_sites(doc, point_name, name, source=None):
         pass
     emits = DS.host_emits(root, doc.get("tool") or "", declared)
     where = str(path.relative_to(root)) if path else f"{name}.py"
-    return DS.draw_sites(name, source, where, emits)
+    return DS.draw_sites(name, source, where, emits, also=_r_beside(doc, point_name, name))
 
 
 def draw_debt(inv):
@@ -1978,7 +1978,310 @@ def draw_worksheet(doc, point_name, stage_name, name, source=None, width=96, inv
 #: what only you can answer" about a MECHANICAL stage whose `finished_by` names the exact command
 #: to type. Found by generating a plugin from nothing and reading what the maker said to do next.
 ACTIONS = ("status", "freshness", "borrowed", "inventory", "account", "measure", "promised",
-           "defaults", "references", "contract", "legends", "placement", "overfit", "build")
+           "defaults", "references", "contract", "legends", "placement", "plan", "overfit",
+           "build")
+
+
+# -----------------------------------------------------------------------------------------------
+# THE FIGURE PLAN (harness ADR-0016). A stage that fills a list of figure entries and declares
+# `entry_keys` is a plan stage: the list carries the call - which upstream function, with which
+# arguments, over which items, under which ceiling, placed where, described how - and the target
+# repository generates its draw sites from it. Nothing here knows what the keys are called; the
+# stage says, the way `version_field` and `axis_field` already do.
+# -----------------------------------------------------------------------------------------------
+
+#: What a plan stage declares: the maker's word for a thing -> this format's key for it.
+ENTRY_KEYS = "entry_keys"
+
+
+def plan_stage(doc, point_name):
+    """The stage that carries the plan, or None: the one declaring `entry_keys`."""
+    _ph, _up, stages = plan(doc, point_name)
+    for st in stages:
+        if isinstance(st.get(ENTRY_KEYS), dict):
+            return st
+    return None
+
+
+def _entries(spec, st):
+    """(field, [entries]) - the list the plan stage fills, as this plugin declares it."""
+    for f in st.get("fills") or ():
+        v = _dotted(spec, f)
+        if isinstance(v, list):
+            return str(f), [e for e in v if isinstance(e, dict)]
+    return str((st.get("fills") or [""])[0]), []
+
+
+def plan_worksheet(spec, doc, point_name, name="", inv=None, width=96):
+    """Every entry of the plan, what it lacks, and the upstream function's parameters beside it.
+
+    A TABLE, NOT A VERDICT. `status` says whether the stage is done; this shows the plan a person
+    adjusts - one row per figure family - so that changing a heatmap's measure or a ceiling is a
+    matter of reading a row and editing an entry. With an inventory (`--python`), each `fn` is
+    followed by its signature from the package, which is what somebody writing `args` needs.
+    """
+    st = plan_stage(doc, point_name)
+    if st is None:
+        raise ConvertError(f"point {point_name!r} declares no plan stage - no stage carries "
+                           f"`{ENTRY_KEYS}:`, so nothing here says what a figure entry is made of")
+    keys = {str(k): str(v) for k, v in (st.get(ENTRY_KEYS) or {}).items()}
+    want = st.get("each_item_declares") or {}
+    field, entries = _entries(spec, st)
+    gaps = item_gaps(spec, st).get("gaps") or []
+    lacking = {who: bad for who, bad in gaps}
+    detail = (getattr(inv, "detail", None) or {}) if inv is not None else {}
+    fn_key = keys.get("upstream", "fn")
+    items_key = keys.get("items", "items")
+    bound_key = keys.get("bound", "at_most")
+    call_key = keys.get("call", "args")
+    expr_key = keys.get("expression", "expr")
+    cols = ["id", "drawn_by"] + [k for k in ("axis", "position") if k in want] + \
+           [fn_key, items_key, bound_key, "kind", "legend"]
+    L = [f"{name or 'this plugin'}: {len(entries)} entr{'y' if len(entries) == 1 else 'ies'} "
+         f"in `{field}`; {len(lacking)} lack something the stage requires"]
+    L.append("  " + "  ".join(f"{c:<14s}" if c != "id" else f"{c:<34s}" for c in cols))
+    for e in entries:
+        fid = str(e.get("id") or e.get("name") or "?")
+        row = []
+        for c in cols:
+            v = e.get(c)
+            if c == "legend":
+                v = "yes" if str(v or "").strip() else "-"
+            if v is None or v == "":
+                v = "-"
+            row.append(f"{str(v):<34.34s}" if c == "id" else f"{str(v):<14.14s}")
+        L.append("  " + "  ".join(row))
+        if str(e.get(fn_key) or "") and str(e.get("drawn_by") or "tool") == "tool":
+            d = detail.get(str(e[fn_key])) or {}
+            sig = d.get("signature") if isinstance(d, dict) else ""
+            if sig:
+                L.append(f"      {e[fn_key]}{_clip(sig, width - 8)}")
+            elif inv is not None:
+                L.append(f"      {e[fn_key]}: NOT IN THE INVENTORY - the upstream does not export "
+                         f"it under this name, or the inventory's rules did not reach it")
+        call = str(e.get(call_key) or "").strip()
+        expr = str(e.get(expr_key) or "").strip()
+        if call:
+            L.append(f"      {e.get(fn_key)}({_clip(call, width - 12)})")
+        elif expr:
+            L.append(f"      expr: {_clip(expr, width - 12)}")
+        for bad in lacking.get(fid, ()):
+            L.append(f"      LACKS  {bad}")
+    if inv is None:
+        L.append("")
+        L.append("  (pass --python <the plugin's own interpreter> to see each function's parameters)")
+    return "\n".join(L)
+
+
+def _r_prefix_of(rtext):
+    """The `prefix = "..."` the script's protocol was configured with, or ""."""
+    m = re.search(r'\.figures\s*\(.*?prefix\s*=\s*"([^"]*)"', rtext, re.S)
+    return m.group(1) if m else ""
+
+
+def _legacy_sites(doc, point_name, name, source):
+    """{figure id: site record} from a plugin's hand-written draw sites, id = prefix + panel.
+
+    THE LAST USE OF THE DRAW-SITE EXTRACTOR: it reads the sites so that the plan can be written
+    from them once, after which there are no sites to read. A panel named by a literal is the
+    id; one named `paste0("stem__", var)` is a per-item family with `var` as its items.
+    """
+    from .extract import draw_sites as DS
+    out = {}
+    blocks = list(DS.embedded_r(source))
+    beside = DS.foreign(w for text, _n in _r_beside(doc, point_name, name)
+                        for w in DS.r_wrappers(text))
+    for rtext, base in blocks:
+        prefix = _r_prefix_of(rtext)
+        own = DS.r_wrappers(rtext)
+        ws = own + [w for w in beside if w.name not in {x.name for x in own}]
+        for site in DS._r_sites(rtext, base, "", ws):
+            panel = site.get("panel") or ""
+            m = re.match(r'^"([^"]+)"$', panel)
+            items = ""
+            if m:
+                fid = prefix + m.group(1)
+            else:
+                # A PANEL NAMED BY paste0: the first literal is the family, the rest is what it
+                # is drawn once per. A bare name is the items vector; anything else - a gsub, a
+                # second key - is shown to the person, because a plan entry iterates ONE vector
+                # and a site that iterates two is a decision about which one the family is.
+                pm = re.match(r'^paste0\(\s*"([^"]+?)"\s*,\s*(.+)\)\s*$', panel, re.S)
+                if not pm:
+                    continue
+                fid = prefix + pm.group(1).rstrip("_")
+                rest = pm.group(2).strip()
+                items = rest if re.match(r"^[.\w]+$", rest) else f"?one per: {rest}"
+                # THE LOOP VARIABLE IS NOT THE ITEMS VECTOR. `for (p in shared) npng(paste0(
+                # "chord__", p), ...)` iterates `shared`; the plan names the vector and the
+                # generated loop supplies `.item`. The nearest enclosing `for` before the site
+                # says which vector; a name with no such `for` is left as read and marked.
+                if re.match(r"^[.\w]+$", rest):
+                    before = "\n".join(rtext.splitlines()[:max(0, int(site.get("line", 0)) - base)])
+                    fm = list(re.finditer(r"for\s*\(\s*" + re.escape(rest)
+                                          + r"\s+in\s+([^)]+?)\s*\)", before))
+                    if fm:
+                        items = fm[-1].group(1).strip()
+                    else:
+                        items = f"?the vector `{rest}` is drawn once per item of"
+            out.setdefault(fid, dict(site, items=items, prefix=prefix, base=base))
+    return out
+
+
+def _call_of(draws, fn):
+    """(args, expr): the arguments inside `fn(...)` when the expression IS that call, else the
+    whole expression as `expr`. Balanced parentheses, read with the extractor's own mask."""
+    from .extract import draw_sites as DS
+    text = draws or ""
+    if fn:
+        m = re.match(r"^\s*(?:[.\w]+::)?" + re.escape(fn) + r"\s*\(", text)
+        if m:
+            op = m.end() - 1
+            cl = DS._closing(DS._mask(text), op)
+            if cl == len(text) - 1:
+                return text[op + 1:cl].strip(), ""
+    return "", text.strip()
+
+
+def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
+    """A paste-ready plan for a plugin still on the prose-and-prefix-map form.
+
+    BUILT FROM WHAT THE PLUGIN ALREADY SAYS, in four places: the families the legacy rules name
+    (`places_every`, ids parsed out of prose - the same parser the old placement stage used),
+    their ceilings, the two prefix maps, the existing entries - and the hand-written draw sites,
+    read one last time, for the call, the items, the device and the legend. Nothing is decided:
+    every field that could not be read is the placeholder, and a legend that was built at the
+    site out of runtime values is printed as a TODO with the expression beside it, because a
+    template is a decision.
+
+    PRINTED, NEVER WRITTEN. The person pastes it in place of the legacy fields, then `status`,
+    `validate` and the plan's own baseline test say whether it is the same plan.
+    """
+    st = plan_stage(doc, point_name)
+    if st is None:
+        raise ConvertError(f"point {point_name!r} declares no plan stage")
+    ph, _up, _stages = plan(doc, point_name)
+    keys = {str(k): str(v) for k, v in (st.get(ENTRY_KEYS) or {}).items()}
+    fn_key, items_key = keys.get("upstream", "fn"), keys.get("items", "items")
+    bound_key, call_key = keys.get("bound", "at_most"), keys.get("call", "args")
+    expr_key, skips_key = keys.get("expression", "expr"), keys.get("skips", "report.skips")
+    rules = st.get(PLACES_KEY) or []
+    field, existing = _entries(spec, st)
+    axis_field = str(st.get("axis_field") or "")
+    axis_map = {str(k): str(v) for k, v in (_dotted(spec, axis_field) or {}).items()} \
+        if axis_field else {}
+    pos_map = {str(k): str(v) for k, v in (_dotted(spec, field.rsplit(".", 1)[0]
+                                                    + ".figure_position") or {}).items()}
+
+    def longest(m, fid, default):
+        for k in sorted(m, key=len, reverse=True):
+            if fid.startswith(k):
+                return m[k]
+        return default
+
+    sites = _legacy_sites(doc, point_name, name, source) if source else {}
+    entries, todo = [], 0
+    # 1. the families the legacy rules name, one entry per member of a brace family
+    for stem, rfield, per_item, bound, cap in _families(spec, rules):
+        node = _dotted(spec, rfield) or {}
+        if not isinstance(node, dict):
+            continue                       # entries by id are carried through below, as they are
+        # which upstream function named this stem, and what that record says
+        fn, rec = "", {}
+        for k, r in (node.items() if isinstance(node, dict) else []):
+            if stem in str((r or {}).get("use") or ""):
+                fn, rec = str(k), (r or {})
+                break
+        members = [stem]
+        for r_ in re.findall(r"figures/([A-Za-z0-9_{},<>-]+?)\.png", str(rec.get("use") or "")):
+            if r_.split("{")[0].rstrip("_") == stem and "{" in r_:
+                head_, rest = r_.split("{", 1)
+                opts = rest.split("}", 1)[0]
+                members = [head_ + o.strip() for o in opts.split(",") if o.strip()]
+                break
+        for fid in members:
+            e = {"id": fid, "drawn_by": str(rec.get("drawn_by") or "tool")}
+            if fn:
+                e[fn_key] = fn
+            e["axis"] = longest(axis_map, fid, "unit")
+            e["position"] = longest(pos_map, fid, "contrast")
+            site = sites.get(fid) or {}
+            if str(site.get("items") or "").startswith("?"):
+                e[items_key] = f"{ph} - {site['items'][1:]}; name the vector, or split the family"
+                todo += 1
+            elif site.get("items"):
+                e[items_key] = site["items"]
+            elif per_item:
+                e[items_key] = f"{ph} - the R name of the vector this is drawn once per item of"
+                todo += 1
+            if per_item or site.get("items"):
+                e[bound_key] = int(cap) if cap else f"{ph} - files per {e['axis']}"
+                if not cap:
+                    todo += 1
+            elif len(members) > 1 or cap:
+                e[bound_key] = 1 if len(members) > 1 else int(cap)
+            if rec.get("profile"):
+                e["profile"] = True
+            if site:
+                args, expr = _call_of(site.get("draws", ""), fn)
+                if args:
+                    e[call_key] = args
+                elif expr:
+                    e[expr_key] = expr
+                if site.get("wrapper") and site["wrapper"] != "npng":
+                    e["device"] = site["wrapper"]
+                leg = str(site.get("legend") or "").strip()
+                if re.match(r'^"[^"]*"$', leg):
+                    e["legend"] = leg[1:-1]
+                elif leg:
+                    e["legend"] = f"{ph} - a template for: {leg[:200]}"
+                    todo += 1
+                else:
+                    e["legend"] = f"{ph} - what this panel shows, as a template"
+                    todo += 1
+            else:
+                e["legend"] = f"{ph} - what this panel shows, as a template"
+                e[call_key] = f"{ph} - the arguments this plugin passes {fn or 'the function'}"
+                todo += 2
+            entries.append(e)
+    # 2. the existing entries, carried through with their axis and position made explicit
+    seen = {e["id"] for e in entries}
+    for e in existing:
+        fid = str(e.get("id") or "")
+        if not fid or fid in seen:
+            continue
+        e2 = dict(e)
+        e2.setdefault("drawn_by", "plugin")
+        e2.setdefault("axis", longest(axis_map, fid, "unit"))
+        e2.setdefault("position", longest(pos_map, fid, "contrast"))
+        if not str(e2.get("legend") or "").strip():
+            e2["legend"] = f"{ph} - what this panel shows, as a template; the caption passed at emit still wins"
+            todo += 1
+        entries.append(e2)
+    # 3. the skips
+    skips = {}
+    for rfield in {r.get("field") for r in rules if r.get("field")}:
+        node = _dotted(spec, str(rfield)) or {}
+        for k, r in (node.items() if isinstance(node, dict) else []):
+            if isinstance(r, dict) and r.get("skip"):
+                skips[str(k)] = {kk: vv for kk, vv in r.items()}
+    L = [f"    # THE FIGURE PLAN for {name or 'this plugin'}: {len(entries)} entries from "
+         f"{len(rules)} legacy field(s), {len(sites)} draw site(s) read, {todo} field(s) left "
+         f"for a person.",
+         f"    # Paste in place of {', '.join(sorted({str(r.get('field')) for r in rules if r.get('field')}))}, "
+         f"`{axis_field or 'the axis map'}` and `figure_position`. A `{ph}` does not validate.",
+         f'    "{field.split(".")[-1]}": [']
+    for e in entries:
+        L.append("        {")
+        for k, v in e.items():
+            L.append(f"            {k!r}: {v!r},")
+        L.append("        },")
+    L.append("    ],")
+    L.append(f'    "{skips_key.split(".")[-1]}": {{')
+    for k, v in sorted(skips.items()):
+        L.append(f"        {k!r}: {v!r},")
+    L.append("    },")
+    return "\n".join(L)
 
 
 def advance_command(row, doc, point_name, root, name, python="", run=""):

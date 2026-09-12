@@ -196,7 +196,7 @@ class Extractors(unittest.TestCase):
         self.assertNotEqual(sorted(none.names), sorted(wide.names),
                             "the pattern changed and the answer did not, so it is not being used")
         self.assertTrue(set(none.names) <= set(wide.names))
-        self.assertEqual({"body"}, set(none.detail.values()) or {"body"},
+        self.assertEqual({"body"}, {v.get("found_by") for v in none.detail.values()} or {"body"},
                          "a pattern matching nothing left rows the NAME rule claims to have "
                          "found, so the two rules are not separable")
 

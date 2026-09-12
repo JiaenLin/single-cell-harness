@@ -706,6 +706,32 @@ def cmd_dev(a):
             if rows and all(not r.complete for r in rows):
                 return CANNOT_RUN
             return OK
+        if a.action == "plan":
+            # THE FIGURE PLAN, AS A TABLE A PERSON ADJUSTS - one row per family, what it lacks,
+            # and with --python the upstream function's parameters beside each `fn`. With
+            # --migrate, the paste-ready plan for a plugin still on prose and prefix maps, built
+            # from its legacy fields and its hand-written draw sites (ADR-0016).
+            bad = 0
+            for nm, spec in specs:
+                print(f"\n{nm}")
+                try:
+                    if getattr(a, "migrate", False):
+                        print(CV.migrate_worksheet(spec, doc, point, nm,
+                                                   source=CV._source_of(doc, point, nm)))
+                        continue
+                    inv = None
+                    if a.python or a.rscript:
+                        tool = a.tool or CV._dotted(spec, up_path)
+                        for _ext, _inv in CV.inventory(tool, python=a.python,
+                                                       rscript=a.rscript) if tool else []:
+                            if _inv.complete:
+                                inv = _inv
+                                break
+                    print(CV.plan_worksheet(spec, doc, point, nm, inv=inv))
+                except CV.ConvertError as e:
+                    bad += 1
+                    print(f"{nm}: {e}", file=sys.stderr)
+            return FAILED if bad else OK
         if a.action == "placement":
             # WHERE A FIGURE GOES AND HOW MANY OF IT THERE ARE, both read from the declaration
             # and neither answerable by the host. A run drew 1187 figures for one plugin; 50 of
@@ -1147,6 +1173,9 @@ def build_parser():
     q.add_argument("--tool", default=None, help="override the upstream named in the declaration")
     q.add_argument("--python", default=None, help="the interpreter the plugin's own env uses")
     q.add_argument("--rscript", default=None)
+    q.add_argument("--migrate", action="store_true",
+                   help="with `plan`: print the paste-ready plan for a plugin still on the "
+                        "prose-and-prefix-map form, built from its legacy fields and draw sites")
     q.add_argument("--run", default=None,
                    help="a completed run. `status --run` runs every test-phase stage's command "
                         "against it and reads the exit code as the verdict; a command stage "

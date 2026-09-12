@@ -103,7 +103,14 @@ draw protocol (`kernels/cellchat.draw.R`) already is, and proved the same way (`
 
 Optional per entry: `w`, `h`, `res` (device size, default the protocol's); `device: "png" |
 "ndev"` (`ndev` for a function that draws as a side effect — the wrapper the existing site used
-says which); `when: "<R expression>"` for a site the method guards with a condition.
+says which); `when: "<R expression>"` for a site the method guards with a condition; `expr:
+"<R expression>"` in place of `fn` + `args` for the few sites that are a brace block of several
+statements — still in the plan, still generated, and the worksheet marks each one so it can be
+reduced to a call later.
+
+*Amendment, 2026-09-12, before step 2:* the provenance field is **`drawn_by`**, the name
+`report.figures`, `native_plots` and `captions.tsv` already use — `by` in the examples above reads
+as `drawn_by`. A new name for an existing fact would have been the drift this record removes.
 
 What is **not** in the plan: the host's own panels (declared by `unit_network`, drawn by
 `panels.py` — unchanged); the method's numbers; the upstream function's internal encoding. The
@@ -160,7 +167,7 @@ table at the bottom when a step lands, in the same commit.**
   never hand-edit `kernels/cellchat.py` except to paste a worksheet answer the maker printed; the
   eight held-out plugins are not touched; mechanism changes in place (`scprofile/`, `sch/`,
   `tests/`, `docs/`, `jobs/`, `setup/`, `.claude`, `DEVPOINTS.yaml`); end to end is cellchat only.
-  `sch dev rules --root /Users/admin/tools/scProfile` must read 4 held after every commit.
+  `sch dev rules --root <scProfile>` must read 4 held after every commit.
 - **HPC rule H1**: nothing is authored on the cluster; every tool invocation there goes through
   `qsub`; job scripts carry `rule-one: no-removal`. Read the `duke-nus-hpc` skill's `LAYOUT.md`
   before submitting anything.
@@ -177,21 +184,21 @@ table at the bottom when a step lands, in the same commit.**
 
 | | |
 |---|---|
-| harness (this repo) | `/Users/admin/Desktop/single-cell-harness` — `sch/dev/convert.py`, `sch/dev/extract/`, `sch/dev/ladder.py`, `skills/plugin-maker/SKILL.md`, `docs/DEVELOPING.md` |
-| scProfile | `/Users/admin/tools/scProfile` — `scprofile/{planner,report,declare,native,compose,capacity,scaffold,plugin,_entry,manifest,captions,figure_context}.py`, `kernels/cellchat.py`, `kernels/cellchat.draw.R`, `DEVPOINTS.yaml`, `tests/` |
+| harness (this repo) | `<harness>` — the checkout this file is in — `sch/dev/convert.py`, `sch/dev/extract/`, `sch/dev/ladder.py`, `skills/plugin-maker/SKILL.md`, `docs/DEVELOPING.md` |
+| scProfile | `<scProfile>` — the checkout beside it (`~/tools/scProfile` on the workstation this was written on) — `scprofile/{planner,report,declare,native,compose,capacity,scaffold,plugin,_entry,manifest,captions,figure_context}.py`, `kernels/cellchat.py`, `kernels/cellchat.draw.R`, `DEVPOINTS.yaml`, `tests/` |
 | sealed reference run | cluster, `runs/scprofile/04_profile/20260910T130619Z__scprofile-9211f81__04_profile__legends` (PBS 710085): 945 PNG + 24 PDF, 90 of 90 tables byte-identical to 710080; `cellchat_net_embedding.csv` differs by design (UMAP unseeded — always exclude it) |
 | how a cellchat-only cohort run is submitted | `tools/scProfile-cconly-jobs/submit_legends.sh` on the cluster (refuses a tree with more than one kernel); env `scprofile-env-d077909e49` is cellchat alone and reused when declarations are unchanged |
 | the loop on the cluster | scProfile `setup/loop.pbs`; the ladder `jobs/dev_suite.pbs` |
-| memory | `~/.claude/projects/-Users-admin-Desktop-single-cell-harness/memory/one-spine-round-2026-09-12.md` and this file |
+| memory | the session memory file `one-spine-round-2026-09-12.md` (its index is `MEMORY.md`), and this file |
 
 ## How to resume from any point
 
 ```
-cd /Users/admin/Desktop/single-cell-harness && git log --oneline -8 && git status --short
-cd /Users/admin/tools/scProfile && git log --oneline -8 && git status --short && git config --get core.hooksPath
-python3 -m sch.cli dev rules --root /Users/admin/tools/scProfile          # 4 held, or stop
-python3 -m unittest discover -s tests -p 'test_*.py'                       # harness, ~20 s
-cd /Users/admin/tools/scProfile && python3 tests/run_all.py --jobs 4       # ~90 s
+cd <harness>   && git log --oneline -8 && git status --short
+cd <scProfile> && git log --oneline -8 && git status --short && git config --get core.hooksPath
+python3 -m sch.cli dev rules --root <scProfile>          # from <harness>: 4 held, or stop
+python3 -m unittest discover -s tests -p 'test_*.py'     # harness, ~20 s
+cd <scProfile> && python3 tests/run_all.py --jobs 4      # ~90 s
 ```
 
 Then read the status table below, find the first step not `done`, and read that step's gate
@@ -307,7 +314,7 @@ dev rules` 4 held. Commit scProfile through the gate, then the harness.
 ## Step 3 — migrate cellchat's declaration (a worksheet answer, pasted)
 
 ```
-python3 -m sch.cli dev convert plan --migrate --root /Users/admin/tools/scProfile --point kernel --name cellchat
+python3 -m sch.cli dev convert plan --migrate --root <scProfile> --point kernel --name cellchat
 ```
 
 Paste the printed block into `kernels/cellchat.py`: it REPLACES `native_plots`, `report.figures`,
@@ -429,8 +436,8 @@ criterion (a page that must fail it).
 | step | status | commit(s) | note |
 |---|---|---|---|
 | 0 record | done | harness (this commit) | |
-| 1 spine on a sealed run | not started | | needs one qsub, reads only |
-| 2 schema, reader, validator, migrate worksheet | not started | | |
+| 1 spine on a sealed run | **authored, not submitted** | harness: `jobs/status_on_run.pbs` (jobcheck clean) | the cluster was unreachable from the workstation on 2026-09-12 (`ssh` timed out twice); submit when it answers, then grade S1-S8 in the seal |
+| 2 schema, reader, validator, migrate worksheet | done | harness: this commit; scProfile: the commit after 043a60c | found on the way: the draw-site scan had been blind to cellchat's R sites since the companion move (wrappers read from the companion now); foreign wrapper spans hid a script's first sites; `DRAWN_BY` had two definitions; the record itself carried workstation paths |
 | 3 cellchat declaration migrated | not started | | baseline identical is the gate |
 | 4 generated sites, `ctx.rscript`, sites deleted | not started | | reproduction identical is the gate |
 | 5 retire the extractor, maps, prose, glue | not started | | |

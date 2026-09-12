@@ -245,6 +245,7 @@ nothing in `sch/` knows what a figure family or an upstream plot is.
 | `generated_by` | a command that writes the stage's mechanism, so the check can regenerate it and compare |
 | `every_requirement_declared` | no package the artefact LOADS is one only its neighbours declare |
 | `version_is_current` | the field this repository calls its reuse key moved when the artefact did |
+| `entry_keys` | the stage is the FIGURE PLAN (ADR-0016): the list it fills carries the call, and this map says what the format calls the upstream function, the items, the bound, the arguments and the expression |
 
 `places_every` takes one entry per declaration that names figure families, each saying how to read
 an id out of it — a key, a value at a path, or filenames inside prose — and, where the format
@@ -253,6 +254,22 @@ lists what is unplaced, what has no axis and what is unbounded, and prints the e
 
 The stage is a BUILD stage: it reads declarations and source only, so it cannot be shaped around
 one cohort.
+
+### The figure plan carries the call
+
+A stage declaring `entry_keys` is the plan stage. `sch dev convert plan --name <plugin>` prints
+every entry of the list it fills — one row per figure family: who draws it, over which axis,
+the function, its items, its ceiling, where it sits, its kind, whether it has a legend — with
+what each entry lacks under it, and, given `--python`, the upstream function's parameters
+beside each `fn`. That table is where a figure is adjusted; the repository's own scaffold
+generates the draw sites from the entries, so adjusting a figure never touches method code.
+
+`sch dev convert plan --migrate --name <plugin>` prints the paste-ready plan for a plugin still
+on the older form — figure ids parsed out of prose, ceilings per function, two prefix maps —
+built from those fields and from its hand-written draw sites, read one last time. Every field
+that could not be read is the placeholder; nothing is decided by the maker. The legacy rules
+(`places_every`, `axis_field`, `positions`, `axes`) stay on the stage until the last such plugin
+is migrated, because they are how the maker reads one.
 
 ### Demanded, checked and generated are three different claims
 

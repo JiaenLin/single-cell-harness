@@ -91,7 +91,20 @@ for (nm in ex) {
 }
 hit <- sort(union(byname, bybody))
 tag <- ifelse(hit %in% byname, ifelse(hit %in% bybody, "both", "name"), "body")
-cat("SCH_OK"); cat(paste(c("", paste(hit, tag, sep = "\t")), collapse = "\n"))
+# THE SIGNATURE TRAVELS WITH THE NAME, as the Python probe's does. A plan entry names a function
+# and its arguments; somebody writing `args` needs the parameters and their defaults beside the
+# row, not thirty-five documentation pages. `args()` is R's own rendering of the formals, on one
+# line, tabs and newlines folded so the row stays a row.
+sig <- vapply(hit, function(nm) {
+  f <- tryCatch(get(nm, envir = ns), error = function(e) NULL)
+  if (!is.function(f)) return("")
+  s <- tryCatch(paste(deparse(args(f)), collapse = " "), error = function(e) "")
+  # POSIX CLASSES, NO ESCAPES. This text crosses a Python literal, a file and R's parser, and
+  # `[\t\n\r]` arrived at the regex as the letters t, n and r: `function` came back `fu c io`.
+  s <- sub("[[:space:]]*NULL[[:space:]]*$", "", s)
+  gsub("[[:space:]]+", " ", s)
+}, character(1))
+cat("SCH_OK"); cat(paste(c("", paste(hit, tag, sig, sep = "\t")), collapse = "\n"))
 """
 
 
@@ -140,11 +153,15 @@ def inventory(tool, rscript=None, pattern=DEFAULT_PATTERN, timeout=180):
             f"shared libraries its build needs are reachable from a non-interactive shell.")
         return Inventory(tool, [], "", complete=False,
                          why_not=f"{exe} produced no answer (exit {p.returncode}): {detail}")
-    rows = [ln.strip().split("\t") for ln in txt[len("SCH_OK"):].splitlines() if ln.strip()]
-    names = [r[0] for r in rows]
-    by = {r[0]: (r[1] if len(r) > 1 else "name") for r in rows}
-    n_body = sum(1 for v in by.values() if v in ("body", "both"))
-    only_body = sorted(k for k, v in by.items() if v == "body")
+    rows = [ln.strip("\n").split("\t") for ln in txt[len("SCH_OK"):].splitlines() if ln.strip()]
+    names = [r[0].strip() for r in rows]
+    # THE SAME SHAPE THE PYTHON PROBE RETURNS, so a worksheet reads one record whatever language
+    # the tool is written in: which rule found it, its signature, a summary line (R has none).
+    by = {r[0].strip(): {"found_by": (r[1].strip() if len(r) > 1 else "name"),
+                         "signature": (r[2].strip() if len(r) > 2 else ""),
+                         "summary": ""} for r in rows}
+    n_body = sum(1 for v in by.values() if v["found_by"] in ("body", "both"))
+    only_body = sorted(k for k, v in by.items() if v["found_by"] == "body")
     return Inventory(tool, names,
                      f"exports of {tool} that either match {pattern!r} - a CONVENTION, not a "
                      f"definition - or call one of R's own plotting entry points in their body. "
