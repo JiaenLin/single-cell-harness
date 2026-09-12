@@ -484,6 +484,40 @@ the plan listed every id.
 **If one file differs, the plan changed a figure it was not asked to: find the entry, fix the
 generator or the entry, resubmit. Do not accept a "close enough".** Commit through the gate.
 
+*Results, 2026-09-12, first reproduction (PBS 710971, run
+`20260912T135705Z__scprofile-df9f005__04_profile__plan`, sealed by the run and graded 3 of
+10).* What the plan reproduced: the 90 numeric tables byte-identical (R3), the chord ceiling
+[8, 8, 8, 8, 8, 8] (R4), 943 panels. What it did not, and why - every one of them the
+migration's, none the interpreter's:
+
+- **943 of 945 panels, two caption rows fewer (R1, R2, R7):** the two `weight`
+  compareInteractions panels were refused by the ceiling guard. The per-thousand family's
+  files carried no family's id in front, so all four compareInteractions files fell to the raw
+  family's ceiling of two and the second measure was never drawn - step 1's S6 finding, now
+  at draw time. Fixed before this run finished (the rename), predicted for the second run.
+- **70 of 83 plates on the pages, 5 "no plate" where the reference had 2 (R6):** the migration
+  copied `profile: True` - the FUNCTION's flag in the older form - onto every family the
+  function names, so six contrast families (the diff heatmaps, the paired role panels, the
+  bubble comparisons) were marked profile and the reporter kept them off the arm pages. The
+  worksheet keeps the flag to unit-axis families now; the six entries lost it.
+- **`promised` 1 declared-and-never-drawn (R5, R9):** `estimationNumCluster` - the tool's
+  rank-estimation plate, twenty-four PDFs on this run - because the promise sweep read the
+  PNGs alone. A promise is kept by a file of any figure format now.
+- **R8 held in substance:** both runs used scprofile-env-2d8b9a3b36; the prediction named a
+  hash copied from an older record. **R9:** `measure` owes on BOTH runs, for the reason the
+  stage states - eighteen instances shared one job, so no per-instance memory was fitted;
+  the prediction had said "answered". The six verdicts were otherwise identical; the
+  unmeasured count differed by the two undrawn panels.
+
+*Results, 2026-09-12, step 7a first run (PBS 710972, sealed with 3 of 6).* E1 held: the
+environment built (scprofile-env-2800f396e8) and the plugin's own selftest passed. E3 held:
+every run-side stage ran and answered. E2 failed before the plugin was reached: `run` REFUSED
+the declaration - three `drawn_by: tool` entries "name no fn". The plugin was written before
+the plan carried the call; its tool-drawn entries are panels gseapy's own Python drew and the
+plugin emitted, and nothing had asked them for a function. The rule is the plan's and now
+applies to an entry ON the plan; `drawn_by_companion` reads what an entry carries, not who
+draws it. E5 and E6 failed as consequences (no run, no loop). Resubmitted.
+
 *Amendment, 2026-09-12, after 4a-4d — what generating the sites found, and one deferral.*
 
 1. **Eleven of the 46 transcribed calls did not parse as R.** The extractor's one-line form of
