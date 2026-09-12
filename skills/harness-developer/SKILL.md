@@ -63,11 +63,13 @@ it landed. The writer is not the checker, on purpose.
 sch dev check --root <repo> --point <point> --name <name>
 ```
 
-Seven tiers, cheapest first, stopping at the first failure (`--keep-going` runs them all):
+The tiers, cheapest first, stopping at the first failure (`--keep-going` runs them all) — the
+list is `sch dev map --json`'s `tiers`, and this table describes rather than counts them:
 
 | tier | what fails here |
 |---|---|
 | `declaration` | not registered, or the point does not exist |
+| `rules` | a rule the repository declared for its round no longer holds — a held-out artefact changed, mechanism copied into a plugin, a change outside the declared paths. Skipped, not passed, where none are declared |
 | `contract` | `sch conform` on the repository — leak guard, output defaults, status contract |
 | `unit` | the repository's own suite, run the way the repository runs it |
 | `fixture_a` | it does not run end to end on a synthetic cohort |

@@ -726,8 +726,16 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
     this plugin is finished as a piece of code and was written without any data in front of it -
     which is the only way to know it was not shaped around one cohort. "The tests pass" says it
     behaves, and needs something to run on.
+
+    AND WHICH SIDE OF THE ROUND'S RULES THIS PLUGIN IS ON, first, before any debt is listed. A
+    status that prints "35 silent draw sites, fix them" about an artefact the round holds out is
+    an instruction to spend the family's only evidence that the maker generalises; the rule that
+    forbids it lived in a declaration nobody reads while working, and the routing loop that
+    follows from it lived in one session's memory. The banner is the routing loop's first branch,
+    printed where the work is driven from.
     """
     L = []
+    L += _side_of_the_rules(doc, name)
     for phase, headline in (("build", "BUILD - reads source only, so it cannot be fitted to a "
                                       "cohort"),
                             ("test", (f"TEST - answered by running each stage's command against "
@@ -822,6 +830,34 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
             L.append(f"    {r['stage']:12s} nothing runs this - it is what only you can answer: "
                      f"{', '.join(r['missing'])}")
     return "\n".join(L)
+
+
+def _side_of_the_rules(doc, name):
+    """Lines saying whether `name` is held out or is the round's maker output, or [] with no rules.
+
+    Read from the same `rules:` block `sch dev rules` checks, so the status and the check cannot
+    name different artefacts. A repository declaring no rules gets no banner: inventing one would
+    be this tool deciding how somebody else's round works.
+    """
+    if not doc or not name:
+        return []
+    from . import rules as _RL
+    rules = _RL.declared(doc)
+    if not rules:
+        return []
+    held = [str(x) for x in ((rules.get("held_out") or {}).get("names") or [])]
+    out = [str(x) for x in ((rules.get("end_to_end") or {}).get("names") or [])]
+    if name in held:
+        return [f"  HELD OUT: {name} is one of this round's held-out artefacts. Every debt below "
+                f"is a RESULT to record, never a fix to make -",
+                f"  a repair fits the maker to it and spends the family's only evidence that the "
+                f"maker generalises. `sch dev rules` checks it.", ""]
+    if name in out:
+        return [f"  MAKER OUTPUT: {name} is what this round converts. A debt below is paid by "
+                f"changing the maker and regenerating, or by answering",
+                f"  the worksheet the stage names - never by hand-editing the artefact. "
+                f"Duplicated mechanism is the tell, and `sch dev rules` measures it.", ""]
+    return []
 
 
 def _clip(text, n):

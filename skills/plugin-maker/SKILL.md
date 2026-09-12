@@ -52,15 +52,54 @@ plugins by hand.
 sch dev convert --root . --point <point> --name <plugin>
 ```
 
-Six stages, in dependency order, each either something a machine extracts from the tool's own
-source or something only you can answer — never both. It prints which are done, which are not, and
-what the next one is.
+The stages are the repository's own declaration, in dependency order, and the status prints
+them: **build** stages first — each either something a machine extracts from the tool's own
+source or something only you can answer, never both — then **test** stages, which need something
+that ran. It prints which are done, which are not, and the one command that moves each on. Do
+not carry a count of them in your head; the declaration owns it and this file does not repeat it.
 
 **There is no separate "start" and "resume".** A raw tool and a half-built plugin are the same
 input at different points on one line; converting a repository is resuming from zero. Nothing is
 remembered between invocations — no journal, no lock file — so what remains is computed from the
 declaration every time. A conversion picked up on another machine four months later reads the same
 answer. Run `sch dev convert` and believe it.
+
+**The test phase is answered from a run.** A stage that declares a command — memory, promised
+plots, and the repository's own test-loop stations where it declares them — is marked `RUN?`
+until you name a run:
+
+```
+sch dev convert status --root . --point <point> --name <plugin> --run <RUNDIR>
+```
+
+runs every such command against that directory and reads the exit code as the verdict, printing
+each command's own last lines as the reason. What it prints under "what is left" is the command
+to run yourself, with the run filled in. A green build with the test phase unasked is a plugin
+finished as code and untested as a run; the status says so and does not count them together.
+
+## The rules of a round, and where a fix goes
+
+A repository may declare the rules of its current round under `rules:` in `DEVPOINTS.yaml` —
+which artefacts are the maker's output, which are held out, where mechanism may change, what
+runs end to end. `sch dev rules --root .` checks them, `sch dev check` runs that as its first
+tier, and `status` prints which side of them the plugin you named is on. When a run or a check
+surfaces a defect, its home is decided by the rules, not by convenience:
+
+| the defect is | it goes to |
+|---|---|
+| in the host or the maker — a path under `in_place` | fixed **in place**, there |
+| something the maker should have caught | the **maker**: fix it, re-run it, and the plugin changes as a consequence |
+| something the maker already demands — a worksheet row, a `finished_by` | the **worksheet**: answer it in the plugin, where the maker asked |
+| in an artefact named under `held_out` | **recorded, never fixed** — `status` banners these. A repair fits the maker to it and spends the family's only evidence that the maker generalises |
+
+Never hand-edit a plugin the round names under `end_to_end` as maker output; if the plugin is
+wrong, the maker is wrong. Duplication is the tell — method is written once, mechanism appears
+twice — and the `maker_output` rule measures exactly that.
+
+**Before your first commit into the repository, run its own check** (`scprofile check` in
+scProfile). It reports whether the repository's commit gate is installed in your clone and prints
+the command that installs it; the gate runs the suites and the check on every commit whatever
+session made it, and a clone without it is gated by nothing.
 
 ## The mechanical stages: run the command, read the answer
 
@@ -175,7 +214,9 @@ Every tier prints what it does **not** prove. A green ladder does not say the nu
 
 cellchat is the only finished conversion in the family and the standard the rest are measured
 against: 35 upstream plots accounted, 10 declared figures all drawn, both memory terms measured, 9
-entries in `cannot_show`. Point `sch dev convert` at it and it prints 7 of 7.
+entries in `cannot_show`. Point `sch dev convert` at it and every build stage reads done; point it
+at it with `--run` and a sealed run, and the test stages answer — the loop's own stations
+included. The counts are the declaration's; read them there rather than here.
 
 Point it at any other and it prints where that one stopped.
 

@@ -110,6 +110,59 @@ class DocumentedCommandsParse(unittest.TestCase):
             self.assertIn(f"dev {sub}", shown, f"`sch dev {sub}` appears in no document")
 
 
+class SkillsDoNotStateWhatTheDeclarationOwns(unittest.TestCase):
+    """A skill said "Six stages" and "it prints 7 of 7" while the declaration it drives held
+    eleven stages; another said "Seven tiers" after the ladder had gained an eighth. Nothing
+    compared the prose with the thing it described, and an agent reading either would have
+    stopped short or looked for a line that does not exist.
+
+    A count of stages or tiers is the declaration's or the ladder's to print. A skill describes
+    them; it does not carry the number."""
+
+    SKILLS = [d for d in DOCS if d.startswith("skills/")]
+    COUNT = re.compile(r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|"
+                       r"twelve)\s+(?:stages|tiers)\b", re.I)
+    N_OF_N = re.compile(r"\bprints?\s+\d+\s+of\s+\d+\b", re.I)
+
+    @staticmethod
+    def _prose(text):
+        """The skill with its fenced blocks removed: a command is not a claim about a count."""
+        return re.sub(r"```.*?```", "", text, flags=re.S)
+
+    def test_no_skill_carries_a_stage_or_tier_count(self):
+        bad = []
+        for rel in self.SKILLS:
+            prose = self._prose((ROOT / rel).read_text(encoding="utf-8"))
+            for m in self.COUNT.finditer(prose):
+                bad.append(f"{rel}: {m.group(0)!r}")
+        self.assertEqual(bad, [], "a skill states a count the declaration owns:\n  "
+                         + "\n  ".join(bad))
+
+    def test_no_skill_promises_an_n_of_n(self):
+        bad = []
+        for rel in self.SKILLS:
+            prose = self._prose((ROOT / rel).read_text(encoding="utf-8"))
+            for m in self.N_OF_N.finditer(prose):
+                bad.append(f"{rel}: {m.group(0)!r}")
+        self.assertEqual(bad, [], "a skill promises a literal N of N:\n  " + "\n  ".join(bad))
+
+    def test_the_check_would_have_caught_what_it_was_written_for(self):
+        self.assertTrue(self.COUNT.search("Six stages, in dependency order"))
+        self.assertTrue(self.COUNT.search("Seven tiers, cheapest first"))
+        self.assertTrue(self.N_OF_N.search("Point `sch dev convert` at it and it prints 7 of 7."))
+        self.assertFalse(self.COUNT.search("Sixteen structural hazards are built in"))
+        self.assertFalse(self.COUNT.search("writes eight samples in a 2x2"))
+
+    def test_every_rule_of_a_round_the_maker_checks_is_named_in_the_maker_skill(self):
+        """The routing loop lives in the skill in the vocabulary rules.py already has."""
+        from sch.dev import rules as RL
+        text = (ROOT / "skills/plugin-maker/SKILL.md").read_text(encoding="utf-8")
+        for key in ("maker_output", "held_out", "in_place"):
+            self.assertIn(key, text, f"the plugin-maker skill never names the {key} rule")
+        self.assertIn("sch dev rules", text)
+        self.assertTrue(hasattr(RL, "declared"))
+
+
 class JsonWorksInBothPositions(unittest.TestCase):
     """`--json` is global, so it must be accepted before or after the subcommand - and mean the
     same thing in both. The subparser's default would otherwise overwrite the parent's value and
