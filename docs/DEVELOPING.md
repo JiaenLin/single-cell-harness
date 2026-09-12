@@ -409,6 +409,12 @@ It exits 2 on a finding, 3 on a point holding fewer than two artefacts — gener
 a family or about nothing — and it says in its own output that it is not a substitute for held-out
 conversion and does not spend it.
 
+**The gold standard has a record of its own.** `docs/blind/` holds one numbered record per blind
+conversion — predictions written before the run, results and cost after — and the second of
+them, a cold agent converting a tool no kernel wraps, is what the scan cannot measure: it found
+four defects in one afternoon that nine finished artefacts could not show, because every one
+was in a convention the family had never met.
+
 ---
 
 ## 9. `sch dev jobcheck` — the shell defects this family has paid for

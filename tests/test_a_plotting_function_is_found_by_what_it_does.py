@@ -128,6 +128,40 @@ class APlottingFunctionIsFoundByWhatItDoes(unittest.TestCase):
         self.assertNotIn("register_matplotlib_converters", inv.names,
                          "a converter registration was reported as a plotting function")
 
+    def test_a_function_that_writes_its_own_figure_file_is_found_by_that(self):
+        """The third rule, from the second blind conversion (docs/blind/0002-gseapy.md).
+
+        gseapy's `gseaplot` and `gseaplot2` build their own figure and take `ofname=` to save it:
+        suffix names, no axes. Name rule and signature rule both missed them and the extractor
+        reported 3 of 5 with a confident, complete-looking line. Measured before the rule was
+        added: gseapy +2 (exactly those two), pandas.plotting +0, matplotlib.pyplot +1 and that
+        one is `savefig` itself.
+
+        BUILT HERE AS A PACKAGE OF THREE, so the test names no real tool: one function takes an
+        axes, one writes a file, one does neither and must not be reported.
+        """
+        import os
+        import tempfile
+        from unittest import mock
+        from sch.dev.extract import python_package as PP
+        with tempfile.TemporaryDirectory() as td:
+            pkg = Path(td) / "quarrytool"
+            pkg.mkdir()
+            (pkg / "__init__.py").write_text(
+                "def on_axes(df, ax=None):\n    return ax\n"
+                "def own_figure(df, ofname=None):\n"
+                "    fig = object()\n"
+                "    if ofname:\n        fig.savefig(ofname)\n    return fig\n"
+                "def tabulate(df):\n    return df\n", encoding="utf-8")
+            with mock.patch.dict(os.environ, {"PYTHONPATH": td}):
+                inv = PP.inventory("quarrytool", python=sys.executable)
+        self.assertTrue(inv.complete, inv.why_not)
+        self.assertEqual(sorted(inv.names), ["on_axes", "own_figure"])
+        self.assertEqual(inv.detail["own_figure"]["found_by"], "saves")
+        self.assertEqual(inv.detail["on_axes"]["found_by"], "signature")
+        self.assertIn("ONLY by it: own_figure", inv.how)
+        self.assertNotIn("tabulate", inv.names, "a function that draws nothing was reported")
+
     def test_which_axis_is_not_an_axis_to_draw_on(self):
         """`axis=` in matplotlib means WHICH axis - a string, not an object to draw on.
 

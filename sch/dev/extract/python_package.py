@@ -67,6 +67,22 @@ _NAMEY = ("plot", "pl_", "draw", "scatter", "heatmap", "violin", "umap", "embedd
 #: function anywhere.
 _AXIS_PARAMS = ("ax", "axes", "fig", "figure")
 
+#: A FUNCTION THAT WRITES ITS OWN FIGURE FILE DRAWS. The third rule, and the Python twin of the R
+#: behaviour rule: it reads what the body DOES, not what the function is called or takes. Found
+#: by the second blind conversion (docs/blind/0002-gseapy.md): gseapy's `gseaplot` and
+#: `gseaplot2` build their own figure inside a class and take `ofname=` to save it - suffix
+#: names, no axes - and both the name rule and the signature rule missed them, so the extractor
+#: reported 3 of the tool's 5 drawing functions with a confident, complete-looking line. A cold
+#: agent found the other two by reading the package's `__init__`, which is the check this rule
+#: makes for it.
+#:
+#: MEASURED BEFORE IT WAS ADDED, on the three packages the venue held: gseapy +2 (exactly the two
+#: missed; `enrichment_map`, which returns tables for an external layout, correctly not);
+#: pandas.plotting +0; matplotlib.pyplot +1, and that one is `savefig` itself. The earlier
+#: body-substring attempts recorded above failed by matching what a function TOUCHES; this
+#: matches the one call that means a figure left the process.
+_SAVES = ("savefig(",)
+
 #: WHAT A DECISION NEEDS, not just what exists. The first version returned names, and a name is
 #: the one thing the person deciding already has. Thirty-two of cellchat's thirty-five accounting
 #: entries say WHERE THE OUTPUT LANDS and the other three say why the data cannot support the
@@ -133,6 +149,8 @@ else:
     NAMEY = __NAMEY__
     DRAWS = __DRAWS__
 
+    SAVES = __SAVES__
+
     def by_signature(v):
         try:
             ps = inspect.signature(v).parameters
@@ -140,33 +158,48 @@ else:
             return False
         return any(n in DRAWS for n in ps)
 
+    def by_saves(v):
+        try:
+            src = inspect.getsource(v)
+        except Exception:
+            return False
+        return any(s in src for s in SAVES)
+
     pub = public_callables(mod)
     byname = {a for a in pub if any(a.lower().startswith(p) for p in NAMEY)}
     bybody = {a for a, v in pub.items() if by_signature(v)}
-    got = {a: pub[a] for a in sorted(byname | bybody)}
+    bysaves = {a for a, v in pub.items() if by_saves(v)}
+    got = {a: pub[a] for a in sorted(byname | bybody | bysaves)}
     if got:
         out["names"] = list(got)
         out["detail"] = {a: describe(v) for a, v in got.items()}
         for a in got:
-            out["detail"][a]["found_by"] = ("both" if a in byname and a in bybody
-                                            else "name" if a in byname else "signature")
-        only_body = sorted(bybody - byname)
+            rules = [r for r, hit in (("name", a in byname), ("signature", a in bybody),
+                                      ("saves", a in bysaves)) if hit]
+            out["detail"][a]["found_by"] = "+".join(rules) if len(rules) > 1 else rules[0]
+        only_sig = sorted(bybody - byname - bysaves)
+        only_saves = sorted(bysaves - byname - bybody)
         out["how"] = ("public callables of %s whose names begin like plotting functions - a "
                       "HEURISTIC, because this package has no pl/plotting submodule - or whose "
-                      "signature takes an axes or a figure to draw on. %d of %d were "
-                      "reached by the signature rule%s"
+                      "signature takes an axes or a figure to draw on, or whose body writes a "
+                      "figure file. %d of %d were reached by the signature rule%s; %d by the "
+                      "body rule%s"
                       % (name, len(bybody), len(got),
-                         (", and %d ONLY by it: %s" % (len(only_body), ", ".join(only_body[:8])))
-                         if only_body else ""))
+                         (", %d ONLY by it: %s" % (len(only_sig), ", ".join(only_sig[:8])))
+                         if only_sig else "",
+                         len(bysaves),
+                         (", %d ONLY by it: %s" % (len(only_saves), ", ".join(only_saves[:8])))
+                         if only_saves else ""))
         out["complete"] = True
     else:
         out["why_not"] = ("%s has no pl/plotting submodule, no public callable named like a "
-                          "plotting function, and none whose signature takes an axes or a "
-                          "figure, so this extractor "
+                          "plotting function, none whose signature takes an axes or a figure, "
+                          "and none whose body writes a figure file, so this extractor "
                           "cannot say where its figures live. It is not evidence that there are "
                           "none." % name)
 print(json.dumps(out))
-""".replace("__NAMEY__", repr(list(_NAMEY))).replace("__DRAWS__", repr(list(_AXIS_PARAMS)))
+""".replace("__NAMEY__", repr(list(_NAMEY))).replace("__DRAWS__", repr(list(_AXIS_PARAMS))) \
+   .replace("__SAVES__", repr(list(_SAVES)))
 
 
 def inventory(tool, python="python3", timeout=180):

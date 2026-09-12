@@ -104,6 +104,31 @@ class AnsweredByRunning(unittest.TestCase):
             self.assertTrue(rows[st]["unasked"], st)
             self.assertFalse(rows[st]["done"], st)
         self.assertFalse(rows["shaping"]["unasked"])
+
+    def test_a_command_stage_that_also_fills_is_still_unasked_without_a_run(self):
+        """`promised` read done on a plugin nothing had run, because the field it fills was
+        present. A command is the stage's question; presence says somebody wrote it down."""
+        d = _repo(extra="        - name: weighed\n          phase: test\n          fills: [api]\n"
+                        "          command: [true]\n          why: fills and runs\n")
+        try:
+            doc = P.load(d)
+            rows = {r["stage"]: r for r in CV.status({"api": 1}, doc, "seam", "alpha")}
+            self.assertTrue(rows["weighed"]["unasked"])
+            self.assertFalse(rows["weighed"]["done"])
+            self.assertEqual(rows["weighed"]["missing"], [])
+            run = Path(tempfile.mkdtemp(prefix="sch-run-"))
+            try:
+                rows = {r["stage"]: r for r in CV.status({"api": 1}, doc, "seam", "alpha",
+                                                          run=str(run))}
+                self.assertFalse(rows["weighed"]["unasked"])
+                self.assertTrue(rows["weighed"]["done"])
+            finally:
+                shutil.rmtree(run, ignore_errors=True)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_the_status_prints_unasked_as_its_own_mark(self):
+        rows = self._rows()
         text = CV.format_status(list(rows.values()), "alpha", "seam", doc=self.doc,
                                 root=str(self.d))
         self.assertIn("RUN? holds", text)
@@ -176,6 +201,53 @@ class AStageFillsOrRuns(unittest.TestCase):
             self.assertIn("fills", str(cm.exception))
         finally:
             shutil.rmtree(d, ignore_errors=True)
+
+
+
+class TheDeclarationTierDoesNotDemandWhatOnlyARunCanFill(unittest.TestCase):
+    """The ladder's first tier failed a freshly scaffolded plugin on a key its own template says
+    to measure from a run and never invent, then stopped the ladder - so an honest plugin could
+    reach no other tier without inventing a number (docs/blind/0002-gseapy.md). A key filled by
+    a test-phase conversion stage is reported as not yet measured, and does not fail the tier."""
+
+    DECL = DEVPOINTS.replace("must_declare: [api]", "must_declare: [api, weight]").replace(
+        "{extra}",
+        "        - name: weighed\n          phase: test\n          fills: [weight]\n"
+        "          command: [true]\n          why: from a run\n")
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp(prefix="sch-tier0-"))
+        (self.d / "seams").mkdir()
+        (self.d / "DEVPOINTS.yaml").write_text(self.DECL, encoding="utf-8")
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _tier(self, body):
+        from sch.dev import ladder as L
+        (self.d / "seams" / "alpha.py").write_text(body, encoding="utf-8")
+        return L.t0_declaration(P.load(self.d), "seam", "alpha", [])
+
+    def test_a_measured_key_absent_before_a_run_does_not_fail_the_tier(self):
+        row = self._tier("SEAM = {'api': 1}\n")
+        self.assertTrue(row["ok"], row["evidence"])
+        ev = " ".join(row["evidence"])
+        self.assertIn("weight is not declared yet", ev)
+        self.assertIn("`weighed` stage from a run", ev)
+
+    def test_a_build_key_absent_still_fails_it(self):
+        row = self._tier("SEAM = {'weight': 2}\n")
+        self.assertFalse(row["ok"])
+        self.assertIn("does not declare api", " ".join(row["evidence"]))
+
+    def test_both_present_is_all_declared(self):
+        row = self._tier("SEAM = {'api': 1, 'weight': 2}\n")
+        self.assertTrue(row["ok"])
+        self.assertNotIn("not declared yet", " ".join(row["evidence"]))
+
+    def test_the_measured_keys_are_read_from_the_declaration(self):
+        from sch.dev import ladder as L
+        self.assertEqual(L._measured_keys(P.load(self.d), "seam"), {"weight": "weighed"})
 
 
 if __name__ == "__main__":

@@ -407,7 +407,15 @@ def status(spec, doc, point_name, name="", source=None, python="", run=""):
         # nothing is missing, and "nothing missing" read as complete - so a status with no run
         # printed the run-side stages as finished about a run nobody named. Unasked is its own
         # state: not done, and the command that would answer it is what is printed.
-        unasked = bool(st.get("command")) and not run and not st.get("fills")
+        #
+        # WHETHER OR NOT THE STAGE ALSO FILLS A FIELD. The first version exempted a command stage
+        # with `fills` and judged it by presence when no run was named - so `promised` read
+        # `done` on a plugin nothing had ever run, because `native_plots` was present. That is
+        # the inventory stage's question answered twice and the promised stage's answered never;
+        # a cold agent's status showed it (docs/blind/0002-gseapy.md, "test: 1 of 6 complete"
+        # about a plugin that had never run). A command is the stage's question; without a run
+        # it is unasked, and what it fills being present says only that somebody wrote it down.
+        unasked = bool(st.get("command")) and not run
         out.append({"stage": st["name"],
                     "partial": partial,
                     "loan": loan,

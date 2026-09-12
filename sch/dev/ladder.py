@@ -203,6 +203,14 @@ def t0_declaration(doc, point_name, name, results):
     # displaying their names.
     keys = [k for k in (pt.get("must_declare") or []) if pts._KEYISH.match(str(k))]
     prose = [k for k in (pt.get("must_declare") or []) if not pts._KEYISH.match(str(k))]
+    # A KEY A TEST-PHASE STAGE FILLS CANNOT BE DEMANDED AT BUILD TIME. This tier is the cheapest
+    # and runs first, and it failed a freshly scaffolded plugin on `memory_gb_per_100k` - a
+    # number the scaffold's own template says to measure from a run and never invent, and the
+    # validator only warns about. The tier then stopped the ladder, so an honestly unfinished
+    # plugin could not reach any other tier without inventing a number to buy past this one
+    # (docs/blind/0002-gseapy.md, a cold agent's report). Which keys those are is the
+    # declaration's to say: the `convert:` stages in phase `test` name what they fill.
+    measured = _measured_keys(doc, point_name)
     if keys:
         where, present = pts.declared_keys(doc, point_name, name)
         if present is None:
@@ -210,18 +218,39 @@ def t0_declaration(doc, point_name, name, results):
             ok = False
         else:
             missing = [k for k in keys if k not in present]
+            later = [k for k in missing if k in measured]
+            missing = [k for k in missing if k not in measured]
             if missing:
                 ev.append(f"{where} does not declare "
                           + (missing[0] if len(missing) == 1 else ", nor ".join(missing)))
                 ok = False
             else:
-                ev.append(f"{where} declares all {len(keys)} required key(s)")
+                ev.append(f"{where} declares all {len(keys) - len(later)} required key(s) a "
+                          f"build can declare")
+            for k in later:
+                ev.append(f"{k} is not declared yet: it is filled by the `{measured[k]}` "
+                          f"stage from a run, and is not required before one")
     for k in prose:
         ev.append(f"must declare (for a person to check): {k}")
     return _t(results, "declaration", ok, ev,
               cannot="that a declared key is TRUE - only that it is there. A sentence in "
                      "`must_declare` is printed and not checked; a bare key name is checked.",
               seconds=time.time() - t0)
+
+
+def _measured_keys(doc, point_name):
+    """{key: stage} for every required key a test-phase conversion stage fills. {} without one."""
+    from . import convert as CV
+    try:
+        _ph, _up, stages = CV.plan(doc, point_name)
+    except (CV.ConvertError, pts.DevpointsError):
+        return {}
+    out = {}
+    for st in stages:
+        if st.get("phase") == "test":
+            for f in st.get("fills") or ():
+                out[str(f).split(".")[0]] = st["name"]
+    return out
 
 
 def t_rules(doc, point_name, results):
