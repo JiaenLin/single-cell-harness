@@ -698,6 +698,16 @@ plan when the plugin passes none" belongs with step 4f, the one-place-for-captio
 
 **Gate:** records written; the memory file updated.
 
+*Step 7b, 2026-09-12 (docs/blind/0003-deseq2.md).* A cold Sonnet agent wrote `deseq2` on the
+plan from nothing: 0 hand-written draw sites, 5 entries, 5 `.draw` calls, build 8 of 8,
+`validate` 0 errors, selftest passing through the real R and the generated companion - the
+first figure drawn from a plan an agent wrote. Seven of nine predictions held. Two host defects,
+both the plan's first cold use and both fixed test-first in scProfile: `_entry.selftest` handed
+its Context no companion, and `ctx.fixture()` needed scanpy. Maker debt recorded here: the
+build's `status` reads complete for a per-unit plugin that declares no `report.unit_metrics`,
+which only `validate` refuses. The plugin is captured as produced in scProfile
+`tests/smoke/plugins/`.
+
 ## What must not be done while executing this
 
 - No second reader "for now". The fallback is the existing prose path or nothing.
@@ -717,4 +727,4 @@ plan when the plugin passes none" belongs with step 4f, the one-place-for-captio
 | 4 generated sites, `ctx.rscript`, sites deleted | **4a-4d done; 4e run three times: PBS 710971 graded 3 of 10, PBS 710973 9 of 11 (R6 the unroutable own panels, R9 promised by design, R10 vacuous - see the results under step 4), the third submitted at scProfile e41d6f7 with R11 added** | harness: 582ff44, b366be4, 51c02e0 and this commit; scProfile: the four commits after 44a5541 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the manifest half of 4b is deferred to 4f (see the amendment); the reproduction waits for the cluster, unreachable all day on 2026-09-12 |
 | 5 retire the extractor, maps, prose, glue | not started; one item done early | harness: the commit after ff60907 | `sch dev convert account` printed a `native_plots` block for a plugin that has none: `declared_of` reads the plan's `fn`s and skips, and the worksheet speaks the plan form (`"skips": {`, a USED function is an entry). The rest waits for 4e - and see the amendment: `_families` and the placement maps stay until the eight migrate |
 | 6 `kind` binds rules | done locally; measured on the next reproduction's report | scProfile: the commit after 22ff988 | every entry carries a kind (nine `other`); the standard's `kinds` criterion holds a caption to R3/R4; thirteen legends now state their count at the plan; `{.entry$at_most}` names a ceiling from the plan; F2/F10 keep their emit captions - see the amendment |
-| 7 evidence: enrichment test phase, blind 0003 | **7a done: PBS 710976 sealed 6 of 6** after three runs that each found one defect (710972 the validator, 710974 the host's failed map and the fixture's missing layer, 710975 anndata 0.13's None layer key); 7b not started | harness: f0148b1 | the enrichment-only export `~/tools/scProfile-smoke` is the cellchat-only tree's pattern |
+| 7 evidence: enrichment test phase, blind 0003 | **7a done: PBS 710976 sealed 6 of 6** after three runs that each found one defect (710972 the validator, 710974 the host's failed map and the fixture's missing layer, 710975 anndata 0.13's None layer key); **7b done: blind 0003 graded 7 of 9, 0 draw sites by hand, 2 host defects fixed** | harness: f0148b1 | the enrichment-only export `~/tools/scProfile-smoke` is the cellchat-only tree's pattern |
