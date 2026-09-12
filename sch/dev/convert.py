@@ -2110,22 +2110,60 @@ def _legacy_sites(doc, point_name, name, source):
                 if not pm:
                     continue
                 fid = prefix + pm.group(1).rstrip("_")
+                # THE FILE STEM IS THE SITE'S OWN EXPRESSION, kept verbatim. `paste0("patterns_",
+                # pat)`, `paste0("chord__", pw)`, `paste0("interaction_flow__", safe)` and a
+                # two-key `paste0("chord_cell__", safe, "__", gsub(...))` all name files a sealed
+                # run holds; the generated draw evaluates the expression in the frame it is
+                # called from, so the names cannot change. A migration that normalised them
+                # would not be the same plan.
                 rest = pm.group(2).strip()
-                items = rest if re.match(r"^[.\w]+$", rest) else f"?one per: {rest}"
-                # THE LOOP VARIABLE IS NOT THE ITEMS VECTOR. `for (p in shared) npng(paste0(
-                # "chord__", p), ...)` iterates `shared`; the plan names the vector and the
-                # generated loop supplies `.item`. The nearest enclosing `for` before the site
-                # says which vector; a name with no such `for` is left as read and marked.
+                # `items` IS THE LOOP'S VECTOR, WHEN THERE IS A LOOP. `for (p in shared)
+                # npng(paste0("chord__", p), ...)` iterates `shared`: the plan names the vector
+                # and `.draw_all` binds `.item`. A per-item site with no enclosing `for` - the
+                # unit's top pathway, drawn once under an `if` - names no items: the method
+                # calls `.draw(id, item = pw)` where the site stood, and `file` names the file.
+                items = ""
                 if re.match(r"^[.\w]+$", rest):
                     before = "\n".join(rtext.splitlines()[:max(0, int(site.get("line", 0)) - base)])
                     fm = list(re.finditer(r"for\s*\(\s*" + re.escape(rest)
                                           + r"\s+in\s+([^)]+?)\s*\)", before))
                     if fm:
                         items = fm[-1].group(1).strip()
-                    else:
-                        items = f"?the vector `{rest}` is drawn once per item of"
-            out.setdefault(fid, dict(site, items=items, prefix=prefix, base=base))
+            out.setdefault(fid, dict(site, items=items, prefix=prefix, base=base,
+                                     file=("" if m else " ".join(panel.split()))))
     return out
+
+
+def _template_of(legend):
+    """(template, placeholders) from a site's legend, or ("", []) when it cannot be one.
+
+    A LEGEND IS A TEMPLATE WHOSE PLACEHOLDERS ARE R EXPRESSIONS, evaluated where the draw is
+    called (ADR-0016). `paste0("The ", pw, " pathway")` becomes `"The {pw} pathway"`;
+    `paste0("Does the ", fac, " response depend on ", as.character(rows$stratum_factor[1]), "?")`
+    becomes the same sentence with both expressions in braces - readable, editable at the plan,
+    and evaluated in the same frame the site evaluated it in. A part that itself carries a brace
+    cannot be placed in one and leaves the legend a decision for a person.
+    """
+    leg = (legend or "").strip()
+    m = re.match(r'^"((?:[^"\\]|\\.)*)"$', leg, re.S)
+    if m:
+        return m.group(1).replace('\\"', '"'), []
+    pm = re.match(r"^paste0\((.*)\)$", leg, re.S)
+    if not pm:
+        return "", []
+    from .extract import draw_sites as DS
+    parts, holes, out = DS._split_args(pm.group(1)), [], []
+    for part in parts:
+        part = " ".join(part.split())
+        lm = re.match(r'^"((?:[^"\\]|\\.)*)"$', part, re.S)
+        if lm:
+            out.append(lm.group(1).replace('\\"', '"'))
+        elif part and "{" not in part and "}" not in part:
+            out.append("{" + part + "}")
+            holes.append(part)
+        else:
+            return "", []
+    return "".join(out), holes
 
 
 def _call_of(draws, fn):
@@ -2199,6 +2237,12 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
                 opts = rest.split("}", 1)[0]
                 members = [head_ + o.strip() for o in opts.split(",") if o.strip()]
                 break
+        # A BRACE FAMILY DRAWN BY ONE LOOP IS ONE ENTRY. `native_patterns_{outgoing,incoming}`
+        # is two files and one site - `for (pat in c(...)) ndev(paste0("patterns_", pat), ...)`
+        # - so the plan says one family, its items and a ceiling of two, and the generated loop
+        # names the files exactly as the site did.
+        if len(members) > 1 and stem in sites and sites[stem].get("items"):
+            members = [stem]
         for fid in members:
             e = {"id": fid, "drawn_by": str(rec.get("drawn_by") or "tool")}
             if fn:
@@ -2206,15 +2250,12 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
             e["axis"] = longest(axis_map, fid, "unit")
             e["position"] = longest(pos_map, fid, "contrast")
             site = sites.get(fid) or {}
-            if str(site.get("items") or "").startswith("?"):
-                e[items_key] = f"{ph} - {site['items'][1:]}; name the vector, or split the family"
-                todo += 1
-            elif site.get("items"):
+            if site.get("items"):
                 e[items_key] = site["items"]
-            elif per_item:
+            elif per_item and not site.get("file"):
                 e[items_key] = f"{ph} - the R name of the vector this is drawn once per item of"
                 todo += 1
-            if per_item or site.get("items"):
+            if per_item or site.get("items") or site.get("file"):
                 e[bound_key] = int(cap) if cap else f"{ph} - files per {e['axis']}"
                 if not cap:
                     todo += 1
@@ -2223,6 +2264,11 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
             if rec.get("profile"):
                 e["profile"] = True
             if site:
+                if len(members) == 1 and site.get("items") and stem == fid and not per_item:
+                    e[items_key] = site["items"]
+                    e[bound_key] = int(cap) if cap else len(members)
+                if site.get("file"):
+                    e["file"] = site["file"]
                 args, expr = _call_of(site.get("draws", ""), fn)
                 if args:
                     e[call_key] = args
@@ -2230,9 +2276,14 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
                     e[expr_key] = expr
                 if site.get("wrapper") and site["wrapper"] != "npng":
                     e["device"] = site["wrapper"]
+                for wh in ("w", "h", "res"):
+                    wv = re.search(r"(?<![\w.])" + wh + r"\s*=\s*(\d+)", site.get("call", ""))
+                    if wv:
+                        e[wh] = int(wv.group(1))
                 leg = str(site.get("legend") or "").strip()
-                if re.match(r'^"[^"]*"$', leg):
-                    e["legend"] = leg[1:-1]
+                tpl, _holes = _template_of(leg)
+                if tpl:
+                    e["legend"] = tpl
                 elif leg:
                     e["legend"] = f"{ph} - a template for: {leg[:200]}"
                     todo += 1

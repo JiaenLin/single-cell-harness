@@ -103,7 +103,12 @@ draw protocol (`kernels/cellchat.draw.R`) already is, and proved the same way (`
 
 Optional per entry: `w`, `h`, `res` (device size, default the protocol's); `device: "png" |
 "ndev"` (`ndev` for a function that draws as a side effect — the wrapper the existing site used
-says which); `when: "<R expression>"` for a site the method guards with a condition; `expr:
+says which); `file: "<R expression>"` (the file stem of a per-item panel, verbatim from the
+site — `paste0("chord__", pw)`, `paste0("interaction_flow__", safe)` — evaluated in the frame
+the draw is called from, so a migrated family names its files exactly as its run did; default
+the id); `generated: False` (the tool writes this file as a side effect of a call the method makes —
+`estimationNumCluster` from `netClustering` — so the plan accounts for it and generates no
+site); `when: "<R expression>"` for a site the method guards with a condition; `expr:
 "<R expression>"` in place of `fn` + `args` for the few sites that are a brace block of several
 statements — still in the plan, still generated, and the worksheet marks each one so it can be
 reduced to a call later.
@@ -115,6 +120,17 @@ as `drawn_by`. A new name for an existing fact would have been the drift this re
 What is **not** in the plan: the host's own panels (declared by `unit_network`, drawn by
 `panels.py` — unchanged); the method's numbers; the upstream function's internal encoding. The
 plan controls what is called, with what, how often, where it lands and how it is described.
+
+*Amendment, 2026-09-12, before step 4, from reading the 46 sites:* the generated R is a
+**plan interpreter, not one function per axis**. The companion carries the entries as data
+(`.plan`) and two functions: `.draw(id, item = NULL, env = parent.frame())`, which draws one
+entry with its `fn(args)`/`expr` and its `file` **evaluated in the caller's frame** — so a site
+inside a method loop becomes `.draw("nativecmp_interaction_flow", item = fr)` at the same
+point, seeing the loop's own locals — and `.draw_all(axis, env = parent.frame())`, which draws
+every entry of an axis that names `items`, binding `.item`. A unit script whose sites are plain
+calls on the fitted object becomes one `.draw_all("unit")`; a script whose sites sit inside
+computations keeps its structure and calls `.draw` where the site stood. Method logic never
+moves into the plan; the plan never needs the method's loop.
 
 ### The generated R, per entry
 
@@ -128,9 +144,12 @@ plan controls what is called, with what, how often, where it lands and how it is
 }
 ```
 
-`.legend(id, ...)` fills the entry's template from `.facts` (set by the method with
-`.fact(n_pops = length(groups))`) plus the host's stamp facts; an unfilled placeholder refuses the
-legend loudly, the way `scp_legend` already refuses a short one. `.draw_one` additionally appends
+A legend's `{...}` placeholders are **R expressions evaluated in the frame the draw is
+called from** — `{pw}`, `{length(vr)}`, `{as.character(rows$reference[1])}` — so a migrated
+legend says exactly what its site said, and a method exposes nothing it did not already have in
+scope. A placeholder that does not evaluate refuses the legend loudly, the way `scp_legend`
+already refuses a short one. (Superseded: an earlier draft of this record had `.fact()` and a
+`facts` field; the calling frame makes both unnecessary.) `.draw_one` additionally appends
 one row to `figures/figures.tsv` — `file id fn by axis item caption` — which `ctx.rscript` reads
 back into the manifest as `{id, path, caption, drawn_by, native_function, measured: False}`.
 

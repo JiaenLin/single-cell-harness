@@ -168,15 +168,19 @@ class Migrate(unittest.TestCase):
                          'cc, measure = "count", color = "Blues"')
         self.assertEqual(self.by_id["native_heat_weight"]["args"], 'cc, measure = "weight"')
 
-    def test_a_literal_legend_is_the_template_and_a_computed_one_is_a_decision(self):
+    def test_a_literal_legend_is_the_template_and_a_paste0_of_names_becomes_one(self):
         self.assertEqual(self.by_id["native_heat_count"]["legend"],
                          "Counts between every ordered pair of populations.")
-        self.assertTrue(self.by_id["native_heat_weight"]["legend"].startswith("TODO"))
-        self.assertIn("paste0(", self.by_id["native_heat_weight"]["legend"])
+        # `paste0("Weights for ", n, " populations.")` is a template with one fact the method
+        # must record; a legend built with a CALL inside would stay a decision for a person.
+        self.assertEqual(self.by_id["native_heat_weight"]["legend"], "Weights for {n} populations.")
+        self.assertNotIn("facts", self.by_id["native_heat_weight"])
 
     def test_a_per_item_site_names_its_items_vector_and_keeps_its_ceiling(self):
         e = self.by_id["nativecmp_chord"]
         self.assertEqual(e["items"], "shared")
+        self.assertEqual(e["file"], 'paste0("chord__", p)',
+                         "the file stem is the site's own expression, kept verbatim")
         self.assertEqual(e["at_most"], 6)
         self.assertEqual(e["args"], "merged, signaling = p")
         self.assertTrue(e["legend"].startswith("TODO"))
