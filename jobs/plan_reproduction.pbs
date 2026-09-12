@@ -61,6 +61,27 @@
 #       was fitted - the first submission predicted "answered" and the stage said, correctly,
 #       why not. `promised` answers on both once the rank-estimation PDFs count as drawn.)
 #
+#   THIRD SUBMISSION (scProfile e41d6f7), after 710973 held 9 of 11:
+#   R6  failed there by exactly the panels the migration had made unroutable: eleven of the
+#       plugin's own cohort-level interaction panels (`drawn_by: plugin`, under no tool
+#       function) that no `native:` route could claim - 83 plates to 72, 2 gaps to 5, the
+#       paper 90 figures to 79. The route to an entry itself, `plan:<id>`, is read by both
+#       documents now, and the maker's plan worksheet named the six unrouted panels and the
+#       one dead route for the plugin to answer. PREDICTED: no regression, and the panel
+#       page's 83 plates and 2 gaps exactly, read from the capacity table.
+#   R11 the panel page credits every plate the plugin draws itself to its plan entry: the
+#       phrase "(drawn by the plugin, on its plan)" appears 13 times in cellchat_panel.html -
+#       the eleven interaction plates and the two per-thousand bars, which 710973 credited to
+#       the tool's compareInteractions because their files sit under the raw family's head.
+#   R9  differs on ONE stage by design: `promised` is done on this run and owes on the
+#       reference, whose four compareInteractions files carry the old per-thousand names and
+#       fall under the raw family's ceiling of two. The rename is the fix; the reference is
+#       sealed. Every other verdict and the unmeasured count (765) are the same on both.
+#   R10 was VACUOUS on 710973: the standard's kinds column read n/a on every page, because
+#       `kinds_beside` handed the recorded whole declaration to the accessor for a report
+#       block. Fixed and held by a test; predicted MEASURED on every page (no "kinds n/a"
+#       line) and naming no R-drawn panel.
+#
 # rule-one: no-removal - everything this writes goes inside $RUNDIR.
 # Authored on the workstation and pushed (rule H1). No `git` runs below. Submit with
 # jobs/submit_plan_reproduction.sh, never qsub directly: the run key is built there.
@@ -285,8 +306,18 @@ pexit = re.search(r"promised exit: (\d+)", prom)
 say(gaps == 0 and bool(pexit) and pexit.group(1) == "0", "R5  every entry of the plan drew, nothing unaccounted",
     f"{gaps} declared-and-never-drawn; capacity --promised exit {pexit.group(1) if pexit else '?'}")
 ag = read(os.path.join(new, "logs", "against.txt"))
-say("no regression against" in ag, "R6  no regression against the reference",
-    " | ".join(l.strip() for l in ag.splitlines() if "regression" in l.lower())[:200] or "nothing printed")
+def metric(name):
+    m = re.search(r"^\s+" + name + r"\s+([\d,]+)\s*$", ag, re.M)
+    return int(m.group(1).replace(",", "")) if m else None
+plates, pgaps = metric("panel_plates"), metric("panel_gaps")
+say("no regression against" in ag and plates == 83 and pgaps == 2,
+    "R6  no regression; 83 plates and 2 gaps, the reference's exactly",
+    f"panel_plates {plates}, panel_gaps {pgaps}; "
+    + (" | ".join(l.strip() for l in ag.splitlines() if "regression" in l.lower())[:160] or "nothing printed"))
+pan = read(os.path.join(new, "report", "cellchat_panel.html"))
+n_own = pan.count("(drawn by the plugin, on its plan)")
+say(bool(pan) and n_own == 13, "R11 the panel page credits 13 plates to the plugin's own plan entries",
+    f"{n_own} credited" + ("" if pan else "; no panel page"))
 
 def cap_rows(d):
     n = 0
@@ -310,8 +341,10 @@ std = read(os.path.join(new, "logs", "standard.txt"))
 kind_fails = [l for l in std.splitlines() if re.match(r"\s+\S+\s+kinds\s", l)]
 named = sorted({n for l in kind_fails for n in re.findall(r"([A-Za-z0-9_]+\.png)", l)})
 only_host = all(n.startswith(("F2_", "F10_")) for n in named)
-say(bool(std) and "kinds" in std and only_host, "R10 the kinds criterion names no R-drawn panel",
-    f"{len(kind_fails)} page(s) failing `kinds`; named: {named[:8] or 'none'}"
+n_na = std.count("kinds n/a")
+say(bool(std) and "kinds" in std and n_na == 0 and only_host,
+    "R10 the kinds criterion is measured on every page and names no R-drawn panel",
+    f"{n_na} page(s) n/a; {len(kind_fails)} page(s) failing `kinds`; named: {named[:8] or 'none'}"
     + ("" if std else "; standard.txt is empty"))
 
 st_new, st_ref = read(os.path.join(new, "logs", "maker_status_new.txt")), read(os.path.join(new, "logs", "maker_status_ref.txt"))
@@ -325,9 +358,10 @@ def verdicts(txt):
     return v
 vn, vr = verdicts(st_new), verdicts(st_ref)
 ex = re.search(r"status\(new\) exit: (\d+)", st_new)
-say(bool(ex) and ex.group(1) == "0" and vn == vr and "?" not in vn.values()
-    and vn.get("promised") == "done",
-    "R9  the maker's run-side stages answer as on the reference",
+rest = lambda v: {k: x for k, x in v.items() if k != "promised"}
+say(bool(ex) and ex.group(1) == "0" and "?" not in vn.values() and rest(vn) == rest(vr)
+    and vn.get("promised") == "done" and vr.get("promised") == "todo",
+    "R9  the maker's run-side stages answer as on the reference, promised excepted by design",
     f"new {vn}; reference {vr}; exit {ex.group(1) if ex else '?'}")
 
 print("\n".join(out))

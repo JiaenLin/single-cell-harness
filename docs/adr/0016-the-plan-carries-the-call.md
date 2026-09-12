@@ -509,6 +509,36 @@ migration's, none the interpreter's:
   the prediction had said "answered". The six verdicts were otherwise identical; the
   unmeasured count differed by the two undrawn panels.
 
+*Results, 2026-09-12, second reproduction (PBS 710973, run
+`20260912T143039Z__scprofile-5aa7952__04_profile__plan`, sealed and graded 9 of 11).* The plan
+draws what the sites drew: 945 PNG and 24 PDF, the same files by name but for the two
+per-thousand renames predicted (R1, R2), 90 of 90 tables identical (R3), the chord ceiling held
+(R4), every entry drew and nothing on disk is unaccounted for (R5), 681 caption rows as the
+reference (R7), the environment reused (R8). What did not hold:
+
+- **R6, 72 of 83 plates and 5 gaps for 2:** eleven cohort-level interaction panels - the
+  plugin's own R over the tool's numbers, `drawn_by: plugin` on the plan and under no tool
+  function - were drawn, described, and placed in no document. The older form had filed them
+  under `netVisual_heatmap`, `rankNet` and a function CellChat does not export, and every
+  `native:` route resolved past the honest entries. The route to an entry itself, `plan:<id>`,
+  is read by both documents now (scProfile e41d6f7), the validator refuses one the plan does
+  not carry, and the maker's plan worksheet prints which need reaches each entry, the panels
+  the plugin draws itself that no route reaches, and a route to nothing (harness 5846c97): on
+  cellchat, six panels and one dead route, pasted under the needs they answer. The same
+  reading found a per-thousand bar filed under the raw bar's head credited to the tool's
+  function on the panel page; the entry that claims a file says who drew it (`native.who_drew`).
+- **R9, `promised` only:** done on this run, owing on the reference, whose four
+  compareInteractions files carry the old per-thousand names and fall under the raw family's
+  ceiling of two - the rename's reason, seen on the sealed run. Every other verdict and the
+  unmeasured count (765) are the same on both; the prediction now says so.
+- **R10 passed without measuring:** the standard's `kinds` column read n/a on every page.
+  `kinds_beside` handed the recorded whole declaration to the accessor for a report BLOCK and
+  found no figures, so step 6 had never been measured on a run. Fixed and held by a test; the
+  third submission predicts it measured on every page.
+
+Third submission: R6, R9 and R10 restated and R11 added (the panel page credits thirteen plates
+to their plan entries) in the job header, at scProfile e41d6f7.
+
 *Results, 2026-09-12, step 7a first run (PBS 710972, sealed with 3 of 6).* E1 held: the
 environment built (scprofile-env-2800f396e8) and the plugin's own selftest passed. E3 held:
 every run-side stage ran and answered. E2 failed before the plugin was reached: `run` REFUSED
@@ -684,7 +714,7 @@ plan when the plugin passes none" belongs with step 4f, the one-place-for-captio
 | 1 spine on a sealed run | submitted twice: 710969 (FAILED, two target defects found and fixed), 710970 (FAILED: S1, S3-S5 held; S6 found the per-thousand family's files unattributable, S7 the reference records no memory mode, S2 a clipped tail) | harness: `jobs/status_on_run.pbs`; scProfile: the commit after eabe490 | S1 held; S2-S7 failed on a read-only stamp and a buried tail, both fixed; S8's prediction was wrong on a single run - see the results under step 1 |
 | 2 schema, reader, validator, migrate worksheet | done | harness: this commit; scProfile: the commit after 043a60c | found on the way: the draw-site scan had been blind to cellchat's R sites since the companion move (wrappers read from the companion now); foreign wrapper spans hid a script's first sites; `DRAWN_BY` had two definitions; the record itself carried workstation paths |
 | 3 cellchat declaration migrated | done | harness: this commit; scProfile: the commit after d8cb913 | the baseline held on files, vector copies and total, and moved on one position - see the amendment under step 3; `capacity --promised` on the sealed run is asked by the step 1 job (cluster unreachable again on 2026-09-12) |
-| 4 generated sites, `ctx.rscript`, sites deleted | **4a-4d done; 4e run twice: PBS 710971 graded 3 of 10 (see the results under step 4), PBS 710973 resubmitted at 5aa7952 (`20260912T143039Z__scprofile-5aa7952__04_profile__plan`, R0-R10)** | harness: 582ff44, b366be4, 51c02e0 and this commit; scProfile: the four commits after 44a5541 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the manifest half of 4b is deferred to 4f (see the amendment); the reproduction waits for the cluster, unreachable all day on 2026-09-12 |
+| 4 generated sites, `ctx.rscript`, sites deleted | **4a-4d done; 4e run three times: PBS 710971 graded 3 of 10, PBS 710973 9 of 11 (R6 the unroutable own panels, R9 promised by design, R10 vacuous - see the results under step 4), the third submitted at scProfile e41d6f7 with R11 added** | harness: 582ff44, b366be4, 51c02e0 and this commit; scProfile: the four commits after 44a5541 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the manifest half of 4b is deferred to 4f (see the amendment); the reproduction waits for the cluster, unreachable all day on 2026-09-12 |
 | 5 retire the extractor, maps, prose, glue | not started; one item done early | harness: the commit after ff60907 | `sch dev convert account` printed a `native_plots` block for a plugin that has none: `declared_of` reads the plan's `fn`s and skips, and the worksheet speaks the plan form (`"skips": {`, a USED function is an entry). The rest waits for 4e - and see the amendment: `_families` and the placement maps stay until the eight migrate |
 | 6 `kind` binds rules | done locally; measured on the next reproduction's report | scProfile: the commit after 22ff988 | every entry carries a kind (nine `other`); the standard's `kinds` criterion holds a caption to R3/R4; thirteen legends now state their count at the plan; `{.entry$at_most}` names a ceiling from the plan; F2/F10 keep their emit captions - see the amendment |
 | 7 evidence: enrichment test phase, blind 0003 | **7a done: PBS 710976 sealed 6 of 6** after three runs that each found one defect (710972 the validator, 710974 the host's failed map and the fixture's missing layer, 710975 anndata 0.13's None layer key); 7b not started | harness: f0148b1 | the enrichment-only export `~/tools/scProfile-smoke` is the cellchat-only tree's pattern |
