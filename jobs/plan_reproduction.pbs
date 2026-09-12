@@ -310,7 +310,11 @@ def metric(name):
     m = re.search(r"^\s+" + name + r"\s+([\d,]+)\s*$", ag, re.M)
     return int(m.group(1).replace(",", "")) if m else None
 plates, pgaps = metric("panel_plates"), metric("panel_gaps")
-say("no regression against" in ag and plates == 83 and pgaps == 2,
+# `capacity --against` prints "identical" when every count is the reference's, and names each
+# count that moved otherwise; the third submission held on the numbers and failed on a phrase
+# the command never prints for an identical run.
+no_reg = ("identical" in ag or "no regression" in ag.lower()) and "REGRESSION" not in ag
+say(no_reg and plates == 83 and pgaps == 2,
     "R6  no regression; 83 plates and 2 gaps, the reference's exactly",
     f"panel_plates {plates}, panel_gaps {pgaps}; "
     + (" | ".join(l.strip() for l in ag.splitlines() if "regression" in l.lower())[:160] or "nothing printed"))
