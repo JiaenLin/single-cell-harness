@@ -527,6 +527,21 @@ def coverage(doc, point_name):
     AN UNOWNED FIELD IS NOT AUTOMATICALLY A DEFECT. `wraps.tool` is the conversion's INPUT - the
     upstream it is driven by - and cannot be an output of it. What is a defect is not saying so:
     this reports the coverage and the reader rules on it.
+
+    FOUR STATES, NOT TWO, and the fourth is red. "Filled by no stage" was one line covering an
+    input, three keys the validator refuses, and two keys nothing anywhere checks - and the two
+    were the numbers a node is packed on. The point now says, in `truth:`, how each unowned key's
+    truth is established; a key with no stage and no entry is `nobody`, which is the answer this
+    used to give for all six while printing none of them red.
+
+      by: stage      a conversion stage fills it; `stages` names them
+          input      the conversion's input, never its output
+          validator  the repository's own validator refuses it when wrong
+          measured   read back from a run by a named command
+          nobody     required, present-checked, and true by nobody's account
+
+    `says` carries a disagreement: a `truth:` entry for a key a stage ALSO fills is two answers
+    to one question and is reported, not silently resolved.
     """
     pt = pts.point(doc, point_name)
     try:
@@ -537,31 +552,57 @@ def coverage(doc, point_name):
     for st in stages:
         for f in st["fills"]:
             fills.setdefault(str(f).split(".")[0], []).append(st["name"])
+    truth = {str(k): str(v) for k, v in (pt.get("truth") or {}).items()}
     out = {}
     for k in (pt.get("must_declare") or []):
         k = str(k)
         if not pts._KEYISH.match(k):
             continue                       # a sentence for a person, not a field
-        out[k] = list(fills.get(k, ()))
+        st_k = list(fills.get(k, ()))
+        declared = truth.get(k, "")
+        says = ""
+        if st_k:
+            by = "stage"
+            if declared:
+                says = (f"`{k}` is filled by the {', '.join(st_k)} stage and `truth:` also says "
+                        f"{declared} - two answers to one question; drop one")
+        elif declared in pts.TRUTH:
+            by = declared
+        else:
+            by = "nobody"
+        out[k] = {"by": by, "stages": st_k, "says": says}
     return out
 
 
 def coverage_report(cov, point_name):
-    """One line, or several when something a point REQUIRES is filled by nothing."""
+    """One line when every key has a stage; otherwise the four states, and `nobody` in red."""
     if not cov:
         return ""
-    unowned = sorted(k for k, v in cov.items() if not v)
-    n = len(cov) - len(unowned)
-    if not unowned:
-        return (f"every one of the {len(cov)} key(s) this point requires is filled by a stage")
-    return (f"{n} of {len(cov)} key(s) this point requires are filled by a CONVERSION STAGE. "
-            f"NO STAGE FILLS: {', '.join(unowned)}\n"
-            f"  A field no stage fills is one a person must invent unaided, and a complete build "
-            f"says nothing about it. This is a statement about the CONVERSION and not about the\n"
-            f"  repository: a field may still be checked by its validator or by a ladder tier, "
-            f"and one of these may be the conversion's INPUT rather than its output.\n"
-            f"  Give it a stage in `convert.stages`, or rule that it belongs elsewhere - but "
-            f"decide, rather than not asking.")
+    by = {}
+    for k, v in cov.items():
+        by.setdefault(v["by"], []).append(k)
+    n_stage = len(by.get("stage", ()))
+    if n_stage == len(cov):
+        return f"every one of the {len(cov)} key(s) this point requires is filled by a stage"
+    L = [f"{n_stage} of {len(cov)} key(s) this point requires are filled by a CONVERSION STAGE."]
+    if by.get("input"):
+        L.append(f"  input to the conversion, never its output:  {', '.join(sorted(by['input']))}")
+    if by.get("validator"):
+        L.append(f"  refused by the repository's own validator:  "
+                 f"{', '.join(sorted(by['validator']))}")
+    if by.get("measured"):
+        L.append(f"  measured from a run by a named command:      "
+                 f"{', '.join(sorted(by['measured']))}")
+    if by.get("nobody"):
+        L.append(f"  CHECKED BY NOBODY:                          {', '.join(sorted(by['nobody']))}")
+        L.append(f"    required, present-checked, and true by nobody's account. A number nothing "
+                 f"checks is a number the host trusts forever. Give each a stage in")
+        L.append(f"    `convert.stages`, a validator, or a measuring command - and say which "
+                 f"under `truth:` in the point - or it stays red here.")
+    for k, v in sorted(cov.items()):
+        if v.get("says"):
+            L.append(f"  {v['says']}")
+    return "\n".join(L)
 
 
 def next_stage(spec, doc, point_name, name=""):
@@ -715,8 +756,11 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
     # build over a declaration eight of whose required keys no stage mentions is a complete build
     # and an incomplete conversion, and only one of those two facts was ever printed.
     if doc:
-        cov = coverage_report(coverage(doc, point_name), point_name)
-        if cov and "NO STAGE FILLS" in cov:
+        cov_ = coverage(doc, point_name)
+        cov = coverage_report(cov_, point_name)
+        # PRINTED WHENEVER A KEY IS NOT A STAGE'S, and not only when one is nobody's: the four
+        # states are the reader's evidence that the split was decided rather than assumed.
+        if cov and any(v["by"] != "stage" for v in cov_.values()):
             L.append("  " + cov.replace("\n", "\n  "))
             L.append("")
     todo = [r for r in rows if not r["done"]]

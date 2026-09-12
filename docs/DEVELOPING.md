@@ -301,12 +301,23 @@ about the checkout, not about the plugin.
 
 ### What the stages cover, which is not whether they are done
 
-`sch dev convert status` prints a coverage line whenever a key in the point's `must_declare` is
-filled by no stage at all. Measured on the repository this was written for: seventeen required
-keys, **nine** filled by a stage, and `build: 7 of 7 complete` printed over the other eight. A
+`sch dev convert status` prints a coverage block whenever a key in the point's `must_declare` is
+filled by no stage. Measured on the repository this was written for: seventeen required keys,
+**nine** filled by a stage, and `build: 7 of 7 complete` printed over the other eight. A
 complete build and a covered declaration are two different claims and only one of them was ever
 shown. An unowned field is not automatically a defect — a conversion's *input* cannot be its
 output — but not saying so is.
+
+**A required key no stage fills is one of four things, and the point says which.** Under
+`truth:` a point maps each such key to `input` (the conversion's input, never its output),
+`validator` (the repository's own validator refuses it when wrong) or `measured` (read back from
+a run by a named command). A key with no stage and no entry is **CHECKED BY NOBODY**, printed in
+those words on every status. That is the state `cores` and `cost` were in for the whole life of
+the repository this was measured on — required, present-checked, trusted by the scheduler, and
+true by nobody's account — while the coverage line listed them beside the validator's keys with
+nothing to tell the two apart. A `truth:` entry naming a key the point does not require, or a
+value outside the three, is refused when the declaration loads; an entry for a key a stage also
+fills is reported as two answers to one question, not resolved silently.
 
 ---
 

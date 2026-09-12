@@ -53,7 +53,23 @@ SCHEMA = 1
 # them, so a point that cannot say what its fixture run fails to establish does not get one.
 REQUIRED = ("what", "lives", "proves", "cannot_prove")
 OPTIONAL = ("register", "must_declare", "example", "template", "scaffold_command",
-            "tests", "fixture", "notes", "convert")
+            "tests", "fixture", "notes", "convert", "truth")
+
+#: HOW A REQUIRED KEY'S TRUTH IS ESTABLISHED, for a key no conversion stage fills. `must_declare`
+#: says a key has to EXIST; it never said what makes it TRUE, and "unowned" collapsed four honest
+#: answers into one. Measured on the repository this was written for: six of seventeen required
+#: keys were filled by no stage, and the line reporting them could not tell the conversion's
+#: INPUT from a key the validator refuses from a key nothing anywhere checks - and two keys the
+#: scheduler packs a node on sat in the last group with the scaffold's own template asking for
+#: the check.
+#:
+#:   input      the conversion's input - the upstream it is driven by - which cannot be its output
+#:   validator  refused by the repository's own validator when wrong
+#:   measured   read back from a run by a named command
+#:
+#: A key filled by a stage needs no entry. A key with no stage and no entry is CHECKED BY NOBODY,
+#: and `sch dev convert status` prints it that way on every status until somebody decides.
+TRUTH = ("input", "validator", "measured")
 
 
 class DevpointsError(ValueError):
@@ -103,6 +119,23 @@ def _validate(doc, f):
         for k in pt:
             if k not in REQUIRED + OPTIONAL:
                 raise DevpointsError(f"{f}: point {name!r} has unknown key {k!r}")
+        # A `truth:` ENTRY IS A CLAIM ABOUT A REQUIRED KEY, so it must name one and say one of
+        # the three things that can be said. A misspelt value or a key the point does not require
+        # would otherwise be a declaration nothing reads, which is the shape of defect this
+        # loader exists to refuse.
+        truth = pt.get("truth")
+        if truth is not None:
+            if not isinstance(truth, dict):
+                raise DevpointsError(f"{f}: point {name!r}: `truth` must be a mapping of "
+                                     f"required key -> one of {', '.join(TRUTH)}")
+            keys = {str(k) for k in (pt.get("must_declare") or [])}
+            for k, v in truth.items():
+                if str(k) not in keys:
+                    raise DevpointsError(f"{f}: point {name!r}: `truth` names {k!r}, which is "
+                                         f"not in `must_declare`")
+                if str(v) not in TRUTH:
+                    raise DevpointsError(f"{f}: point {name!r}: `truth: {k}: {v!r}` - expected "
+                                         f"one of {', '.join(TRUTH)}")
         for reg in pt.get("register") or []:
             if not isinstance(reg, dict) or not reg.get("file") or not (reg.get("table") or reg.get("pattern")):
                 raise DevpointsError(

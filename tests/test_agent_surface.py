@@ -253,11 +253,21 @@ class ExitCodesSeparateFailedFromCouldNotRun(unittest.TestCase):
     def test_green_is_zero(self):
         self.assertEqual(self._code(["dev", "check", "--only", "contract"]), 0)
 
+    # A DIRECTORY OF THIS TEST'S OWN, NOT /tmp. Both of these used `/tmp` as "somewhere that
+    # fails", which is a fixture nobody wrote: the moment a repository-shaped tree appeared under
+    # /private/tmp - a throwaway copy made to prove a commit gate refuses - `conform /tmp` found
+    # it and passed, and the test failed for a reason that had nothing to do with exit codes. A
+    # fresh empty directory fails conform for the same reason /tmp did, and it cannot be changed
+    # by anything else running on the machine.
     def test_a_failing_tier_is_two(self):
-        self.assertEqual(self._code(["conform", "/tmp"]), 2)
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(self._code(["conform", d]), 2)
 
     def test_no_declaration_is_three_not_two(self):
-        self.assertEqual(self._code(["dev", "map", "--root", "/tmp"]), 3)
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(self._code(["dev", "map", "--root", d]), 3)
 
     def test_every_tier_skipped_is_three_not_zero(self):
         """The failure this guards against is a green that proved nothing."""
