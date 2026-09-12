@@ -439,6 +439,64 @@ the plan listed every id.
 **If one file differs, the plan changed a figure it was not asked to: find the entry, fix the
 generator or the entry, resubmit. Do not accept a "close enough".** Commit through the gate.
 
+*Amendment, 2026-09-12, after 4a-4d — what generating the sites found, and one deferral.*
+
+1. **Eleven of the 46 transcribed calls did not parse as R.** The extractor's one-line form of
+   a site's expression joins the lines of a brace block with a space, and `{ f(x) g() }` is
+   not R. A site record now carries the expression with its lines (`raw`); the worksheet
+   carries a brace block that way; `plan --rscript <R>` parses every entry's call in one
+   interpreter start and prints `LACKS  does not parse as R` under the entry, so the first
+   parser a transcribed call meets is the maker's.
+2. **Three device sizes were expressions and were dropped**: `w = .bw`, `w = max(1500, 340 *
+   length(objs))`. Read as an integer or nothing, the entries lost their width and a generated
+   site would have drawn at the script's default. Sizes are read from the site's named
+   arguments, an integer as an integer and anything else as the expression, which the draw
+   evaluates where the site did.
+3. **A 47th site.** `paste0("compareInteractions_", ms)` and `paste0("compareInteractions_",
+   ms, "_per1k")` in one loop shared a literal head and were one id; the second was silently
+   dropped, and it was found by the one `npng(` left after the other 46 were replaced. The
+   id is every top-level literal piece of the expression; the loop variable is the one
+   non-literal piece.
+4. **The interpreter is not a site.** The companion defines `.draw` and it delegates to the
+   device path, which is what a draw wrapper looks like, so a rerun of the migration read
+   `.draw("nativecmp_x")` as a site, doubled the prefix, and rewrote 46 migrated calls.
+   `.draw`/`.draw_all` are never sites; the rerun's damage was repaired by hand and
+   `test_plot_declarations` (which now reads `.draw` sites through the one reader) is what
+   caught the ids that exist nowhere.
+5. **The interpreter's form** is the amended one: `.plan[[id]]` as R data with every
+   expression embedded as `quote(...)`, `.draw(id, item, env = parent.frame())`,
+   `.draw_all(axis, env)`, `.fill` for legend templates (`{...}` are R expressions evaluated in
+   the caller's frame; a failed placeholder renders as `?` and is logged), `.items` drops NA
+   and "". Everything is evaluated in the CALLER's frame - including assignments a site's block
+   makes, which one site relied on (`assign(..., globalenv())`). `ctx.rscript(body, args, name)`
+   and `ctx.write_figure_context()` live on the shared mixin, both contexts carry
+   `r_companion`, and `_entry` reads the companion beside the plugin. The comments six sites
+   carried inside their expressions moved above their plan entries.
+6. **Four tests read the old form and now read the new one.** `test_plot_declarations` and
+   `test_legends_are_written` read a `.draw("<id>")` site's function and legend from the plan
+   entry it names; `test_r_argv_alignment` counts the arguments of `ctx.rscript(_R_X, [...])`
+   (no interpreter, no script path to subtract); `subject.r_as_run` prepends the companion to
+   a script the host launches; `test_discovery_is_not_membership` moved to the level where the
+   distinction lives now - `native.account(inventory, declared, every=None)` counts a declared,
+   exported function the inventory's rule missed as used, reports only one absent from the
+   namespace as stale, and without `every` says it cannot tell which. **Follow-up for step 5:**
+   the maker's R probe reads every export and tags the matched ones; carrying the full list on
+   `Inventory` and passing it as `every` closes the loop on the maker's side.
+7. **Deferred to a step 4f, after the reproduction: the manifest half of 4b.** Recording every
+   R-drawn panel in the manifest (`native_function`, `measured: False`), the reporter skipping
+   files that are already records, and 6b counting `measured: False` change the reporter's
+   render path - the kernel page groups manifest figures by `shows`, and an R panel there has
+   none - and cannot be proven by the file-and-table gate of 4e. It is its own increment with
+   its own predictions. `captions.tsv` is still what the reporter reads for R panels, exactly
+   as before, so 4e's gate is unchanged.
+
+**Local gates as run:** both suites green; `scprofile check --deep` 35 green; validate 0 errors;
+the plan is the same plan (897 files, 58 families over 57 baseline stems - the 47th site's
+family split two and two); `status` build 8 of 8, companion generated; rules 4 held; `plan
+--rscript` 0 that do not parse; the companion and each of the four embedded scripts parse under
+R 4.6.1 with the companion in front; the interpreter's own check drew, guarded, iterated and
+captioned under R on a fixture plan. `version` 0.27.0 -> 0.28.0.
+
 ## Step 5 — retire what the plan makes redundant
 
 *harness*: delete `sch/dev/extract/draw_sites.py`; in `convert.py` delete
@@ -498,7 +556,7 @@ criterion (a page that must fail it).
 | 1 spine on a sealed run | **authored, not submitted** | harness: `jobs/status_on_run.pbs` (jobcheck clean) | the cluster was unreachable from the workstation on 2026-09-12 (`ssh` timed out twice); submit when it answers, then grade S1-S8 in the seal |
 | 2 schema, reader, validator, migrate worksheet | done | harness: this commit; scProfile: the commit after 043a60c | found on the way: the draw-site scan had been blind to cellchat's R sites since the companion move (wrappers read from the companion now); foreign wrapper spans hid a script's first sites; `DRAWN_BY` had two definitions; the record itself carried workstation paths |
 | 3 cellchat declaration migrated | done | harness: this commit; scProfile: the commit after d8cb913 | the baseline held on files, vector copies and total, and moved on one position - see the amendment under step 3; `capacity --promised` on the sealed run is asked by the step 1 job (cluster unreachable again on 2026-09-12) |
-| 4 generated sites, `ctx.rscript`, sites deleted | not started | | reproduction identical is the gate |
+| 4 generated sites, `ctx.rscript`, sites deleted | **4a-4d done locally; 4e not run** | harness: 582ff44, b366be4, 51c02e0 and this commit; scProfile: the four commits after 44a5541 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the manifest half of 4b is deferred to 4f (see the amendment); the reproduction waits for the cluster, unreachable all day on 2026-09-12 |
 | 5 retire the extractor, maps, prose, glue | not started | | |
 | 6 `kind` binds rules | not started | | |
 | 7 evidence: enrichment test phase, blind 0003 | not started | | |
