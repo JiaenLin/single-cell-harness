@@ -419,6 +419,47 @@ class ThePlanIsPlacedByItsOwnWord(unittest.TestCase):
         self.assertEqual(debt["wrong"], [("native_heat_count", "margin")])
 
 
+class TheAccountingIsReadFromThePlan(unittest.TestCase):
+    """`sch dev convert account` printed a `native_plots` block to paste, for a plugin that
+    has no such field any more: on the plan (ADR-0016) a USED function is an entry's `fn` and
+    a SKIPPED one is a line in `report.skips`, and the worksheet must speak that form."""
+
+    def test_a_plugin_on_the_plan_is_read_from_its_entries_and_skips(self):
+        d = _repo(PLANNED)
+        try:
+            declared, form = CV.declared_of(_spec(d), P.load(d), "seam")
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+        self.assertEqual(form, "plan")
+        self.assertIn("figures/native_heat_count.png", declared["quarry_heat"]["use"])
+        self.assertIn("figures/nativecmp_chord.png", declared["quarry_chord"]["use"])
+        self.assertEqual(declared["quarry_palette"]["skip"], "not_applicable")
+
+    def test_a_plugin_on_the_older_form_is_read_as_before(self):
+        d = _repo(LEGACY)
+        try:
+            declared, form = CV.declared_of(_spec(d), P.load(d), "seam")
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+        self.assertEqual(form, "native_plots")
+        self.assertIn("quarry_heat", declared)
+        self.assertEqual(declared["quarry_palette"]["skip"], "not_applicable")
+
+    def test_the_worksheet_speaks_the_plan_form(self):
+        from sch.dev.extract import Inventory
+        inv = Inventory("quarrytool", ["quarry_heat", "quarry_palette", "quarry_new"], "how")
+        declared = {"quarry_heat": {"use": "figures/native_heat_count.png"},
+                    "quarry_palette": {"skip": "not_applicable", "evidence": "colours"}}
+        w = CV.worksheet("quarrytool", inv, declared, "", "TODO", form="plan")
+        self.assertIn('"skips": {', w)
+        self.assertNotIn("native_plots", w)
+        self.assertIn("'quarry_palette': {'skip': 'not_applicable'", w)
+        self.assertIn("quarry_heat", w)                     # used: said, not pasted as a skip
+        self.assertIn("report.figures", w)                  # where a USED function goes
+        self.assertIn("'quarry_new'", w)
+        self.assertIn("TODO", w)
+
+
 class TheCompanionsWrappersReachTheScan(unittest.TestCase):
     """A plugin whose draw wrappers were generated into a file beside it defines none in its
     embedded scripts. The scan must read the companion's, or the plugin draws nothing."""

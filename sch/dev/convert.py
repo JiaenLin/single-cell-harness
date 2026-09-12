@@ -927,7 +927,49 @@ def ruling_context(spec, doc, point_name, width=96):
             + "\n".join(out) + "\n#")
 
 
-def worksheet(tool, inv, declared, source="", placeholder="TODO", width=96):
+def declared_of(spec, doc, point_name):
+    """(declared, form): what this plugin has decided about its upstream's plots, in one shape.
+
+    ON THE PLAN (harness ADR-0016) a USED function is the `fn` of an entry in the list the plan
+    stage fills, and its files are the entries' ids; a SKIPPED one is a line in the skips the
+    stage names (`entry_keys.skips`). Before the plan it was one field read by the first
+    `places_every` rule - prose per function. Both are returned as {fn: {"use"} | {"skip"...}},
+    so the accounting worksheet reads one shape, and `form` says which the plugin is on: the
+    plan, or the older field's name.
+    """
+    st = plan_stage(doc, point_name)
+    if st is not None:
+        keys = {str(k): str(v) for k, v in (st.get(ENTRY_KEYS) or {}).items()}
+        fn_key, skips_key = keys.get("upstream", "fn"), keys.get("skips", "report.skips")
+        _field, entries = _entries(spec, st)
+        planned = [e for e in entries if str(e.get(fn_key) or "").strip()]
+        if planned:
+            out = {}
+            for e in planned:
+                if str(e.get("drawn_by") or "tool") != "tool":
+                    continue
+                fn = str(e[fn_key]).strip()
+                rec = out.setdefault(fn, {"use": "", "ids": []})
+                fid = str(e.get("id") or "").strip()
+                if fid and fid not in rec["ids"]:
+                    rec["ids"].append(fid)
+            for fn, rec in out.items():
+                rec["use"] = ", ".join(f"figures/{i}.png" for i in rec["ids"])
+            skips = _dotted(spec, skips_key) or {}
+            for fn, d in (skips.items() if isinstance(skips, dict) else []):
+                out[str(fn)] = dict(d) if isinstance(d, dict) else {"skip": str(d)}
+            return out, "plan"
+        rules = st.get(PLACES_KEY) or []
+        for r in rules:
+            if str(r.get("named_by") or "") == "use" and r.get("field"):
+                v = _dotted(spec, str(r["field"]))
+                return (dict(v) if isinstance(v, dict) else {}), str(r["field"])
+    v = spec.get("native_plots") if isinstance(spec, dict) else None
+    return (dict(v) if isinstance(v, dict) else {}), "native_plots"
+
+
+def worksheet(tool, inv, declared, source="", placeholder="TODO", width=96, form="native_plots",
+              skips_key="report.skips"):
     """A paste-ready accounting block with the evidence for each decision beside it.
 
     PRINTED TO PASTE, NOT WRITTEN INTO THE FILE. This tool already has that idiom - every run fits
@@ -959,10 +1001,33 @@ def worksheet(tool, inv, declared, source="", placeholder="TODO", width=96):
 
     L = [f'    # {len(names)} function(s) exported by {tool}. '
          f'{len(known)} already decided, {len(new)} to rule on; '
-         f'{sum(1 for n in new if n in calls)} of those are called by this plugin.',
-         '    "native_plots": {']
-    for n in known:
-        L.append(f'        {n!r}: {decided[n]!r},')
+         f'{sum(1 for n in new if n in calls)} of those are called by this plugin.']
+    if form == "plan":
+        # THE PLAN FORM (harness ADR-0016): a USED function is an entry in the figure plan and
+        # is only NAMED here; a SKIPPED one is a line in the skips. Printing a `native_plots`
+        # block to paste, for a plugin that has no such field, was the maker speaking a form
+        # the plugin had left.
+        used = [n for n in known if (decided[n] or {}).get("use")]
+        for n in used:
+            L.append(f'    # used     {n}  ->  {decided[n]["use"]}   (an entry in the plan; '
+                     f'`sch dev convert plan` prints it)')
+        L.append(f'    "{skips_key.split(".")[-1]}": {{')
+        for n in known:
+            if not (decided[n] or {}).get("use"):
+                L.append(f'        {n!r}: {decided[n]!r},')
+        if new:
+            L += ['        # ---- NOT YET RULED ON. Each is either USED - then it is an ENTRY in',
+                  '        # `report.figures` (drawn_by: tool, fn, axis, position, args/expr, legend)',
+                  '        # and not a line here - or SKIPPED for one of exactly three reasons:',
+                  '        #   {"skip": "not_applicable",       "evidence": "..."}',
+                  '        #   {"skip": "superseded_by_design", "panel": "...", "defect": "..."}',
+                  '        #   {"skip": "duplicate_of",         "same_as": "..."}',
+                  '        # "reimplemented", "not considered" and "dependency missing" are rejected by',
+                  '        # name; see scprofile/native.py.']
+    else:
+        L.append('    "native_plots": {')
+        for n in known:
+            L.append(f'        {n!r}: {decided[n]!r},')
     if new:
         L += ['        # ---- NOT YET RULED ON. Each is either USED - say where its output lands -',
               '        # or SKIPPED for one of exactly three reasons, with what that reason supplies:',
@@ -992,11 +1057,19 @@ def worksheet(tool, inv, declared, source="", placeholder="TODO", width=96):
                 if c["literals"]:
                     L.append(f'        #   strings on that line: '
                              f'{", ".join(repr(x) for x in c["literals"])}')
-                L.append(f'        {n!r}: {{"use": "{placeholder} — confirm where this lands"}},')
+                if form == "plan":
+                    L.append(f'        {n!r}: {{"skip": "{placeholder} — it is called: make it '
+                             f'an entry in report.figures, or say which skip applies"}},')
+                else:
+                    L.append(f'        {n!r}: {{"use": "{placeholder} — confirm where this lands"}},')
             else:
                 L.append("        #   not called anywhere in this plugin.")
-                L.append(f'        {n!r}: {{"use": "{placeholder} — use it, or which skip '
-                         f'applies?"}},')
+                if form == "plan":
+                    L.append(f'        {n!r}: {{"skip": "{placeholder} — use it (an entry in '
+                             f'report.figures), or which skip applies?"}},')
+                else:
+                    L.append(f'        {n!r}: {{"use": "{placeholder} — use it, or which skip '
+                             f'applies?"}},')
     L.append("    },")
     if stale:
         L.append(f"    # DECLARED AND NO LONGER EXPORTED by {tool}: {sorted(stale)}")

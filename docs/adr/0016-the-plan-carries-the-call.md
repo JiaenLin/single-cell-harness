@@ -517,6 +517,17 @@ and `docs/MAINTAINING_PLUGINS.md` document it.
 ceiling-guard row is gone); rules 4 held; `wc -l` of `sch/dev` and of `kernels/cellchat.py`
 recorded in the commit message against the numbers in this record (7,918 and 5,414).
 
+*Amendment, 2026-09-12, before step 5 runs.* Two of the deletions listed above conflict with
+the standing rule that the maker keeps reading the eight held-out plugins: `_families` and the
+placement maps' half of `placement_debt` are what their `places_every` rule and prefix maps are
+read by. They stay until the last held-out plugin is on the plan; what goes in step 5 is what
+served hand-written R sites alone - the draw-site extractor, the draws debt and worksheet, the
+ceiling-guard half (no plugin here has a hand-written site left, and the eight embed no R). A
+hand-written site written against the rules is caught by scProfile's `test_plot_declarations`,
+which requires every `.draw`/`npng`/`ndev` site to name an entry of the plan. The account
+worksheet's plan form was done early (it was a live defect for the migrated plugin). Follow-up
+still open from step 4: `Inventory` carrying every export and `native.account(every=...)`.
+
 ## Step 6 — `kind` binds the rules (ADR-0015's P4)
 
 `standard.py`: for each entry with a `kind`, check the caption against the kind's rules where a
@@ -557,6 +568,6 @@ criterion (a page that must fail it).
 | 2 schema, reader, validator, migrate worksheet | done | harness: this commit; scProfile: the commit after 043a60c | found on the way: the draw-site scan had been blind to cellchat's R sites since the companion move (wrappers read from the companion now); foreign wrapper spans hid a script's first sites; `DRAWN_BY` had two definitions; the record itself carried workstation paths |
 | 3 cellchat declaration migrated | done | harness: this commit; scProfile: the commit after d8cb913 | the baseline held on files, vector copies and total, and moved on one position - see the amendment under step 3; `capacity --promised` on the sealed run is asked by the step 1 job (cluster unreachable again on 2026-09-12) |
 | 4 generated sites, `ctx.rscript`, sites deleted | **4a-4d done locally; 4e not run** | harness: 582ff44, b366be4, 51c02e0 and this commit; scProfile: the four commits after 44a5541 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the manifest half of 4b is deferred to 4f (see the amendment); the reproduction waits for the cluster, unreachable all day on 2026-09-12 |
-| 5 retire the extractor, maps, prose, glue | not started | | |
+| 5 retire the extractor, maps, prose, glue | not started; one item done early | harness: the commit after ff60907 | `sch dev convert account` printed a `native_plots` block for a plugin that has none: `declared_of` reads the plan's `fn`s and skips, and the worksheet speaks the plan form (`"skips": {`, a USED function is an entry). The rest waits for 4e - and see the amendment: `_families` and the placement maps stay until the eight migrate |
 | 6 `kind` binds rules | not started | | |
 | 7 evidence: enrichment test phase, blind 0003 | not started | | |

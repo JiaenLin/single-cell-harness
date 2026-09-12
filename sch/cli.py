@@ -830,7 +830,11 @@ def cmd_dev(a):
             ctx = CV.ruling_context(spec, doc, point)
             if ctx:
                 print(ctx)
-            print(CV.worksheet(tool, best, spec.get("native_plots"), src, _ph))
+            # WHAT THE PLUGIN HAS DECIDED, IN ONE SHAPE WHATEVER FORM IT IS ON (ADR-0016).
+            declared, form = CV.declared_of(spec, doc, point)
+            _pst = CV.plan_stage(doc, point) or {}
+            _skips = str((_pst.get(CV.ENTRY_KEYS) or {}).get("skips") or "report.skips")
+            print(CV.worksheet(tool, best, declared, src, _ph, form=form, skips_key=_skips))
         return FAILED if bad else OK
 
     if a.action == "build":
