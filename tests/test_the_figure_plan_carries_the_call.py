@@ -91,6 +91,8 @@ LEGACY = '''PLUGIN = {
         "quarry_chord": {"at_most": 6,
                          "use": "figures/nativecmp_chord__<pathway>.png per arm pair"},
         "quarry_palette": {"skip": "not_applicable", "evidence": "returns colours; draws nothing"},
+        # THE DIRECTORY IS WRITTEN ONCE AND THE FILES FOLLOW IT, in English
+        "quarry_ring": {"use": "figures/native_ring_count.png and native_ring_weight.png"},
     },
     "report": {
         "figures": [
@@ -111,6 +113,8 @@ npng("heat_count", quarry_heat(cc, measure = "count", color = "Blues"),
      legend = "Counts between every ordered pair of populations.")
 npng("heat_weight", quarry_heat(cc, measure = "weight"),
      legend = paste0("Weights for ", n, " populations."))
+npng("ring_count", quarry_ring(cc, measure = "count"), legend = "Rings by count.")
+npng("ring_weight", quarry_ring(cc, measure = "weight"), legend = "Rings by weight.")
 """
 
 _R_COMPARE = r"""
@@ -119,7 +123,35 @@ npng <- function(id, expr, legend = "") {
   png(paste0(id, ".png")); print(expr); dev.off()
 }
 for (p in shared) npng(paste0("chord__", p), quarry_chord(merged, signaling = p))
+if (nrow(pos) >= 3) npng(paste0("orphan_log__", safe), quarry_orphan(pos, title = paste0(
+    "Does the response depend on the stratum? ", "One point per pathway; the dashed line is no ",
+    "interaction - the same fold change in both strata. Above it the response is larger in the ",
+    "first stratum, below it in the second, which is the control. Every value is the method's ",
+    "own per-pathway contribution and no test is claimed for a difference of two differences; ",
+    "the multiplicative scale ranks pathways differently from the additive one beside it.")),
+    by = "plugin", legend = "The same question on the log scale.")
 """
+'''
+
+
+# A plugin ON THE PLAN ALONE: every entry says where it goes and what it multiplies over, and
+# the two prefix maps are gone.
+PLANNED = '''PLUGIN = {
+    "api": 1,
+    "wraps": {"tool": "quarrytool"},
+    "report": {
+        "figures": [
+            {"id": "native_heat_count", "drawn_by": "tool", "fn": "quarry_heat", "axis": "unit",
+             "position": "appendix", "args": 'cc, measure = "count"', "legend": "Counts."},
+            {"id": "nativecmp_chord", "drawn_by": "tool", "fn": "quarry_chord", "axis": "contrast",
+             "position": "contrast", "items": "shared", "at_most": 6,
+             "file": 'paste0("chord__", p)', "args": "merged, signaling = p",
+             "legend": "The {p} pathway."},
+        ],
+        "skips": {"quarry_palette": {"skip": "not_applicable",
+                                     "evidence": "returns colours; draws nothing"}},
+    },
+}
 '''
 
 
@@ -198,9 +230,35 @@ class Migrate(unittest.TestCase):
 
     def test_the_worksheet_counts_what_a_person_still_owes(self):
         head = self.text.splitlines()[0]
-        self.assertIn("3 draw site(s) read", head)
+        self.assertIn("6 draw site(s) read", head)
+        self.assertIn("1 named by no legacy field", head)
         self.assertIn("left for a person", head)
         self.assertGreaterEqual(self.text.count("TODO"), 3)
+
+    def test_a_second_file_named_after_an_and_is_read(self):
+        # "figures/native_ring_count.png and native_ring_weight.png": the directory written once,
+        # the second name bare. The reader that placed these families found the first and missed
+        # the second, so a family of eighteen files left the plan without a word.
+        self.assertIn("native_ring_weight", self.by_id)
+        e = self.by_id["native_ring_weight"]
+        self.assertEqual(e["fn"], "quarry_ring")
+        self.assertEqual(e["args"], 'cc, measure = "weight"')
+        self.assertEqual(e["legend"], "Rings by weight.")
+
+    def test_a_site_no_legacy_field_names_is_printed_and_never_dropped(self):
+        # A draw site is a figure a run draws. One that no prose names is not a site to lose:
+        # after the migration the sites are generated from the plan, and an entry that is not
+        # there is a panel that stops existing - silently, because nothing counted it.
+        self.assertIn("nativecmp_orphan_log", self.by_id)
+        e = self.by_id["nativecmp_orphan_log"]
+        self.assertEqual(e["drawn_by"], "plugin", "the site's own `by =` is the provenance")
+        self.assertEqual(e["file"], 'paste0("orphan_log__", safe)')
+        self.assertEqual(e["fn"], "quarry_orphan")
+        self.assertTrue(e["args"].startswith("pos, title = paste0("), e["args"])
+        self.assertEqual(e["axis"], "contrast")
+        self.assertEqual(e["position"], "contrast")
+        self.assertEqual(e["legend"], "The same question on the log scale.")
+        self.assertTrue(str(e["at_most"]).startswith("TODO"), e["at_most"])
 
     def test_nothing_is_decided_that_was_not_read(self):
         # the count of TODOs is the count of decisions; every one names what it is for
@@ -246,6 +304,46 @@ class PlanTable(unittest.TestCase):
         with self.assertRaises(CV.ConvertError) as cm:
             CV.plan_worksheet(self.spec, doc, "seam", "alpha")
         self.assertIn("entry_keys", str(cm.exception))
+
+
+class ThePlanIsPlacedByItsOwnWord(unittest.TestCase):
+    """The entry's own word, then the prefix map - the rule the target's one reader applies.
+
+    A migrated plugin carries no map, and the placement debt read only the maps: every one of
+    its 57 families came back unplaced and unaxised, each of them saying in its own entry
+    exactly where it went, and the stage the migration exists to finish read `todo` forever.
+    """
+
+    def setUp(self):
+        self.d = _repo(PLANNED)
+        self.doc = P.load(self.d)
+        self.spec = _spec(self.d)
+        self.st = CV.plan_stage(self.doc, "seam")
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def test_a_plugin_on_the_plan_alone_owes_no_placement(self):
+        debt = CV.placement_debt(self.spec, self.st)
+        self.assertEqual(debt["unplaced"], [])
+        self.assertEqual(debt["unaxised"], [])
+        self.assertEqual(debt["wrong"], [])
+        self.assertEqual(sorted(f[0] for f in debt["families"]),
+                         ["native_heat_count", "nativecmp_chord"])
+
+    def test_and_the_plan_stage_reads_done(self):
+        rows = CV.status(self.spec, self.doc, "seam", "alpha",
+                         source=(self.d / "seams" / "alpha.py").read_text())
+        row = next(r for r in rows if r["stage"] == "plan")
+        self.assertTrue(row["done"], {k: v for k, v in row.items() if k != "why"})
+
+    def test_a_value_outside_the_vocabulary_is_still_wrong(self):
+        spec = dict(self.spec)
+        figs = [dict(e) for e in spec["report"]["figures"]]
+        figs[0]["position"] = "margin"
+        spec["report"] = dict(spec["report"], figures=figs)
+        debt = CV.placement_debt(spec, self.st)
+        self.assertEqual(debt["wrong"], [("native_heat_count", "margin")])
 
 
 class TheCompanionsWrappersReachTheScan(unittest.TestCase):

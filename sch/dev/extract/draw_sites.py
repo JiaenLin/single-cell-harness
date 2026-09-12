@@ -698,7 +698,11 @@ def _site(w, where, line, named, positional, text, op, cl, defined_at=""):
             "calls": _called(raw),
             "legend_param": w.legend or "", "has_legend": has,
             "legend": named.get(w.legend, "") if w.legend else "",
-            "call": call[:400], "wrapper_at": defined_at, "how": w.how}
+            "call": call[:400], "wrapper_at": defined_at, "how": w.how,
+            # THE NAMED ARGUMENTS, EACH ON ITS OWN, because `call` is cut at 400 characters for
+            # a worksheet's sake and a `by = "plugin"` written after a long expression was cut
+            # with it - read as absent, on the one site whose provenance nothing else named.
+            "named": {k: " ".join(str(v).split())[:160] for k, v in named.items()}}
 
 
 #: Called inside a plotting expression and not the thing being plotted: the plugin's own helpers

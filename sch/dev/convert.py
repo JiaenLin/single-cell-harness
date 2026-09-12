@@ -1464,8 +1464,14 @@ def _families(spec, rules):
                 ids = [text] if text else []
             else:
                 # THE FILENAMES INSIDE THE TEXT, including a brace family written as one token.
+                # THE DIRECTORY IS WRITTEN ONCE AND THE FILES FOLLOW IT, in English: "figures/
+                # native_circle_count.png and native_circle_weight.png". Requiring `figures/` on
+                # every name found the first and missed the second, and the migration worksheet
+                # built from this left a family of eighteen files out of the plan without a
+                # word. The extension is what makes a token a figure; a `.csv` is not one.
                 ids = []
-                for m in re.finditer(r"figures/([A-Za-z0-9_{},<>-]+?)\.(?:png|pdf|svg)", text):
+                for m in re.finditer(r"(?:figures/)?([A-Za-z0-9_{},<>-]+?)\.(?:png|pdf|svg)",
+                                     text):
                     ids.append(m.group(1))
             for fid in ids:
                 per = bool(per_item_mark) and per_item_mark in fid
@@ -1577,7 +1583,6 @@ def placement_debt(spec, st, source_text="", also_r=(), generated=()):
     rules = st.get(PLACES_KEY) or []
     placed = {str(k): str(v) for k, v in
               (((spec or {}).get("report") or {}).get("figure_position") or {}).items()}
-    keys = sorted(placed, key=len, reverse=True)
     ok_positions = [str(x) for x in (st.get("positions") or [])]
     # WHAT A FAMILY MULTIPLIES OVER, read the same way a position is: a prefix map the plugin
     # owns, longest match wins. Without it a ceiling is a number with no units - "at most 6" of
@@ -1591,6 +1596,23 @@ def placement_debt(spec, st, source_text="", also_r=(), generated=()):
         for part in axis_field.split("."):
             node = (node or {}).get(part) if isinstance(node, dict) else None
         amap = {str(k): str(v) for k, v in (node or {}).items()}
+    # THE ENTRY'S OWN WORD, THEN THE PREFIX MAP (harness ADR-0016) - the rule the target's one
+    # reader applies. A plan entry that says where it goes and what it multiplies over is folded
+    # into the map as an exact key; longest prefix wins, so it beats any broader rule. Without
+    # this a migrated plugin, carrying no map at all, came back owing every one of its 57
+    # families twice - each entry saying in its own words exactly what it was asked for - and
+    # the stage the migration exists to finish read `todo` forever.
+    ek = {str(k): str(v) for k, v in (st.get(ENTRY_KEYS) or {}).items()}
+    _f, own = _entries(spec, st)
+    for e in own:
+        fid = str(e.get("id") or "").strip()
+        if not fid:
+            continue
+        if e.get(ek.get("position", "position")) is not None:
+            placed.setdefault(fid, str(e[ek.get("position", "position")]))
+        if axis_field and e.get(ek.get("axis", "axis")) is not None:
+            amap.setdefault(fid, str(e[ek.get("axis", "axis")]))
+    keys = sorted(placed, key=len, reverse=True)
     akeys = sorted(amap, key=len, reverse=True)
 
     # AND WHETHER THE DRAWING CODE READS THE CEILING AT ALL. A declaration the code ignores is a
@@ -2125,10 +2147,17 @@ def _legacy_sites(doc, point_name, name, source):
                 items = ""
                 if re.match(r"^[.\w]+$", rest):
                     before = "\n".join(rtext.splitlines()[:max(0, int(site.get("line", 0)) - base)])
-                    fm = list(re.finditer(r"for\s*\(\s*" + re.escape(rest)
-                                          + r"\s+in\s+([^)]+?)\s*\)", before))
-                    if fm:
-                        items = fm[-1].group(1).strip()
+                    # THE VECTOR MAY CARRY PARENTHESES OF ITS OWN - `c("outgoing", "incoming")` -
+                    # so the `for (` is closed by counting, not by the first `)`.
+                    for fm in reversed(list(re.finditer(r"for\s*\(\s*" + re.escape(rest)
+                                                        + r"\s+in\s+", before))):
+                        start, depth, j = fm.end(), 1, fm.end()
+                        while j < len(before) and depth:
+                            depth += {"(": 1, ")": -1}.get(before[j], 0)
+                            j += 1
+                        if not depth:
+                            items = before[start:j - 1].strip()
+                            break
             out.setdefault(fid, dict(site, items=items, prefix=prefix, base=base,
                                      file=("" if m else " ".join(panel.split()))))
     return out
@@ -2164,6 +2193,20 @@ def _template_of(legend):
         else:
             return "", []
     return "".join(out), holes
+
+
+def _by_of(site, vocab=("tool", "plugin")):
+    """The provenance a draw site states itself, or "".
+
+    THE ARGUMENT THAT NAMES A PROVENANCE IS THE ONE WHOSE VALUE IS A PROVENANCE: no parameter
+    name is assumed, because the wrapper is the plugin's and the vocabulary is the stage's
+    (`each_item_declares.drawn_by`). A literal outside the vocabulary names nothing.
+    """
+    for _k, v in ((site or {}).get("named") or {}).items():
+        m = re.fullmatch(r'"([^"]*)"', str(v).strip())
+        if m and m.group(1) in vocab:
+            return m.group(1)
+    return ""
 
 
 def _call_of(draws, fn):
@@ -2218,6 +2261,8 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
         return default
 
     sites = _legacy_sites(doc, point_name, name, source) if source else {}
+    vocab = tuple(str(x) for x in ((st.get("each_item_declares") or {}).get("drawn_by") or ())) \
+        or ("tool", "plugin")
     entries, todo = [], 0
     # 1. the families the legacy rules name, one entry per member of a brace family
     for stem, rfield, per_item, bound, cap in _families(spec, rules):
@@ -2241,15 +2286,18 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
         # is two files and one site - `for (pat in c(...)) ndev(paste0("patterns_", pat), ...)`
         # - so the plan says one family, its items and a ceiling of two, and the generated loop
         # names the files exactly as the site did.
+        n_members = len(members)
         if len(members) > 1 and stem in sites and sites[stem].get("items"):
             members = [stem]
         for fid in members:
-            e = {"id": fid, "drawn_by": str(rec.get("drawn_by") or "tool")}
+            site = sites.get(fid) or {}
+            # THE SITE'S OWN `by =` IS THE PROVENANCE, when it says one: it is what the run
+            # wrote into captions.tsv. The prose record's word is second; "tool" is last.
+            e = {"id": fid, "drawn_by": _by_of(site, vocab) or str(rec.get("drawn_by") or "tool")}
             if fn:
                 e[fn_key] = fn
             e["axis"] = longest(axis_map, fid, "unit")
             e["position"] = longest(pos_map, fid, "contrast")
-            site = sites.get(fid) or {}
             if site.get("items"):
                 e[items_key] = site["items"]
             elif per_item and not site.get("file"):
@@ -2266,7 +2314,7 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
             if site:
                 if len(members) == 1 and site.get("items") and stem == fid and not per_item:
                     e[items_key] = site["items"]
-                    e[bound_key] = int(cap) if cap else len(members)
+                    e[bound_key] = int(cap) if cap else n_members
                 if site.get("file"):
                     e["file"] = site["file"]
                 args, expr = _call_of(site.get("draws", ""), fn)
@@ -2295,8 +2343,64 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
                 e[call_key] = f"{ph} - the arguments this plugin passes {fn or 'the function'}"
                 todo += 2
             entries.append(e)
-    # 2. the existing entries, carried through with their axis and position made explicit
+    # 1b. A DRAW SITE NO LEGACY FIELD NAMES IS PRINTED, NEVER DROPPED. A site is a figure the
+    # run draws; after the migration the sites are generated from the plan, so an entry that is
+    # not here is a panel that stops existing. Two of a plugin's forty-six were named by no
+    # prose - the second file of an "X.png and Y.png" sentence, and the log-scale companion
+    # drawn under an `if` beside its sibling - and the first worksheet lost both, silently.
+    # Read from the site: the call, the file, the device, the legend, the site's own `by =`.
+    # Decided by nobody: the ceiling, and the provenance when the site does not say it.
     seen = {e["id"] for e in entries}
+    unnamed = 0
+    for fid, site in sites.items():
+        if fid in seen:
+            continue
+        unnamed += 1
+        head = re.match(r"^\s*(?:[.\w]+::)?([.\w]+)\s*\(", site.get("draws") or "")
+        fn = head.group(1) if head else ""
+        e = {"id": fid, "drawn_by": _by_of(site, vocab)
+             or f"{ph} - {' or '.join(vocab)}: no legacy field names this site"}
+        if not _by_of(site, vocab):
+            todo += 1
+        if fn:
+            args, _expr = _call_of(site.get("draws", ""), fn)
+            if not args and _expr:
+                fn = ""
+        if fn:
+            e[fn_key] = fn
+        e["axis"] = longest(axis_map, fid, "unit")
+        e["position"] = longest(pos_map, fid, "contrast")
+        if site.get("items"):
+            e[items_key] = site["items"]
+        if site.get("items") or site.get("file"):
+            e[bound_key] = f"{ph} - files per {e['axis']}"
+            todo += 1
+        if site.get("file"):
+            e["file"] = site["file"]
+        args, expr = _call_of(site.get("draws", ""), fn)
+        if args:
+            e[call_key] = args
+        elif expr:
+            e[expr_key] = expr
+        if site.get("wrapper") and site["wrapper"] != "npng":
+            e["device"] = site["wrapper"]
+        for wh in ("w", "h", "res"):
+            wv = re.search(r"(?<![\w.])" + wh + r"\s*=\s*(\d+)", site.get("call", ""))
+            if wv:
+                e[wh] = int(wv.group(1))
+        leg = str(site.get("legend") or "").strip()
+        tpl, _holes = _template_of(leg)
+        if tpl:
+            e["legend"] = tpl
+        elif leg:
+            e["legend"] = f"{ph} - a template for: {leg[:200]}"
+            todo += 1
+        else:
+            e["legend"] = f"{ph} - what this panel shows, as a template"
+            todo += 1
+        entries.append(e)
+        seen.add(fid)
+    # 2. the existing entries, carried through with their axis and position made explicit
     for e in existing:
         fid = str(e.get("id") or "")
         if not fid or fid in seen:
@@ -2317,8 +2421,8 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
             if isinstance(r, dict) and r.get("skip"):
                 skips[str(k)] = {kk: vv for kk, vv in r.items()}
     L = [f"    # THE FIGURE PLAN for {name or 'this plugin'}: {len(entries)} entries from "
-         f"{len(rules)} legacy field(s), {len(sites)} draw site(s) read, {todo} field(s) left "
-         f"for a person.",
+         f"{len(rules)} legacy field(s), {len(sites)} draw site(s) read, {unnamed} named by no "
+         f"legacy field, {todo} field(s) left for a person.",
          f"    # Paste in place of {', '.join(sorted({str(r.get('field')) for r in rules if r.get('field')}))}, "
          f"`{axis_field or 'the axis map'}` and `figure_position`. A `{ph}` does not validate.",
          f'    "{field.split(".")[-1]}": [']

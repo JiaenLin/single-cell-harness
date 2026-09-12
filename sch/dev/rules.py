@@ -147,6 +147,15 @@ def _with_companions(doc, point_name, names):
     return out
 
 
+import re as _re
+
+#: `"key": value,` / `'key': value,` - one entry of a mapping literal, in either quote - and a
+#: line that is nothing but brackets and commas, which is the skeleton a list of such entries
+#: leaves once its entries are dropped: fifty-seven `{` / `},` pairs read as a 9-line block
+#: repeated fifty-three times.
+_DECL = _re.compile(r"""^(?:(['"])[\w.\-]+\1\s*:\s*\S.*|[\[\]{}(),;]+)$""")
+
+
 def _significant(text):
     """[(line number, normalised line)] - what two blocks have to share to be the same block.
 
@@ -158,6 +167,13 @@ def _significant(text):
     for i, ln in enumerate(text.splitlines(), 1):
         s = ln.strip()
         if not s or s.startswith("#"):
+            continue
+        # A QUOTED KEY AND ITS VALUE IS A DECLARATION, NOT A STATEMENT. Two entries of a figure
+        # plan share nine of their lines - who draws, the function, the axis, the position, the
+        # ceiling, the device, the size - and differ in the expression and the legend; that is
+        # the plan's shape. Mechanism is statements: calls, assignments, control flow, and none
+        # of those is written as `"key": value,` or as a line of brackets.
+        if _DECL.match(s):
             continue
         out.append((i, " ".join(s.split())))
     return out

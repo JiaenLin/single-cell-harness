@@ -28,6 +28,10 @@
 #   S6  `promised` is ANSWERED (exit 0): 0 declared-and-never-drawn - the run was sealed 18 of 18.
 #   S7  `measure` is ANSWERED (exit 0): `capacity --memory` fits both terms and prints them.
 #   S8  the loop's own JSON has first_blocked == "6b drawing" and eye.done == 0.
+#   S9  (written after ADR-0016 step 3 and before submission) the declaration `promised` reads
+#       is the PLAN: cellchat migrated on 2026-09-12 - 57 entries in `report.figures`, no R
+#       changed - so S6 also proves step 3's gate. 0 declared-and-never-drawn; and the run's
+#       24 rank-estimation PDFs are claimed by the entry declared `generated: False`.
 #
 # A prediction that does not hold is the finding, and the fix goes to the maker or the loop
 # driver - never to the run.

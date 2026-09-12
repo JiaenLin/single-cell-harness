@@ -348,6 +348,46 @@ new `plan` stage done; `capacity --promised` on the sealed run (reads only, work
 `report.json` is enough) reports 0 declared-and-never-drawn; both suites green; rules 4 held.
 Commit through the gate. **No R has changed yet; no run is needed.**
 
+*Amendment, 2026-09-12, after step 3 — what the paste found.* Six things, each a check seen
+to fail first, none of them in the R:
+
+1. **The worksheet dropped two of the 46 sites without a word.** `_families` required
+   `figures/` on every file name in a prose `use:`, so the second name of an "X.png and
+   Y.png" sentence was never a family and its site (18 files per run) had nothing to attach
+   to; and a site no legacy field names at all — the log-scale companion drawn under an `if`
+   beside its sibling — was silently not printed. The worksheet now prints every site the scan
+   reads, counts the ones no legacy field names in its header, and reads a site's own `by =`
+   as the provenance (the argument whose value is in the stage's `drawn_by` vocabulary; the
+   site record carries its named arguments because `call` is cut at 400 characters).
+2. **The validator asked the plugin's own R sites for a `question`, a `shows` and a
+   `source`** — twelve errors on fields the reporter never reads for such a panel. There are
+   three kinds of entry on one list, and `declare.drawn_by_companion` tells them apart once:
+   an upstream call, the plugin's own R site (it carries `expr`/`args`/`file`/`items`/`when`/
+   `device`), and a panel the host's emit path writes (it carries none). The third owes the
+   three fields and is the only one a vector copy exists for; the planner had promised eleven
+   vector files for the four interaction families that no run has ever written.
+3. **The accounting's id matcher did not know one-underscore files.** `paste0("…_", pat)`
+   writes `<id>_<item>.png`; `native.names_file` matches `<id>`, `<id>__…` and, for a per-item
+   entry, `<id>_…`, and `undrawn` reads through it.
+4. **The placement debt read only the maps.** A migrated plugin carries none, so every family
+   came back unplaced and unaxised while saying in its own entry exactly where it went;
+   `placement_debt` folds each entry's own word into the map as an exact key — the rule the
+   target's one reader applies — and `entry_keys` names `axis` and `position`.
+5. **The baseline moved on one position and nothing else.** The pre-migration fingerprint
+   placed the heatmap brace family by its STEM, which misses the `…heatmap_` rule by one
+   underscore and fell to the appendix; the reporter, matching file names, placed those 36
+   files at contrast, and so does the plan per member. Files 897, vector 0, total 897 were
+   identical; re-recorded once with the reason in the test's docstring.
+6. **`sch dev rules` read the plan as copied mechanism**: two entries share nine key lines, and
+   fifty-seven `{`/`},` pairs are a 9-line block repeated fifty-three times. A quoted key and
+   its value, and a line of nothing but brackets, are a declaration, not a statement.
+
+Also: `test_plot_declarations` had stopped checking cellchat the moment `native_plots` left —
+it parsed that literal out of the source and skipped a plugin without one, green. It reads
+every embedded script through `native.declared_from` now, with the prefix each script declares.
+Four host comments named plugin figure ids and were caught by the portability check the moment
+the plan listed every id.
+
 ## Step 4 — generate the sites; the host launches R; delete the hand-written sites
 
 4a. **`scaffold.py`** — `render_plan(spec)` returns R text: `.draw_unit/.draw_contrast/
@@ -457,7 +497,7 @@ criterion (a page that must fail it).
 | 0 record | done | harness (this commit) | |
 | 1 spine on a sealed run | **authored, not submitted** | harness: `jobs/status_on_run.pbs` (jobcheck clean) | the cluster was unreachable from the workstation on 2026-09-12 (`ssh` timed out twice); submit when it answers, then grade S1-S8 in the seal |
 | 2 schema, reader, validator, migrate worksheet | done | harness: this commit; scProfile: the commit after 043a60c | found on the way: the draw-site scan had been blind to cellchat's R sites since the companion move (wrappers read from the companion now); foreign wrapper spans hid a script's first sites; `DRAWN_BY` had two definitions; the record itself carried workstation paths |
-| 3 cellchat declaration migrated | not started | | baseline identical is the gate |
+| 3 cellchat declaration migrated | done | harness: this commit; scProfile: the commit after d8cb913 | the baseline held on files, vector copies and total, and moved on one position - see the amendment under step 3; `capacity --promised` on the sealed run is asked by the step 1 job (cluster unreachable again on 2026-09-12) |
 | 4 generated sites, `ctx.rscript`, sites deleted | not started | | reproduction identical is the gate |
 | 5 retire the extractor, maps, prose, glue | not started | | |
 | 6 `kind` binds rules | not started | | |

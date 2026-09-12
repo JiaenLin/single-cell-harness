@@ -155,6 +155,19 @@ class TheRulesOfARoundAreCheckedNotPromised(unittest.TestCase):
         self.assertEqual(1, len(r["detail"]), r["detail"])
         self.assertIn("20 lines", r["detail"][0])
 
+    def test_a_declaration_whose_entries_share_their_keys_is_not_a_copied_mechanism(self):
+        # Two entries of a figure plan (harness ADR-0016) carry the same nine keys with the
+        # same values - who draws, the function, the axis, the position, the ceiling, the
+        # device, the size - and differ in the expression and the legend. That is the plan's
+        # shape, not mechanism that escaped the maker; a rule that reported it would report
+        # every migrated plugin as broken for declaring its figures completely.
+        entry = "\n".join(f'        "k{i}": "v{i}",' for i in range(9))
+        self.write("alpha", "PLUGIN = {\n    'figures': [\n    {\n" + entry
+                   + "\n        'expr': 'a',\n    },\n    {\n" + entry
+                   + "\n        'expr': 'b',\n    },\n    ],\n}\n")
+        r = self.check()["maker_output"]
+        self.assertEqual(RU.HELD, r["verdict"], r["detail"])
+
     def test_comments_are_not_what_makes_two_copies_different(self):
         a = "\n".join(f"    # note {i}\n    s{i} <- refine(stock, {i})" for i in range(12))
         b = "\n".join(f"    # a completely different note {i}\n    s{i} <- refine(stock, {i})"
