@@ -2210,6 +2210,23 @@ def _template_of(legend):
     return "".join(out), holes
 
 
+def _sizes_into(e, site):
+    """The device size a site asks for - `w`, `h`, `res` - into the entry, as the site wrote it.
+
+    AN INTEGER STAYS AN INTEGER AND AN EXPRESSION STAYS AN EXPRESSION. `w = .bw` and
+    `w = max(1500, 340 * length(objs))` are widths the method computes; read as "an integer or
+    nothing", three sites lost theirs and the generated site would have drawn them at the
+    script's default. The generated draw evaluates a string where the site evaluated the
+    expression, so the width is the width the run had.
+    """
+    named = (site or {}).get("named") or {}
+    for wh in ("w", "h", "res"):
+        v = str(named.get(wh) or "").strip()
+        if not v:
+            continue
+        e[wh] = int(v) if re.fullmatch(r"\d+", v) else v
+
+
 def _site_text(site):
     """A site's drawn expression as the plan should carry it: one line for a call, the line
     structure kept for a brace block, where a newline is a statement boundary."""
@@ -2386,10 +2403,7 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
                     e[expr_key] = expr
                 if site.get("wrapper") and site["wrapper"] != "npng":
                     e["device"] = site["wrapper"]
-                for wh in ("w", "h", "res"):
-                    wv = re.search(r"(?<![\w.])" + wh + r"\s*=\s*(\d+)", site.get("call", ""))
-                    if wv:
-                        e[wh] = int(wv.group(1))
+                _sizes_into(e, site)
                 leg = str(site.get("legend") or "").strip()
                 tpl, _holes = _template_of(leg)
                 if tpl:
@@ -2446,10 +2460,7 @@ def migrate_worksheet(spec, doc, point_name, name="", source="", width=96):
             e[expr_key] = expr
         if site.get("wrapper") and site["wrapper"] != "npng":
             e["device"] = site["wrapper"]
-        for wh in ("w", "h", "res"):
-            wv = re.search(r"(?<![\w.])" + wh + r"\s*=\s*(\d+)", site.get("call", ""))
-            if wv:
-                e[wh] = int(wv.group(1))
+        _sizes_into(e, site)
         leg = str(site.get("legend") or "").strip()
         tpl, _holes = _template_of(leg)
         if tpl:

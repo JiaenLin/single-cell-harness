@@ -117,7 +117,8 @@ npng("ring_count", {
   quarry_ring(cc, measure = "count")
   stamp()
 }, legend = "Rings by count.")
-npng("ring_weight", quarry_ring(cc, measure = "weight"), legend = "Rings by weight.")
+npng("ring_weight", quarry_ring(cc, measure = "weight"), w = .bw, h = 1200,
+     legend = "Rings by weight.")
 """
 
 _R_COMPARE = r"""
@@ -247,6 +248,15 @@ class Migrate(unittest.TestCase):
         self.assertEqual(e["fn"], "quarry_ring")
         self.assertEqual(e["args"], 'cc, measure = "weight"')
         self.assertEqual(e["legend"], "Rings by weight.")
+
+    def test_a_device_size_that_is_an_expression_is_carried_as_one(self):
+        # `w = .bw`, `w = max(1500, 340 * length(objs))`: a width computed by the method. Read
+        # as "an integer or nothing", three of one plugin's sites lost their width and the
+        # generated site would have drawn them at the script's default - a change to a figure
+        # nobody asked for, invisible to every count.
+        e = self.by_id["native_ring_weight"]
+        self.assertEqual(e["w"], ".bw")
+        self.assertEqual(e["h"], 1200)
 
     def test_a_brace_block_keeps_its_statement_boundaries(self):
         # `{ f(x) g() }` on one line is not R. The block is carried with its lines, indented
