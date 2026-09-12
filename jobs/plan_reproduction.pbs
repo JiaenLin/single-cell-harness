@@ -82,6 +82,25 @@
 #       block. Fixed and held by a test; predicted MEASURED on every page (no "kinds n/a"
 #       line) and naming no R-drawn panel.
 #
+#   FOURTH SUBMISSION (step 4f, the manifest half of 4b), after 710981 held on every count:
+#   a unit's manifest now records every panel the plan's companion drew - read from the
+#   companion's own caption file, marked `measured: False` - the page renders such a record
+#   through the native path only, the feedback holds a unit to the panels a unit draws, and
+#   station 6b says which unmeasured panels carry a record. The harness's step 5 (the draw-site
+#   extractor and its worksheets retired) is on the cluster's harness tree for R9. 710981 is
+#   the reference for the pages: identical is the prediction.
+#   R12 every unit manifest carries a `measured: False` record for every file its captions.tsv
+#       names: 432 records over 18 units, one per native PNG under the units; none for a
+#       compare-phase panel (no manifest there) and none for a file no caption names.
+#   R13 the audited stage's 6b line reads "765 drawn and NOT measured by any machine (432
+#       recorded by the plugin's companion ..., 333 recorded by nothing ...)"; on the reference,
+#       read by the same station, 0 recorded and 765 by nothing.
+#   R14 the pages are 710981's: cellchat.html 10 img, cellchat_by_arm.html 537,
+#       cellchat_by_sample.html 260, cellchat_profile.html 144, cellchat_panel.html 83,
+#       cellchat_paper.html 90 - no panel rendered twice, none lost.
+#   R15 the driver log carries 0 "declares figure ... did not emit" lines; 710981's carried
+#       1,728 - every contrast and cohort entry of the plan charged to every unit, twice.
+#
 # rule-one: no-removal - everything this writes goes inside $RUNDIR.
 # Authored on the workstation and pushed (rule H1). No `git` runs below. Submit with
 # jobs/submit_plan_reproduction.sh, never qsub directly: the run key is built there.
@@ -367,6 +386,44 @@ say(bool(ex) and ex.group(1) == "0" and "?" not in vn.values() and rest(vn) == r
     and vn.get("promised") == "done" and vr.get("promised") == "todo",
     "R9  the maker's run-side stages answer as on the reference, promised excepted by design",
     f"new {vn}; reference {vr}; exit {ex.group(1) if ex else '?'}")
+
+import json as _json
+n_rec, n_cap, bad_units = 0, 0, []
+for od in sorted(glob.glob(os.path.join(new, "kernels", "cellchat", "*", "out.json"))):
+    udir = os.path.dirname(od)
+    try:
+        man = _json.load(open(od, encoding="utf-8"))
+    except Exception:
+        man = {}
+    recs = [f for f in (man.get("figures") or []) if isinstance(f, dict) and f.get("measured") is False]
+    cap = 0
+    cp = os.path.join(udir, "figures", "captions.tsv")
+    if os.path.exists(cp):
+        rows = [l.split("\t")[0] for l in read(cp).splitlines()[1:] if l.strip()]
+        cap = sum(1 for r_ in rows if os.path.exists(os.path.join(udir, "figures", r_)))
+    n_rec += len(recs)
+    n_cap += cap
+    if len(recs) != cap:
+        bad_units.append(f"{os.path.basename(udir)}:{len(recs)}/{cap}")
+say(n_rec == 432 and n_cap == 432 and not bad_units,
+    "R12 every unit manifest records every panel its companion drew, 432 in all",
+    f"{n_rec} records, {n_cap} captioned files on disk; mismatched units: {bad_units[:4] or 'none'}")
+
+_p13 = r"(\d+) drawn and NOT measured by any machine \((\d+) recorded by the plugin's companion[^,]*, (\d+) recorded by nothing"
+m13, m13r = re.search(_p13, st_new), re.search(_p13, st_ref)
+say(bool(m13) and m13.groups() == ("765", "432", "333") and bool(m13r) and m13r.groups() == ("765", "0", "765"),
+    "R13 station 6b says which unmeasured panels carry a record",
+    f"new {m13.groups() if m13 else 'no such line'}; reference {m13r.groups() if m13r else 'no such line'}")
+
+want14 = {"cellchat.html": 10, "cellchat_by_arm.html": 537, "cellchat_by_sample.html": 260,
+          "cellchat_profile.html": 144, "cellchat_panel.html": 83, "cellchat_paper.html": 90}
+got14 = {f: read(os.path.join(new, "report", f)).count("<img") for f in want14}
+say(got14 == want14, "R14 the pages carry 710981's panels, none twice, none lost", f"{got14}")
+
+drv = read(os.path.join(new, "logs", "driver.log"))
+n15 = drv.count("declares figure")
+say(bool(drv) and n15 == 0, "R15 the feedback charges no contrast or cohort panel to a unit",
+    f"{n15} 'declares figure' line(s) in the driver log (710981: 1728)" + ("" if drv else "; no driver log"))
 
 print("\n".join(out))
 print()

@@ -539,6 +539,22 @@ reference (R7), the environment reused (R8). What did not hold:
 Third submission: R6, R9 and R10 restated and R11 added (the panel page credits thirteen plates
 to their plan entries) in the job header, at scProfile e41d6f7.
 
+*Step 4f, 2026-09-13, done locally (scProfile 892593c).* The manifest half of 4b, shaped by what
+the third reproduction's driver log showed: 1,728 lines of "declares figure ... and did not emit
+it", every contrast and cohort entry of the plan charged to every unit, twice - the feedback an
+agent reads was wrong on every unit of every run, because a panel drawn in R reached the run
+through nothing but its caption file. `_record_r_panels` copies the companion's own account into
+the unit's manifest after every `rscript` (file, legend, who drew it, `measured: False`; read,
+never invented); the serialiser carries the three keys; the page renders such a record through
+the native path only (`manifest_figures_to_render`), not the letter of 4b - the native path is
+what carries a panel's provenance, unit and contrast direction, and the manifest half rendering
+it too would have doubled every arm and sample page; the feedback holds a per-unit plugin to the
+entries drawn over a unit; station 6b says how many unmeasured panels the companion recorded
+and how many nothing did (432 and 333 of 765 on this cohort - the compare-phase panels have no
+manifest, and the reporter's own arm panels have no record). The fourth reproduction predicts
+R12-R15 on top of R0-R11: 432 records over 18 units, the 6b breakdown on both runs, every page's
+image count as 710981's, and a driver log with no such line.
+
 *Results, 2026-09-12, third reproduction (PBS 710981, run
 `20260912T152643Z__scprofile-e41d6f7__04_profile__plan`, sealed and graded 11 of 12).* **4e
 holds.** `capacity --against` the reference: IDENTICAL on every count - 945 figures, 83 plates,
@@ -737,7 +753,7 @@ which only `validate` refuses. The plugin is captured as produced in scProfile
 | 1 spine on a sealed run | submitted twice: 710969 (FAILED, two target defects found and fixed), 710970 (FAILED: S1, S3-S5 held; S6 found the per-thousand family's files unattributable, S7 the reference records no memory mode, S2 a clipped tail) | harness: `jobs/status_on_run.pbs`; scProfile: the commit after eabe490 | S1 held; S2-S7 failed on a read-only stamp and a buried tail, both fixed; S8's prediction was wrong on a single run - see the results under step 1 |
 | 2 schema, reader, validator, migrate worksheet | done | harness: this commit; scProfile: the commit after 043a60c | found on the way: the draw-site scan had been blind to cellchat's R sites since the companion move (wrappers read from the companion now); foreign wrapper spans hid a script's first sites; `DRAWN_BY` had two definitions; the record itself carried workstation paths |
 | 3 cellchat declaration migrated | done | harness: this commit; scProfile: the commit after d8cb913 | the baseline held on files, vector copies and total, and moved on one position - see the amendment under step 3; `capacity --promised` on the sealed run is asked by the step 1 job (cluster unreachable again on 2026-09-12) |
-| 4 generated sites, `ctx.rscript`, sites deleted | **4a-4e done: PBS 710981 sealed 11 of 12, capacity identical to the reference (the one FAIL was the grader's phrase)**, after 710971 (3 of 10) and 710973 (9 of 11) each found the migration's defects - see the results under step 4; **4f not started** | harness: 582ff44, b366be4, 51c02e0, 6abdbe9 and this commit; scProfile: the commits after 44a5541 through e41d6f7 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the `plan:<id>` route reaches the plugin's own panels; the manifest half of 4b is 4f (see the amendment) |
+| 4 generated sites, `ctx.rscript`, sites deleted | **4a-4e done: PBS 710981 sealed 11 of 12, capacity identical to the reference (the one FAIL was the grader's phrase)**, after 710971 (3 of 10) and 710973 (9 of 11) each found the migration's defects - see the results under step 4; **4f done locally (scProfile 892593c) and submitted as the fourth reproduction, predictions R12-R15 in the job header** | harness: 582ff44, b366be4, 51c02e0, 6abdbe9 and this commit; scProfile: the commits after 44a5541 through e41d6f7 | the companion carries the plan and its interpreter; every one of cellchat's 47 sites is `.draw(id)`; the host launches R; the plugin's R glue is gone; the `plan:<id>` route reaches the plugin's own panels; the manifest half of 4b is 4f (see the amendment) |
 | 5 retire the extractor, maps, prose, glue | not started; one item done early | harness: the commit after ff60907 | `sch dev convert account` printed a `native_plots` block for a plugin that has none: `declared_of` reads the plan's `fn`s and skips, and the worksheet speaks the plan form (`"skips": {`, a USED function is an entry). The rest waits for 4e - and see the amendment: `_families` and the placement maps stay until the eight migrate |
 | 6 `kind` binds rules | done locally; measured on the next reproduction's report | scProfile: the commit after 22ff988 | every entry carries a kind (nine `other`); the standard's `kinds` criterion holds a caption to R3/R4; thirteen legends now state their count at the plan; `{.entry$at_most}` names a ceiling from the plan; F2/F10 keep their emit captions - see the amendment |
 | 7 evidence: enrichment test phase, blind 0003 | **7a done: PBS 710976 sealed 6 of 6** after three runs that each found one defect (710972 the validator, 710974 the host's failed map and the fixture's missing layer, 710975 anndata 0.13's None layer key); **7b done: blind 0003 graded 7 of 9, 0 draw sites by hand, 2 host defects fixed** | harness: f0148b1 | the enrichment-only export `~/tools/scProfile-smoke` is the cellchat-only tree's pattern |
