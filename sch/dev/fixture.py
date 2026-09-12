@@ -333,6 +333,15 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
     var["mt"] = [g.startswith("MT-") for g in c["genes"]]
     A = ad.AnnData(X=c["X"].copy(), obs=obs, var=var)
     A.layers[ROLES["counts"][shape]] = c["X"].copy()
+    # A LOG-NORMALISED LAYER, UNDER THE NAME THE HOST'S RESOLVER LOOKS FOR FIRST. Every plugin
+    # in the family that ranks or scores expression declares `inject: lognorm`, and without the
+    # layer the host skips it before it runs - so the first plugin ever run on this fixture
+    # (ADR-0016 step 7a, PBS 710974) was skipped for want of one, and the fixture had proved
+    # nothing about running anything. Library-size normalised to 1e4 and log1p, the usual
+    # convention; a cell with no counts (the `empty_cell` hazard) stays zero rather than NaN.
+    _lib = c["X"].sum(axis=1, keepdims=True).astype("float64")
+    _lib[_lib == 0] = 1.0
+    A.layers["lognorm"] = np.log1p(c["X"] / _lib * 1e4).astype("float32")
     if splice:
         # A FIXED SPLIT OF THE SAME COUNTS, not a second random draw. The unspliced fraction has
         # to VARY BETWEEN CELLS or every diagnostic that asks "is there enough unspliced signal"
@@ -375,6 +384,8 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
            # that asked for the layers would match a record written without them and be handed
            # an object missing the only thing it needs.
            "splice": bool(splice),
+           # THE LAYERS THE OBJECT CARRIES, by name, so a reader can ask without opening it.
+           "layers": sorted(A.layers.keys()),
            "roles": roles,
            "factors": [roles["condition"]] + ([roles["stratum"]] if _crossed else []),
            "crossed": _crossed,

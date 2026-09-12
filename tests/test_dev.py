@@ -752,6 +752,20 @@ class TheFixtureIsNotRebuiltWhenItIsAlreadyThere(unittest.TestCase):
         import anndata as ad
         self.assertIn("spliced", ad.read_h5ad(spliced["observations"]).layers)
 
+    def test_both_shapes_carry_a_log_normalised_layer(self):
+        """The first plugin the host ever ran on this fixture was skipped before it ran: it
+        requires `lognorm` and the object had counts alone. Both shapes carry the layer under
+        the name the host's resolver looks for first, and the record says so."""
+        import json
+        import anndata as ad
+        for shape in ("a", "b"):
+            F.write(self.d, shape=shape, n_cells=200, n_genes=60)
+            rec = json.loads((self.d / f"FIXTURE_{shape}.json").read_text())
+            self.assertIn("lognorm", rec.get("layers", []), rec.get("layers"))
+            A = ad.read_h5ad(rec["observations"])
+            self.assertIn("lognorm", A.layers)
+            self.assertTrue(float(A.layers["lognorm"].max()) > 0)
+
     def test_a_record_that_outlived_its_files_is_not_a_match(self):
         rec = F.write(self.d, shape="a", n_cells=200, n_genes=60)
         Path(rec["observations"]).unlink()
