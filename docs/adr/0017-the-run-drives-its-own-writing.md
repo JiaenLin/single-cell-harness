@@ -150,6 +150,19 @@ host, never a reason to help the agent by hand.
 7. Blind 0004: predictions, the replay pulled, the writer agent, the reviewer agent, the written
    run pushed and sealed, the record filled, the memory updated.
 
+## What the round found, in one paragraph
+
+The mechanism was sound and the seams between the pieces were not. Once the seams were closed -
+one driver, one selection, one brief, one carry-in, a writing replay - eight cold agents drove
+a real sealed run's test phase to `looked_at`, `written` and `delivered` without a question,
+and the five defects they met were all of the same kind: a command that printed a list nobody
+could read, a brief printed as it lay, a printed command that did not work as printed, a
+summary contradicting its own tool one flag apart, and composed claims citing plates that do
+not show what they say. Each was fixed test-first within the hour. Two stages stay owing on
+purpose: `audited` is the plugin's figure code and needs a rerun the top rule keeps this round
+from making, and `measure` is the job's shape. The next round's proof is the same test on a
+second plugin, and a rerun that clears `audited`.
+
 ## Status
 
 | step | state | commits | notes |
@@ -160,5 +173,5 @@ host, never a reason to help the agent by hand.
 | 3 one brief, one carry-in | done | scProfile a3ce98f | `paper --brief` prints WRITING_BRIEF.md, which gained the panel's headings and the contrasts' references; every text names `paper --write`; `run --section` stays for a rerun |
 | 4 reviewer rule, measure, agenda text | done | scProfile 8e64eba | a round needs a named reviewer who is not the author; `measure` names its way out; the agenda's pbs look task is the replay; the stages' `finished_by` in one vocabulary |
 | 5 the writing run's job, the skill | done | harness: this commit | `jobs/writing_seal.pbs` + `submit_writing_seal.sh --prepare/--seal`; the skill's test-phase paragraph |
-| 6 gates on the replay of 710985 | | | |
-| 7 blind 0004 | | | |
+| 6 gates on the replay of 710985 | done | | both suites green; rules 4 held; the maker on the replay read `promised` done, `audited`/`measure` owing with reasons, `looked_at` 0 of 139, `written` "24 claim(s) undefended", `delivered` missing the ledger alone |
+| 7 blind 0004 | done | harness a959053 (predictions), this commit (results); scProfile ab7f15d, 22e13ed, 243b300 (the five defects) | 7 of 9 held: six lookers 139 of 139 with no refusal, a 2,893-word section, 33 claims rounded by a second agent (1 standing, 25 narrowed, 7 withdrawn), the written run sealed 3 of 3 (PBS 711001). W3 half: the brief printed stale; W7: five defects, not three - all fixed |
