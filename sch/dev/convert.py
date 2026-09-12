@@ -2014,6 +2014,9 @@ ACTIONS = ("status", "freshness", "borrowed", "inventory", "account", "measure",
 
 #: What a plan stage declares: the maker's word for a thing -> this format's key for it.
 ENTRY_KEYS = "entry_keys"
+#: The plan's interpreter, as the generated companion names it (harness ADR-0016): a call to
+#: either is a site already on the plan, never a hand-written one.
+PLAN_INTERPRETER = (".draw", ".draw_all")
 
 
 def plan_stage(doc, point_name):
@@ -2133,6 +2136,13 @@ def _legacy_sites(doc, point_name, name, source):
         own = DS.r_wrappers(rtext)
         ws = own + [w for w in beside if w.name not in {x.name for x in own}]
         for site in DS._r_sites(rtext, base, "", ws):
+            # A CALL TO THE PLAN'S INTERPRETER IS NOT A HAND-WRITTEN SITE. `.draw(id)` and
+            # `.draw_all(axis)` are where sites used to stand (harness ADR-0016); the companion
+            # defines both and they delegate to the device path, so the wrapper scan finds
+            # them. Read as sites, their ids were prefixed a second time and a rerun of the
+            # migration rewrote two already-migrated calls.
+            if str(site.get("wrapper") or "") in PLAN_INTERPRETER:
+                continue
             panel = site.get("panel") or ""
             m = re.match(r'^"([^"]+)"$', panel)
             items = ""
@@ -2146,7 +2156,18 @@ def _legacy_sites(doc, point_name, name, source):
                 pm = re.match(r'^paste0\(\s*"([^"]+?)"\s*,\s*(.+)\)\s*$', panel, re.S)
                 if not pm:
                     continue
-                fid = prefix + pm.group(1).rstrip("_")
+                # THE ID IS EVERY LITERAL PIECE OF THE NAME, not the first: `paste0("bars_", ms)`
+                # and `paste0("bars_", ms, "_per1k")` are two sites of one family, and read by
+                # their head alone they were one id, so the second was silently dropped - the
+                # 47th of a plugin's sites, found by the one call left after the other 46 were
+                # replaced. Underscores that only separated a variable are collapsed.
+                # TOP-LEVEL PIECES ONLY: a literal inside a call - the pattern of a `gsub` - is
+                # not a piece of the name.
+                from .extract import draw_sites as _DSn
+                lits = [x.strip()[1:-1] for x in _DSn._split_args(pm.group(1).join(['"', '"'])
+                                                                    + ", " + pm.group(2))
+                        if re.fullmatch(r'\s*"[^"]*"\s*', x)]
+                fid = prefix + re.sub(r"_+", "_", "".join(lits)).strip("_")
                 # THE FILE STEM IS THE SITE'S OWN EXPRESSION, kept verbatim. `paste0("patterns_",
                 # pat)`, `paste0("chord__", pw)`, `paste0("interaction_flow__", safe)` and a
                 # two-key `paste0("chord_cell__", safe, "__", gsub(...))` all name files a sealed
@@ -2154,6 +2175,15 @@ def _legacy_sites(doc, point_name, name, source):
                 # called from, so the names cannot change. A migration that normalised them
                 # would not be the same plan.
                 rest = pm.group(2).strip()
+                # THE VARIABLE AMONG THE PIECES. `paste0("bars_", ms, "_per1k")` iterates `ms`
+                # and carries a trailing literal; the pieces that are not string literals are
+                # what varies, and when exactly one of them is a bare name it is the loop's
+                # variable.
+                from .extract import draw_sites as _DSx
+                _var = [x.strip() for x in _DSx._split_args(pm.group(2))
+                        if not re.fullmatch(r'\s*"[^"]*"\s*', x)]
+                if len(_var) == 1:
+                    rest = _var[0]
                 # `items` IS THE LOOP'S VECTOR, WHEN THERE IS A LOOP. `for (p in shared)
                 # npng(paste0("chord__", p), ...)` iterates `shared`: the plan names the vector
                 # and `.draw_all` binds `.item`. A per-item site with no enclosing `for` - the

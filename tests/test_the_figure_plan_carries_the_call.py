@@ -117,6 +117,7 @@ npng("ring_count", {
   quarry_ring(cc, measure = "count")
   stamp()
 }, legend = "Rings by count.")
+.draw("native_already_on_the_plan")
 npng("ring_weight", quarry_ring(cc, measure = "weight"), w = .bw, h = 1200,
      legend = "Rings by weight.")
 """
@@ -127,6 +128,12 @@ npng <- function(id, expr, legend = "") {
   png(paste0(id, ".png")); print(expr); dev.off()
 }
 for (p in shared) npng(paste0("chord__", p), quarry_chord(merged, signaling = p))
+npng(paste0("solo__", gsub("[^A-Za-z0-9]+", "_", nm)), quarry_solo(merged), legend = "Solo.")
+for (ms in c("count", "weight")) {
+  npng(paste0("bars_", ms), quarry_bars(merged, measure = ms), legend = "Bars.")
+  npng(paste0("bars_", ms, "_per1k"), quarry_bars(merged, measure = ms, per = 1000),
+       legend = "Bars per thousand cells.")
+}
 if (nrow(pos) >= 3) npng(paste0("orphan_log__", safe), quarry_orphan(pos, title = paste0(
     "Does the response depend on the stratum? ", "One point per pathway; the dashed line is no ",
     "interaction - the same fold change in both strata. Above it the response is larger in the ",
@@ -234,8 +241,8 @@ class Migrate(unittest.TestCase):
 
     def test_the_worksheet_counts_what_a_person_still_owes(self):
         head = self.text.splitlines()[0]
-        self.assertIn("6 draw site(s) read", head)
-        self.assertIn("1 named by no legacy field", head)
+        self.assertIn("9 draw site(s) read", head)
+        self.assertIn("4 named by no legacy field", head)
         self.assertIn("left for a person", head)
         self.assertGreaterEqual(self.text.count("TODO"), 3)
 
@@ -257,6 +264,39 @@ class Migrate(unittest.TestCase):
         e = self.by_id["native_ring_weight"]
         self.assertEqual(e["w"], ".bw")
         self.assertEqual(e["h"], 1200)
+
+    def test_two_sites_sharing_a_literal_head_are_two_entries(self):
+        # `paste0("bars_", ms)` and `paste0("bars_", ms, "_per1k")` in one loop: two panels per
+        # item, one family by prefix. Read as one id, the second site was silently dropped and
+        # a plan generated from the worksheet would have stopped drawing it - the 47th of a
+        # plugin's sites, found by the one `npng(` left after the other 46 were replaced.
+        self.assertIn("nativecmp_bars", self.by_id)
+        self.assertIn("nativecmp_bars_per1k", self.by_id)
+        e = self.by_id["nativecmp_bars_per1k"]
+        self.assertEqual(e["file"], 'paste0("bars_", ms, "_per1k")')
+        # a literal INSIDE a call is not a piece of the name: `gsub("[^A-Za-z0-9]+", "_", nm)`
+        self.assertIn("nativecmp_solo", self.by_id)
+        self.assertEqual(self.by_id["nativecmp_solo"]["file"],
+                         'paste0("solo__", gsub("[^A-Za-z0-9]+", "_", nm))')
+        self.assertEqual(e["items"], 'c("count", "weight")')
+        self.assertEqual(e["legend"], "Bars per thousand cells.")
+
+    def test_a_call_to_the_plans_interpreter_is_not_a_hand_written_site(self):
+        # `.draw("<id>")` is where a site USED to stand. Read as a site of its own - the
+        # companion defines `.draw` and it delegates to the device path, which is exactly what
+        # a draw wrapper looks like - its argument became a panel name, the script's prefix
+        # was put in front of it a second time, and a rerun of the migration rewrote two
+        # already-migrated calls to ids that exist nowhere.
+        (self.d / "seams" / "alpha.draw.R").write_text(
+            'npng <- function(id, expr, legend = "") {\n'
+            '  png(paste0(id, ".png")); print(expr); dev.off()\n}\n'
+            ".draw <- function(id, item = NULL, env = parent.frame()) {\n"
+            "  npng(id, eval(.plan[[id]]$expr, env))\n}\n", encoding="utf-8")
+        found = CV._legacy_sites(P.load(self.d), "seam", "alpha",
+                                 (self.d / "seams" / "alpha.py").read_text())
+        self.assertIn("native_ring_count", found, "the companion's wrappers no longer reach the scan")
+        self.assertNotIn("native_native_already_on_the_plan", found)
+        self.assertNotIn("native_already_on_the_plan", found)
 
     def test_a_brace_block_keeps_its_statement_boundaries(self):
         # `{ f(x) g() }` on one line is not R. The block is carried with its lines, indented
