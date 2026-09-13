@@ -42,8 +42,8 @@ of 6 with `audited` owing.
 | lookers: figures handed, recorded, refusals, defects marked | 83 handed in two shards of 42 and 41 (56 of the 139 carried from the sibling run); 83 recorded, 0 refused, 39 marked defect (24 and 15); one looker recorded `--answer` on three answered figures and found the answered state did not clear until it recorded a plain look; 556k tokens, 170 tool uses, 21 and 12 min |
 | audited after the fresh look | 44 open findings on 25 kinds (HOST 3, PLUGIN 5, TOOL 17), from 36 kinds; station 6b: 1 machine residue (the across_design footnote, fixed at HEAD, redrawn only by a rerun); station 7: 80 of 80 kinds and 139 of 139 of the scan set looked at |
 | writer and reviewer | writer: the accounting for the composed claims' 24 to 8 written and accepted, 3 claims recorded citing 6 figures (one refusal, the numbered citation), a 1,911-word section carried in, stopped at the review round as told; 185k tokens, 49 tool uses, 12 min. reviewer: 11 verdicts (1 standing, 10 narrowed, 0 withdrawn), every cited figure opened and every number checked against the run's own tables, no refusal; 198k tokens, 58 tool uses, 13 min |
-| defects of the mechanism | |
-| agents, tokens, wall time | |
+| defects of the mechanism | 8 fixed test-first the same day (harness fd33e31; scProfile 8eb7a3b, 7aca925, 32a1bdf, f5b3c22, c1c1346, ac52840 x2) and one finding of the reviewer's recorded open (the composed ratio's basis); two suites found to mask their own failures and made to exit on them |
+| agents, tokens, wall time | 5 cold agents (author, two lookers, writer, reviewer): 1.23M tokens, 375 tool uses, 85 min of agent time; the dispatcher's own commands were the tool's, the maker's and the ADR's (the cost apply, the review split, the render, one prepare, one rsync, one seal) |
 
 ## Defects of the mechanism, as they came
 
