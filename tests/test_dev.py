@@ -413,6 +413,53 @@ class Job(unittest.TestCase):
         rec3 = {"dir": str(self.d / "ref"), "argv": ["t", "run", "--out", "/elsewhere/other"]}
         self.assertEqual(J.rebuild_argv(rec3, "/new"), ["t", "run", "--out", "/new"])
 
+    def test_the_code_that_runs_is_the_tree_that_was_verified(self):
+        """The job froze the TREE - HEAD.txt read at start, a mismatch refused - and then ran
+        `python -m pkg.cli`, which the interpreter resolved from wherever `pkg` was installed:
+        on the cluster, the full checkout beside the cellchat-only export, so a nine-plugin
+        resolver demanded a shared environment that did not exist and every instance failed
+        (PBS 711058, blind 0006). A verified tree that is not the tree that runs verifies
+        nothing. So the tree goes first on PYTHONPATH, and when the command is a module the job
+        asks the interpreter where that package imports from and refuses anything outside the
+        tree."""
+        import subprocess
+        import sys as _sys
+        tool = self.d / "tool"
+        (tool / "pkg").mkdir(parents=True)
+        (tool / "pkg" / "__init__.py").write_text("")
+        (tool / "pkg" / "cli.py").write_text(
+            "import sys, pathlib\n"
+            "out = pathlib.Path(sys.argv[sys.argv.index('--out') + 1]); out.mkdir(parents=True, exist_ok=True)\n"
+            "for f in ('STATUS.json', 'report.json'): (out / f).write_text('{}')\n")
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok", "argv": [str(tool / "pkg" / "cli.py"), "run", "--out", "/old"]}))
+        kw = dict(self.kw, rundir=str(self.d / "new"), tooldir=str(tool))
+        text = J.emit(prediction="identical", python=_sys.executable, **kw)
+        self.assertIn('PYTHONPATH="$TOOLDIR', text)
+        self.assertIn("imports from", text)              # the guard, naming the package
+        self.assertIn("REFUSED: pkg imports from", text)
+        script = self.d / "job.sh"
+        script.write_text(text)
+        r = subprocess.run(["bash", str(script)], capture_output=True, text=True,
+                           cwd=str(self.d), env={"PATH": "/usr/bin:/bin", "HOME": str(self.d)})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue((self.d / "new" / "SEALED.txt").is_file(), r.stdout + r.stderr)
+        # AND THE GUARD FAILS CLOSED: a `pkg` that imports from elsewhere is refused before the
+        # tool runs, with the two paths named.
+        decoy = self.d / "decoy"
+        (decoy / "pkg").mkdir(parents=True)
+        (decoy / "pkg" / "__init__.py").write_text("")
+        (decoy / "pkg" / "cli.py").write_text("raise SystemExit('the decoy ran')\n")
+        kw2 = dict(kw, rundir=str(self.d / "new2"))
+        text2 = J.emit(prediction="identical", python=_sys.executable, **kw2).replace(
+            'PYTHONPATH="$TOOLDIR', f'PYTHONPATH="{decoy}:$TOOLDIR')
+        script.write_text(text2)
+        r2 = subprocess.run(["bash", str(script)], capture_output=True, text=True,
+                            cwd=str(self.d), env={"PATH": "/usr/bin:/bin", "HOME": str(self.d)})
+        self.assertNotEqual(r2.returncode, 0)
+        self.assertIn("REFUSED", r2.stderr + r2.stdout)
+        self.assertNotIn("the decoy ran", r2.stderr + r2.stdout)
+
     def test_the_makers_status_is_written_to_the_run(self):
         text = J.emit(prediction="identical", maker_status=("k", "widget"), **self.kw)
         self.assertIn("sch dev convert status", text)

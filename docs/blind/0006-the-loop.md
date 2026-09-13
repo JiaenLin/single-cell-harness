@@ -147,7 +147,19 @@ defects fell out of it:
 
 The second submission: `20260913T091745Z__scprofile-03210cd__04_profile__rerun`, the tree at scProfile 03210cd (the author's answer plus the
 run's verdict fix), the emitted command now moving only `--out` and keeping `--prefix` at the site's
-environment directory.
+environment directory. It failed the same way in a minute (PBS 711058), and the seventh defect
+fell out of it:
+
+7. **The job verified the tree and ran something else** (harness, the commit after ce480cb). The
+   host interpreter resolves `scprofile` from the full checkout beside the cellchat-only export,
+   so a nine-plugin resolver demanded the shared environment, which does not exist at the site's
+   prefix, and every instance failed with "no environment". The record shows it: the run's
+   argv[0] is under the full checkout while the seal says the tree's commit matched. The tree
+   now goes first on PYTHONPATH and a module command is asked where its package imports from
+   before it runs; anything outside the tree is refused with both paths named. Test-first in
+   `Job`, with a decoy package that must not run.
+
+The third submission: `20260913T092545Z__scprofile-03210cd__04_profile__rerun`, the same tree (scProfile 03210cd).
 
 The round's own checks before the author's answer is pasted: `sch dev rules --since f127a2b`
 4 held, 0 broken; `sch dev convert overfit` 0 fitted literals; the cohort's own vocabulary (106

@@ -271,7 +271,13 @@ if [ "$ACTUAL_COMMIT" != "$EXPECT_COMMIT" ]; then
 fi
 
 export PYTHONNOUSERSITE=1
-export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
+# THE CODE THAT RUNS IS THE TREE THAT WAS VERIFIED (harness ADR-0019, blind 0006). The commit
+# guard above reads the TREE; the interpreter resolves a module from wherever the package is
+# installed - on one cluster, the full checkout beside a one-plugin export, so a nine-plugin
+# resolver demanded an environment that did not exist (PBS 711058). The tree goes first on
+# PYTHONPATH, and a module command is asked where its package imports from before it runs.
+export PYTHONPATH="$TOOLDIR${{PYTHONPATH:+:$PYTHONPATH}}"
+{import_guard}export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
 export OMP_NUM_THREADS="${{NCPUS:-1}}" MKL_NUM_THREADS="${{NCPUS:-1}}" OPENBLAS_NUM_THREADS="${{NCPUS:-1}}"
 mkdir -p "$RUNDIR/cache"
 {env_lines}
@@ -346,6 +352,22 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
         for k, v in fill_.items():
             a = str(a).replace("{" + k + "}", v)
         return a
+    # THE IMPORT GUARD, when the command is a module: the package it names must import from
+    # the verified tree, compared by real path, or the job refuses before the tool runs.
+    import_guard = ""
+    if len(argv) > 2 and argv[1] == "-m":
+        _pkg = str(argv[2]).split(".")[0]
+        _py = shlex.quote(str(argv[0]))
+        import_guard = (
+            f'IMPORTED="$({_py} -c \'import importlib, os, sys; m = importlib.import_module('
+            f'sys.argv[1]); print(os.path.realpath(os.path.dirname(os.path.dirname('
+            f'os.path.abspath(m.__file__)))))\' {shlex.quote(_pkg)})"\n'
+            f'TOOLREAL="$(cd "$TOOLDIR" && pwd -P)"\n'
+            f'case "$IMPORTED" in\n'
+            f'  "$TOOLREAL"|"$TOOLREAL"/*) echo "tool code: {_pkg} imports from $IMPORTED" ;;\n'
+            f'  *) echo "REFUSED: {_pkg} imports from $IMPORTED, not from the verified tree '
+            f'$TOOLDIR. The tree was checked and something else would have run." >&2; exit 3 ;;\n'
+            f'esac\n')
     after_lines = "\n".join(
         " ".join(shlex.quote(_fill(x)) for x in cmd)
         + f' && echo "after: exit 0 - {_name}" || echo "after: exit $? - {_name}"'
@@ -382,7 +404,7 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
         queue_note=host_note + commit_note + redraw_note,
         env_lines="\n".join(f'export {k}={shlex.quote(str(v))}' for k, v in (env or {}).items()),
         command=" ".join(shlex.quote(a) for a in argv),
-        after_lines=after_lines, maker_lines=maker_lines)
+        after_lines=after_lines, maker_lines=maker_lines, import_guard=import_guard)
 
 
 def write(path, **kw) -> dict:
