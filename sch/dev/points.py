@@ -46,7 +46,21 @@ from .. import yamlish
 
 FILENAME = "DEVPOINTS.yaml"
 # Top-level keys the loader understands beyond `points`; anything else is the author's note.
-TOP = ("tool", "devpoints", "tests", "fixture", "terms", "terms_env", "baseline_dir", "points")
+TOP = ("tool", "devpoints", "tests", "fixture", "terms", "terms_env", "baseline_dir", "run",
+       "points")
+
+
+def run_after(doc):
+    """[argv, ...] - what this repository declares follows a run of it (`run.after`), or [].
+
+    READ BY THE JOB EMITTER (harness ADR-0019): a rerun of the loop renders its pages and reads
+    its own status without anybody retyping the commands. `{python}` and `{run}` are filled by
+    the emitter, as in a stage's `command:`.
+    """
+    run = (doc or {}).get("run") or {}
+    if not isinstance(run, dict):
+        return []
+    return [list(x) for x in (run.get("after") or []) if isinstance(x, list)]
 SCHEMA = 1
 
 # Every point must answer these. `proves`/`cannot_prove` are not documentation: the ladder prints

@@ -511,6 +511,61 @@ class StageCommands(unittest.TestCase):
         self.assertIn("--apply", p.stdout, p.stdout + p.stderr)
         self.assertIn("sch dev convert measure", p.stdout)
 
+    # A STAGE MAY DECLARE THE WORKSHEET THAT ANSWERS IT (harness ADR-0019): `apply:` writes a
+    # fill mechanically; `worksheet:` prints what only the author can answer, from the run.
+    # The maker runs it on `--worksheet`, names it for an owing stage, and prefers `apply:`
+    # over it when both are declared, because a mechanical answer needs no author.
+    WORKSHEET = ('        - {name: measure, fills: [mem], command: ["{python}", "-c", '
+                 '"print(1)", "{run}"], worksheet: ["{python}", "-c", "import sys; '
+                 "open(sys.argv[1] + '/worksheet', 'w').write(sys.argv[2])\", \"{run}\", "
+                 '\"{name}\"]}')
+
+    def _with_worksheet(self, command='"print(1)"'):
+        (self.d / "DEVPOINTS.yaml").write_text(DECL.replace(
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}",
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}\n"
+            + self.WORKSHEET.replace('"print(1)"', command)))
+        return P.load(self.d)
+
+    def test_a_stage_declares_the_worksheet_that_answers_it_or_it_does_not(self):
+        doc = self._with_worksheet()
+        self.assertEqual(C.stage_worksheet(doc, "widget", "measure")[:2], ["{python}", "-c"])
+        self.assertEqual(C.stage_worksheet(self.doc, "widget", "measure"), [])
+
+    def test_worksheet_runs_the_worksheet_argv_with_the_run_and_the_name(self):
+        self._with_worksheet()
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "measure",
+                            "--root", str(self.d), "--point", "widget", "--run", str(self.d),
+                            "--name", "gadget", "--worksheet"],
+                           capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual((self.d / "worksheet").read_text(), "gadget")
+
+    def test_worksheet_on_a_stage_that_declares_none_says_so(self):
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "measure",
+                            "--root", str(self.d), "--point", "widget", "--run", str(self.d),
+                            "--worksheet"], capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
+        self.assertIn("worksheet", p.stderr)
+
+    def test_a_status_names_the_worksheet_for_an_owing_stage_and_never_runs_it(self):
+        self._with_worksheet('"import sys; sys.exit(1)"')
+        (self.d / "widgets" / "gadget.py").write_text("PLUGIN = {'name': 'gadget'}\n")
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "status",
+                            "--root", str(self.d), "--point", "widget", "--run", str(self.d),
+                            "--name", "gadget"], capture_output=True, text=True, cwd=ROOT)
+        self.assertFalse((self.d / "worksheet").exists(), "a status wrote the worksheet")
+        self.assertIn("answer it:", p.stdout, p.stdout + p.stderr)
+        self.assertIn("--worksheet", p.stdout)
+
+    def test_the_advance_command_prefers_apply_over_worksheet_over_the_command(self):
+        doc = self._with_worksheet()
+        row = {"stage": "measure", "ran": {"owes": True}, "apply": [], "worksheet": ["x"]}
+        self.assertIn("--worksheet", C.advance_command(row, doc, "widget", str(self.d), "g"))
+        row["apply"] = ["y"]
+        self.assertIn("--apply", C.advance_command(row, doc, "widget", str(self.d), "g"))
+        self.assertNotIn("--worksheet", C.advance_command(row, doc, "widget", str(self.d), "g"))
+
     def test_a_stage_declaring_no_command_says_so_rather_than_guessing(self):
         (self.d / "DEVPOINTS.yaml").write_text(DECL)
         p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "measure",

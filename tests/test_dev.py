@@ -253,6 +253,29 @@ class Baseline(unittest.TestCase):
         self.assertEqual([d["what"] for d in B.compare(B.fingerprint(self.d), ref)], ["score"])
 
 
+class WhatFollowsARun(unittest.TestCase):
+    """A repository declares what follows a run of it (harness ADR-0019): `run.after`, an argv
+    list per step, read by the job emitter so a rerun renders its pages and reads its own status
+    without anybody retyping the commands."""
+
+    def test_run_after_is_read_and_absent_is_empty(self):
+        from sch.dev import points as P
+        d = Path(tempfile.mkdtemp())
+        (d / "DEVPOINTS.yaml").write_text(
+            "tool: t\ndevpoints: 1\nrun:\n  after:\n"
+            '    - ["{python}", "-m", "t.cli", "report", "--out", "{run}"]\n'
+            "points:\n  widget:\n    what: w\n    lives: widgets\n    proves: p\n"
+            "    cannot_prove: c\n")
+        doc = P.load(d)
+        self.assertEqual(P.run_after(doc), [["{python}", "-m", "t.cli", "report", "--out",
+                                             "{run}"]])
+        (d / "DEVPOINTS.yaml").write_text(
+            "tool: t\ndevpoints: 1\npoints:\n  widget:\n    what: w\n    lives: widgets\n"
+            "    proves: p\n    cannot_prove: c\n")
+        self.assertEqual(P.run_after(P.load(d)), [])
+        shutil.rmtree(d, ignore_errors=True)
+
+
 class Job(unittest.TestCase):
     def setUp(self):
         self.d = Path(tempfile.mkdtemp())
@@ -294,6 +317,55 @@ class Job(unittest.TestCase):
         kw = dict(self.kw, queue="")
         with self.assertRaises(ValueError):
             J.emit(prediction="identical", **kw)
+
+    # THE RERUN IS THE MAKER'S EMITTED JOB (harness ADR-0019): a tool tree exported without
+    # .git carries HEAD.txt; a commit may be GIVEN where the tree is not readable and the job
+    # verifies it at start; the record's argv[0] may be a script under the tool and needs its
+    # interpreter; a redraw changes figures on purpose; a repository declares what follows a
+    # run; and the maker's own status is written to the run.
+    def test_the_commit_is_read_from_head_txt_when_there_is_no_git(self):
+        shutil.rmtree(self.d / "tool" / ".git")
+        (self.d / "tool" / "HEAD.txt").write_text("b" * 7 + "\n")
+        self.assertEqual(J.commit_of(self.d / "tool"), "b" * 7)
+        self.assertIn("b" * 7, J.emit(prediction="identical", **self.kw))
+
+    def test_a_given_commit_is_used_and_said_to_be_given(self):
+        shutil.rmtree(self.d / "tool")
+        text = J.emit(prediction="identical", tool_commit="c" * 7, **self.kw)
+        self.assertIn("c" * 7, text)
+        self.assertIn("given", text.lower())
+
+    def test_the_job_reads_head_txt_at_start_as_well(self):
+        text = J.emit(prediction="identical", **self.kw)
+        self.assertIn("HEAD.txt", text.split("read_commit()")[1][:1200])
+
+    def test_a_script_under_the_tool_runs_through_its_interpreter_as_a_module(self):
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok",
+             "argv": [str(self.d / "tool" / "pkg" / "cli.py"), "run", "--out", "/old"]}))
+        text = J.emit(prediction="identical", python="/env/bin/python", **self.kw)
+        self.assertIn("/env/bin/python -m pkg.cli run", text)
+        self.assertNotIn(str(self.d / "tool" / "pkg" / "cli.py") + " run", text)
+
+    def test_a_redraw_expects_no_figure_as_a_product(self):
+        (self.d / "ref" / "figures").mkdir()
+        (self.d / "ref" / "figures" / "a.png").write_bytes(b"x")
+        self.assertIn("figures/a.png", J.products_of(self.d / "ref"))
+        self.assertNotIn("figures/a.png", J.products_of(self.d / "ref", figures=False))
+        text = J.emit(prediction="identical", redraw=True, **self.kw)
+        self.assertNotIn("figures/a.png", text)
+        self.assertIn("the eye", text)
+
+    def test_what_follows_a_run_is_appended_from_the_declaration(self):
+        text = J.emit(prediction="identical", python="/env/bin/python",
+                      after=[["{python}", "-m", "t.cli", "report", "--out", "{run}"]], **self.kw)
+        self.assertIn(f"/env/bin/python -m t.cli report --out {self.d / 'new'}", text)
+        self.assertLess(text.index("cell_type_forced"), text.index("t.cli report"))
+
+    def test_the_makers_status_is_written_to_the_run(self):
+        text = J.emit(prediction="identical", maker_status=("k", "widget"), **self.kw)
+        self.assertIn("sch dev convert status", text)
+        self.assertIn("maker_status", text)
 
     def test_the_checkout_is_frozen_at_the_commit_read_from_git(self):
         self.assertIn("a" * 40, J.emit(prediction="identical", **self.kw))

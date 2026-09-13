@@ -180,9 +180,9 @@ answers rather than fixes - recorded, in the ledger, with a looker's agreement.
 | step | state | commits | notes |
 |---|---|---|---|
 | 0 record | done | this commit | |
-| 1 every figure measured | | | |
-| 2 the host's eight findings | | | |
-| 3 the answer path and the worksheet | | | |
-| 4 the maker | | | |
+| 1 every figure measured | done | scProfile 0841e7a | one audited save (`figure.save` with the stamp from the rendered box, `fit=False` for a caller that fitted its own width) serves `_Shim.emit_figure`, the contrast and interaction panels and the design panel; their records carry `audit` and `repairs`; a compare plate's record says the companion drew it; `panels.json` carries all of it and station 6b reads it beside report.json; suites 94 green |
+| 2 the host's eight findings | done | scProfile 0f4236a | a width key on the chord; the grey cross keyed on the matrix and the role heatmap; the declutter's cap grows with the clump and the registered sets are re-solved after each repair pass (labels keep their own x - the sideways phase tried first broke a paid-for rule and was withdrawn); the sentinel row last and blank; the pooled arms keyed on the unit totals; the marker size keyed on the design grid; suites 95 green |
+| 3 the answer path and the worksheet | done | scProfile 4628047 | `review --answer` and `review.answered` (the finding stays open until a looker's fresh look; the outstanding list and the shards carry the figure as needing one); `review --worksheet` with the three owners, the plan entry as declared or the code site, the eye's words, the answer given, the two answers and the rerun's prediction; `audited` declares `worksheet:`; station 6b names it; suites 96 green |
+| 4 the maker | done | harness: this commit | `worksheet:` read beside `command:` and `apply:`, run on `--worksheet`, named "answer it:" for an owing stage, advanced by apply over worksheet over the command; `sch dev job` reads `HEAD.txt` where there is no `.git`, takes `--tool-commit` and verifies it at start, runs a script argv through its interpreter as a module, leaves figures out of a `--redraw`'s products, appends the repository's `run.after` and the maker's own status; `points.run_after`; harness suite green |
 | 5 the order, written once | | | |
 | 6 blind 0006 | | | |

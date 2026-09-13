@@ -979,6 +979,15 @@ def cmd_dev(a):
                   f"beside `command:` in DEVPOINTS.yaml, or answer it by hand.",
                   file=sys.stderr)
             return CANNOT_RUN
+    elif getattr(a, "worksheet", False):
+        # THE WORKSHEET IS PRINTED BY WHAT THE REPOSITORY DECLARES (harness ADR-0019): the
+        # findings by kind with their owners, from the run, for the author to answer.
+        cmd = CV.stage_worksheet(doc, point, a.action)
+        if not cmd:
+            print(f"sch dev convert {a.action}: point {point!r} declares no `worksheet:` for "
+                  f"the {a.action} stage, so nothing here can print what it owes. Declare "
+                  f"`worksheet:` beside `command:` in DEVPOINTS.yaml.", file=sys.stderr)
+            return CANNOT_RUN
     argv = CV.fill(cmd, {"python": sys.executable, "run": str(a.run), "root": str(a.root),
                          "name": a.name or ""})
     print("  " + " ".join(argv))
@@ -1007,10 +1016,23 @@ def cmd_dev(a):
 
     if a.sub == "job":
         from .dev import job as J
+        # WHAT FOLLOWS A RUN, from the repository's own declaration when the root has one
+        # (harness ADR-0019): a rerun renders its pages and reads its own status without
+        # anybody retyping the commands.
+        after = []
+        try:
+            after = P.run_after(P.load(a.root))
+        except Exception:                                                 # noqa: BLE001
+            after = []
         try:
             info = J.write(a.out, ref_dir=a.ref, rundir=a.rundir, tooldir=a.tool,
                            prediction=a.predict, queue=a.queue, select=a.select,
-                           walltime=a.walltime, name=a.name or "reproduce")
+                           walltime=a.walltime, name=a.name or "reproduce",
+                           python=getattr(a, "python", None),
+                           tool_commit=getattr(a, "tool_commit", None),
+                           redraw=bool(getattr(a, "redraw", False)), after=after,
+                           maker_status=((a.plugin, a.point) if getattr(a, "plugin", None)
+                                         else None))
         except (ValueError, OSError) as e:
             print(e, file=sys.stderr)
             return FAILED
@@ -1156,6 +1178,10 @@ def build_parser():
                    help="with a command stage named as the action and --run: run the stage's "
                         "declared `apply:` - what writes its fill into the declaration - "
                         "instead of its verification. A status never applies")
+    q.add_argument("--worksheet", action="store_true",
+                   help="with a command stage named as the action and --run: run the stage's "
+                        "declared `worksheet:` - what prints the work only the author can "
+                        "answer - instead of its verification. A status names it, never runs it")
     q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("rules"))
     q.add_argument("--point", default=None)
@@ -1169,7 +1195,22 @@ def build_parser():
     q.add_argument("--tool", required=True); q.add_argument("--queue", required=True)
     q.add_argument("--select", required=True); q.add_argument("--predict", required=True)
     q.add_argument("--out", required=True); q.add_argument("--walltime", default="04:00:00")
-    q.add_argument("--name"); q.set_defaults(fn=cmd_dev)
+    q.add_argument("--name")
+    # THE RERUN OF THE LOOP (harness ADR-0019): the interpreter the reference's script argv
+    # needs, a commit given where the tree is not readable, a redraw that changes figures on
+    # purpose, and the plugin whose maker status the job writes to the run.
+    q.add_argument("--python", default=None, help="the interpreter, when the reference's argv "
+                   "names a script under the tool rather than an interpreter")
+    q.add_argument("--tool-commit", dest="tool_commit", default=None,
+                   help="the tool's commit, when --tool is not readable where this is written; "
+                        "the job reads the tree's own at start and refuses a mismatch")
+    q.add_argument("--redraw", action="store_true",
+                   help="a rerun after figure changes: figures are not expected products; the "
+                        "plan's promise and the eye judge them")
+    q.add_argument("--plugin", default=None, help="write the maker's status of this plugin on "
+                   "the new run into its logs")
+    q.add_argument("--point", default="kernel")
+    q.set_defaults(fn=cmd_dev)
 
     p = sub.add_parser("conform"); p.add_argument("repo", nargs="?"); p.add_argument("--terms")
     p.add_argument("--shapes", metavar="FILE",

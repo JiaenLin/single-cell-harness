@@ -339,6 +339,7 @@ def status(spec, doc, point_name, name="", source=None, python="", run=""):
                     # WHAT WRITES THE FILL, when the repository declares it: the status names
                     # it for an owing stage and never runs it.
                     "apply": list(st.get("apply") or []),
+                    "worksheet": list(st.get("worksheet") or []),
                     "fills": list(st["fills"]),
                     # THE DEBT ITSELF, NOT ONLY WHETHER THERE IS ONE. `owes_place` is the gate;
                     # this is what the gate read, and `sch dev convert overfit` needs it to tell
@@ -637,6 +638,10 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
                     L.append(f"       apply it:  sch dev convert {r['stage']} --root {root} "
                              f"--point {point_name} --name {name or '<plugin>'} --run "
                              f"{run or '<RUNDIR>'} --apply")
+                elif ran["owes"] and r.get("worksheet"):
+                    L.append(f"       answer it:  sch dev convert {r['stage']} --root {root} "
+                             f"--point {point_name} --name {name or '<plugin>'} --run "
+                             f"{run or '<RUNDIR>'} --worksheet")
             if r.get("partial"):
                 L.append(f"       started, and the plugin says so: {r['partial'][:150]}")
             if r.get("partial"):
@@ -1037,6 +1042,22 @@ def stage_apply(doc, point_name, stage_name):
     for st in stages:
         if st["name"] == stage_name:
             return list(st.get("apply") or [])
+    return []
+
+
+def stage_worksheet(doc, point_name, stage_name):
+    """The argv a stage declares for the WORKSHEET that answers it, or []. Beside `command:`.
+
+    WHAT ONLY THE AUTHOR CAN ANSWER, PRINTED FROM THE RUN (harness ADR-0019). `apply:` writes
+    a fill mechanically; `worksheet:` prints the work a judgement has to do - the findings by
+    kind, their owners, the entry or the code site - and the author pastes the answer. The
+    maker runs it on `--worksheet`, names it for an owing stage, and prefers `apply:` when
+    both are declared: a mechanical answer needs no author.
+    """
+    _ph, _up, stages = plan(doc, point_name)
+    for st in stages:
+        if st["name"] == stage_name:
+            return list(st.get("worksheet") or [])
     return []
 
 
@@ -1984,6 +2005,9 @@ def advance_command(row, doc, point_name, root, name, python="", run=""):
     if row.get("ran", {}).get("owes") and row.get("apply"):
         return (f"sch dev convert {stage} --root {root} --point {point_name} "
                 f"--name {name or '<plugin>'} --run {run or '<RUNDIR>'} --apply")
+    if row.get("ran", {}).get("owes") and row.get("worksheet"):
+        return (f"sch dev convert {stage} --root {root} --point {point_name} "
+                f"--name {name or '<plugin>'} --run {run or '<RUNDIR>'} --worksheet")
     declared = stage_command(doc, point_name, stage)
     if declared:
         return " ".join(fill(declared, {"python": python or "python3", "run": run or "<RUNDIR>",

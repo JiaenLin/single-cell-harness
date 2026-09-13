@@ -35,8 +35,18 @@ OUT_FLAGS = ("--out", "--out-dir", "--outdir", "-o", "--output", "--prefix")
 
 
 def commit_of(repo) -> str | None:
-    """By file. Compute nodes have no git binary, and the emitted job reads it the same way."""
+    """By file. Compute nodes have no git binary, and the emitted job reads it the same way.
+
+    A TREE EXPORTED WITHOUT .git CARRIES HEAD.txt (harness ADR-0017's rule for the tool's own
+    seal, ADR-0019 for this): the cellchat-only tree on the cluster is such an export.
+    """
     git = Path(repo) / ".git"
+    head_txt = Path(repo) / "HEAD.txt"
+    if not git.exists() and head_txt.is_file():
+        try:
+            return head_txt.read_text().strip().split()[0]
+        except (OSError, IndexError):
+            return None
     try:
         if git.is_file():
             git = Path(git.read_text().split(":", 1)[1].strip())
@@ -57,11 +67,16 @@ def commit_of(repo) -> str | None:
     return None
 
 
-def products_of(ref_dir) -> list:
+def products_of(ref_dir, figures=True) -> list:
     """What the reference run actually left behind, relative to itself - so the job checks for
-    the files the tool writes rather than the files somebody expected it to write."""
+    the files the tool writes rather than the files somebody expected it to write.
+
+    `figures=False` leaves the pictures out (harness ADR-0019): a rerun after figure changes
+    is allowed to change them, and the plan's promise and the eye judge those."""
     ref = Path(ref_dir)
     keep = {".json", ".csv", ".tsv", ".h5ad", ".html", ".md", ".png", ".pdf", ".npy"}
+    if not figures:
+        keep -= {".png", ".pdf"}
     out = []
     for p in sorted(ref.rglob("*")):
         if p.is_file() and p.suffix in keep and p.stat().st_size > 0:
@@ -72,8 +87,14 @@ def products_of(ref_dir) -> list:
     return out
 
 
-def rebuild_argv(record: dict, new_out: str, python: str | None = None) -> list:
-    """The reference run's own argv, with the destination moved and nothing else touched."""
+def rebuild_argv(record: dict, new_out: str, python: str | None = None,
+                 tooldir: str | None = None) -> list:
+    """The reference run's own argv, with the destination moved and nothing else touched.
+
+    THE INTERPRETER, WHEN THE RECORD NAMES A SCRIPT (harness ADR-0019): a run records
+    `sys.argv`, whose first element is the script - `<tool>/scprofile/cli.py` - and not the
+    interpreter that ran it. Given `python`, a script under `tooldir` runs as its module
+    (`python -m scprofile.cli ...`), the way the run itself was started."""
     argv = list(record.get("argv") or [])
     if not argv:
         raise ValueError(
@@ -100,11 +121,19 @@ def rebuild_argv(record: dict, new_out: str, python: str | None = None) -> list:
         raise ValueError(
             f"the reference argv names no output flag ({', '.join(OUT_FLAGS)}), so the "
             f"reproduction would write where the reference wrote. Refusing: {' '.join(argv[:12])}")
-    if python:
-        # argv[0] is whatever invoked the tool on the machine that ran it; on another machine it
-        # is a path that may not exist. Prefer `-m` when the record shows one.
-        if len(out) > 1 and out[0].endswith("python") is False and Path(out[0]).name not in ("python", "python3"):
-            out[0] = str(out[0])
+    if python and out and str(out[0]).endswith(".py"):
+        script = Path(out[0])
+        mod = None
+        if tooldir:
+            try:
+                rel = script.resolve().relative_to(Path(tooldir).resolve())
+                mod = ".".join(rel.with_suffix("").parts)
+            except ValueError:
+                mod = None
+            if mod is None and Path(tooldir).name in script.parts:
+                rel = Path(*script.parts[script.parts.index(Path(tooldir).name) + 1:])
+                mod = ".".join(rel.with_suffix("").parts) or None
+        out = ([python, "-m", mod] if mod else [python, str(script)]) + out[1:]
     return out
 
 
@@ -196,6 +225,8 @@ trap finish EXIT
 # because the header claims it ran.
 read_commit() {{
   local gd="$1/.git" head_ ref_
+  # A TREE EXPORTED WITHOUT .git CARRIES HEAD.txt - read that first (harness ADR-0019).
+  if [ ! -e "$gd" ] && [ -f "$1/HEAD.txt" ]; then cut -d' ' -f1 "$1/HEAD.txt"; return 0; fi
   if [ -f "$gd" ]; then gd="$(sed 's/^gitdir: //' "$gd")"; fi
   head_="$(cat "$gd/HEAD" 2>/dev/null || true)"
   case "$head_" in
@@ -235,6 +266,12 @@ rc=$?
 set -e
 echo "tool exit: $rc"
 [ "$rc" -eq 0 ] || exit "$rc"
+# ------------------------------------------------------ what the repository says follows a run
+# Declared in DEVPOINTS.yaml under `run.after` (harness ADR-0019); each line is one command.
+{after_lines}
+# ------------------------------------------------------------- the maker's status, for the record
+{maker_lines}
+[ "$rc" -eq 0 ] || exit "$rc"
 
 echo "finished: $(date -u)"
 """
@@ -242,8 +279,16 @@ echo "finished: $(date -u)"
 
 def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
          walltime: str = "04:00:00", name: str = "reproduce", title: str | None = None,
-         env: dict | None = None, products: list | None = None) -> str:
-    """The script text. Raises rather than guessing anything it cannot read."""
+         env: dict | None = None, products: list | None = None, python: str | None = None,
+         tool_commit: str | None = None, redraw: bool = False, after=(),
+         maker_status=None) -> str:
+    """The script text. Raises rather than guessing anything it cannot read.
+
+    THE RERUN OF THE LOOP (harness ADR-0019): `python` prefixes a script argv; `tool_commit`
+    is used where the tree is not readable here and the job verifies it at start; `redraw`
+    leaves figures out of the expected products; `after` is what the repository declares
+    follows a run (`run.after`); `maker_status=(plugin, point)` writes the maker's status of
+    the new run into its logs."""
     from ..conform import run_record
     if not prediction or not prediction.strip():
         raise ValueError(
@@ -253,15 +298,40 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
         raise ValueError("name the queue. A host pin in the wrong queue fails as "
                          "'Insufficient amount of resource: host', which reads like a missing node.")
     rec = run_record(ref_dir)
-    prods = products if products is not None else products_of(ref_dir)
+    prods = products if products is not None else products_of(ref_dir, figures=not redraw)
     if not prods:
         raise ValueError(f"{ref_dir} has no products to expect; a job that checks for nothing "
                          f"seals SEALED whatever happens.")
-    argv = rebuild_argv(rec, rundir)
-    tool_commit = commit_of(tooldir)
+    argv = rebuild_argv(rec, rundir, python=python, tooldir=tooldir)
+    given = bool(tool_commit)
+    tool_commit = tool_commit or commit_of(tooldir)
     if not tool_commit:
-        raise ValueError(f"cannot read a commit from {tooldir}/.git - the checkout cannot be frozen, "
-                         f"and an unfrozen checkout is how two versions end up in one measurement.")
+        raise ValueError(f"cannot read a commit from {tooldir}/.git or HEAD.txt - the checkout "
+                         f"cannot be frozen, and an unfrozen checkout is how two versions end up "
+                         f"in one measurement. Give it with --tool-commit where the tree is not "
+                         f"readable here; the job reads the tree's own at start.")
+    commit_note = (f"# THE COMMIT WAS GIVEN, NOT READ: the tree at {tooldir} is not readable where "
+                   f"this was written. The job reads the tree's own HEAD.txt or .git at start "
+                   f"and refuses a mismatch.\n#\n" if given else "")
+    redraw_note = ("# A REDRAW: figures are not expected products. The plan's promise "
+                   "(`capacity --promised`) and the eye judge them.\n#\n" if redraw else "")
+    fill_ = {"python": python or "python3", "run": str(rundir), "root": str(tooldir)}
+
+    def _fill(a):
+        for k, v in fill_.items():
+            a = str(a).replace("{" + k + "}", v)
+        return a
+    after_lines = "\n".join(" ".join(shlex.quote(_fill(x)) for x in cmd)
+                            for cmd in (after or ()))
+    maker_lines = ""
+    if maker_status:
+        _pl, _pt = maker_status
+        maker_lines = ('HARNESS="${HARNESS:-$HOME/tools/single-cell-harness}"\n'
+                       f'PYTHONPATH="$HARNESS" {shlex.quote(python or "python3")} -m sch dev '
+                       f'convert status --root {shlex.quote(str(tooldir))} --point '
+                       f'{shlex.quote(str(_pt))} --name {shlex.quote(str(_pl))} --run "$RUNDIR" '
+                       f'> "$RUNDIR/logs/maker_status.txt" 2>&1 || true\n'
+                       f'tail -30 "$RUNDIR/logs/maker_status.txt"')
     host_note = ""
     if "host=" in select:
         host = select.split("host=", 1)[1].split(":")[0]
@@ -280,9 +350,10 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
         prediction="\n".join(f"#   {ln}" for ln in prediction.strip().splitlines()),
         tool_commit=tool_commit, rundir=rundir, tooldir=tooldir,
         products=" ".join(shlex.quote(p) for p in prods), n_products=len(prods),
-        queue_note=host_note,
+        queue_note=host_note + commit_note + redraw_note,
         env_lines="\n".join(f'export {k}={shlex.quote(str(v))}' for k, v in (env or {}).items()),
-        command=" ".join(shlex.quote(a) for a in argv))
+        command=" ".join(shlex.quote(a) for a in argv),
+        after_lines=after_lines, maker_lines=maker_lines)
 
 
 def write(path, **kw) -> dict:
