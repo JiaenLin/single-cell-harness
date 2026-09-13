@@ -159,7 +159,32 @@ fell out of it:
    before it runs; anything outside the tree is refused with both paths named. Test-first in
    `Job`, with a decoy package that must not run.
 
-The third submission: `20260913T092545Z__scprofile-03210cd__04_profile__rerun`, the same tree (scProfile 03210cd).
+The third submission: `20260913T092545Z__scprofile-03210cd__04_profile__rerun` (PBS 711059), the
+same tree (scProfile 03210cd). It ran: the import guard reported the tool's code from the verified
+tree, all 18 instances computed, 879 figures, the tool's own seal ok, `capacity --memory` answered
+(fit 2.2 + 13.1 against the declared 2.4 + 14.3), the maker's status written to the run's logs.
+Two things it found:
+
+8. **The job expected what the directory held, not what the run recorded** (harness 6bc800e).
+   The seal read FAILED on four `STATUS.<reader>.json` files that the reference's hand-written
+   job had left by running `agenda`, `next`, `paper` and `review` there, with every product of
+   the run itself present. The expectation now comes from the reference run's own `STATUS.json`
+   record; the directory scan is the fallback for a reference without one. Test-first in `Job`.
+   So L1's "seals SEALED" failed on this submission for a reason that was the job's, not the
+   run's; it is graded again on the next.
+- **The author's answer broke two plates**, which the loop caught where it should: `promised`
+  owes, exit 2, naming `netVisual_chord_cell` (h 1800 to 1300 left circlize no room: "not
+  enough space for cells at track index '1'" on every pathway and arm) and
+  `showDatabaseCategory` (par/mtext around a function that returns a plot object: "plot.new has
+  not been called yet"). The maker's status names them and points at the plugin's own log,
+  which says why; the two entries went back to the author with those lines, for a fix and a
+  further version bump - the loop's own path, not the dispatcher's hand.
+
+The author's second round (scProfile 4c6112f, cellchat 0.30.0): `native_database_category` fixed
+(the object captured, printed, titled with grid), `nativecmp_chord_cell` reverted to its proven
+size with the eye's finding answered in the ledger instead; gates green; the same checks before
+the paste (0 cohort terms in the added lines). The fourth submission: `20260913T100732Z__scprofile-4c6112f__04_profile__rerun`, with the
+expectation now the run's own record (507 products).
 
 The round's own checks before the author's answer is pasted: `sch dev rules --since f127a2b`
 4 held, 0 broken; `sch dev convert overfit` 0 fitted literals; the cohort's own vocabulary (106
