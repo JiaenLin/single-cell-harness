@@ -120,6 +120,35 @@ name: the labels the built-in shapes do not know (the cohort's other populations
 dispatcher's vocabulary check found on three more comment lines; the site's own term list
 (`SCPROFILE_FORBIDDEN_TERMS`) is the mechanism for those and is not set on this machine.
 
+4. **The emitted job named its reference by the path it was read at** (harness d7af719). The
+   replay lives under the workstation's scratch directory, and `sch conform` refused the job as
+   using node-local `/tmp`: a run's identity is its key, the same on every machine, and the
+   header and the seal now carry that. Test-first in `Job`.
+
+The rerun was first submitted as PBS 711051 at 08:23 UTC by `jobs/submit_rerun.sh` (validator
+OK, queue super, 64 cores, 360 GB, walltime 4 h). It sealed FAILED after 25 seconds, and two
+defects fell out of it:
+
+5. **The emitted job rewrote every flag named like an output** (harness ce480cb). The reference
+   argv carried `--prefix <site>/env`, where this tool keeps its plugin environments; the
+   emitter's name list treated `--prefix` as an output and sent it to the new, empty run
+   directory, so all 18 instances failed in a second with "no environment at ...". The flag
+   rewritten is now the one whose value is the reference run itself (its directory or its key),
+   whatever it is called; the name list is the fallback. The rest of the job did what defects 1
+   and 2 were fixed for: the after-lines recorded their verdicts (`capacity --promised` exit 2,
+   `--memory` exit 2), the maker's status was written, and the seal read FAILED on 514 expected
+   products. Test-first in `Job`.
+6. **A run that ran nothing sealed ok** (scProfile, the commit after 3ee26e7). The tool's own
+   seal said `status=ok`, exit 0, "kernels ran, results merged, report written", with a run card
+   of zero instances, while its report said "NO OBJECT WRITTEN: no plugin ran". `run` now exits
+   1 with that sentence as its headline when no plugin ran; the report, the card and the
+   capacity record are still written. Test-first in `test_status_contract.py`, on a fixture
+   with no environment at the prefix.
+
+The second submission: `20260913T091745Z__scprofile-03210cd__04_profile__rerun`, the tree at scProfile 03210cd (the author's answer plus the
+run's verdict fix), the emitted command now moving only `--out` and keeping `--prefix` at the site's
+environment directory.
+
 The round's own checks before the author's answer is pasted: `sch dev rules --since f127a2b`
 4 held, 0 broken; `sch dev convert overfit` 0 fitted literals; the cohort's own vocabulary (106
 terms read from the run: populations, pathways, units, contrasts) is held against the author's
