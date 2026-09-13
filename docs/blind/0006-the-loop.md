@@ -79,13 +79,13 @@ Blind 0006:
 | | |
 |---|---|
 | the author: kinds edited, kinds answered, version, gates | 28 kinds edited, 10 answered (21 ledger records), 8 host kinds skipped; 0.28.0 to 0.29.0; validate 0 errors, build 8 of 8; first answer refused by the portability scan, amended in 7 comment lines; 473k + 538k tokens, 173 + 40 tool uses, 51 + 8 min |
-| the rerun: job, wall time, seal, L1-L6 | PBS 711051 FAILED in 25 s (defects 5, 6); PBS 711058 FAILED in 50 s (defect 7); PBS 711059 - filled in below |
-| lookers: figures handed, recorded, refusals, defects marked | |
-| audited after the second look | |
-| writer and reviewer: claims, rounds, verdicts, words | |
-| maker or host defects found | |
-| dispatcher commands | |
-| agents, tokens, wall time | |
+| the rerun: job, wall time, seal, L1-L6 | PBS 711051 FAILED in 25 s (defects 5, 6); PBS 711058 FAILED in 50 s (defect 7); PBS 711059 ran 27 min, the job's seal FAILED on four readers' files (defect 8), `promised` owed two plates (the author's); PBS 711062 ran 27 min and SEALED: L1 held, L2 failed as it came off the cluster and held after defect 11, L3 held after defect 10, L4 held, L5 held, L6 held after defects 9 and 12 |
+| lookers: figures handed, recorded, refusals, defects marked | 120 handed out in two rounds of shards (70, then 50 after the scan set grew to 139), 120 recorded, 0 refused, 66 marked; 286k + 250k + 407k + 430k tokens |
+| audited after the second look | owing: 66 findings on 36 kinds (HOST 10, PLUGIN 4, TOOL 22); every figure of the scan set looked at |
+| writer and reviewer: claims, rounds, verdicts, words | writer: 5 claims recorded, 1 refused on a flagged figure, a 1,806-word section from the 48 clean figures carried in (180k tokens); reviewer: 29 rounds - 26 standing, 2 narrowed, 1 withdrawn - none refused (567k tokens); rendered by the dispatcher |
+| maker or host defects found | 17: 15 fixed test-first the same day (harness 736243f, d3f6388, d7af719, ce480cb, b6f9492, 6bc800e, cb5dc99; scProfile 3466b77, 03210cd, b10f8a7, d903eb3, 2129082, 15a939c, a567ca6 x2), 2 recorded open (the composer's route, scProfile KNOWN_ISSUES b751000; the writing run's siblings) |
+| dispatcher commands | the worksheet, the maker's status (before, after the rerun, after the looks, after the review), four exports and four submissions through the emitted job and its submitter, two rsyncs, the review split (twice), the page rebuild, the render, two writing seals; every one a command a status, an agenda, a worksheet, a refusal or the ADR printed |
+| agents, tokens, wall time | 5 cold agents (author, two lookers, writer, reviewer), about 3.7M tokens; about seven hours from the first commit to the fourth run's writing seal, of which the cluster took about two hours over four runs and two seals |
 
 ## Defects of the mechanism, as they came (B5 counts them)
 
@@ -313,6 +313,18 @@ and W2 (the written layer present) and failed W3: the maker reads `written` owin
 should - the blind-0005 writer's claims were never put to a round - and `audited` owing. Its
 verdict line also prints `'measure': 'to'`, the seal's own parser cutting the state of a stage
 whose name is longer than the others; noted, not a verdict.
+The rerun's seal (PBS 711088, run `20260913T133001Z__scprofile-b751000__04_profile__written`)
+held W1 and W2 and failed W3 on `looked_at`: inside a writing run the replay sits under
+`replay/` with no run beside it, so the 37 looks that carry by content hash from the old
+replay's written run are not seen there, and the maker reads 102 of 139. `written` and
+`delivered` read done.
+
+17. **A writing run's replay has no siblings** (open). The review's rule - a look on the same
+    bytes carries from a run beside this one - and the seal's layout - the replay under the
+    writing run, the runs two levels up - do not meet. Either the seal lays the replay where
+    the runs are, or the review's siblings are the runs under the nearest ancestor that holds
+    runs. Recorded for the next round; the parser's `'measure': 'to'` is fixed (defect 16,
+    harness cb5dc99) for the seals after these two.
 
 The round's own checks before the author's answer is pasted: `sch dev rules --since f127a2b`
 4 held, 0 broken; `sch dev convert overfit` 0 fitted literals; the cohort's own vocabulary (106
@@ -321,4 +333,28 @@ diff before the paste, and the repository's portability scan runs in the commit 
 
 ## Results
 
-To be written after the agents finish.
+| prediction | held? | what happened |
+|---|---|---|
+| L1 the job runs the reference's command through the interpreter, verifies the tree's commit at start, seals SEALED with every non-figure product present | held on the fourth submission | the first three sealed FAILED for reasons that were the job's - the environment prefix rewritten (5), the tree verified and the code run from elsewhere (7), the readers' files expected (8) - each fixed test-first; on the fourth: the import guard read the tool's code from the verified tree, every product the run's own record lists present |
+| L2 every raster figure carries an audit in report.json or panels.json; station 6b prints 0 recorded by nothing | failed as the run came off the cluster; held after defect 11 | the run's own report recorded the compare plates; the declared after-line's rebuild, with no interpreter, dropped them (249 "recorded by nothing"); a rebuild now records what is on disk: 681 recorded by the companion, 0 by nothing |
+| L3 beside the old replay, a figure whose bytes did not change is not outstanding and every redrawn or answered figure is | held after defect 10 | 37 looks carried by hash, 913 redrawn outstanding; the answers had not carried until an answer was bound to the bytes like a look: then 19 answered figures outstanding for a fresh look |
+| L4 the host's eight panel kinds carry no machine finding after repair | held | "no drawing issue remains after the host repaired 4 on 2 panel(s)"; the eye then found new things on ten host kinds, the next build |
+| L5 promised done and measure answered without a hand on the file | held on the fourth submission | on the third, `promised` owed two plates the author's edits had broken, and the maker's status pointed at the plugin's own log, which said why; the author fixed one and reverted the other with an answer; the fourth reads every declared plot produced, the memory fit under the declaration |
+| L6 the maker's status reads audited owing only on what the eye has not yet re-looked, and names it | held after defects 9 and 12 | the station named the pen before the eye and counted only this run's ledger; now: the look first while any figure of the scan set has none, the carried findings named as waiting for it, then the worksheet with the count |
+| B1 a cold author answers every kind without a question: edits for at least half, answers for the rest, the version bumped, validate and the build status pass | held | 28 of 38 kinds edited, 10 answered (21 records), 0.28.0 to 0.29.0, gates green; its first answer was refused by the portability scan for the cohort's labels in comments and amended; its second round after the rerun fixed one broken plate and reverted the other with an answer, 0.30.0 |
+| B2 the lookers are handed only what was redrawn or answered, fewer than 139, and record it without a refusal | held | 70 of the 95-figure scan set, then 50 more when the rebuilt paper's list grew the set to 139; 120 recorded, 0 refused |
+| B3 audited clears, or names at most five kinds that survived a fresh look | failed | 66 findings on 36 kinds survived: some of the author's edits did not cure what the eye named (the fused ring labels, the clipped column, a caption the edit itself added), ten host kinds carry new findings, and the answered plates were kept open where the picture still showed what the eye first said |
+| B4 the writer writes without a claim or a section resting on an open finding; a second agent rounds every claim; the section renders; delivered reads done; the writing seal holds its three predictions | held up to the seal; the seal held two of three | a claim on a flagged figure refused, five on clean ones recorded, the section from the 48 clean figures accepted; 29 of 29 rounded (26, 2, 1); rendered; `delivered` done; the maker reads test 5 of 6; the seal held W1 and W2 and failed W3 on `looked_at`, the carried looks invisible from inside a writing run (17, open) |
+| B5 the agents meet at most three defects of the mechanism, each fixed test-first the same day | failed on the count | seventeen; fifteen fixed test-first the same day, two recorded open (the composer's route, the writing run's siblings) |
+
+**What the round found.** The loop closes: an author who saw only the worksheet answered it, the
+maker's job reran the plugin, the lookers were handed what changed, the audit named what
+survived, and the pen wrote from what the eye had accepted and refused the rest - with no
+person in it and every step a command the tools printed. What it cost was seventeen defects of the
+mechanism, and their shape is the finding: twelve of them were the seams between runs and
+between machines - a look, an answer, a record that did not carry from the run beside; a job
+that verified one tree and ran another; a prefix, a path, a readers' file that a directory
+holds and a run does not. The eye's verdict is the other finding: a rerun does not clear a
+finding, a fresh look does, and on this cohort most of the author's first answers were not
+enough for it. That is the loop working - the next round starts from a worksheet of 36 kinds
+with its owners named, ten of them the host's.

@@ -186,4 +186,30 @@ answers rather than fixes - recorded, in the ledger, with a looker's agreement.
 | 3 the answer path and the worksheet | done | scProfile 4628047 | `review --answer` and `review.answered` (the finding stays open until a looker's fresh look; the outstanding list and the shards carry the figure as needing one); `review --worksheet` with the three owners, the plan entry as declared or the code site, the eye's words, the answer given, the two answers and the rerun's prediction; `audited` declares `worksheet:`; station 6b names it; suites 96 green |
 | 4 the maker | done | harness: this commit | `worksheet:` read beside `command:` and `apply:`, run on `--worksheet`, named "answer it:" for an owing stage, advanced by apply over worksheet over the command; `sch dev job` reads `HEAD.txt` where there is no `.git`, takes `--tool-commit` and verifies it at start, runs a script argv through its interpreter as a module, leaves figures out of a `--redraw`'s products, appends the repository's `run.after` and the maker's own status; `points.run_after`; harness suite green |
 | 5 the order, written once | done | scProfile d7b6d37; harness d338fde, b59db9e, 3dec780 | the workflow table in docs/TEST_LOOP.md as the tools print it; the contract, the result-section skill and the agenda's blocked write task point at it; the repository declares `run: after:` (report, status, capacity --promised, capacity --memory); the developing guide and the maker skill carry the rerun and the worksheet; the surface test caught that `sch dev convert audited --worksheet` was not a parseable command - the maker's verbs stay its own and a run-side stage's answer-it line is the repository's own command, printed filled; suites 96 and the harness suite green |
-| 6 blind 0006 | | | |
+| 6 blind 0006 | done | scProfile 3ee26e7, 4c6112f (the author's two answers); harness 72ce582 .. cb5dc99; docs/blind/0006-the-loop.md | the loop ran end to end with no person in it: a cold author answered the worksheet (28 kinds edited, 10 answered; refused once by the portability scan and amended), the emitted job reran the plugin (four submissions - three sealed FAILED for the job's own reasons, fixed test-first; the fourth SEALED), the lookers were handed 120 figures and marked 66, the audit named 36 surviving kinds with owners (HOST 10, PLUGIN 4, TOOL 22), the writer wrote from the 48 clean figures and was refused on a flagged one, the reviewer rounded 29 claims, the section rendered, two writing seals held W1-W2 and failed W3. L1, L4, L5 held; L2, L3, L6 held after fixes; B1, B2 held; B3 failed (36 kinds survived); B4 held up to the seal; B5 failed on the count: seventeen defects, fifteen fixed test-first the same day, two open |
+
+## What the round found
+
+The loop closes, and it closes on the seams. Every step ran as a command the tools printed, with
+no person in it; what the round paid for was seventeen defects of the mechanism, twelve of them
+at a seam between runs or between machines: a look, an answer, a record that did not carry from
+the run beside; a job that verified one tree and imported another; a prefix, a path, a readers'
+file that a directory holds and a run does not; a rebuild that dropped what the run had recorded;
+a station that read only its own ledger. Each is fixed test-first except two recorded open - the
+composer's route for a total-strength sentence, and the writing run's replay that has no
+siblings - and each fix is general: the output flag by value, the code that runs verified against
+the tree, an answer bound to bytes like a look, a rebuild that records what is on disk.
+
+The eye's verdict is the second finding. A rerun does not clear a finding; a fresh look does,
+and on this cohort the author's first answers cured some of what the eye named and not the rest
+- the fused ring labels after a smaller font, a caption the edit itself added and then clipped -
+while the host's own panels earned ten new findings. B3 predicted five surviving kinds and
+thirty-six survived. That is not the loop failing; it is the loop measuring the plugin's next
+build, with its owners named. The rule the round refined is the pen's: the agenda said the pen
+waits for the run, the gates waited for the figure, and the writer proved the gates right - a
+section written from the figures the eye accepted was accepted, a claim on a flagged one was
+refused. The pen waits for the figures.
+
+Open for the next round, in the order the loop names them: the 36 kinds of the worksheet
+(ten host kinds first, mechanism); the composer's route; the writing run's siblings; and the
+pre-existing debt the status still prints - `cores` and `cost` checked by nobody.
