@@ -80,14 +80,14 @@ height above their points. A label the solve moves further than eight points fro
 gets the ladder's leader, ladder or not. Reproduced test-first through the role panel with
 crafted strengths of the run's shape.
 
-**5. The citation refusal did not name the form** (scProfile, the paper commit after 688a21d's
-scProfile counterpart). The brief and the page number the figures 1 to 90; the writer cited
+**5. The citation refusal did not name the form** (scProfile f5b3c22,
+the paper suite). The brief and the page number the figures 1 to 90; the writer cited
 "15,16,17" and was told "no such figure in this run: 15, 16, 17", and found the form in the
 flag's help. The refusal now says a figure is cited by its run-relative path, as the figure list
 and the brief hold them. Test-first in the paper suite.
 
-**6. The writing brief on disk was stale, and the agenda sent the reader to it** (scProfile, the
-agenda commit after it). Written at report time on the cluster, the brief read 6 of 90 figures
+**6. The writing brief on disk was stale, and the agenda sent the reader to it** (scProfile c1c1346,
+the agenda suite). Written at report time on the cluster, the brief read 6 of 90 figures
 flagged while the run's ledger, after the lookers, held 31; `next` and `agenda` printed 31, the
 file 6. `paper --brief` had answered this in blind 0004 by rewriting the brief before printing
 it; the agenda's first step named the file and did not. The agenda now rewrites the brief before
