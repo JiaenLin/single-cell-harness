@@ -331,6 +331,17 @@ run it produced has been measured, looked at, written from and delivered. A stag
 `fills: []` when it verifies rather than fills; a stage that fills nothing and runs nothing is
 refused when the declaration loads.
 
+### How a fill is applied: `apply:` beside `command:`
+
+A test-phase stage that fills a field had one answer to "how does the measured value reach the
+declaration": somebody pastes it. The repository this was written for measured memory on every
+run and declared it from a guess for the whole life of the tool, because the number existed in a
+file nobody read back. A stage may now declare `apply:` beside `command:` — an argv, with the
+same placeholders, that **writes** the fill into the declaration — and `sch dev convert <stage>
+--run RUNDIR --name X --apply` runs it. A status names the apply line for an owing stage and
+never runs it; the maker learns nothing of what the command writes. The verification stays the
+`command:` — after an apply, the stage is answered only if the command says so (ADR-0018).
+
 ### What the stages cover, which is not whether they are done
 
 `sch dev convert status` prints a coverage block whenever a key in the point's `must_declare` is

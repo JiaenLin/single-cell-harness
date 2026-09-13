@@ -146,14 +146,20 @@ design comparison directly.
 **`measure` — the memory the plugin actually costs.**
 
 ```
-sch dev convert measure --root . --point kernel --run <a completed run>
+sch dev convert measure --root . --point kernel --name <plugin> --run <a completed run>
+sch dev convert measure --root . --point kernel --name <plugin> --run <the same run> --apply
 ```
 
-Fitted from a real run, never estimated. Two terms, always: a fixed cost plus a per-cell one. **A
-rate with no baseline is worse than declaring nothing** — absent, the allocator assumes
-conservative values and prints that it is guessing; a pure rate attributes the fixed cost to the
-cells and asks for less than the import costs on a small object, so the job is sized to be killed.
-Where the run had one size only, the command prints the rate commented out. Leave it commented.
+Measured on every run, never estimated: each instance samples its own process tree in the job
+it shares, and the run fits two terms from those points — a fixed cost plus a per-cell one. The
+first command is the gate: it exits 0 only when the plugin declares both terms at or above the
+fit, and otherwise prints the way out. The second is the way out: the stage's declared `apply:`
+writes the fit plus its headroom into the plugin's own declaration and reads it back. **Nothing
+is pasted by hand** (ADR-0018). A rate with no baseline is worse than declaring nothing — absent,
+the allocator assumes conservative values and prints that it is guessing; a pure rate attributes
+the fixed cost to the cells and asks for less than the import costs on a small object, so the job
+is sized to be killed. Where the run had one size only, the baseline cannot be separated and the
+command says so; measure at a second size before declaring one.
 
 **Who drew each panel, and what it says: the plan's own entry.** Every figure is an entry of
 `report.figures` (see "The figure plan" below). `drawn_by` says `tool` — the wrapped tool's own

@@ -288,9 +288,9 @@ keep it.
 | step | state | commits | notes |
 |---|---|---|---|
 | 0 record | done | this commit | |
-| 1 the audit repairs | | | |
-| 2 the run measures | | | |
-| 3 the maker applies | | | |
+| 1 the audit repairs | done | scProfile c817bca | `figure.audit_and_repair`: nine repairs keyed to their findings, three passes, the column re-fitted; the stamp placed from the rendered box after the fit; `emit_figure` and `figure.save` share it; the manifest carries `repairs`; station 6b prints repaired beside remaining; suites 91 green |
+| 2 the run measures | done | scProfile b59bf7d | `_entry._TreeSampler` (PSS from `smaps_rollup`, RSS otherwise, one /proc walk a second); `peak_measurement` prefers the tree; `capacity --memory` exits 0 only at or above the fit and `--declare` writes the fit plus 10% into the plugin, read back; `measure` declares `apply:`; suites 92 green |
+| 3 the maker applies | done | harness: this commit | `apply:` read beside `command:`; `sch dev convert <stage> --run R --name X --apply` runs it; a status names the apply line for an owing stage and never runs it; the advance command is the apply when the stage owes; DEVELOPING §8 and the skill; harness suite green |
 | 4 the eye before the pen | | | |
 | 5 the reproduction | | | |
 | 6 the fill on cellchat | | | |

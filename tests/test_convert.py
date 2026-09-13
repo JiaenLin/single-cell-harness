@@ -451,6 +451,66 @@ class StageCommands(unittest.TestCase):
         self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
         self.assertIn("--run", p.stderr)
 
+    # HOW A FILL IS APPLIED, DECLARED BESIDE HOW IT IS VERIFIED (harness ADR-0018). A test-phase
+    # stage that fills a field had one answer to "how does the measured value reach the
+    # declaration": somebody pastes it. `apply:` is an argv the repository declares and the maker
+    # runs on `--apply` - never on a status - and the maker learns nothing of what it writes.
+    APPLY = ('        - {name: measure, fills: [mem], command: ["{python}", "-c", "print(1)", '
+             '"{run}"], apply: ["{python}", "-c", "import sys; open(sys.argv[1] + '
+             "'/applied', 'w').write(sys.argv[2])\", \"{run}\", \"{name}\"]}")
+
+    def _with_apply(self):
+        (self.d / "DEVPOINTS.yaml").write_text(DECL.replace(
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}",
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}\n"
+            + self.APPLY))
+        return P.load(self.d)
+
+    def test_a_stage_declares_how_its_fill_is_applied_or_it_does_not(self):
+        doc = self._with_apply()
+        self.assertEqual(C.stage_apply(doc, "widget", "measure")[:3], ["{python}", "-c",
+                         "import sys; open(sys.argv[1] + '/applied', 'w').write(sys.argv[2])"])
+        self.assertEqual(C.stage_apply(self.doc, "widget", "measure"), [])
+        self.assertEqual(C.stage_apply(doc, "widget", "inventory"), [])
+
+    def test_apply_runs_the_apply_argv_with_the_run_and_the_name(self):
+        self._with_apply()
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "measure",
+                            "--root", str(self.d), "--point", "widget", "--run", str(self.d),
+                            "--name", "gadget", "--apply"],
+                           capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual((self.d / "applied").read_text(), "gadget",
+                         "the apply argv runs with {run} and {name} filled")
+
+    def test_without_apply_the_command_runs_and_nothing_is_written(self):
+        self._with_apply()
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "measure",
+                            "--root", str(self.d), "--point", "widget", "--run", str(self.d)],
+                           capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertFalse((self.d / "applied").exists(), "a verification must never write")
+
+    def test_apply_on_a_stage_that_declares_none_says_so(self):
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "measure",
+                            "--root", str(self.d), "--point", "widget", "--run", str(self.d),
+                            "--apply"], capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
+        self.assertIn("apply", p.stderr)
+
+    def test_a_status_never_applies_and_names_the_apply_for_an_owing_stage(self):
+        (self.d / "DEVPOINTS.yaml").write_text(DECL.replace(
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}",
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}\n"
+            + self.APPLY.replace('"print(1)"', '"import sys; sys.exit(1)"')))
+        (self.d / "widgets" / "gadget.py").write_text("PLUGIN = {'name': 'gadget'}\n")
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "status",
+                            "--root", str(self.d), "--point", "widget", "--run", str(self.d),
+                            "--name", "gadget"], capture_output=True, text=True, cwd=ROOT)
+        self.assertFalse((self.d / "applied").exists(), "a status wrote into the artefact")
+        self.assertIn("--apply", p.stdout, p.stdout + p.stderr)
+        self.assertIn("sch dev convert measure", p.stdout)
+
     def test_a_stage_declaring_no_command_says_so_rather_than_guessing(self):
         (self.d / "DEVPOINTS.yaml").write_text(DECL)
         p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "measure",

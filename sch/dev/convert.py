@@ -336,6 +336,9 @@ def status(spec, doc, point_name, name="", source=None, python="", run=""):
                     # stage's question and a different one.
                     "phase": st.get("phase", "build"),
                     "finished_by": finished_by,
+                    # WHAT WRITES THE FILL, when the repository declares it: the status names
+                    # it for an owing stage and never runs it.
+                    "apply": list(st.get("apply") or []),
                     "fills": list(st["fills"]),
                     # THE DEBT ITSELF, NOT ONLY WHETHER THERE IS ONE. `owes_place` is the gate;
                     # this is what the gate read, and `sch dev convert overfit` needs it to tell
@@ -630,6 +633,10 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
                 # character of a station's one line; a tail line is the command's own answer.
                 for line in ran["says"][-5:]:
                     L.append(f"         {line}")
+                if ran["owes"] and r.get("apply"):
+                    L.append(f"       apply it:  sch dev convert {r['stage']} --root {root} "
+                             f"--point {point_name} --name {name or '<plugin>'} --run "
+                             f"{run or '<RUNDIR>'} --apply")
             if r.get("partial"):
                 L.append(f"       started, and the plugin says so: {r['partial'][:150]}")
             if r.get("partial"):
@@ -1015,6 +1022,21 @@ def stage_command(doc, point_name, stage_name):
     for st in stages:
         if st["name"] == stage_name:
             return list(st.get("command") or [])
+    return []
+
+
+def stage_apply(doc, point_name, stage_name):
+    """The argv a stage declares for APPLYING its fill, or []. Beside `command:`, never instead.
+
+    HOW A FILL IS APPLIED, DECLARED BESIDE HOW IT IS VERIFIED (harness ADR-0018). A test-phase
+    stage that fills a field had one answer to "how does the measured value reach the
+    declaration": somebody pastes it. `apply:` is what the repository runs to write it; the maker
+    runs it on `--apply` and never on a status, and learns nothing of what it writes.
+    """
+    _ph, _up, stages = plan(doc, point_name)
+    for st in stages:
+        if st["name"] == stage_name:
+            return list(st.get("apply") or [])
     return []
 
 
@@ -1957,6 +1979,11 @@ def advance_command(row, doc, point_name, root, name, python="", run=""):
     A status that names the stage and withholds the command is a status you need a guide beside.
     """
     stage = row["stage"]
+    # A STAGE THAT OWES ON A RUN AND DECLARES HOW ITS FILL IS APPLIED is advanced by applying
+    # it, not by verifying it again (harness ADR-0018).
+    if row.get("ran", {}).get("owes") and row.get("apply"):
+        return (f"sch dev convert {stage} --root {root} --point {point_name} "
+                f"--name {name or '<plugin>'} --run {run or '<RUNDIR>'} --apply")
     declared = stage_command(doc, point_name, stage)
     if declared:
         return " ".join(fill(declared, {"python": python or "python3", "run": run or "<RUNDIR>",

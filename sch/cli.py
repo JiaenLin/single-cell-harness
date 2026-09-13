@@ -969,7 +969,18 @@ def cmd_dev(a):
               f"plugin. This stage is in the TEST phase - it reads back from something that "
               f"actually ran, and nothing here can invent it.", file=sys.stderr)
         return CANNOT_RUN
-    argv = CV.fill(cmd, {"python": sys.executable, "run": str(a.run), "root": str(a.root)})
+    if getattr(a, "apply", False):
+        # THE FILL IS APPLIED BY WHAT THE REPOSITORY DECLARES (harness ADR-0018), and only when
+        # asked by this flag: a status names it and never runs it.
+        cmd = CV.stage_apply(doc, point, a.action)
+        if not cmd:
+            print(f"sch dev convert {a.action}: point {point!r} declares no `apply:` for the "
+                  f"{a.action} stage, so nothing here can write its fill. Declare `apply:` "
+                  f"beside `command:` in DEVPOINTS.yaml, or answer it by hand.",
+                  file=sys.stderr)
+            return CANNOT_RUN
+    argv = CV.fill(cmd, {"python": sys.executable, "run": str(a.run), "root": str(a.root),
+                         "name": a.name or ""})
     print("  " + " ".join(argv))
     return subprocess.run(argv, cwd=a.root).returncode
 
@@ -1141,6 +1152,10 @@ def build_parser():
                    help="a completed run. `status --run` runs every test-phase stage's command "
                         "against it and reads the exit code as the verdict; a command stage "
                         "named as the action is run against it directly")
+    q.add_argument("--apply", action="store_true",
+                   help="with a command stage named as the action and --run: run the stage's "
+                        "declared `apply:` - what writes its fill into the declaration - "
+                        "instead of its verification. A status never applies")
     q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("rules"))
     q.add_argument("--point", default=None)
