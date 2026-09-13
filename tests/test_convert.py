@@ -566,6 +566,26 @@ class StageCommands(unittest.TestCase):
         self.assertIn("--apply", C.advance_command(row, doc, "widget", str(self.d), "g"))
         self.assertNotIn("--worksheet", C.advance_command(row, doc, "widget", str(self.d), "g"))
 
+    # THE ACTION IS ANY STAGE THE REPOSITORY DECLARES (harness ADR-0019). The parser enumerated
+    # the maker's own verbs, so the "answer it: sch dev convert audited ... --worksheet" line a
+    # status printed for a run-side stage was a command the parser refused - found by the
+    # harness's own surface test the moment a skill quoted it.
+    def test_a_declared_stage_is_accepted_as_the_action_and_an_unknown_one_is_named(self):
+        (self.d / "DEVPOINTS.yaml").write_text(DECL.replace(
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}",
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}\n"
+            '        - {name: audited, fills: [], command: ["{python}", "-c", "print(1)", "{run}"]}'))
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "audited",
+                            "--root", str(self.d), "--point", "widget", "--run", str(self.d)],
+                           capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "nonsense",
+                            "--root", str(self.d), "--point", "widget"],
+                           capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
+        self.assertIn("audited", p.stderr)
+        self.assertIn("status", p.stderr)
+
     def test_a_stage_declaring_no_command_says_so_rather_than_guessing(self):
         (self.d / "DEVPOINTS.yaml").write_text(DECL)
         p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "measure",
