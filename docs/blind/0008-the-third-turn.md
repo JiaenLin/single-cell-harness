@@ -44,7 +44,13 @@ test 6 of 8 with `cores` and `audited` owing.
 
 ## Defects of the mechanism, as they came
 
-(none yet)
+**1. The portability suite crashed on the author's one-kernel tree** (scProfile, the commit after
+365ad3b). The cold author is handed a cellchat-only export, which is also what the cluster runs;
+the suite's organism checks indexed `scenic`, `velocity` and `cellcycle` by name and died with
+`KeyError: 'scenic'` before printing a verdict, so the author reported "no FAIL line names
+cellchat.py" from a suite that had not finished. The checks now skip on a tree without those
+kernels and say which they needed; the checks about the tree still run. Found by the author.
+
 
 ## Results
 
