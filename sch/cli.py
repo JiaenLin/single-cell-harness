@@ -550,12 +550,7 @@ def cmd_dev(a):
         except CV.ConvertError as e:
             print(f"sch dev convert: {e}", file=sys.stderr)
             return CANNOT_RUN
-        _declared = [st["name"] for st in _stages]
-        if a.action not in CV.ACTIONS and a.action not in _declared:
-            print(f"sch dev convert: {a.action!r} is neither one of this maker's actions "
-                  f"({', '.join(CV.ACTIONS)}) nor a stage point {point!r} declares "
-                  f"({', '.join(_declared)}).", file=sys.stderr)
-            return CANNOT_RUN
+
         # THE SPECS ARE FOR THE ACTIONS THAT READ A DECLARATION, and `measure` is not one of
         # them: it runs the child's own command against a completed run and never opens a plugin.
         # Requiring them first made it refuse with "no widget named None" - an error about the
@@ -1162,11 +1157,8 @@ def build_parser():
     # RUNDIR` runs them and prints each one's own command as the way to answer it, so they need
     # no name in this parser - and a name here would be the stage-name leak the note below
     # already records, one level up.
-    # THE ACTION IS A MAKER VERB OR ANY STAGE THE REPOSITORY DECLARES (harness ADR-0019): the
-    # choices are checked after the declaration loads, in the dispatcher, so a run-side stage a
-    # status names - "answer it: sch dev convert audited ... --worksheet" - is a command the
-    # parser accepts. An unknown action is refused there, naming what would have been accepted.
-    q.add_argument("action", nargs="?", default="status")
+    from .dev.convert import ACTIONS as _CONVERT_ACTIONS
+    q.add_argument("action", nargs="?", default="status", choices=list(_CONVERT_ACTIONS))
     q.add_argument("--point", default=None)
     q.add_argument("--name", default=None,
                    help="the plugin being converted. REQUIRED for the actions that fill a "

@@ -87,9 +87,9 @@ panel was written; what remains, and what the eye marked, is the plugin's to fix
 its code - rerun, look again at what was redrawn), then `written` (the composed claims defended
 by a second agent, your own added, the section carried in with `paper --write` and rendered) and
 `delivered`. The pen waits for the figures: no claim may cite a figure with an open finding
-(ADR-0018). **When `audited` owes, the status prints "answer it:" — the audit's worksheet**
-(`sch dev convert audited --run <replay> --name <plugin> --worksheet`): every open finding by
-kind with its owner. A host panel is the host's to fix; a tool plate is its plan entry's
+(ADR-0018). **When `audited` owes, the status prints "answer it:" — the audit's worksheet, the
+repository's own command filled** (`scprofile review --out <replay> --plugin <plugin>
+--worksheet`): every open finding by kind with its owner. A host panel is the host's to fix; a tool plate is its plan entry's
 arguments, size and legend; the plugin's own drawing is its file and line. Answer each kind
 once — paste the edit into the plan or the plugin and bump `version`, or record `scprofile
 review --figure <f> --answer "why" --reviewer <you>` for a plate the upstream draws as it should

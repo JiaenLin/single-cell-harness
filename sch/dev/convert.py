@@ -639,9 +639,18 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
                              f"--point {point_name} --name {name or '<plugin>'} --run "
                              f"{run or '<RUNDIR>'} --apply")
                 elif ran["owes"] and r.get("worksheet"):
-                    L.append(f"       answer it:  sch dev convert {r['stage']} --root {root} "
-                             f"--point {point_name} --name {name or '<plugin>'} --run "
-                             f"{run or '<RUNDIR>'} --worksheet")
+                    # A RUN-SIDE STAGE IS NOT A MAKER VERB, ON PURPOSE (the note on ACTIONS):
+                    # the way to answer it is the repository's own command, printed filled.
+                    # A stage that is a verb here is answered through the maker's flag.
+                    if r["stage"] in ACTIONS:
+                        L.append(f"       answer it:  sch dev convert {r['stage']} --root {root} "
+                                 f"--point {point_name} --name {name or '<plugin>'} --run "
+                                 f"{run or '<RUNDIR>'} --worksheet")
+                    else:
+                        L.append("       answer it:  " + " ".join(fill(
+                            r["worksheet"], {"python": python or "python3",
+                                             "run": run or "<RUNDIR>", "root": root,
+                                             "name": name or "<plugin>"})))
             if r.get("partial"):
                 L.append(f"       started, and the plugin says so: {r['partial'][:150]}")
             if r.get("partial"):
@@ -2006,8 +2015,12 @@ def advance_command(row, doc, point_name, root, name, python="", run=""):
         return (f"sch dev convert {stage} --root {root} --point {point_name} "
                 f"--name {name or '<plugin>'} --run {run or '<RUNDIR>'} --apply")
     if row.get("ran", {}).get("owes") and row.get("worksheet"):
-        return (f"sch dev convert {stage} --root {root} --point {point_name} "
-                f"--name {name or '<plugin>'} --run {run or '<RUNDIR>'} --worksheet")
+        if stage in ACTIONS:
+            return (f"sch dev convert {stage} --root {root} --point {point_name} "
+                    f"--name {name or '<plugin>'} --run {run or '<RUNDIR>'} --worksheet")
+        return " ".join(fill(row["worksheet"], {"python": python or "python3",
+                                                 "run": run or "<RUNDIR>", "root": root,
+                                                 "name": name or "<plugin>"}))
     declared = stage_command(doc, point_name, stage)
     if declared:
         return " ".join(fill(declared, {"python": python or "python3", "run": run or "<RUNDIR>",

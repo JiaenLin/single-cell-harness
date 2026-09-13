@@ -82,8 +82,9 @@ new stage, station or file kind. What changes, each to a mechanism that exists:
   line of the emit or draw site) - quotes the eye, and prints the two answers: edit the entry or
   the code and bump the version; or `--answer` (below). It ends with the prediction the rerun
   is submitted with. The `audited` stage declares it as its `worksheet:`; the maker prints
-  "answer it: sch dev convert audited --run R --name X --worksheet" for the owing stage and
-  runs it on that flag, as it does `apply:`.
+  "answer it:" with the repository's own command filled for the owing stage - a run-side
+  stage is not a maker verb, on purpose - and runs a verb stage's worksheet on `--worksheet`,
+  as it does `apply:`.
 - **C. The answer path.** `scprofile review --figure F --answer "..." --reviewer <author>`
   records why a plate stays as it is. The finding stays open - the eye's verdict is the
   eye's - until a looker's fresh look on the same bytes; `outstanding` lists answered figures
