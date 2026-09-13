@@ -460,6 +460,25 @@ class Job(unittest.TestCase):
         self.assertIn("REFUSED", r2.stderr + r2.stdout)
         self.assertNotIn("the decoy ran", r2.stderr + r2.stdout)
 
+    def test_the_expected_products_are_the_ones_the_reference_run_recorded(self):
+        """The job expected every non-figure file in the reference DIRECTORY, and a directory
+        holds more than the run: the reference's hand-written job had also run four of the
+        tool's reading commands there, each leaving a STATUS.<cmd>.json, so the rerun (PBS
+        711059, blind 0006) sealed FAILED with all of the tool's own products present. A run's
+        record says what the run delivered; when the reference carries one, that is the
+        expectation, and the directory scan is the fallback for a reference without a record."""
+        (self.d / "ref" / "STATUS.extra.json").write_text("{}")          # somebody ran a reader here
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok", "argv": ["t", "run", "--out", "/old"],
+             "products": [{"path": "STATUS.json", "bytes": 10}, {"path": "report.json", "bytes": 10}]}))
+        self.assertEqual(sorted(J.products_of(self.d / "ref")), ["STATUS.json", "report.json"])
+        _loop = next(l for l in J.emit(prediction="identical", **self.kw).splitlines()
+                     if l.strip().startswith("for p in "))
+        self.assertNotIn("STATUS.extra.json", _loop)
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok", "argv": ["t", "run", "--out", "/old"]}))
+        self.assertIn("STATUS.extra.json", J.products_of(self.d / "ref"))   # no record: the scan
+
     def test_the_makers_status_is_written_to_the_run(self):
         text = J.emit(prediction="identical", maker_status=("k", "widget"), **self.kw)
         self.assertIn("sch dev convert status", text)

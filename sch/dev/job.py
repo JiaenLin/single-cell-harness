@@ -77,13 +77,34 @@ def products_of(ref_dir, figures=True) -> list:
     keep = {".json", ".csv", ".tsv", ".h5ad", ".html", ".md", ".png", ".pdf", ".npy"}
     if not figures:
         keep -= {".png", ".pdf"}
+
+    def _wanted(rel):
+        rel = Path(rel)
+        return (rel.suffix in keep and rel.parts[0] not in ("logs", "cache", "tmp")
+                and not rel.name.startswith(("RUNNING", "SEALED", "FAILED")))
+
+    # THE RUN'S OWN RECORD FIRST (harness ADR-0019, blind 0006). A directory holds more than the
+    # run: the reference's job had run four of the tool's reading commands there, each leaving a
+    # STATUS.<cmd>.json, and the rerun sealed FAILED with every product of the run itself present.
+    # When the record says what the run delivered, that is the expectation; the scan is for a
+    # reference without one.
+    # Read from STATUS.json itself - the run command's own record under the conformance
+    # contract - and not from the merged record, whose `products` is whichever reader wrote last.
+    try:
+        import json as _json
+        _rec = _json.loads((ref / "STATUS.json").read_text(encoding="utf-8"))
+        recorded = [str(x.get("path")) for x in (_rec.get("products") or [])
+                    if isinstance(x, dict) and x.get("path") and int(x.get("bytes") or 0) > 0]
+    except Exception:                                                     # noqa: BLE001
+        recorded = []
+    if recorded:
+        return sorted({r for r in recorded if _wanted(r)})
     out = []
     for p in sorted(ref.rglob("*")):
-        if p.is_file() and p.suffix in keep and p.stat().st_size > 0:
+        if p.is_file() and p.stat().st_size > 0:
             rel = p.relative_to(ref)
-            if rel.parts[0] in ("logs", "cache", "tmp") or rel.name.startswith(("RUNNING", "SEALED", "FAILED")):
-                continue
-            out.append(str(rel))
+            if _wanted(rel):
+                out.append(str(rel))
     return out
 
 
