@@ -760,239 +760,243 @@ def cmd_dev(a):
                           f"must not be recorded as one.")
             return FAILED if bad else OK
 
-    if a.action == "account":
-        # THE INVENTORY TURNED INTO A DECISION. Printed to paste, which is this tool's existing
-        # idiom for a measurement a machine took and a maintainer owns.
-        bad = 0
-        for nm, spec in specs:
-            tool = a.tool or CV._dotted(spec, up_path)
-            if not tool:
-                continue
-            best = None
-            for _ext, inv in CV.inventory(tool, python=a.python, rscript=a.rscript):
-                if inv.complete and (best is None or len(inv) > len(best)):
-                    best = inv
-            if best is None:
-                bad += 1
-                print(f"\n{nm}: no extractor could look at {tool}, so there is nothing to rule "
-                      f"on yet. Build this plugin's environment first.")
-                continue
-            print(f"\n# ---- {nm}: paste into kernels/{nm}.py, then rule on each entry")
-            print(f"#      {best.how}")
-            # THE PLUGIN'S OWN SOURCE IS HALF THE ANSWER, so it is read and passed in.
-            src = ""
-            for f in sorted((Path(a.root) / str(P.point(doc, point).get("lives") or ".")).glob("*.py")):
-                if f.stem == nm:
-                    src = f.read_text(encoding="utf-8")
-                    break
-            ctx = CV.ruling_context(spec, doc, point)
-            if ctx:
-                print(ctx)
-            # WHAT THE PLUGIN HAS DECIDED, IN ONE SHAPE WHATEVER FORM IT IS ON (ADR-0016).
-            declared, form = CV.declared_of(spec, doc, point)
-            _pst = CV.plan_stage(doc, point) or {}
-            _skips = str((_pst.get(CV.ENTRY_KEYS) or {}).get("skips") or "report.skips")
-            print(CV.worksheet(tool, best, declared, src, _ph, form=form, skips_key=_skips))
-        return FAILED if bad else OK
-
-    if a.action == "build":
-        # THE WHOLE BUILD, IN ORDER, STOPPING WHERE ONLY A PERSON CAN GO ON. `status` named the
-        # next stage and not the command; naming the command still left an agent to run six of
-        # them by hand and know which need the plugin's own interpreter. This walks the BUILD
-        # phase - never the test phase, which needs data and is a different question - runs each
-        # mechanical stage, and stops at the first thing requiring a decision.
-        #
-        # IT RUNS NOTHING THAT WRITES. Every stage here reads source and prints; the worksheets
-        # are pasted by whoever read them. A driver that edited declarations would be deciding
-        # the things this pipeline exists to put in front of somebody.
-        rows = None
-        for nm, spec in specs:
-            rows = CV.status(spec, doc, point, nm)
-            build = [r for r in rows if r.get("phase", "build") == "build"]
-            done = sum(1 for r in build if r["done"])
-            print(f"\n=== {nm}: build is {done} of {len(build)}")
-            for r in build:
-                if r["done"]:
-                    print(f"  done {r['stage']}")
+        # INSIDE THE CONVERT BLOCK, where every `a.action` below belongs: dedented to the top of
+        # `cmd_dev` by fe5ecae, these three branches ran for `baseline` and `job` too, and the
+        # unconditional return at the end of the last one left both subcommands unreachable
+        # (found by blind 0006; tests/test_dev.py ReachableThroughTheCli).
+        if a.action == "account":
+            # THE INVENTORY TURNED INTO A DECISION. Printed to paste, which is this tool's existing
+            # idiom for a measurement a machine took and a maintainer owns.
+            bad = 0
+            for nm, spec in specs:
+                tool = a.tool or CV._dotted(spec, up_path)
+                if not tool:
                     continue
-                cmd = CV.advance_command(r, doc, point, a.root, nm, a.python or "", "")
-                if not cmd or r["kind"] == "judgement":
-                    print(f"\n  STOP at {r['stage']}: nothing runs this. It is what only you can "
-                          f"answer: {', '.join(r['missing'])}")
-                    if r["why"]:
-                        print(f"       {r['why'].strip()}")
-                    break
-                if r.get("partial"):
-                    # A STARTED STAGE STOPS THE BUILD TOO: `partial` is what the plugin's own
-                    # entries say is still unruled, and a driver that walked past it would run
-                    # every later stage and report a build with unruled panels in it.
-                    said = r.get("partial")
-                    if said:
-                        print(f"\n  STOP at {r['stage']}: started, and the source says what is "
-                              f"left.")
-                        print(f"       {said[:200]}")
-                        print(f"       to see the rest:  {cmd}")
+                best = None
+                for _ext, inv in CV.inventory(tool, python=a.python, rscript=a.rscript):
+                    if inv.complete and (best is None or len(inv) > len(best)):
+                        best = inv
+                if best is None:
+                    bad += 1
+                    print(f"\n{nm}: no extractor could look at {tool}, so there is nothing to rule "
+                          f"on yet. Build this plugin's environment first.")
+                    continue
+                print(f"\n# ---- {nm}: paste into kernels/{nm}.py, then rule on each entry")
+                print(f"#      {best.how}")
+                # THE PLUGIN'S OWN SOURCE IS HALF THE ANSWER, so it is read and passed in.
+                src = ""
+                for f in sorted((Path(a.root) / str(P.point(doc, point).get("lives") or ".")).glob("*.py")):
+                    if f.stem == nm:
+                        src = f.read_text(encoding="utf-8")
                         break
-                print(f"\n  --- {r['stage']}")
-                argv = cmd.split()
-                if argv[:1] == ["sch"]:
-                    argv = [sys.executable, "-m", "sch"] + argv[1:]
-                if "<the interpreter this plugin runs in>" in cmd:
-                    print(f"  STOP at {r['stage']}: needs the interpreter this plugin runs in. "
-                          f"Pass --python; `scprofile install {nm} --prefix DIR` builds it.")
-                    break
-                # NOT `cwd=a.root`. The sub-command already knows the repository from --root,
-                # and running it from there put the harness off `sys.path`, so every stage died on
-                # "No module named sch" - and the driver dutifully reported the stage as failing.
-                env = dict(os.environ)
-                here = str(Path(__file__).resolve().parents[1])
-                env["PYTHONPATH"] = os.pathsep.join(
-                    [here] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
-                # FLUSHED FIRST. The parent's prints are buffered and the child's are not, so
-                # the stage's output arrived ABOVE the header saying which stage it was - which
-                # for a driver whose whole job is to say where you are is the one thing it must
-                # not do.
-                sys.stdout.flush()
-                rc = subprocess.run(argv, env=env).returncode
-                sys.stdout.flush()
-                if rc != 0:
-                    print(f"  {r['stage']} exited {rc}; stopping here.")
-                    return rc
-        return OK
+                ctx = CV.ruling_context(spec, doc, point)
+                if ctx:
+                    print(ctx)
+                # WHAT THE PLUGIN HAS DECIDED, IN ONE SHAPE WHATEVER FORM IT IS ON (ADR-0016).
+                declared, form = CV.declared_of(spec, doc, point)
+                _pst = CV.plan_stage(doc, point) or {}
+                _skips = str((_pst.get(CV.ENTRY_KEYS) or {}).get("skips") or "report.skips")
+                print(CV.worksheet(tool, best, declared, src, _ph, form=form, skips_key=_skips))
+            return FAILED if bad else OK
 
-    if a.action in ("defaults", "references", "contract"):
-        # SCANS READ THE PLUGIN; the defaults stage also asks the upstream what its parameters are.
-        lives = str(P.point(doc, point).get("lives") or ".")
-        for nm, spec in specs:
-            src = ""
-            f = Path(a.root) / lives / f"{nm}.py"
-            if f.is_file():
-                src = f.read_text(encoding="utf-8")
-            if not src:
-                print(f"{nm}: not a single file under {lives}/, so it cannot be read here")
-                continue
-            tool = a.tool or CV._dotted(spec, up_path) or ""
-            if a.action == "contract":
-                got = CV.contract_in(src)
-                _dec = [f.get("id") for f in ((spec.get("report") or {}).get("figures") or [])]
-                print(f"\n# ---- {nm}: what the code emits, held against what it declares")
-                for field, found, declared in (("produces", got["produces"],
-                                                list(spec.get("produces") or [])),
-                                               ("report.figures", got["report.figures"], _dec)):
-                    fs, ds = set(found), set(declared)
-                    # A NAME IS OFTEN DECLARED WITH A SUFFIX THE EMIT DOES NOT CARRY.
-                    same = {f for f in fs if any(f in d or d in f for d in ds)}
-                    print(f"    # {field}: {len(found)} emitted, {len(declared)} declared, "
-                          f"{len(same)} matched")
-                    extra = sorted(fs - same)
-                    if extra:
-                        print(f"    #   EMITTED AND NOT DECLARED: {extra}")
-                    unseen = sorted(d for d in ds if not any(d in f or f in d for f in fs))
-                    if unseen:
-                        print(f"    #   declared and not seen by this scan: {unseen}")
-                if got["dynamic"]:
-                    print(f"    # THIS SCAN IS BLIND TO {len(got['dynamic'])} EMISSION(S) whose "
-                          f"name is computed:")
-                    for fn_, ln_, expr in got["dynamic"]:
-                        print(f"    #   line {ln_}: {fn_}({expr})")
-                    print("    #   So 'declared and not seen' above is NOT evidence the "
-                          "declaration is wrong. Read those lines before changing anything.")
-                print(f"    # reads from ctx: {', '.join(got['reads']) or 'nothing'}")
-                continue
-            if a.action == "references":
-                found = CV.references_in(src, tool)
-                print(f"\n# ---- {nm}: consulted, and not from the user's object")
-                # SAY WHAT IS ALREADY THERE, EVEN WHEN NOTHING WAS FOUND. This printed the
-                # same "nothing found, declare {}" line before and after somebody declared `{}`,
-                # because the already-declared line was only reached when the extractor had
-                # candidates - so a maintainer who had just done the work was told to do it again
-                # and reasonably concluded their edit had not taken.
-                have = spec.get("references")
-                if not found:
-                    if isinstance(have, dict) and not have:
-                        print('    # nothing found, and `"references": {}` is declared - so this '
-                              "says somebody looked. Nothing to do.")
-                    elif have:
-                        print(f"    # nothing found, and {len(have)} already declared: "
-                              f"{sorted(have)}. This scan reads Python; a reference fetched from R "
-                              f"or a subprocess is invisible to it, so those are not contradicted.")
-                    else:
-                        print(f"    # nothing found, and nothing declared. If that is right, "
-                              f'declare it: "references": {{}} says you looked; absent says '
-                              f"nobody did.")
+        if a.action == "build":
+            # THE WHOLE BUILD, IN ORDER, STOPPING WHERE ONLY A PERSON CAN GO ON. `status` named the
+            # next stage and not the command; naming the command still left an agent to run six of
+            # them by hand and know which need the plugin's own interpreter. This walks the BUILD
+            # phase - never the test phase, which needs data and is a different question - runs each
+            # mechanical stage, and stops at the first thing requiring a decision.
+            #
+            # IT RUNS NOTHING THAT WRITES. Every stage here reads source and prints; the worksheets
+            # are pasted by whoever read them. A driver that edited declarations would be deciding
+            # the things this pipeline exists to put in front of somebody.
+            rows = None
+            for nm, spec in specs:
+                rows = CV.status(spec, doc, point, nm)
+                build = [r for r in rows if r.get("phase", "build") == "build"]
+                done = sum(1 for r in build if r["done"])
+                print(f"\n=== {nm}: build is {done} of {len(build)}")
+                for r in build:
+                    if r["done"]:
+                        print(f"  done {r['stage']}")
+                        continue
+                    cmd = CV.advance_command(r, doc, point, a.root, nm, a.python or "", "")
+                    if not cmd or r["kind"] == "judgement":
+                        print(f"\n  STOP at {r['stage']}: nothing runs this. It is what only you can "
+                              f"answer: {', '.join(r['missing'])}")
+                        if r["why"]:
+                            print(f"       {r['why'].strip()}")
+                        break
+                    if r.get("partial"):
+                        # A STARTED STAGE STOPS THE BUILD TOO: `partial` is what the plugin's own
+                        # entries say is still unruled, and a driver that walked past it would run
+                        # every later stage and report a build with unruled panels in it.
+                        said = r.get("partial")
+                        if said:
+                            print(f"\n  STOP at {r['stage']}: started, and the source says what is "
+                                  f"left.")
+                            print(f"       {said[:200]}")
+                            print(f"       to see the rest:  {cmd}")
+                            break
+                    print(f"\n  --- {r['stage']}")
+                    argv = cmd.split()
+                    if argv[:1] == ["sch"]:
+                        argv = [sys.executable, "-m", "sch"] + argv[1:]
+                    if "<the interpreter this plugin runs in>" in cmd:
+                        print(f"  STOP at {r['stage']}: needs the interpreter this plugin runs in. "
+                              f"Pass --python; `scprofile install {nm} --prefix DIR` builds it.")
+                        break
+                    # NOT `cwd=a.root`. The sub-command already knows the repository from --root,
+                    # and running it from there put the harness off `sys.path`, so every stage died on
+                    # "No module named sch" - and the driver dutifully reported the stage as failing.
+                    env = dict(os.environ)
+                    here = str(Path(__file__).resolve().parents[1])
+                    env["PYTHONPATH"] = os.pathsep.join(
+                        [here] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
+                    # FLUSHED FIRST. The parent's prints are buffered and the child's are not, so
+                    # the stage's output arrived ABOVE the header saying which stage it was - which
+                    # for a driver whose whole job is to say where you are is the one thing it must
+                    # not do.
+                    sys.stdout.flush()
+                    rc = subprocess.run(argv, env=env).returncode
+                    sys.stdout.flush()
+                    if rc != 0:
+                        print(f"  {r['stage']} exited {rc}; stopping here.")
+                        return rc
+            return OK
+
+        if a.action in ("defaults", "references", "contract"):
+            # SCANS READ THE PLUGIN; the defaults stage also asks the upstream what its parameters are.
+            lives = str(P.point(doc, point).get("lives") or ".")
+            for nm, spec in specs:
+                src = ""
+                f = Path(a.root) / lives / f"{nm}.py"
+                if f.is_file():
+                    src = f.read_text(encoding="utf-8")
+                if not src:
+                    print(f"{nm}: not a single file under {lives}/, so it cannot be read here")
                     continue
-                for r in found:
-                    print(f"    # {r['kind']:9s} line {r['line']}: {r['what']}")
-                    print(f"    #   {r['why']}")
-                print(f"    # already declared: {sorted(spec.get('references') or {})}")
-                continue
-            # defaults
-            if not tool:
-                print(f"{nm}: declares no `{up_path}`, so there is no upstream to read")
-                continue
-            calls = CV.upstream_calls(src, tool)
-            if not calls:
-                print(f"\n# ---- {nm}: no call into {tool} found, so nothing is being inherited "
-                      f"from it. If this wrapper drives the tool some other way - a subprocess, "
-                      f"an R string - this scan cannot see it and has not said there is nothing.")
-                continue
-            from .dev.extract import python_package as _PP
-            params = _PP.parameters(sorted(calls), python=a.python or "python3")
-            print(f"\n# ---- {nm}: paste into kernels/{nm}.py, then rule on each")
-            print(CV.defaults_worksheet(tool, calls, params, spec.get("config"), _ph,
-                                        pins=(spec.get("requires") or {}).get("packages")))
-        return OK
+                tool = a.tool or CV._dotted(spec, up_path) or ""
+                if a.action == "contract":
+                    got = CV.contract_in(src)
+                    _dec = [f.get("id") for f in ((spec.get("report") or {}).get("figures") or [])]
+                    print(f"\n# ---- {nm}: what the code emits, held against what it declares")
+                    for field, found, declared in (("produces", got["produces"],
+                                                    list(spec.get("produces") or [])),
+                                                   ("report.figures", got["report.figures"], _dec)):
+                        fs, ds = set(found), set(declared)
+                        # A NAME IS OFTEN DECLARED WITH A SUFFIX THE EMIT DOES NOT CARRY.
+                        same = {f for f in fs if any(f in d or d in f for d in ds)}
+                        print(f"    # {field}: {len(found)} emitted, {len(declared)} declared, "
+                              f"{len(same)} matched")
+                        extra = sorted(fs - same)
+                        if extra:
+                            print(f"    #   EMITTED AND NOT DECLARED: {extra}")
+                        unseen = sorted(d for d in ds if not any(d in f or f in d for f in fs))
+                        if unseen:
+                            print(f"    #   declared and not seen by this scan: {unseen}")
+                    if got["dynamic"]:
+                        print(f"    # THIS SCAN IS BLIND TO {len(got['dynamic'])} EMISSION(S) whose "
+                              f"name is computed:")
+                        for fn_, ln_, expr in got["dynamic"]:
+                            print(f"    #   line {ln_}: {fn_}({expr})")
+                        print("    #   So 'declared and not seen' above is NOT evidence the "
+                              "declaration is wrong. Read those lines before changing anything.")
+                    print(f"    # reads from ctx: {', '.join(got['reads']) or 'nothing'}")
+                    continue
+                if a.action == "references":
+                    found = CV.references_in(src, tool)
+                    print(f"\n# ---- {nm}: consulted, and not from the user's object")
+                    # SAY WHAT IS ALREADY THERE, EVEN WHEN NOTHING WAS FOUND. This printed the
+                    # same "nothing found, declare {}" line before and after somebody declared `{}`,
+                    # because the already-declared line was only reached when the extractor had
+                    # candidates - so a maintainer who had just done the work was told to do it again
+                    # and reasonably concluded their edit had not taken.
+                    have = spec.get("references")
+                    if not found:
+                        if isinstance(have, dict) and not have:
+                            print('    # nothing found, and `"references": {}` is declared - so this '
+                                  "says somebody looked. Nothing to do.")
+                        elif have:
+                            print(f"    # nothing found, and {len(have)} already declared: "
+                                  f"{sorted(have)}. This scan reads Python; a reference fetched from R "
+                                  f"or a subprocess is invisible to it, so those are not contradicted.")
+                        else:
+                            print(f"    # nothing found, and nothing declared. If that is right, "
+                                  f'declare it: "references": {{}} says you looked; absent says '
+                                  f"nobody did.")
+                        continue
+                    for r in found:
+                        print(f"    # {r['kind']:9s} line {r['line']}: {r['what']}")
+                        print(f"    #   {r['why']}")
+                    print(f"    # already declared: {sorted(spec.get('references') or {})}")
+                    continue
+                # defaults
+                if not tool:
+                    print(f"{nm}: declares no `{up_path}`, so there is no upstream to read")
+                    continue
+                calls = CV.upstream_calls(src, tool)
+                if not calls:
+                    print(f"\n# ---- {nm}: no call into {tool} found, so nothing is being inherited "
+                          f"from it. If this wrapper drives the tool some other way - a subprocess, "
+                          f"an R string - this scan cannot see it and has not said there is nothing.")
+                    continue
+                from .dev.extract import python_package as _PP
+                params = _PP.parameters(sorted(calls), python=a.python or "python3")
+                print(f"\n# ---- {nm}: paste into kernels/{nm}.py, then rule on each")
+                print(CV.defaults_worksheet(tool, calls, params, spec.get("config"), _ph,
+                                            pins=(spec.get("requires") or {}).get("packages")))
+            return OK
 
-    # ANY STAGE THAT DECLARES A COMMAND IS RUN BY ITS OWN NAME. This branch used to be
-    # `if a.action == "measure"`, and the comment under it said the harness "does not know what a
-    # run directory of this tool looks like and must not learn" - which was true of the COMMAND
-    # and false of the NAME sitting in the `if`. The second command stage this repository declared
-    # was unreachable: `promised` was in DEVPOINTS, printed by `status`, and no way to run it.
-    #
-    # A stage is a command stage because it DECLARES a command, which is a fact this module can
-    # read. (`--action` still enumerates the stage names it will accept, which is the same leak one
-    # level up and is not fixed here; it is written down in tests/test_convert.py.)
-    # EVERY ACTION THAT REACHES HERE IS A COMMAND-STAGE ATTEMPT. Each build action above returns,
-    # so what is left is a stage this repository declares a `command:` for - and the guard here
-    # must NOT be "is it a declared stage", because a point that declares no such stage at all
-    # would then fall past this branch and out of the dispatcher with "unknown dev subcommand".
-    cmd = CV.stage_command(doc, point, a.action)
-    if not cmd:
-        # A STAGE THAT IS NOT A COMMAND STAGE SAYS SO. Reached when this repository declares
-        # the stage but no `command:` for it - which is the ordinary case for every build
-        # stage, and an error only for an action the caller asked to RUN.
-        print(f"sch dev convert: point {point!r} declares no command for the {a.action} "
-              f"stage, so there is nothing to run. Add `command:` to that stage in "
-              f"DEVPOINTS.yaml.", file=sys.stderr)
-        return CANNOT_RUN
-    if not a.run:
-        print(f"sch dev convert {a.action}: pass --run RUNDIR, a completed run of this "
-              f"plugin. This stage is in the TEST phase - it reads back from something that "
-              f"actually ran, and nothing here can invent it.", file=sys.stderr)
-        return CANNOT_RUN
-    if getattr(a, "apply", False):
-        # THE FILL IS APPLIED BY WHAT THE REPOSITORY DECLARES (harness ADR-0018), and only when
-        # asked by this flag: a status names it and never runs it.
-        cmd = CV.stage_apply(doc, point, a.action)
+        # ANY STAGE THAT DECLARES A COMMAND IS RUN BY ITS OWN NAME. This branch used to be
+        # `if a.action == "measure"`, and the comment under it said the harness "does not know what a
+        # run directory of this tool looks like and must not learn" - which was true of the COMMAND
+        # and false of the NAME sitting in the `if`. The second command stage this repository declared
+        # was unreachable: `promised` was in DEVPOINTS, printed by `status`, and no way to run it.
+        #
+        # A stage is a command stage because it DECLARES a command, which is a fact this module can
+        # read. (`--action` still enumerates the stage names it will accept, which is the same leak one
+        # level up and is not fixed here; it is written down in tests/test_convert.py.)
+        # EVERY ACTION THAT REACHES HERE IS A COMMAND-STAGE ATTEMPT. Each build action above returns,
+        # so what is left is a stage this repository declares a `command:` for - and the guard here
+        # must NOT be "is it a declared stage", because a point that declares no such stage at all
+        # would then fall past this branch and out of the dispatcher with "unknown dev subcommand".
+        cmd = CV.stage_command(doc, point, a.action)
         if not cmd:
-            print(f"sch dev convert {a.action}: point {point!r} declares no `apply:` for the "
-                  f"{a.action} stage, so nothing here can write its fill. Declare `apply:` "
-                  f"beside `command:` in DEVPOINTS.yaml, or answer it by hand.",
-                  file=sys.stderr)
+            # A STAGE THAT IS NOT A COMMAND STAGE SAYS SO. Reached when this repository declares
+            # the stage but no `command:` for it - which is the ordinary case for every build
+            # stage, and an error only for an action the caller asked to RUN.
+            print(f"sch dev convert: point {point!r} declares no command for the {a.action} "
+                  f"stage, so there is nothing to run. Add `command:` to that stage in "
+                  f"DEVPOINTS.yaml.", file=sys.stderr)
             return CANNOT_RUN
-    elif getattr(a, "worksheet", False):
-        # THE WORKSHEET IS PRINTED BY WHAT THE REPOSITORY DECLARES (harness ADR-0019): the
-        # findings by kind with their owners, from the run, for the author to answer.
-        cmd = CV.stage_worksheet(doc, point, a.action)
-        if not cmd:
-            print(f"sch dev convert {a.action}: point {point!r} declares no `worksheet:` for "
-                  f"the {a.action} stage, so nothing here can print what it owes. Declare "
-                  f"`worksheet:` beside `command:` in DEVPOINTS.yaml.", file=sys.stderr)
+        if not a.run:
+            print(f"sch dev convert {a.action}: pass --run RUNDIR, a completed run of this "
+                  f"plugin. This stage is in the TEST phase - it reads back from something that "
+                  f"actually ran, and nothing here can invent it.", file=sys.stderr)
             return CANNOT_RUN
-    argv = CV.fill(cmd, {"python": sys.executable, "run": str(a.run), "root": str(a.root),
-                         "name": a.name or ""})
-    print("  " + " ".join(argv))
-    return subprocess.run(argv, cwd=a.root).returncode
+        if getattr(a, "apply", False):
+            # THE FILL IS APPLIED BY WHAT THE REPOSITORY DECLARES (harness ADR-0018), and only when
+            # asked by this flag: a status names it and never runs it.
+            cmd = CV.stage_apply(doc, point, a.action)
+            if not cmd:
+                print(f"sch dev convert {a.action}: point {point!r} declares no `apply:` for the "
+                      f"{a.action} stage, so nothing here can write its fill. Declare `apply:` "
+                      f"beside `command:` in DEVPOINTS.yaml, or answer it by hand.",
+                      file=sys.stderr)
+                return CANNOT_RUN
+        elif getattr(a, "worksheet", False):
+            # THE WORKSHEET IS PRINTED BY WHAT THE REPOSITORY DECLARES (harness ADR-0019): the
+            # findings by kind with their owners, from the run, for the author to answer.
+            cmd = CV.stage_worksheet(doc, point, a.action)
+            if not cmd:
+                print(f"sch dev convert {a.action}: point {point!r} declares no `worksheet:` for "
+                      f"the {a.action} stage, so nothing here can print what it owes. Declare "
+                      f"`worksheet:` beside `command:` in DEVPOINTS.yaml.", file=sys.stderr)
+                return CANNOT_RUN
+        argv = CV.fill(cmd, {"python": sys.executable, "run": str(a.run), "root": str(a.root),
+                             "name": a.name or ""})
+        print("  " + " ".join(argv))
+        return subprocess.run(argv, cwd=a.root).returncode
 
 
 

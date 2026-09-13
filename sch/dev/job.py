@@ -365,6 +365,10 @@ def write(path, **kw) -> dict:
     from ..conform import run_record
     rec = run_record(kw["ref_dir"])
     return {"path": str(p), "reference": kw["ref_dir"], "argv_source": "reference run record",
-            "ref_commit": rec.get("commit"), "tool_commit": commit_of(kw["tooldir"]),
-            "products": len(kw.get("products") or products_of(kw["ref_dir"])),
+            # THE SUMMARY SAYS WHAT THE JOB SAYS: the commit it was given where the tree is not
+            # readable here, and the products it expects - without the figures on a redraw.
+            "ref_commit": rec.get("commit"),
+            "tool_commit": kw.get("tool_commit") or commit_of(kw["tooldir"]),
+            "products": len(kw.get("products")
+                            or products_of(kw["ref_dir"], figures=not kw.get("redraw"))),
             "submit": f"qsub -q {kw['queue']} -o {kw['rundir']}/logs/pbs.log {p}"}

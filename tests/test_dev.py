@@ -729,6 +729,63 @@ class HarnessDeclaresItsOwnPoints(unittest.TestCase):
         self.assertIn("plugin", doc["points"])
 
 
+class ReachableThroughTheCli(unittest.TestCase):
+    """`sch dev job` and `sch dev baseline` are dispatched AFTER the convert actions, and the
+    convert block's last branch returned unconditionally: since fe5ecae dedented `account`, `build`
+    and the command-stage fallthrough to the top of `cmd_dev`, `sch dev job ...` died on
+    `a.action` and `sch dev baseline ...` on names bound only inside the convert block. The
+    module functions were tested; the command a person types was not (found by blind 0006,
+    the dispatcher's first command)."""
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "ref").mkdir()
+        (self.d / "tool" / ".git").mkdir(parents=True)
+        (self.d / "tool" / ".git" / "HEAD").write_text("a" * 40 + "\n")
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok", "argv": ["t", "run", "--key", "cell_type_forced", "--out", "/old"]}))
+        (self.d / "ref" / "report.json").write_text('{"seed": 1}')
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _cli(self, *argv):
+        import io
+        from contextlib import redirect_stdout
+        from sch.cli import main
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = main(list(argv))
+        return rc, buf.getvalue()
+
+    def test_sch_dev_job_emits_the_job(self):
+        out = self.d / "job.pbs"
+        rc, text = self._cli("dev", "job", "--ref", str(self.d / "ref"), "--rundir", str(self.d / "new"),
+                             "--tool", str(self.d / "tool"), "--queue", "long",
+                             "--select", "select=1:ncpus=1", "--predict", "identical", "--out", str(out))
+        self.assertEqual(rc, 0, text)
+        self.assertTrue(out.is_file(), text)
+        self.assertIn("cell_type_forced", out.read_text())
+
+    def test_the_summary_says_what_the_job_says(self):
+        """`write` summarised the job from what it could read where it was written - the tree's
+        commit and every product of the reference - and not from what the job was told: a commit
+        GIVEN with --tool-commit printed as None, and a --redraw job that expects 1 product was
+        summarised as expecting 2 (found by blind 0006, on the dry emit of the rerun)."""
+        (self.d / "ref" / "fig.png").write_bytes(b"\x89PNG")
+        info = J.write(self.d / "job.pbs", ref_dir=str(self.d / "ref"), rundir=str(self.d / "new"),
+                       tooldir=str(self.d / "nowhere"), prediction="identical", queue="long",
+                       select="select=1:ncpus=1", tool_commit="abc1234", redraw=True)
+        self.assertEqual(info["tool_commit"], "abc1234")
+        self.assertEqual(info["products"], 2)          # STATUS.json and report.json; not fig.png
+
+    def test_sch_dev_baseline_records(self):
+        path = self.d / "b.json"
+        rc, text = self._cli("dev", "baseline", "record", str(self.d / "ref"), "--path", str(path))
+        self.assertEqual(rc, 0, text)
+        self.assertTrue(path.is_file(), text)
+
+
 if __name__ == "__main__":
     unittest.main()
 
