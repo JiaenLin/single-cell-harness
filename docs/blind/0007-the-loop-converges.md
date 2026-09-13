@@ -38,7 +38,7 @@ of 6 with `audited` owing.
 | | |
 |---|---|
 | the author: kinds edited, kinds answered, version, gates | 16 of 26 kinds edited (3 plugin, 13 tool), 10 answered (21 ledger records), 10 host kinds skipped; 0.30.0 to 0.31.0; scaffold, validate, build 8 of 8 green; the portability scan refused one comment and the author generalised six lines itself; the dispatcher's vocabulary check found two more (a pathway, an arm level), sent back; 291k tokens, 98 tool uses, 27 min |
-| the rerun: job, wall time, seal | |
+| the rerun: job, wall time, seal | PBS 711115 FAILED (two instances lost to a segfault and a truncated read; compute1020); PBS 711118 FAILED (five instance processes died with signal 11; compute1020); PBS 711119 pinned to compute1017 SEALED after 35 minutes: 18 of 18 instances done, 945 figures, 249 compare plates, every declared plot produced, memory answered; cores measured sustained 2.67 with one-second bursts to 58.7 on a share of 4 (over its share, the plugin's to cap); cost measured high, 3,285 s per 100,000 cells, against a declared medium |
 | lookers: figures handed, recorded, refusals, defects marked | |
 | audited after the fresh look | |
 | writer and reviewer | |
@@ -47,7 +47,24 @@ of 6 with `audited` owing.
 
 ## Defects of the mechanism, as they came
 
-(none so far this turn: the author met no refusal it could not act on)
+**1. The status told the agent to run a command the parser refuses** (harness fd33e31). The
+rerun's status, run against the sealed copy, printed `apply it: sch dev convert cost ... --apply`
+for the cost stage, which owed (measured high, declared medium), and the maker's parser answered
+"invalid choice: 'cost'". The `answer it:` line had been given the rule in 3dec780 - a run-side
+stage is not a maker verb, so the way to answer it is the repository's own command, printed
+filled - and the `apply it:` line and the advance command had not. The dispatcher ran the
+repository's own command instead (`capacity --cost --declare cellchat`), which wrote `"cost":
+"high"` into the plugin as the tool's own edit (scProfile 6801c34), and the fix went into both
+lines test-first. Found by the maker's status, not by an agent.
+
+**2. The footnote the first look asked for was drawn over the key it sat beside** (scProfile
+8eb7a3b). Station 6b's one machine residue on the rerun: the design panel's aliasing footnote
+was placed at a fixed y below the figure box, the marker key was anchored there too, and on
+twelve samples and three measures the audit found them through each other by two thirds. The
+host's own collision, the one `stamp_below` was written for in the repairs round: the footnotes
+are now collected while the grid is drawn and placed after the key, each below everything
+before it. Reproduced test-first on a synthetic design of the rerun's shape; the rerun's own
+table audits clean under the fix.
 
 **The first submission of the rerun** (PBS 711115, `20260913T160311Z__scprofile-db066f3__04_profile__rerun`,
 27 minutes) sealed FAILED on one unit's products. Two instances failed on the upstream, each recorded
@@ -70,6 +87,9 @@ this round's code raises a signal; the two failed submissions ran on compute1020
 clean ones on compute1016 and compute1017, and the scheduler reports both nodes free and healthy,
 so the node is a correlation and not a finding. The seventh submission is pinned to compute1017
 to test it.
+It sealed SEALED there, 18 of 18 instances done, which leaves the node as the working explanation
+of the two failures and nothing more: two submissions on one node lost instances to signals no
+code of this round can raise, and one on another node lost none.
 
 ## Results
 
