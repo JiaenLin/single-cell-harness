@@ -308,6 +308,11 @@ layer first (PBS 711084, run `20260913T132721Z__scprofile-b751000__04_profile__w
 711029: its 139 looks, 21 answers, the blind-0005 writer's section and claims), then the
 rerun's (its 121 looks, the writer's section, 29 rounded claims, the rendered page), whose
 written run can then carry the old looks from a sibling.
+The old replay's seal (PBS 711084) held W1 (945 figures in the replay, 945 in the sealed run)
+and W2 (the written layer present) and failed W3: the maker reads `written` owing there, as it
+should - the blind-0005 writer's claims were never put to a round - and `audited` owing. Its
+verdict line also prints `'measure': 'to'`, the seal's own parser cutting the state of a stage
+whose name is longer than the others; noted, not a verdict.
 
 The round's own checks before the author's answer is pasted: `sch dev rules --since f127a2b`
 4 held, 0 broken; `sch dev convert overfit` 0 fitted literals; the cohort's own vocabulary (106

@@ -479,6 +479,29 @@ class Job(unittest.TestCase):
             {"tool": "t", "status": "ok", "argv": ["t", "run", "--out", "/old"]}))
         self.assertIn("STATUS.extra.json", J.products_of(self.d / "ref"))   # no record: the scan
 
+    def test_the_writing_seal_reads_a_stage_state_from_the_stage_line(self):
+        """The seal's verdict W3 parsed each stage's state as the first word on the first line
+        naming the stage - and the first line naming `measure` in a maker's status is the
+        validator's "to measure it: sch dev convert account ...", so the seal printed
+        'measure': 'to' (blind 0006, PBS 711084). A stage's state is on its own line:
+        two spaces, done or todo, the name."""
+        import re
+        import types
+        text = (ROOT / "jobs" / "writing_seal.pbs").read_text(encoding="utf-8")
+        body = text.split("<<'PYEOF'\n", 1)[1].split("\nPYEOF", 1)[0]
+        src = body.split("def verdict(name):", 1)[1].split("v = {n: verdict(n)", 1)[0]
+        ns = types.SimpleNamespace()
+        st = ("             to measure it:  sch dev convert account --point kernel --name k\n"
+              "  done measure      memory_gb_base, memory_gb_per_100k\n"
+              "  todo audited      \n"
+              "  done written      \n")
+        g = {"re": re, "st": st}
+        exec("def verdict(name):" + src, g)
+        self.assertEqual(g["verdict"]("measure"), "done")
+        self.assertEqual(g["verdict"]("audited"), "todo")
+        self.assertEqual(g["verdict"]("written"), "done")
+        self.assertEqual(g["verdict"]("promised"), "?")
+
     def test_the_makers_status_is_written_to_the_run(self):
         text = J.emit(prediction="identical", maker_status=("k", "widget"), **self.kw)
         self.assertIn("sch dev convert status", text)

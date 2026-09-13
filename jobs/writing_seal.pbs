@@ -119,7 +119,9 @@ gone = [w for w in want if not os.path.exists(os.path.join(rep, w))]
 say(not gone, "W2", "the written layer is present" if not gone else f"missing: {gone}")
 st = read(os.path.join(new, "logs", "maker_status.txt"))
 def verdict(name):
-    m = re.search(r"^\s*(\S+)\s+" + name + r"\b", st, re.M)
+    # THE STAGE LINE, NOT THE FIRST LINE NAMING THE STAGE: two spaces, the state, the name. The
+    # first line naming `measure` is the validator's "to measure it: ...", and this read 'to'.
+    m = re.search(r"^  (done|todo)\s+" + name + r"\b", st, re.M)
     return m.group(1) if m else "?"
 v = {n: verdict(n) for n in ("promised", "audited", "looked_at", "written", "delivered", "measure")}
 ex = re.search(r"status exit: (\d+)", st)
