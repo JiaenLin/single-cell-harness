@@ -62,13 +62,58 @@ saying what the flag means; that printout is the whole of what the lookers were 
 
 | | |
 |---|---|
-| lookers, figures per looker, refusals, defects marked | |
-| writer: claims attempted, refused, recorded; words carried in | |
-| maker or host defects found | |
-| dispatcher commands | |
-| edits outside the clean rooms | |
-| agents, tokens, wall time | |
+| lookers, figures per looker, refusals, defects marked | 2 lookers, 70 and 69 figures, 139 of 139 recorded (one figure recorded twice), **0 refusals**, **70 marked `--defect`** (29 + 41), the flag learned from the review command's printout alone |
+| writer: claims attempted, refused, recorded; words carried in | 4 attempted, 1 refused (the one citing a marked plate, on purpose), 3 recorded; a 1,553-word section carried in - accepted by the tool as it then was (defect 3 below) |
+| maker or host defects found | **5**, all fixed test-first the same day, none worked around: by the dispatcher, `next` printing a blocked task's "do: write it" and every seal reading "no exit recorded" (scProfile d83c85e); by the writer, `paper --write` accepting a section resting on marked plates while the agenda called the task blocked, the agenda's `defend` task reading done with 27 claims unreviewed so `next` said "defended", and the brief's two orders of the same contrasts (this round's last scProfile commit) |
+| dispatcher commands | 10 - the maker's status before, the review split, the status after the looks, `next`, `agenda`, the brief on disk, and after the fixes the verifying `--write`, `next` and `--brief` |
+| edits outside the clean rooms | 0; the real checkouts changed only by commits; nothing on the cluster's run changed |
+| agents, tokens, wall time | 3 cold Sonnet agents, about 1.05 M tokens: lookers 0.41 M and 0.44 M, writer 0.20 M; the lookers 23 and 25 minutes in parallel, the writer 16; about 45 minutes of wall time |
 
 ## Results
 
-To be written after the agents finish.
+Written 2026-09-13 after the agents finished; their reports are beside this record in the
+session's `blind5/work/`.
+
+- **B1 HELD.** Both lookers recorded every figure of their shard and marked what must change
+  with `--defect` - 29 and 41 of 139 - having been told nothing about the flag beyond the one
+  line the review command prints under the shard list. Neither asked a question; neither was
+  refused a note. Looker 1 batched its seventy calls in a small script around the printed
+  command, as blind 0004's lookers did.
+- **B2 HELD.** After the looks the maker's status read `looked_at` done and `audited` owing:
+  "no drawing issue remains after the host repaired 5 on 2 panel(s); 70 eye finding(s) on 70
+  panel(s); the eye has looked at 139 of 139", with "FIX THESE, the eye's findings" naming the
+  panels in the lookers' own words. The eye's findings are the stage's debt, as designed.
+- **B3 HELD.** The writer's claim on Figure 1, marked by a looker, was refused with the
+  looker's words quoted, and nothing was recorded for it; three claims on clean plates were
+  recorded. The writer checked the ledger's count rose by exactly three.
+- **B4 HELD in two places and failed in the third.** The brief printed by `paper --brief` marked
+  45 of the paper's 90 figures with their findings and ended "the pen waits on them"; the
+  agenda's write task was BLOCKED naming them. `scprofile next` printed "NEXT: Write the
+  result" over that same reason and "do: write it" - the dispatcher met it before the writer,
+  and it is one of the five defects.
+- **B5 FAILED on the count, in the right direction: five, not at most two**, and every one was
+  fixed test-first the same day. Two were the dispatcher's: a blocked first task printed as the
+  next thing to do, and a seal reader that never parsed the seal's own `exit=` line. Three were
+  the writer's, and the largest is the round's real finding: **the pen did not fully wait.** The
+  agenda called the write task blocked and `--claim` refused a marked plate, but `paper --write`
+  accepted a section resting on the same plates and the agenda then printed the task done with
+  the blocked reason under it; `next` went on to say the result was "defended" because a claims
+  file existed, while the tool's own strict check and the maker said 27 claims had no verdict;
+  and the brief listed the same four contrasts in two orders because its table asked the design
+  panel with the run's controls and its headings asked without. Now a section citing a figure
+  with an open finding is refused naming the figure and the finding, a task is done only when
+  its evidence is, `defend` means every claim has a verdict, and the brief has one order. Each
+  was verified on the replay by the dispatcher after the fix: the writer's own section is
+  refused naming Figure 90 and the looker's words; `next` says 27 claims await a verdict; the
+  brief's two lists agree.
+
+What the round proves: on a real run of the reordered mechanism, cold lookers mark what must
+change from the tool's words alone, the maker names their findings as the plugin's debt in
+their words, and a claim cannot rest on a plate the run's own record calls wrong. What it found:
+the section could, and two of the tool's own readers disagreed with the maker about what was
+done - closed the same day. What it does not prove: that an author fixes the seventy findings and
+a rerun clears `audited` - the plugin's next build, under the top rule.
+
+One observation stands: the cluster job's `FAILED.txt` (its grading verdict) and the tool's own
+`SEALED.txt` (the run completed) sit side by side in one directory, and the tool's `next` reads
+the run as FAILED. Two writers of one name is a layout matter for a later round, recorded here.
