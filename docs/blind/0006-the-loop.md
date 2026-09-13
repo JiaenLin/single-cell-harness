@@ -223,6 +223,50 @@ and the arrow "look at the scan set first ... the findings that carry over wait 
 The rebuild also regenerated the paper's list, so the scan set grew from 95 to 139 while the
 lookers were on the first 70; the remainder is handed out after them, by the same command.
 
+**The second look, first shards** (two cold lookers, 35 figures each, tool at the fixes): 70 of
+70 opened and recorded, 0 notes refused, 36 marked as needing a change, 34 plain. Looker 1
+marked 13, mostly the host's own panels (an unexplained dagger and band on three flow panels,
+labels crowding on three role-shift panels, an unkeyed colour pair on the interaction panel, a
+"no edge" callout drawn over real cells on the matrix, the role scatter's nine labels piled at
+the origin, a cut axis title on the unit totals, an unexplained asterisk on the design grid) and
+one of the author's (the database-category banner clipped on both edges); it settled the
+author's answered F10 with a fresh look. Looker 2 marked 23, among them plates the author's edit
+did not cure (the circle plots' two long labels still fused at the top of the ring after
+`vertex.label.cex = 0.65`; the heatmap's second column label still clipped; the stacked rankNet's
+new caption itself clipped at the left edge) and new findings (two arms printed as the same
+rounded value "0.8"; a value label under its own replicate dot); it confirmed two answered plates
+as they stand. The dispatcher's own page rebuild on the copy redrew the host's panels under the
+lookers - 4 looks went stale and one was re-recorded - which is a cost of rebuilding beside a
+live review, not of the mechanism. Looker 1 also noted that the open-findings digest counts one
+instance per kind, so its defects on other instances of `C3_flow` and `C4_role_shift` are in the
+ledger but not in the digest until the scan set points at them.
+
+**The second look, second shards** (24 and 26 figures): 50 of 50 opened and recorded, 0 refused,
+30 marked. Looker 1 re-looked at six answered plates, settled three and kept three (the
+asymmetric colour bar, the unlabelled bubble columns, the two marginal scales are still on the
+page whatever the upstream's reason). Looker 2 found the fused ring labels on four more
+instances and the clipped rankNet caption on three, a right-margin bar drawn backwards for one
+pathway, and a contribution panel whose shares sum to about 80% with nothing saying so. In all:
+120 figures handed out over the two rounds, 0 refusals, 66 marked, every figure of the
+139-figure scan set looked at.
+
+12. **The eye station counted only this run's ledger** (scProfile 15a939c). With every figure
+    looked at, the maker still read `looked_at` owing "102 of 139": the 37 looks carried from
+    the old replay on identical bytes were not counted, though the review listed them as
+    "reviewed (carried)". A carried look is a look. Test-first in
+    `test_every_figure_is_measured.py`.
+
+**The audit's verdict**: with the eye complete, the maker's status reads test 4 of 6 (`measure`,
+`promised`, `looked_at`, `delivered` done), `audited` owing - "no drawing issue remains after the
+host repaired 4 on 2 panel(s); 66 eye finding(s) on 66 panel(s); the eye has looked at 139 of
+139" - and names the worksheet: 66 open findings on 36 kinds, owners HOST 10, PLUGIN 4, TOOL 22.
+L6 holds. **B3 fails**: 36 kinds survived a fresh look, not five. Of the author's 28 edits, the
+eye confirmed some cured (the axis ticks restored, the compare-interaction labels no longer
+covered, the flow subtitle no longer clipped) and found others not (the circle plots' fused
+labels after `vertex.label.cex`, the heatmap's clipped column label after the smaller font, the
+rankNet caption the edit itself added, clipped). Ten host kinds carry new findings, the next
+build of the mechanism.
+
 The round's own checks before the author's answer is pasted: `sch dev rules --since f127a2b`
 4 held, 0 broken; `sch dev convert overfit` 0 fitted literals; the cohort's own vocabulary (106
 terms read from the run: populations, pathways, units, contrasts) is held against the author's
