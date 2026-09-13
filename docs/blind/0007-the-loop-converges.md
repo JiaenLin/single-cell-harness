@@ -39,8 +39,8 @@ of 6 with `audited` owing.
 |---|---|
 | the author: kinds edited, kinds answered, version, gates | 16 of 26 kinds edited (3 plugin, 13 tool), 10 answered (21 ledger records), 10 host kinds skipped; 0.30.0 to 0.31.0; scaffold, validate, build 8 of 8 green; the portability scan refused one comment and the author generalised six lines itself; the dispatcher's vocabulary check found two more (a pathway, an arm level), sent back; 291k tokens, 98 tool uses, 27 min |
 | the rerun: job, wall time, seal | PBS 711115 FAILED (two instances lost to a segfault and a truncated read; compute1020); PBS 711118 FAILED (five instance processes died with signal 11; compute1020); PBS 711119 pinned to compute1017 SEALED after 35 minutes: 18 of 18 instances done, 945 figures, 249 compare plates, every declared plot produced, memory answered; cores measured sustained 2.67 with one-second bursts to 58.7 on a share of 4 (over its share, the plugin's to cap); cost measured high, 3,285 s per 100,000 cells, against a declared medium |
-| lookers: figures handed, recorded, refusals, defects marked | |
-| audited after the fresh look | |
+| lookers: figures handed, recorded, refusals, defects marked | 83 handed in two shards of 42 and 41 (56 of the 139 carried from the sibling run); 83 recorded, 0 refused, 39 marked defect (24 and 15); one looker recorded `--answer` on three answered figures and found the answered state did not clear until it recorded a plain look; 556k tokens, 170 tool uses, 21 and 12 min |
+| audited after the fresh look | 44 open findings on 25 kinds (HOST 3, PLUGIN 5, TOOL 17), from 36 kinds; station 6b: 1 machine residue (the across_design footnote, fixed at HEAD, redrawn only by a rerun); station 7: 80 of 80 kinds and 139 of 139 of the scan set looked at |
 | writer and reviewer | |
 | defects of the mechanism | |
 | agents, tokens, wall time | |
@@ -65,6 +65,20 @@ host's own collision, the one `stamp_below` was written for in the repairs round
 are now collected while the grid is drawn and placed after the key, each below everything
 before it. Reproduced test-first on a synthetic design of the rerun's shape; the rerun's own
 table audits clean under the fix.
+
+**3. The review's listing told the reader to open fifty-six figures whose looks had carried**
+(scProfile, the commit after 8eb7a3b). The status counted them "reviewed (carried)", the shards
+left them out, and the list beneath printed the same names under "have not been looked at, or
+were redrawn since ... Open each one". `outstanding` had the rule - a carried look is a look -
+and the listing had not. Found on the run after both lookers finished; test-first on the
+two-run fixture the carry was written against.
+
+**4. Two labels floated above any point with no leader** (scProfile, the commit after that). The
+second look's N4: the vertical solve cleared nine names in one corner within its cap, so the
+ladder had nothing to answer, and the two it had carried highest stood a third of the clump's
+height above their points. A label the solve moves further than eight points from its point now
+gets the ladder's leader, ladder or not. Reproduced test-first through the role panel with
+crafted strengths of the run's shape.
 
 **The first submission of the rerun** (PBS 711115, `20260913T160311Z__scprofile-db066f3__04_profile__rerun`,
 27 minutes) sealed FAILED on one unit's products. Two instances failed on the upstream, each recorded
