@@ -224,6 +224,16 @@ follows a run under `run.after` in `DEVPOINTS.yaml` — the report, the status, 
 checks — and the emitter appends those, then the maker's own `status --run` into the run's
 logs when `--plugin` names one.
 
+Four more things the first rerun taught it, each a job that sealed FAILED in under a minute
+(blind 0006): an after-line's exit code is a verdict for the maker to read from the log, not a
+failure of the run, whose seal reads the products; the reference is named by its run key and not
+by the path it was read at, which on a workstation is a scratch directory the site contract
+refuses; the flag rewritten to the new run directory is the one whose value is the reference run
+itself, not every flag named like an output — for one tool `--prefix` is where its plugin
+environments live; and the code that runs must be the tree that was verified, so the tree goes
+first on `PYTHONPATH` and a module command is asked where its package imports from before it
+runs, anything outside the tree refused with both paths named.
+
 ## 7. What each repository declares
 
 | repository | points |

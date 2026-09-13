@@ -78,8 +78,8 @@ Blind 0006:
 
 | | |
 |---|---|
-| the author: kinds edited, kinds answered, version, gates | |
-| the rerun: job, wall time, seal, L1-L6 | |
+| the author: kinds edited, kinds answered, version, gates | 28 kinds edited, 10 answered (21 ledger records), 8 host kinds skipped; 0.28.0 to 0.29.0; validate 0 errors, build 8 of 8; first answer refused by the portability scan, amended in 7 comment lines; 473k + 538k tokens, 173 + 40 tool uses, 51 + 8 min |
+| the rerun: job, wall time, seal, L1-L6 | PBS 711051 FAILED in 25 s (defects 5, 6); PBS 711058 FAILED in 50 s (defect 7); PBS 711059 - filled in below |
 | lookers: figures handed, recorded, refusals, defects marked | |
 | audited after the second look | |
 | writer and reviewer: claims, rounds, verdicts, words | |
