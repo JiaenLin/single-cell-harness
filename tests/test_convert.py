@@ -583,6 +583,31 @@ class StageCommands(unittest.TestCase):
         self.assertIn(f"-m t.cli review --out {self.d} --plugin gadget --worksheet", p.stdout)
         self.assertNotIn("sch dev convert audited", p.stdout)
 
+    def test_a_run_side_stage_is_applied_by_the_repositorys_own_command(self):
+        """The same rule for `apply:` (harness ADR-0020, step 5): a run-side stage whose fill
+        the repository writes back is applied by the repository's own command, printed filled.
+        The status of the loop's second rerun printed `sch dev convert cost ... --apply` for
+        the cost stage, and the parser refused it: cost is not a maker verb."""
+        (self.d / "DEVPOINTS.yaml").write_text(DECL.replace(
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}",
+            "        - {name: inventory, fills: [native_plots], why: what the tool already draws}\n"
+            '        - {name: cost, fills: [cost], command: ["{python}", "-c", "import sys; '
+            'sys.exit(1)"], apply: ["{python}", "-m", "t.cli", "capacity", "--out", "{run}", '
+            '"--cost", "--declare", "{name}"]}'))
+        (self.d / "widgets" / "gadget.py").write_text("PLUGIN = {'name': 'gadget'}\n")
+        p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "status",
+                            "--root", str(self.d), "--point", "widget", "--run", str(self.d),
+                            "--name", "gadget"], capture_output=True, text=True, cwd=ROOT)
+        self.assertIn("apply it:", p.stdout, p.stdout + p.stderr)
+        self.assertIn(f"-m t.cli capacity --out {self.d} --cost --declare gadget", p.stdout)
+        self.assertNotIn("sch dev convert cost", p.stdout)
+        doc = P.load(self.d)
+        row = {"stage": "cost", "ran": {"owes": True},
+               "apply": C.stage_apply(doc, "widget", "cost"), "worksheet": []}
+        nxt = C.advance_command(row, doc, "widget", str(self.d), "gadget", run=str(self.d))
+        self.assertIn("--cost --declare gadget", nxt)
+        self.assertNotIn("sch dev convert", nxt)
+
     def test_a_stage_declaring_no_command_says_so_rather_than_guessing(self):
         (self.d / "DEVPOINTS.yaml").write_text(DECL)
         p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "measure",

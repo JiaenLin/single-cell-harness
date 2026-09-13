@@ -634,14 +634,22 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
                 # character of a station's one line; a tail line is the command's own answer.
                 for line in ran["says"][-5:]:
                     L.append(f"         {line}")
+                # A RUN-SIDE STAGE IS NOT A MAKER VERB, ON PURPOSE (the note on ACTIONS): the
+                # way to apply or answer it is the repository's own command, printed filled. A
+                # stage that is a verb here goes through the maker's flag. `apply it:` printed
+                # the maker's verb for every stage until the loop's second rerun owed on cost
+                # and the parser refused what the status had told the agent to run.
                 if ran["owes"] and r.get("apply"):
-                    L.append(f"       apply it:  sch dev convert {r['stage']} --root {root} "
-                             f"--point {point_name} --name {name or '<plugin>'} --run "
-                             f"{run or '<RUNDIR>'} --apply")
+                    if r["stage"] in ACTIONS:
+                        L.append(f"       apply it:  sch dev convert {r['stage']} --root {root} "
+                                 f"--point {point_name} --name {name or '<plugin>'} --run "
+                                 f"{run or '<RUNDIR>'} --apply")
+                    else:
+                        L.append("       apply it:  " + " ".join(fill(
+                            r["apply"], {"python": python or "python3",
+                                         "run": run or "<RUNDIR>", "root": root,
+                                         "name": name or "<plugin>"})))
                 elif ran["owes"] and r.get("worksheet"):
-                    # A RUN-SIDE STAGE IS NOT A MAKER VERB, ON PURPOSE (the note on ACTIONS):
-                    # the way to answer it is the repository's own command, printed filled.
-                    # A stage that is a verb here is answered through the maker's flag.
                     if r["stage"] in ACTIONS:
                         L.append(f"       answer it:  sch dev convert {r['stage']} --root {root} "
                                  f"--point {point_name} --name {name or '<plugin>'} --run "
@@ -2012,8 +2020,12 @@ def advance_command(row, doc, point_name, root, name, python="", run=""):
     # A STAGE THAT OWES ON A RUN AND DECLARES HOW ITS FILL IS APPLIED is advanced by applying
     # it, not by verifying it again (harness ADR-0018).
     if row.get("ran", {}).get("owes") and row.get("apply"):
-        return (f"sch dev convert {stage} --root {root} --point {point_name} "
-                f"--name {name or '<plugin>'} --run {run or '<RUNDIR>'} --apply")
+        if stage in ACTIONS:
+            return (f"sch dev convert {stage} --root {root} --point {point_name} "
+                    f"--name {name or '<plugin>'} --run {run or '<RUNDIR>'} --apply")
+        return " ".join(fill(row["apply"], {"python": python or "python3",
+                                             "run": run or "<RUNDIR>", "root": root,
+                                             "name": name or "<plugin>"}))
     if row.get("ran", {}).get("owes") and row.get("worksheet"):
         if stage in ACTIONS:
             return (f"sch dev convert {stage} --root {root} --point {point_name} "
