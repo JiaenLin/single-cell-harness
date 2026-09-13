@@ -37,7 +37,7 @@ of 6 with `audited` owing.
 
 | | |
 |---|---|
-| the author: kinds edited, kinds answered, version, gates | |
+| the author: kinds edited, kinds answered, version, gates | 16 of 26 kinds edited (3 plugin, 13 tool), 10 answered (21 ledger records), 10 host kinds skipped; 0.30.0 to 0.31.0; scaffold, validate, build 8 of 8 green; the portability scan refused one comment and the author generalised six lines itself; the dispatcher's vocabulary check found two more (a pathway, an arm level), sent back; 291k tokens, 98 tool uses, 27 min |
 | the rerun: job, wall time, seal | |
 | lookers: figures handed, recorded, refusals, defects marked | |
 | audited after the fresh look | |
@@ -46,6 +46,8 @@ of 6 with `audited` owing.
 | agents, tokens, wall time | |
 
 ## Defects of the mechanism, as they came
+
+(none so far this turn: the author met no refusal it could not act on)
 
 ## Results
 
