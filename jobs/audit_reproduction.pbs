@@ -1,0 +1,344 @@
+#!/bin/bash
+#PBS -N sambo_04_audit_repro
+#PBS -q super
+#PBS -l select=1:ncpus=64:mem=360gb
+#PBS -l walltime=12:00:00
+#PBS -j oe
+#
+# =============================================================================================
+# THE REPRODUCTION: THE AUDIT REPAIRS, THE RUN MEASURES ITSELF, THE EYE COMES FIRST
+# =============================================================================================
+#
+# Harness ADR-0018, step 5. The host now repairs the collisions its column fit, the data and its
+# own stamp make, where each panel is written; every instance samples its own process tree so
+# the memory model is fitted in the job the instances share; and the maker's run-side stages
+# read the eye before the pen. The sealed reference is
+# 20260912T163648Z__scprofile-344993d__04_profile__plan (PBS 710985): 43 text collisions on five
+# panel ids, `measure` unanswerable, 945 PNG and 24 PDF. This run is the same cohort, the same
+# design, the same environment, and the tool at the round's commit.
+#
+# WHY CELLCHAT ALONE. The other eight plugins are HELD OUT and are unplugged from this tool
+# tree; the submitter refuses a tree that carries more than one kernel.
+#
+# ---------------------------------------------------------------------------------------------
+# THE PREDICTIONS, WRITTEN BEFORE THE RUN (the ADR's A0-A9). One that does not hold is a defect
+# in the host or the maker: find it, fix it test-first, resubmit. Never a "close enough".
+# ---------------------------------------------------------------------------------------------
+#
+#   A0  the run produced panels; 945 PNG and 24 PDF under kernels/, the same names as the
+#       reference's.
+#   A1  the audit's residue on the run is at most 3 findings in total (43 on the reference), and
+#       at least 40 repairs are recorded across the five panel ids that carried them.
+#   A2  no panel's residue exceeds its own count before repair (read from the instance logs):
+#       a repair never adds a collision.
+#   A3  90 of 90 numeric per-unit tables identical to the reference: no repair moves a number.
+#   A4  `measure` is answered on this run: report.json holds a memory model for cellchat fitted
+#       on the instances' process trees, 18 points at 3 or more distinct sizes, both terms
+#       present, the per-instance peaks not all identical; `capacity --memory` prints them.
+#   A5  every instance's tree peak is at or below the job's cgroup counter, where the counter
+#       was read.
+#   A6  the maker's status on the run reads `promised` done, `looked_at` owing, `audited` owing
+#       and saying the eye has looked at 0 of N, `written` and `delivered` owing. `measure` is
+#       not predicted: it is answered only if the declared terms are at or above the fit.
+#   A7  `capacity --against` the reference: identical counts.
+#   A8  the environment is reused: the same scprofile-env-<hash> as the reference's install log.
+#   A9  this job seals only when none of the above failed; a failed prediction writes
+#       FAILED.txt with the run complete on disk.
+#
+# rule-one: no-removal - everything this writes goes inside $RUNDIR.
+# Authored on the workstation and pushed (rule H1). No `git` runs below. Submit with
+# jobs/submit_audit_reproduction.sh, never qsub directly: the run key is built there.
+# =============================================================================================
+set -euo pipefail
+
+HOME_=/data/wangyb/home/jiaen.lin
+PROJ="$HOME_/projects/SAMBO"
+: "${RUNDIR:?RUNDIR not set - submit with jobs/submit_audit_reproduction.sh, never qsub directly}"
+: "${RUNKEY:?RUNKEY not set - submit with jobs/submit_audit_reproduction.sh, never qsub directly}"
+: "${REF:?REF not set - the sealed run whose figures this must reproduce}"
+HARNESS="${HARNESS:-$HOME_/tools/single-cell-harness}"
+[ -d "$RUNDIR/logs" ] || { echo "$RUNDIR/logs does not exist; the submitter creates it"; exit 3; }
+
+finish() {
+  s=$?
+  miss=""
+  for f in report.json RUN_CARD.json report/index.html; do
+    [ -s "$RUNDIR/$f" ] || miss="$miss $f"
+  done
+  [ -n "$(find "$RUNDIR/kernels" -name '*.png' -print -quit 2>/dev/null)" ] || miss="$miss (figures)"
+  if [ -n "$miss" ] && [ "$s" -eq 0 ]; then s=97; fi
+  {
+    echo "exit=$s"
+    echo "jobid=${PBS_JOBID:-interactive}"
+    echo "runkey=$RUNKEY"
+    echo "purpose=the audit repairs, the run measures itself, the eye comes first (ADR-0018 step 5)"
+    echo "held_out=abundance cellcycle de decoupler liana pseudotime scenic velocity (UNPLUGGED)"
+    echo "reproduces=$REF"
+    hostname
+    date -u +%Y-%m-%dT%H:%M:%SZ
+    [ -n "$miss" ] && echo "missing:$miss"
+    [ -s "$RUNDIR/PREDICTIONS.txt" ] && cat "$RUNDIR/PREDICTIONS.txt"
+  } > "$RUNDIR/$([ "$s" -eq 0 ] && echo SEALED.txt || echo FAILED.txt)"
+  find "$RUNDIR" -type f -not -path "$RUNDIR/logs/*" -exec chmod a-w {} + 2>/dev/null || true
+}
+trap finish EXIT
+
+echo "driver log -> $RUNDIR/logs/driver.log"
+exec >> "$RUNDIR/logs/driver.log" 2>&1
+echo "=== stage 04_profile - the audit reproduction - $RUNKEY"
+echo "=== node $(hostname) - started $(date -u) - PBS ${PBS_JOBID:-interactive}"
+
+TOOL="$HOME_/tools/scProfile-cconly"
+H5AD="$PROJ/results/03_integrate/objects/cohort_integrated.h5ad"
+DESIGN="$PROJ/stages/04_profile/design.csv"
+HOSTENV="$PROJ/env/scprofile-host"
+PY="$HOSTENV/bin/python"
+
+[ -x "$PY" ] || { echo "host interpreter missing: $PY"; exit 2; }
+for f in "$H5AD" "$DESIGN" "$TOOL/kernels/cellchat.py" "$TOOL/kernels/cellchat.draw.R" \
+         "$HARNESS/sch" "$REF/SEALED.txt"; do
+  [ -e "$f" ] || { echo "MISSING: $f"; exit 2; }
+done
+
+n_kernels=$(find "$TOOL/kernels" -maxdepth 1 -name "*.py" -not -name "_*" | wc -l | tr -d ' ')
+echo "=== kernels present in this tool tree: $n_kernels"
+if [ "$n_kernels" != "1" ]; then
+  echo "REFUSING: this run is the CELLCHAT-ONLY reproduction and the tree carries $n_kernels kernels."
+  exit 3
+fi
+
+cd "$TOOL"
+echo "=== scProfile commit: $(cat HEAD.txt 2>/dev/null || echo unknown)"
+echo "=== harness commit: $(cat "$HARNESS/HEAD.txt" 2>/dev/null || echo unknown)"
+cp HEAD.txt "$RUNDIR/TOOL_HEAD.txt" 2>/dev/null || true
+cp "$HARNESS/HEAD.txt" "$RUNDIR/HARNESS_HEAD.txt" 2>/dev/null || true
+
+set +eu
+source /etc/profile 2>/dev/null || true
+module load anaconda3/3.0.0 2>/dev/null || true
+set -eu
+MGR="$(command -v micromamba || command -v mamba || command -v conda || true)"
+[ -n "$MGR" ] || { echo "no conda-family manager on PATH after module load"; exit 4; }
+echo "=== conda manager: $MGR"
+SYSPY="$(command -v python3)"
+
+echo; echo "=== INSTALL (expected: the reference's own environment, reused) ==="
+set +e
+PYTHONPATH="$TOOL" "$PY" -m scprofile.cli install cellchat --prefix "$PROJ/env" \
+    2>&1 | tee "$RUNDIR/logs/install.txt" | tail -25
+inst=${PIPESTATUS[0]}
+set -e
+echo "  install exit: $inst"
+if [ "$inst" -ne 0 ]; then
+  echo "THE INSTALL FAILED, so nothing below would mean anything. The run is not attempted."
+  tail -6 "$RUNDIR/logs/install.txt" | sed "s/^/    /"
+  exit 2
+fi
+
+echo; echo "=== DOCTOR ==="
+set +e
+PYTHONPATH="$TOOL" "$PY" -m scprofile.cli doctor --prefix "$PROJ/env" \
+    2>&1 | tee "$RUNDIR/logs/doctor.txt" | tail -12
+set -e
+
+echo; echo "=== RUN (no reuse, no cache: every instance computed here) ==="
+PYTHONPATH="$TOOL" "$PY" -m scprofile.cli run \
+    --h5ad "$H5AD" --out "$RUNDIR" --kernel cellchat \
+    --prefix "$PROJ/env" --design "$DESIGN" \
+    --label-key cell_type_forced --sample-key sample --batch-key batch \
+    --counts-layer counts --lognorm-layer lognorm \
+    --embedding X_scanvi --layout X_umap_scanvi \
+    --organism mouse --assay nucleus --timeout 21600 \
+    --control age=young --control diet=chow \
+    --no-cache
+
+echo; echo "=== REPORT ==="
+PYTHONPATH="$TOOL" "$PY" -m scprofile.cli report --out "$RUNDIR" --prefix "$PROJ/env"
+
+echo; echo "=== STATUS ==="
+set +e
+PYTHONPATH="$TOOL" "$PY" -m scprofile.cli status --out "$RUNDIR" \
+    2>&1 | tee "$RUNDIR/logs/status.txt" | tail -20
+set -e
+
+echo; echo "=== CAPACITY: promised, the memory gate, and against the reference ==="
+set +e
+PYTHONPATH="$TOOL" "$PY" -m scprofile.cli capacity --out "$RUNDIR" --promised \
+    > "$RUNDIR/logs/promised.txt" 2>&1
+prc=$?
+PYTHONPATH="$TOOL" "$PY" -m scprofile.cli capacity --out "$RUNDIR" --memory \
+    > "$RUNDIR/logs/memory.txt" 2>&1
+mrc=$?
+PYTHONPATH="$TOOL" "$PY" -m scprofile.cli capacity --out "$RUNDIR" --against "$REF" \
+    > "$RUNDIR/logs/against.txt" 2>&1
+arc=$?
+# THE EXIT CODES ARE KEPT IN THE FILES THE GRADER READS, never only displayed.
+echo "  promised exit: $prc" >> "$RUNDIR/logs/promised.txt"
+echo "  memory exit: $mrc" >> "$RUNDIR/logs/memory.txt"
+echo "  against exit: $arc" >> "$RUNDIR/logs/against.txt"
+echo "  promised exit: $prc, memory exit: $mrc, against exit: $arc"
+set -e
+tail -6 "$RUNDIR/logs/promised.txt"; tail -12 "$RUNDIR/logs/memory.txt"; tail -8 "$RUNDIR/logs/against.txt"
+
+echo; echo "=== THE MAKER'S RUN-SIDE STAGES, on this run ==="
+set +e
+PYTHONPATH="$HARNESS" "$SYSPY" -m sch dev convert status --root "$TOOL" --point kernel \
+    --name cellchat --run "$RUNDIR" > "$RUNDIR/logs/maker_status_new.txt" 2>&1
+snc=$?
+echo "  status(new) exit: $snc" >> "$RUNDIR/logs/maker_status_new.txt"
+echo "  status(new) exit: $snc"
+set -e
+
+echo; echo "=== GRADING THE PREDICTIONS ==="
+set +e
+SCP_TOOL="$TOOL" PYTHONPATH="$TOOL" "$PY" - "$RUNDIR" "$REF" > "$RUNDIR/PREDICTIONS.txt" 2>&1 <<'PYEOF'
+import csv, glob, json, os, re, sys
+new, ref = sys.argv[1], sys.argv[2]
+out, bad = [], []
+def say(v, name, detail):
+    out.append(f"{'PASS' if v else 'FAIL'}  {name}  {detail}")
+    if not v: bad.append(name.split()[0])
+def rel(d, pattern):
+    return sorted(os.path.relpath(p, d) for p in glob.glob(os.path.join(d, "kernels", "**", pattern), recursive=True))
+def read(p):
+    return open(p, encoding="utf-8", errors="replace").read() if os.path.exists(p) else ""
+png_n, png_r = rel(new, "*.png"), rel(ref, "*.png")
+pdf_n, pdf_r = rel(new, "*.pdf"), rel(ref, "*.pdf")
+say(bool(png_n) and len(png_n) == 945 and len(pdf_n) == 24 and set(png_n + pdf_n) == set(png_r + pdf_r),
+    "A0  945 PNG and 24 PDF, the reference's names exactly",
+    f"{len(png_n)} png, {len(pdf_n)} pdf; only here {sorted(set(png_n + pdf_n) - set(png_r + pdf_r))[:4]}; "
+    f"only in the reference {sorted(set(png_r + pdf_r) - set(png_n + pdf_n))[:4]}")
+
+try:
+    doc = json.load(open(os.path.join(new, "report.json"), encoding="utf-8"))
+except Exception as e:
+    doc = {}
+    out.append(f"      report.json unreadable: {e}")
+FIVE = ("F1_database_coverage", "F2_population_power", "F10_pathway_similarity", "F9_patterns", "F6_signaling_roles")
+def walk(o):
+    if isinstance(o, dict):
+        if o.get("audit") is not None and o.get("path"):
+            yield o
+        for v in o.values(): yield from walk(v)
+    elif isinstance(o, list):
+        for v in o: yield from walk(v)
+recs = list(walk(doc))
+residue = sum(len(r.get("audit") or []) for r in recs)
+repairs_five = sum(len(r.get("repairs") or []) for r in recs if str(r.get("id")) in FIVE)
+repairs_all = sum(len(r.get("repairs") or []) for r in recs)
+res_ids = sorted({str(r.get("id")) for r in recs if r.get("audit")})
+say(bool(recs) and residue <= 3 and repairs_five >= 40,
+    "A1  at most 3 findings remain, at least 40 repairs on the five panel ids",
+    f"{residue} remain on {res_ids[:6]}; {repairs_five} repairs on the five, {repairs_all} in all, over {len(recs)} measured panels")
+
+found_over, n_lines = [], 0
+for lg in glob.glob(os.path.join(new, "kernels", "cellchat", "*", "cellchat.log")):
+    for m in re.finditer(r"^\s*(\S+): (\d+) drawing issue\(s\) found, (\d+) repair\(s\) by the host.*?, (\d+) remain", read(lg), re.M):
+        n_lines += 1
+        if int(m.group(4)) > int(m.group(2)):
+            found_over.append(f"{os.path.basename(os.path.dirname(lg))}/{m.group(1)}: {m.group(2)} -> {m.group(4)}")
+say(n_lines > 0 and not found_over, "A2  a repair never adds a collision",
+    f"{n_lines} panel line(s) read; exceeded on {found_over[:4] or 'none'}")
+
+def units(d):
+    return sorted(os.path.basename(u) for u in glob.glob(os.path.join(d, "kernels", "cellchat", "*")) if os.path.isdir(u))
+def rows(p):
+    with open(p, newline="", encoding="utf-8", errors="replace") as fh:
+        r = list(csv.reader(fh))
+    return (r[0] if r else []), sorted(r[1:])
+LAYOUT = {"cellchat_net_embedding.csv"}
+n_tab, diff = 0, []
+for u in sorted(set(units(new)) & set(units(ref))):
+    tn = sorted(os.path.basename(p) for p in glob.glob(os.path.join(new, "kernels", "cellchat", u, "tables", "*.csv")))
+    tr = sorted(os.path.basename(p) for p in glob.glob(os.path.join(ref, "kernels", "cellchat", u, "tables", "*.csv")))
+    for t in sorted(set(tn) & set(tr)):
+        if t in LAYOUT: continue
+        n_tab += 1
+        hn, rn = rows(os.path.join(new, "kernels", "cellchat", u, "tables", t))
+        hr, rr = rows(os.path.join(ref, "kernels", "cellchat", u, "tables", t))
+        if hn != hr: diff.append(f"{u}/{t} header"); continue
+        if rn == rr: continue
+        def num(x):
+            try: return float(x)
+            except ValueError: return x
+        a = sorted(tuple(num(v) for v in r) for r in rn)
+        b = sorted(tuple(num(v) for v in r) for r in rr)
+        same = len(a) == len(b) and all(all((p == q) or (isinstance(p, float) and isinstance(q, float) and abs(p - q) <= 1e-9)
+                                              for p, q in zip(x, y)) for x, y in zip(a, b))
+        if not same: diff.append(f"{u}/{t}")
+say(n_tab == 90 and not diff, "A3  90 of 90 numeric tables identical",
+    f"{n_tab - len(diff)} of {n_tab} identical" + (f"; differ: {diff[:6]}" if diff else ""))
+
+model = ((doc.get("memory_model") or {}).get("cellchat") or {})
+meas = []
+for od in sorted(glob.glob(os.path.join(new, "kernels", "cellchat", "*", "out.json"))):
+    try:
+        m = (json.load(open(od, encoding="utf-8")).get("measured") or {})
+    except Exception:
+        m = {}
+    if m: meas.append((os.path.basename(os.path.dirname(od)), m))
+sizes = {int(m.get("n_cells") or 0) for _u, m in meas}
+trees = [float(m["tree_peak_gb"]) for _u, m in meas if isinstance(m.get("tree_peak_gb"), (int, float))]
+mem = read(os.path.join(new, "logs", "memory.txt"))
+mexit = re.search(r"memory exit: (\d+)", mem)
+basis = ", ".join(model.get("basis") or [])
+say(bool(model) and "process tree" in basis and int(model.get("points") or 0) == 18 and len(sizes) >= 3
+    and model.get("base_gb") is not None and float(model.get("gb_per_100k") or 0) > 0
+    and len(trees) == 18 and len({round(t, 6) for t in trees}) > 1 and "fitted on" in mem,
+    "A4  measure is answered: a model fitted on the process trees, 18 points, 3+ sizes",
+    f"basis {basis or 'none'}; points {model.get('points')}; sizes {len(sizes)}; base {model.get('base_gb')}, rate {model.get('gb_per_100k')}; "
+    f"tree peaks {len(trees)} ({min(trees) if trees else '-'}..{max(trees) if trees else '-'} GB); capacity --memory exit {mexit.group(1) if mexit else '?'}")
+
+over = [f"{u}: tree {m.get('tree_peak_gb')} > cgroup {m.get('cgroup_peak_gb')}" for u, m in meas
+        if isinstance(m.get("cgroup_peak_gb"), (int, float)) and isinstance(m.get("tree_peak_gb"), (int, float))
+        and float(m["tree_peak_gb"]) > float(m["cgroup_peak_gb"]) + 1e-6]
+n_cg = sum(1 for _u, m in meas if isinstance(m.get("cgroup_peak_gb"), (int, float)))
+say(n_cg > 0 and not over, "A5  every tree peak is at or below the job's counter, where read",
+    f"{n_cg} instance(s) carry the counter; exceeded on {over[:3] or 'none'}")
+
+st_new = read(os.path.join(new, "logs", "maker_status_new.txt"))
+def verdicts(txt):
+    v = {}
+    for name in ("measure", "promised", "audited", "looked_at", "written", "delivered"):
+        m = re.search(r"^\s*(\S+)\s+" + name + r"\b", txt, re.M)
+        v[name] = m.group(1) if m else "?"
+    return v
+vn = verdicts(st_new)
+eye0 = re.search(r"the eye has looked at 0 of (\d+)", st_new)
+say(vn.get("promised") == "done" and vn.get("looked_at") == "todo" and vn.get("audited") == "todo"
+    and vn.get("written") == "todo" and vn.get("delivered") == "todo" and bool(eye0),
+    "A6  the maker reads promised done; looked_at, audited (the eye at 0 of N), written, delivered owing",
+    f"{vn}; eye line {'0 of ' + eye0.group(1) if eye0 else 'absent'}")
+
+ag = read(os.path.join(new, "logs", "against.txt"))
+say(("identical" in ag) and "REGRESSION" not in ag, "A7  against the reference: identical counts",
+    " | ".join(l.strip() for l in ag.splitlines() if l.strip())[-200:] or "nothing printed")
+
+ins = read(os.path.join(new, "logs", "install.txt"))
+envs = sorted(set(re.findall(r"scprofile-env-[0-9a-f]+", ins)))
+renvs = sorted(set(re.findall(r"scprofile-env-[0-9a-f]+", read(os.path.join(ref, "logs", "install.txt")))))
+say(bool(envs) and envs == renvs and "exists and matches" in ins,
+    "A8  the environment is the reference's, reused",
+    f"install names {envs or 'no environment'}; the reference's names {renvs or 'unknown'}")
+
+print("\n".join(out))
+print()
+print(f"VERDICT: {len(out) - len(bad)} of {len(out)} predictions held" + (f"; FAILED: {bad}" if bad else ""))
+PYEOF
+grade=$?
+set -e
+cat "$RUNDIR/PREDICTIONS.txt"
+if [ "$grade" -ne 0 ]; then
+  echo
+  echo "THE GRADER ITSELF FAILED (exit $grade). Nothing above is a verdict about the run. Treat"
+  echo "  the predictions as UNGRADED."
+  exit 2
+fi
+BAD=$(grep -c '^FAIL' "$RUNDIR/PREDICTIONS.txt" || true)
+echo; echo "=== done $(date -u) - run key $RUNKEY - failed predictions: ${BAD:-0}"
+# A9: THE SEAL IS THE VERDICT. A failed prediction leaves the run complete on disk under
+# FAILED.txt, to be read, and never a SEALED.txt over a prediction that did not hold.
+if [ "${BAD:-0}" -ne 0 ]; then
+  echo "=== ${BAD} prediction(s) failed: the run is complete and NOT sealed (ADR-0018 A9)"
+  exit 5
+fi
