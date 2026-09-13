@@ -6,14 +6,16 @@ tested** whether the reordered test phase drives itself: cold lookers mark what 
 the tool's own words alone, the maker's `audited` names the eye's findings as the plugin's debt,
 and a writer cannot rest a claim on a plate the run's own record calls wrong.
 
-**The run** `20260913T035511Z__scprofile-2b1038e__04_profile__audit` (PBS 711028, the audit
-reproduction of ADR-0018 step 5, cellchat on the cohort against 710985). Its light half is
+**The run** `20260913T042903Z__scprofile-c260046__04_profile__audit` (PBS 711029, the second
+submission of ADR-0018 step 5's audit reproduction, cellchat on the cohort against 710985; the
+tool's own seal on it, the job's FAILED.txt for one arithmetic clause of a prediction, every
+substantive prediction held). Its light half is
 brought to the workstation writable under its own run key by the rsync the agenda prints; that
 copy is the replay every agent works on. The predictions below are written while the job runs
 and before any agent starts.
 
 **The agents** Claude Sonnet, cold, each rooted in a clean room under the session scratchpad
-(`blind5/`): the harness at c8c6fc8 and scProfile at 2b1038e as `git archive` copies, no git;
+(`blind5/`): the harness at 091f09f and scProfile at c260046 as `git archive` copies, no git;
 the replay; the scratch Python. Three roles, light on purpose - the round's proof is the order,
 not the volume:
 
