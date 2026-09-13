@@ -267,6 +267,48 @@ labels after `vertex.label.cex`, the heatmap's clipped column label after the sm
 rankNet caption the edit itself added, clipped). Ten host kinds carry new findings, the next
 build of the mechanism.
 
+**The writer** (cold, on the fourth run with the audit owing): read the contract and the skill,
+the maker's status, the agenda, `next` and the brief; registered five claims on clean figures
+(recorded) and one aimed at a flagged figure (refused, quoting the eye's words - the gate works);
+wrote a 1,806-word section under the brief's headings from the 48 unflagged figures of the
+paper's list and carried it in, accepted; stopped, by its brief, before the rounds and the
+render. It recorded two contradictions in the tool's own words, both mechanism:
+
+13. **The agenda said the pen waits for the run; the gates wait for the figure** (scProfile
+    a567ca6). "Write the result" read BLOCKED on 61 open findings with "answer the worksheet,
+    rerun, look again; the pen waits", while `--claim` and `--write` refuse per citation and
+    accepted a section written from the clean figures. The gates are the rule: the task is
+    blocked only while every figure the paper lists carries a finding; otherwise it names the
+    flagged as ones no claim may cite and says to write from the rest. The next step reads the
+    same way. Test-first in `test_the_eye_comes_before_the_pen.py`.
+14. **The brief's summary counted the run, its marks counted the list** (the same commit): 66
+    in the closing line, 42 tags on the 90 figures listed, 61 in the agenda for the scan set.
+    The brief now counts the figures on its own list.
+
+**The reviewer** (cold): read the contract and the skill; found 29 claims without a verdict (24
+composed by the tool on the rerun, 5 the writer's); re-derived every number from the run's own
+tables and opened all 82 figures the claims cite; put every claim to a round with the tool's
+command - 26 standing, 2 narrowed, 1 withdrawn - none refused. The withdrawn claim cited the
+count figure for a strength ratio, and the reviewer traced that to the composed section itself:
+
+15. **The composed section routes a total-strength sentence to the count figure** (open;
+    scProfile KNOWN_ISSUES, commit b751000). The `how_much_total` route takes the first figure
+    declared to answer it and both the count and the weight plates do; the composed text said
+    "Fig. 1" for a strength range whose figure is Fig. 2. Recorded, not fixed: the route needs
+    to know which quantity a sentence is about, or the plan to declare the answer per quantity.
+
+After the rounds `scprofile next` reads "nothing outstanding. The result is written, carried
+into a run, and defended"; the dispatcher rendered the section into the run
+(`report/cellchat_paper.html`, 152 KB) with the tool's own command; the maker's status reads
+test 5 of 6 with `written` and `delivered` done and only `audited` owing.
+
+**The writing seals**: the looks that carried into the rerun live in the old replay's ledger,
+which had never gone back to the cluster, so two written runs are sealed: the old replay's
+layer first (PBS 711084, run `20260913T132721Z__scprofile-b751000__04_profile__written`, REF
+711029: its 139 looks, 21 answers, the blind-0005 writer's section and claims), then the
+rerun's (its 121 looks, the writer's section, 29 rounded claims, the rendered page), whose
+written run can then carry the old looks from a sibling.
+
 The round's own checks before the author's answer is pasted: `sch dev rules --since f127a2b`
 4 held, 0 broken; `sch dev convert overfit` 0 fitted literals; the cohort's own vocabulary (106
 terms read from the run: populations, pathways, units, contrasts) is held against the author's
