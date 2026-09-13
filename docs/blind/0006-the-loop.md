@@ -185,6 +185,43 @@ The author's second round (scProfile 4c6112f, cellchat 0.30.0): `native_database
 size with the eye's finding answered in the ledger instead; gates green; the same checks before
 the paste (0 cohort terms in the added lines). The fourth submission: `20260913T100732Z__scprofile-4c6112f__04_profile__rerun`, with the
 expectation now the run's own record (507 products).
+It sealed SEALED (PBS 711062, 27 minutes): the tree's commit matched and its code ran, every
+product the reference recorded present, every after-line exit 0, `capacity --promised` reading
+"every declared plot produced at least one file" (945 figures, the reference's count), `measure`
+answered; the maker's status on the run: build 8 of 8, test 2 of 6 with `measure` and `promised`
+done and `looked_at` owing 0 of 95. L1 and L5 hold on this submission.
+
+9. **The drawing station named the pen before the eye** (scProfile b10f8a7). On a rerun's copy
+   beside the old replay, station 6b read "17 eye finding(s) on 17 panel(s); the eye has looked
+   at 0 of 93" and told the agent to answer the worksheet: the branch for open findings sat
+   before the branch for an unlooked scan set. The look now comes first while any figure of the
+   scan set has none, and the carried findings are named as waiting for it; the worksheet is for
+   what survives. Test-first in `test_every_figure_is_measured.py`. (Seen on the third run's copy,
+   which the network then cut short; graded again on the fourth's.)
+10. **An answer did not carry to the run beside** (scProfile d903eb3). On the fourth run's copy the
+    review carried 37 looks and 19 findings from the old replay by content hash and not one of the
+    author's 21 answers, so the answered plates were not outstanding for a fresh look and the
+    worksheet would have asked the same ten kinds again. An answer is bound to the bytes like a
+    look: on the same bytes it carries, with the run it was given on named; on other bytes it does
+    not. Test-first in `test_findings_become_work.py`. With it the review reads "19 answered -
+    needs a look, 37 reviewed (carried), 913 unreviewed" and hands the lookers 70 of the 95.
+11. **A rebuild of the pages dropped the compare plates' records** (scProfile 2129082). The
+    run's own report recorded the compare phase's 249 plates as the companion's; the declared
+    after-line `scprofile report --out` then rebuilt the pages with no `--prefix`, resolved no
+    interpreter, returned before the pair loop and wrote `panels.json` with `native: []`, so
+    station 6b read 249 figures "recorded by nothing" (L2 failed as the run came off the
+    cluster). A rebuild now records what is on disk and launches nothing without an interpreter.
+    Test-first in `test_every_figure_is_measured.py`. With the pages rebuilt on the copy, the
+    station reads "681 drawn and NOT measured by any machine (681 recorded by the plugin's
+    companion ..., 0 recorded by nothing)": L2 holds after the fix.
+
+**L6 on the fourth run's copy** (after defects 9 and 10): the maker's status reads test 3 of 6,
+`looked_at` owing with "OPEN THESE AND RECORD WHAT YOU SEE", `audited` owing with "no drawing
+issue remains after the host repaired 4 on 2 panel(s); 19 eye finding(s) on 19 panel(s), 18 of
+them answered by the author and awaiting a looker's fresh look; the eye has looked at 6 of 139"
+and the arrow "look at the scan set first ... the findings that carry over wait for it". L6 holds.
+The rebuild also regenerated the paper's list, so the scan set grew from 95 to 139 while the
+lookers were on the first 70; the remainder is handed out after them, by the same command.
 
 The round's own checks before the author's answer is pasted: `sch dev rules --since f127a2b`
 4 held, 0 broken; `sch dev convert overfit` 0 fitted literals; the cohort's own vocabulary (106
