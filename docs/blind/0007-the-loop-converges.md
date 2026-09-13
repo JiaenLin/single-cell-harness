@@ -41,7 +41,7 @@ of 6 with `audited` owing.
 | the rerun: job, wall time, seal | PBS 711115 FAILED (two instances lost to a segfault and a truncated read; compute1020); PBS 711118 FAILED (five instance processes died with signal 11; compute1020); PBS 711119 pinned to compute1017 SEALED after 35 minutes: 18 of 18 instances done, 945 figures, 249 compare plates, every declared plot produced, memory answered; cores measured sustained 2.67 with one-second bursts to 58.7 on a share of 4 (over its share, the plugin's to cap); cost measured high, 3,285 s per 100,000 cells, against a declared medium |
 | lookers: figures handed, recorded, refusals, defects marked | 83 handed in two shards of 42 and 41 (56 of the 139 carried from the sibling run); 83 recorded, 0 refused, 39 marked defect (24 and 15); one looker recorded `--answer` on three answered figures and found the answered state did not clear until it recorded a plain look; 556k tokens, 170 tool uses, 21 and 12 min |
 | audited after the fresh look | 44 open findings on 25 kinds (HOST 3, PLUGIN 5, TOOL 17), from 36 kinds; station 6b: 1 machine residue (the across_design footnote, fixed at HEAD, redrawn only by a rerun); station 7: 80 of 80 kinds and 139 of 139 of the scan set looked at |
-| writer and reviewer | |
+| writer and reviewer | writer: the accounting for the composed claims' 24 to 8 written and accepted, 3 claims recorded citing 6 figures (one refusal, the numbered citation), a 1,911-word section carried in, stopped at the review round as told; 185k tokens, 49 tool uses, 12 min. reviewer: (below) |
 | defects of the mechanism | |
 | agents, tokens, wall time | |
 
@@ -79,6 +79,27 @@ ladder had nothing to answer, and the two it had carried highest stood a third o
 height above their points. A label the solve moves further than eight points from its point now
 gets the ladder's leader, ladder or not. Reproduced test-first through the role panel with
 crafted strengths of the run's shape.
+
+**5. The citation refusal did not name the form** (scProfile, the paper commit after 688a21d's
+scProfile counterpart). The brief and the page number the figures 1 to 90; the writer cited
+"15,16,17" and was told "no such figure in this run: 15, 16, 17", and found the form in the
+flag's help. The refusal now says a figure is cited by its run-relative path, as the figure list
+and the brief hold them. Test-first in the paper suite.
+
+**6. The writing brief on disk was stale, and the agenda sent the reader to it** (scProfile, the
+agenda commit after it). Written at report time on the cluster, the brief read 6 of 90 figures
+flagged while the run's ledger, after the lookers, held 31; `next` and `agenda` printed 31, the
+file 6. `paper --brief` had answered this in blind 0004 by rewriting the brief before printing
+it; the agenda's first step named the file and did not. The agenda now rewrites the brief before
+it counts it read. Found by the writer; test-first in the agenda suite, whose closing line was
+unconditional and is now an exit on its failures (a defect of the suite, found by the check
+passing on its first run against the defect).
+
+The writer's second reported defect - that 22 of the paper's 90 figures had "never been reviewed
+by anyone" - is not one: every one of the 90 is in the scan set and every one has a look; the 37
+the writer could not find under their own path carried, on identical bytes, from the older audit
+run beside the two reruns, which the writer had not counted as a sibling. The tool's listing
+names that run on each of them.
 
 **The first submission of the rerun** (PBS 711115, `20260913T160311Z__scprofile-db066f3__04_profile__rerun`,
 27 minutes) sealed FAILED on one unit's products. Two instances failed on the upstream, each recorded
