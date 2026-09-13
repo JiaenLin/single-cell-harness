@@ -41,7 +41,7 @@ of 6 with `audited` owing.
 | the rerun: job, wall time, seal | PBS 711115 FAILED (two instances lost to a segfault and a truncated read; compute1020); PBS 711118 FAILED (five instance processes died with signal 11; compute1020); PBS 711119 pinned to compute1017 SEALED after 35 minutes: 18 of 18 instances done, 945 figures, 249 compare plates, every declared plot produced, memory answered; cores measured sustained 2.67 with one-second bursts to 58.7 on a share of 4 (over its share, the plugin's to cap); cost measured high, 3,285 s per 100,000 cells, against a declared medium |
 | lookers: figures handed, recorded, refusals, defects marked | 83 handed in two shards of 42 and 41 (56 of the 139 carried from the sibling run); 83 recorded, 0 refused, 39 marked defect (24 and 15); one looker recorded `--answer` on three answered figures and found the answered state did not clear until it recorded a plain look; 556k tokens, 170 tool uses, 21 and 12 min |
 | audited after the fresh look | 44 open findings on 25 kinds (HOST 3, PLUGIN 5, TOOL 17), from 36 kinds; station 6b: 1 machine residue (the across_design footnote, fixed at HEAD, redrawn only by a rerun); station 7: 80 of 80 kinds and 139 of 139 of the scan set looked at |
-| writer and reviewer | writer: the accounting for the composed claims' 24 to 8 written and accepted, 3 claims recorded citing 6 figures (one refusal, the numbered citation), a 1,911-word section carried in, stopped at the review round as told; 185k tokens, 49 tool uses, 12 min. reviewer: (below) |
+| writer and reviewer | writer: the accounting for the composed claims' 24 to 8 written and accepted, 3 claims recorded citing 6 figures (one refusal, the numbered citation), a 1,911-word section carried in, stopped at the review round as told; 185k tokens, 49 tool uses, 12 min. reviewer: 11 verdicts (1 standing, 10 narrowed, 0 withdrawn), every cited figure opened and every number checked against the run's own tables, no refusal; 198k tokens, 58 tool uses, 13 min |
 | defects of the mechanism | |
 | agents, tokens, wall time | |
 
@@ -100,6 +100,27 @@ by anyone" - is not one: every one of the 90 is in the scan set and every one ha
 the writer could not find under their own path carried, on identical bytes, from the older audit
 run beside the two reruns, which the writer had not counted as a sibling. The tool's listing
 names that run on each of them.
+
+**7. Ten narrowed claims read as "every claim survived unchanged"** (scProfile ac52840). The
+reviewer narrowed ten of eleven and the paper's next step printed the line written for a loop
+nobody pushed, because it counted only the withdrawn. A narrowing is the loop pushing; the
+step now counts both and says how many of each.
+
+**8. A page rendered before the section was carried in stood for the rendered result**
+(scProfile ac52840). The rerun's page was rendered at seal time on the cluster; the writer
+carried a section in and the reviewer recorded eleven verdicts an hour later, and `next` said
+nothing was outstanding. The step now compares the page's time with the section's and the
+ledger's and asks for the render again when either is newer. Found by the dispatcher, on the
+render it ran before the seal; test-first in the paper suite.
+
+**The reviewer's finding, open.** The six composed ratio claims cite the plugin's `how_much_total`
+plate (`nativecmp_compareInteractions_weight`), which totals each arm over the pathways pooled
+across all four arms, while the number in the sentence comes from the host's two-scale table,
+which totals the same arm over the pathways shared with its one comparison partner - so the
+plate shows a different number for the same arm in every contrast and cannot support the sentence
+even once its legibility finding is redrawn. Neither side is wrong on its own basis; the composer
+binds a sentence on one basis to a plate on another. The plate is the plugin's declared route and
+the table is the host's; which of them moves is the next turn's question, recorded in ADR-0020.
 
 **The first submission of the rerun** (PBS 711115, `20260913T160311Z__scprofile-db066f3__04_profile__rerun`,
 27 minutes) sealed FAILED on one unit's products. Two instances failed on the upstream, each recorded
