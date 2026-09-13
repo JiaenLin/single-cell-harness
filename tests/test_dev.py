@@ -362,6 +362,27 @@ class Job(unittest.TestCase):
         self.assertIn(f"/env/bin/python -m t.cli report --out {self.d / 'new'}", text)
         self.assertLess(text.index("cell_type_forced"), text.index("t.cli report"))
 
+    def test_a_failing_after_line_is_a_verdict_in_the_log_and_not_a_failed_run(self):
+        """`run.after` carries the test-phase commands - `status`, `capacity --memory` - whose
+        exit codes are VERDICTS the maker reads. Under the script's `set -e` a refusing verdict
+        aborted the job and sealed FAILED over a run whose products were all there (seen on the
+        dry emit of blind 0006's rerun). The seal reads the products; the verdicts go to the log."""
+        import subprocess
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok", "argv": ["true", "run", "--out", "/old"]}))
+        (self.d / "new").mkdir()
+        for f in ("STATUS.json", "report.json"):
+            (self.d / "new" / f).write_text("{}")
+        kw = dict(self.kw, rundir=str(self.d / "new"))
+        text = J.emit(prediction="identical", after=[["false"], ["true"]], **kw)
+        script = self.d / "job.sh"
+        script.write_text(text)
+        r = subprocess.run(["bash", str(script)], capture_output=True, text=True,
+                           env={"PATH": "/usr/bin:/bin", "HOME": str(self.d)})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue((self.d / "new" / "SEALED.txt").is_file(), r.stdout + r.stderr)
+        self.assertIn("after: exit 1", r.stdout)
+
     def test_the_makers_status_is_written_to_the_run(self):
         text = J.emit(prediction="identical", maker_status=("k", "widget"), **self.kw)
         self.assertIn("sch dev convert status", text)

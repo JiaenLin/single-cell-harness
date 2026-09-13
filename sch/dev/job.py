@@ -267,7 +267,9 @@ set -e
 echo "tool exit: $rc"
 [ "$rc" -eq 0 ] || exit "$rc"
 # ------------------------------------------------------ what the repository says follows a run
-# Declared in DEVPOINTS.yaml under `run.after` (harness ADR-0019); each line is one command.
+# Declared in DEVPOINTS.yaml under `run.after` (harness ADR-0019); each line is one command. Its
+# exit code is a VERDICT - `status` owing, `capacity --memory` refusing a declaration - which the
+# maker reads from this log; it is not a failure of the run, whose seal reads the products.
 {after_lines}
 # ------------------------------------------------------------- the maker's status, for the record
 {maker_lines}
@@ -321,8 +323,10 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
         for k, v in fill_.items():
             a = str(a).replace("{" + k + "}", v)
         return a
-    after_lines = "\n".join(" ".join(shlex.quote(_fill(x)) for x in cmd)
-                            for cmd in (after or ()))
+    after_lines = "\n".join(
+        " ".join(shlex.quote(_fill(x)) for x in cmd)
+        + f' && echo "after: exit 0 - {_name}" || echo "after: exit $? - {_name}"'
+        for cmd in (after or ()) for _name in [shlex.quote(" ".join(str(x) for x in cmd[1:]))])
     maker_lines = ""
     if maker_status:
         _pl, _pt = maker_status
