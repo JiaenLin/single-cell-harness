@@ -81,9 +81,13 @@ finished as code and untested as a run; the status says so and does not count th
 read-only; the looks, the claims and the section are written. Bring the run's light half across
 writable under the same run key (`scprofile agenda --out <RUNDIR>` prints the rsync, heavy
 objects excluded), point every command at that copy - `status --run`, `review`, `paper` - and
-clear `looked_at` (the scan set the review command prints and splits), `written` (the composed
-claims defended by a second agent, your own added, the section carried in with `paper --write`
-and rendered) and `delivered`. Then send the written layer back as a writing run:
+clear `looked_at` (the scan set the review command prints and splits; `--defect` on a look
+that says the panel must change), then `audited` (the host has repaired what it could where each
+panel was written; what remains, and what the eye marked, is the plugin's to fix in the plan or
+its code - rerun, look again at what was redrawn), then `written` (the composed claims defended
+by a second agent, your own added, the section carried in with `paper --write` and rendered) and
+`delivered`. The pen waits for the figures: no claim may cite a figure with an open finding
+(ADR-0018). Then send the written layer back as a writing run:
 `jobs/submit_writing_seal.sh --prepare <sealed run>` names its `incoming/`, and `--seal` grades
 it with this same status and seals it.
 

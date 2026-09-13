@@ -291,7 +291,7 @@ keep it.
 | 1 the audit repairs | done | scProfile c817bca | `figure.audit_and_repair`: nine repairs keyed to their findings, three passes, the column re-fitted; the stamp placed from the rendered box after the fit; `emit_figure` and `figure.save` share it; the manifest carries `repairs`; station 6b prints repaired beside remaining; suites 91 green |
 | 2 the run measures | done | scProfile b59bf7d | `_entry._TreeSampler` (PSS from `smaps_rollup`, RSS otherwise, one /proc walk a second); `peak_measurement` prefers the tree; `capacity --memory` exits 0 only at or above the fit and `--declare` writes the fit plus 10% into the plugin, read back; `measure` declares `apply:`; suites 92 green |
 | 3 the maker applies | done | harness: this commit | `apply:` read beside `command:`; `sch dev convert <stage> --run R --name X --apply` runs it; a status names the apply line for an owing stage and never runs it; the advance command is the apply when the stage owes; DEVELOPING §8 and the skill; harness suite green |
-| 4 the eye before the pen | | | |
+| 4 the eye before the pen | done | scProfile 2b1038e; harness: this commit (the skill) | `review --defect`; `review.defects` and `review.open_findings` (machine residue + eye defects, one list for every reader); `looked_at` before `audited`; station 6b reads the eye and owes until the scan set is looked at; the agenda's write task, `next` and `paper --claim` refuse a figure with an open finding, quoting it; the brief marks it; AGENT_CONTRACT, TEST_LOOP, the result-section skill and the maker skill say the order; suites 93 green |
 | 5 the reproduction | | | |
 | 6 the fill on cellchat | | | |
 | 7 blind 0005 | | | |
