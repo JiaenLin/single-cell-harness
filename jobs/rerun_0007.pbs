@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N rerun
 #PBS -q super
-#PBS -l select=1:ncpus=64:mem=360gb
+#PBS -l select=1:ncpus=64:mem=360gb:host=compute1017
 #PBS -l walltime=04:00:00
 #PBS -j oe
 #
@@ -9,7 +9,7 @@
 # REPRODUCE 20260913T042903Z__scprofile-c260046__04_profile__audit AT 7c188a4
 # ============================================================================================
 #
-# WRITTEN BY `sch dev job` ON 2026-09-13T16:39:28Z - do not hand-edit the derived sections below without
+# WRITTEN BY `sch dev job` ON 2026-09-13T17:09:34Z - do not hand-edit the derived sections below without
 # saying so here, because their whole value is that they were not typed from memory.
 #
 # THE REFERENCE RUN
@@ -25,7 +25,7 @@
 # and not the tool's.
 #
 # THE PREDICTION, WRITTEN BEFORE SUBMISSION:
-#   ADR-0020 H2: after this run a fresh look records no finding on any of the ten host kinds. A2: at most eight kinds survive the fresh look (36 before). C1: capacity --cores and --cost read a model from this run; cost is applied by the maker and written by the tool; cores owes on the burst the plugin does not cap. The previous submission (711115) lost two instances to upstream flakes - a segfault in the bootstrap, a truncated matrix read - and three contrasts to the object one of them never wrote; this one is expected to seal SEALED with every product the run's own record lists.
+#   ADR-0020 H2: after this run a fresh look records no finding on any of the ten host kinds. A2: at most eight kinds survive the fresh look (36 before). C1: capacity --cores and --cost read a model from this run; cost is applied by the maker and written by the tool; cores owes on the burst the plugin does not cap. The two previous submissions (711115, 711118) lost instances to segfaults in different processes, both on compute1020, after four clean runs on compute1016 and compute1017; this one is pinned to compute1017 to test that, and is expected to seal SEALED with every product the run's own record lists.
 #
 # THE CHECKOUT IS FROZEN. The tool is expected at 7c188a4. If it has moved when this job
 # starts, the job refuses rather than measuring a mixture of two versions. Twice on 2026-09-06 a
@@ -35,6 +35,11 @@
 # rule-one: no-removal - this job reads inputs and writes only inside its own run directory.
 # Authored off-cluster and pushed (rule H1). No `git` command runs below.
 #
+# QUEUE/HOST: this job pins compute1017. That pin only works in a queue whose node
+# pool contains it; elsewhere PBS says "Can Never Run: Insufficient amount of
+# resource: host (compute1017)" while the node sits idle. Pin in the queue the run
+# being reproduced actually used.
+#
 # THE COMMIT WAS GIVEN, NOT READ: the tree at /data/wangyb/home/jiaen.lin/tools/scProfile-cconly is not readable where this was written. The job reads the tree's own HEAD.txt or .git at start and refuses a mismatch.
 #
 # A REDRAW: figures are not expected products. The plan's promise (`capacity --promised`) and the eye judge them.
@@ -42,7 +47,7 @@
 
 set -euo pipefail
 
-RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T163928Z__scprofile-7c188a4__04_profile__rerun"
+RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T170934Z__scprofile-7c188a4__04_profile__rerun"
 TOOLDIR="/data/wangyb/home/jiaen.lin/tools/scProfile-cconly"
 EXPECT_COMMIT="7c188a4"
 mkdir -p "$RUNDIR/logs"
@@ -138,7 +143,7 @@ echo "node: $(hostname -s)  cores: ${NCPUS:-unset}  started: $(date -u)"
 # `set -e` is lifted for exactly one line, so the code can be read and reported before the trap
 # uses it - under `set -e` the script would leave before `rc` was ever assigned.
 set +e
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T163928Z__scprofile-7c188a4__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow --no-cache
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T170934Z__scprofile-7c188a4__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow --no-cache
 rc=$?
 set -e
 echo "tool exit: $rc"
@@ -147,10 +152,10 @@ echo "tool exit: $rc"
 # Declared in DEVPOINTS.yaml under `run.after` (harness ADR-0019); each line is one command. Its
 # exit code is a VERDICT - `status` owing, `capacity --memory` refusing a declaration - which the
 # maker reads from this log; it is not a failure of the run, whose seal reads the products.
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli report --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T163928Z__scprofile-7c188a4__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli report --out {run}'" || echo "after: exit $? - '-m scprofile.cli report --out {run}'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T163928Z__scprofile-7c188a4__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T163928Z__scprofile-7c188a4__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T163928Z__scprofile-7c188a4__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli report --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T170934Z__scprofile-7c188a4__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli report --out {run}'" || echo "after: exit $? - '-m scprofile.cli report --out {run}'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T170934Z__scprofile-7c188a4__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T170934Z__scprofile-7c188a4__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260913T170934Z__scprofile-7c188a4__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
 # ------------------------------------------------------------- the maker's status, for the record
 HARNESS="${HARNESS:-$HOME/tools/single-cell-harness}"
 PYTHONPATH="$HARNESS" /data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m sch dev convert status --root /data/wangyb/home/jiaen.lin/tools/scProfile-cconly --point kernel --name cellchat --run "$RUNDIR" > "$RUNDIR/logs/maker_status.txt" 2>&1 || true

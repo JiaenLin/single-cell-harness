@@ -63,6 +63,13 @@ seconds per 100,000 cells against a declared medium. The cores gate was refined 
 (scProfile 7c188a4): the declaration is held against the sustained use, and a burst past twice
 the share is named as the plugin's to cap, never a number to declare. Resubmitted as PBS 711118
 (`20260913T163928Z__scprofile-7c188a4__04_profile__rerun`).
+That submission sealed FAILED too: five of eighteen instance processes died with signal 11
+between 23 and 363 seconds in, one contrast's compare aborted with signal 6, and the tool
+recorded each as died, named the five `run --resume` would re-run, and exited 0. No error of
+this round's code raises a signal; the two failed submissions ran on compute1020 and the four
+clean ones on compute1016 and compute1017, and the scheduler reports both nodes free and healthy,
+so the node is a correlation and not a finding. The seventh submission is pinned to compute1017
+to test it.
 
 ## Results
 
