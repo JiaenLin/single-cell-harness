@@ -213,6 +213,17 @@ Two defects in that job were found by running it rather than by reading it: `set
 drift guard before it could compare — a guard that fails open is worse than none, because the
 header claims it ran — and a `FAILED` seal exited 0. Both are fixed and both are tested.
 
+**The rerun of the loop is this job** (ADR-0019). Four things the loop needed of it: a tool
+tree exported without `.git` carries `HEAD.txt`, read by the emitter and by the job at start;
+where the tree is not readable when the job is written, `--tool-commit` gives the commit and
+the job refuses a mismatch at start; a run records `sys.argv`, whose first element is the
+script and not the interpreter, so `--python` runs a script under the tool as its module; and
+a rerun after figure changes is allowed to change figures, so `--redraw` leaves them out of the
+expected products and the plan's promise and the eye judge them. The repository declares what
+follows a run under `run.after` in `DEVPOINTS.yaml` — the report, the status, the capacity
+checks — and the emitter appends those, then the maker's own `status --run` into the run's
+logs when `--plugin` names one.
+
 ## 7. What each repository declares
 
 | repository | points |
@@ -341,6 +352,16 @@ same placeholders, that **writes** the fill into the declaration — and `sch de
 --run RUNDIR --name X --apply` runs it. A status names the apply line for an owing stage and
 never runs it; the maker learns nothing of what the command writes. The verification stays the
 `command:` — after an apply, the stage is answered only if the command says so (ADR-0018).
+
+### How a judgement is answered: `worksheet:` beside `command:` and `apply:`
+
+`apply:` writes a fill mechanically. A stage whose debt only an author can answer — the eye's
+findings on a plugin's figures — declares `worksheet:` instead: an argv, with the same
+placeholders, that prints the work from the run (the findings by kind, their owners, the plan
+entry or the code site, the two answers). `sch dev convert <stage> --run RUNDIR --name X
+--worksheet` runs it; a status names it as "answer it:" for an owing stage and never runs it;
+the advance command prefers `apply:` over `worksheet:` over the verification, because a
+mechanical answer needs no author (ADR-0019).
 
 ### What the stages cover, which is not whether they are done
 
