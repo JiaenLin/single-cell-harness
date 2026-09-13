@@ -60,7 +60,7 @@ prediction rewritten after the numbers are in.
 | step | state | where | what |
 |---|---|---|---|
 | 0 record | done | this commit | |
-| 1 the composed ratio's basis | | | |
+| 1 the composed ratio's basis | done | scProfile 365ad3b | the ratio sentence cites first a plate whose caption states both of its totals (`caption_states`, to half a percent); the host's contrast plates already print the shared-basis totals, so on the second rerun every composed ratio claim cites the contrast's C1 strength plate first and the route's plates after; test-first in the composer's citation suite; R1 held (the check failed on the composer as it was, passes after) |
 | 2 the author's third answer (twenty-two kinds and the cap) | | | |
 | 3 the rerun and the fresh look | | | |
 | 4 the pen, the review, the seal | | | |

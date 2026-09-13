@@ -10,8 +10,9 @@ kinds and the thread cap, the rerun through the emitted job, the lookers, the pe
 25 kinds, the writer's section, 11 claims with verdicts and the rendered page; the writing run
 `20260913T185809Z__scprofile-7c188a4__04_profile__written` (PBS 711120) beside it.
 
-**The agents** Claude Sonnet, cold, in clean rooms under the session's `blind8/`: scProfile as a
-cellchat-only `git archive` copy with a pristine twin for the diff, the harness, no git anywhere;
+**The agents** Claude Sonnet, cold, in clean rooms under the session's `blind8/`: scProfile at
+ac52840 as a cellchat-only `git archive` copy with a pristine twin for the diff, the harness at
+18dade8, no git anywhere;
 the rerun's copy; the scratch Python. The roles as before: the author, the dispatcher, two
 lookers, a writer, a reviewer.
 
