@@ -102,21 +102,44 @@ def rebuild_argv(record: dict, new_out: str, python: str | None = None,
             f"recovered. Reconstructing it by hand is the single most expensive mistake this "
             f"emitter exists to prevent; it will not guess. Reproduce a run that recorded its "
             f"argv, or add one to the record by hand and say in the header that you did.")
-    out, i, replaced = [], 0, False
-    while i < len(argv):
-        a = str(argv[i])
-        if a in OUT_FLAGS and i + 1 < len(argv):
-            out += [a, new_out]
-            i += 2
-            replaced = True
-            continue
-        if any(a.startswith(f + "=") for f in OUT_FLAGS):
-            out.append(a.split("=", 1)[0] + "=" + new_out)
+    # THE OUTPUT FLAG IS THE ONE WHOSE VALUE IS THE REFERENCE ITSELF (harness ADR-0019, blind
+    # 0006). A list of names - `--out`, `--prefix` - is a guess about tools: for one tool
+    # `--prefix` is where its plugin ENVIRONMENTS live, and rewriting it sent a rerun to an
+    # empty directory where every instance failed at once. What the record knows for certain is
+    # where the reference wrote: its own directory, whose key is its last path segment. So a
+    # flag is rewritten when its value names that directory or that key, whatever the flag is
+    # called; the name list is only the fallback for an argv that names its output some other way.
+    ref_dir = str(record.get("dir") or "")
+    ref_key = Path(ref_dir).name if ref_dir else ""
+
+    def _is_ref(v):
+        v = str(v).rstrip("/")
+        return bool(v) and (v == ref_dir.rstrip("/") or (ref_key and Path(v).name == ref_key))
+
+    def _rewrite(by_value):
+        out, i, replaced = [], 0, False
+        while i < len(argv):
+            a = str(argv[i])
+            if a.startswith("-") and i + 1 < len(argv) and (
+                    _is_ref(argv[i + 1]) if by_value else a in OUT_FLAGS):
+                out += [a, new_out]
+                i += 2
+                replaced = True
+                continue
+            if "=" in a and a.startswith("-") and (
+                    _is_ref(a.split("=", 1)[1]) if by_value
+                    else any(a.startswith(f + "=") for f in OUT_FLAGS)):
+                out.append(a.split("=", 1)[0] + "=" + new_out)
+                i += 1
+                replaced = True
+                continue
+            out.append(a)
             i += 1
-            replaced = True
-            continue
-        out.append(a)
-        i += 1
+        return out, replaced
+
+    out, replaced = _rewrite(by_value=True)
+    if not replaced:
+        out, replaced = _rewrite(by_value=False)
     if not replaced:
         raise ValueError(
             f"the reference argv names no output flag ({', '.join(OUT_FLAGS)}), so the "

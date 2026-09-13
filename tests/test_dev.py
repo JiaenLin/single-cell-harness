@@ -394,6 +394,25 @@ class Job(unittest.TestCase):
         self.assertNotIn(f"reference={self.d / 'ref'}", text)
         self.assertNotIn(f"#   {self.d / 'ref'}", text)
 
+    def test_the_output_flag_is_the_one_whose_value_is_the_reference_itself(self):
+        """The emitter rewrote every flag NAMED like an output - `--out`, `--prefix`, ... - to
+        the new run directory. For the tool of blind 0006 `--prefix` is where the plugin
+        ENVIRONMENTS live, an input; the rerun (PBS 711051) sent it to the new, empty run
+        directory and every instance failed in a second with "no environment at ...". A name
+        list is a guess about tools; what the record knows is where the reference wrote. So the
+        flag rewritten is the one whose value names the reference run - its directory, or its
+        key as the last path segment - whatever it is called; the name list is only the fallback
+        for an argv that names its output some other way."""
+        rec = {"dir": str(self.d / "ref"),
+               "argv": ["t", "run", "--out", "/cluster/runs/ref", "--prefix", "/cluster/env", "--x", "1"]}
+        argv = J.rebuild_argv(rec, "/new")
+        self.assertEqual(argv, ["t", "run", "--out", "/new", "--prefix", "/cluster/env", "--x", "1"])
+        rec2 = {"dir": str(self.d / "ref"),
+                "argv": ["t", "run", "--out", "/cluster/runs/ref", "--prefix", "/cluster/runs/ref"]}
+        self.assertEqual(J.rebuild_argv(rec2, "/new")[2:], ["--out", "/new", "--prefix", "/new"])
+        rec3 = {"dir": str(self.d / "ref"), "argv": ["t", "run", "--out", "/elsewhere/other"]}
+        self.assertEqual(J.rebuild_argv(rec3, "/new"), ["t", "run", "--out", "/new"])
+
     def test_the_makers_status_is_written_to_the_run(self):
         text = J.emit(prediction="identical", maker_status=("k", "widget"), **self.kw)
         self.assertIn("sch dev convert status", text)
