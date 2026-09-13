@@ -32,9 +32,16 @@ not the volume:
 
 ## Measured before any agent starts
 
-To be filled from the maker's status on the replay before the lookers start: `measure`,
-`promised`, `looked_at`, `audited` (with the repaired count and the residue), `written`,
-`delivered`.
+The maker's status on the replay, before the lookers started (`blind5/work/status_before.txt`):
+build 7 of 8 (`freshness` owes: the plugin's version was set four commits ago - the plugin's
+pre-existing debt); test 1 of 6: `measure` OWES with its apply line printed (the fitted 2.2 +
+13.0 against a declared 3.1 + 5.7 - applied to the real plugin as step 6, scProfile ad6a691,
+after this reading), `promised` done, `looked_at` OWES 0 of 139, `audited` BLOCKED "no drawing
+issue remains after the host repaired 5 on 2 panel(s); the eye has looked at 0 of 139 - the
+audit is not clean until the eye has", `written` and `delivered` OWE. `scprofile next` on the
+replay says: open the figures, 139 outstanding. The review command split the 139 into two
+shards of 70 and 69 and printed, beneath them, the record command with `[--defect]` and one line
+saying what the flag means; that printout is the whole of what the lookers were told about it.
 
 ## Predictions, written before the agents start
 
