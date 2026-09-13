@@ -67,13 +67,13 @@ before it. Reproduced test-first on a synthetic design of the rerun's shape; the
 table audits clean under the fix.
 
 **3. The review's listing told the reader to open fifty-six figures whose looks had carried**
-(scProfile, the commit after 8eb7a3b). The status counted them "reviewed (carried)", the shards
+(scProfile 7aca925). The status counted them "reviewed (carried)", the shards
 left them out, and the list beneath printed the same names under "have not been looked at, or
 were redrawn since ... Open each one". `outstanding` had the rule - a carried look is a look -
 and the listing had not. Found on the run after both lookers finished; test-first on the
 two-run fixture the carry was written against.
 
-**4. Two labels floated above any point with no leader** (scProfile, the commit after that). The
+**4. Two labels floated above any point with no leader** (scProfile 32a1bdf). The
 second look's N4: the vertical solve cleared nine names in one corner within its cap, so the
 ladder had nothing to answer, and the two it had carried highest stood a third of the clump's
 height above their points. A label the solve moves further than eight points from its point now
