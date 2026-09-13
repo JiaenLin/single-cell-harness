@@ -149,4 +149,26 @@ code of this round can raise, and one on another node lost none.
 
 ## Results
 
-To be written after the agents finish.
+| prediction | held? | what happened |
+|---|---|---|
+| H1 | held | each of the ten host kinds got a check that failed on the drawing as it was and passed after (step 1, scProfile 3dbc6f9, 6a988d5, fca2fba) |
+| H2 | **failed** | the fresh look recorded a finding on three of the ten host kinds: the design grid's new footnote drawn over its key (defect 2), two role-scatter labels floating with no leader (defect 4), and three role-shift arrows crossing in one region in near colours (the data's, not the drawing's - the labels the first look asked about were clear) |
+| A1 | held | the cold author answered 26 kinds without a question, edited 16, bumped 0.30.0 to 0.31.0 once, passed validate and the build 8 of 8; two comments naming the cohort were sent back and generalised |
+| A2 | **failed** | 25 kinds survive the fresh look (36 before): HOST 3, PLUGIN 5, TOOL 17; 44 findings on 44 of 139 figures |
+| D1 | held, with a finding | the six composed ratio claims cite the strength plate, not the count plate, and none was withdrawn for the figure; all six were narrowed because the plate totals each arm over the pooled pathway set and the sentence over the shared one (the reviewer's finding, open) |
+| D2 | _seal 711120 pending_ | |
+| C1 | half | `cost` reads answered, written by `capacity --cost --declare` from the run (high, 3,285 s per 100,000 cells); `cores` reads OWES on the burst - declared 4 at or above the sustained 3, peak 58.7 on a share of 4, which the gate names as the plugin's to cap and refuses to declare |
+| B1 | **failed** | eight defects of the mechanism, each fixed test-first the same day (six predicted); two suites found to mask their own failures |
+
+**What the round found.** The loop ran a second time end to end on cold agents with no
+dispatcher command outside what the tools printed, and it did not converge: 36 kinds became 25,
+the pen wrote 3 claims where the first turn wrote 24 composed and 29 authored, and every claim
+but one was narrowed. The ten host kinds the mechanism answered came back with three findings,
+two of them made by the answers themselves (a footnote placed where the key sat; labels the
+declutter now clears far enough to lose). The seventeen tool kinds are what the plugin's author
+must answer next, and the five plugin kinds beside them; nothing in this round touched the
+plugin but the tool's own declaration of its cost. The eight defects were all in the reading of
+state - a listing, a headline, a brief, a refusal, a next step - and none in what the run
+computes: the loop's mechanism now tells the truth in more places than it did, and the
+convergence it was built to show is the plugin's to earn.
+
