@@ -49,6 +49,21 @@ of 6 with `audited` owing.
 
 (none so far this turn: the author met no refusal it could not act on)
 
+**The first submission of the rerun** (PBS 711115, `20260913T160311Z__scprofile-db066f3__04_profile__rerun`,
+27 minutes) sealed FAILED on one unit's products. Two instances failed on the upstream, each recorded
+as refused by the tool: one segfaulted inside CellChat's bootstrap, one could not read back the
+matrix it had just been handed ("scan(file, nmax = nz)"), and the second wrote no object, so the
+three contrasts that needed it exited in a tenth of a second with no plate and `promised` named
+the one plot never drawn. Neither failure is in code this round touched; the same units ran clean
+on the four runs before. The run measured what nothing had measured before: every instance
+carries wall and CPU time, and the cores model reads a sustained 2.4 cores on a share of 4 with
+one-second bursts of 49 to 61 - threads or workers the plugin does not cap, on a node eighteen
+instances share, which is the likeliest cause of the two flakes. The cost band reads high at 3,062
+seconds per 100,000 cells against a declared medium. The cores gate was refined from that
+(scProfile 7c188a4): the declaration is held against the sustained use, and a burst past twice
+the share is named as the plugin's to cap, never a number to declare. Resubmitted as PBS 711118
+(`20260913T163928Z__scprofile-7c188a4__04_profile__rerun`).
+
 ## Results
 
 To be written after the agents finish.
