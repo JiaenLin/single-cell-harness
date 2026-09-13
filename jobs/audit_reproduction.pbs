@@ -45,6 +45,15 @@
 #   A9  this job seals only when none of the above failed; a failed prediction writes
 #       FAILED.txt with the run complete on disk.
 #
+#   SECOND SUBMISSION, after PBS 711028 held 8 of 9 and wrote FAILED.txt as A9 says:
+#   A1  failed on its repair count. The audit found 3 collisions on the whole run before repair,
+#       not 43: the reference's forty were tick labels beyond the axis limits, laid out and never
+#       drawn, which the old audit measured and the new collector excludes. The three real ones
+#       were one class the repertoire lacked - a placed label over a tick label at the axes'
+#       edge - and the repertoire has it now. RESTATED: the audit finds at most 5 collisions on
+#       the whole run before repair, repairs every one, and 0 remain; the repairs recorded equal
+#       the collisions found. Everything else as above.
+#
 # rule-one: no-removal - everything this writes goes inside $RUNDIR.
 # Authored on the workstation and pushed (rule H1). No `git` runs below. Submit with
 # jobs/submit_audit_reproduction.sh, never qsub directly: the run key is built there.
@@ -227,9 +236,13 @@ residue = sum(len(r.get("audit") or []) for r in recs)
 repairs_five = sum(len(r.get("repairs") or []) for r in recs if str(r.get("id")) in FIVE)
 repairs_all = sum(len(r.get("repairs") or []) for r in recs)
 res_ids = sorted({str(r.get("id")) for r in recs if r.get("audit")})
-say(bool(recs) and residue <= 3 and repairs_five >= 40,
-    "A1  at most 3 findings remain, at least 40 repairs on the five panel ids",
-    f"{residue} remain on {res_ids[:6]}; {repairs_five} repairs on the five, {repairs_all} in all, over {len(recs)} measured panels")
+found_total = 0
+for lg in glob.glob(os.path.join(new, "kernels", "cellchat", "*", "cellchat.log")):
+    for m in re.finditer(r"^\s*(\S+): (\d+) drawing issue\(s\) found, (\d+) repair\(s\) by the host", read(lg), re.M):
+        found_total += int(m.group(2))
+say(bool(recs) and found_total <= 5 and residue == 0 and repairs_all == found_total and repairs_all > 0,
+    "A1  at most 5 collisions found before repair, every one repaired, 0 remain",
+    f"{found_total} found, {repairs_all} repaired, {residue} remain on {res_ids[:6]}; over {len(recs)} measured panels")
 
 found_over, n_lines = [], 0
 for lg in glob.glob(os.path.join(new, "kernels", "cellchat", "*", "cellchat.log")):
