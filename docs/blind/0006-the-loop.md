@@ -7,8 +7,9 @@ lookers are handed only what changed, the audit clears or names what survived, a
 
 **The run the loop starts from** `20260913T042903Z__scprofile-c260046__04_profile__audit` (PBS
 711029), whose replay under the session's `blind5/` carries the 70 findings two lookers marked on
-46 kinds, the writer's section and its three claims. The rerun's key is filled in below when the
-job is submitted.
+46 kinds, the writer's section and its three claims. The rerun is `20260913T082230Z__scprofile-3ee26e7__04_profile__rerun`, emitted by `sch dev job`
+from the replay (`jobs/rerun_0006.pbs`, 514 non-figure products expected, the tree frozen at
+the author's commit scProfile 3ee26e7) and submitted by `jobs/submit_rerun.sh`.
 
 **The agents** Claude Sonnet, cold, in clean rooms under the session's `blind6/`: the harness at
 3dec780 and scProfile at d7b6d37 as `git archive` copies, no git; the replay of 711029 (the same
@@ -85,6 +86,44 @@ Blind 0006:
 | maker or host defects found | |
 | dispatcher commands | |
 | agents, tokens, wall time | |
+
+## Defects of the mechanism, as they came (B5 counts them)
+
+1. **`sch dev job` and `sch dev baseline` unreachable through the CLI** (harness 736243f). The
+   dispatcher's first command, the dry emit of the rerun, died on `a.action`: since fe5ecae the
+   convert-only branches (`account`, `build`, the command stage) sat at the top of `cmd_dev`, and
+   the last one returned for every subcommand after it. The module functions were tested; the
+   command a person types was not. With it, the emitter's summary reported the tree's commit it
+   could not read (None) instead of the one it was given, and counted the figures a redraw does
+   not expect. Test-first: `ReachableThroughTheCli`, `test_the_summary_says_what_the_job_says`.
+2. **An after-line's verdict sealed the run FAILED** (harness d3f6388). The declared `run.after`
+   commands ran under the job's `set -e`, so `status` owing or `capacity --memory` refusing a
+   declaration would have aborted a job whose products were all there, and the maker's status
+   would never have been written. Now each after-line records `after: exit N` in the log; the
+   seal reads the products. Test-first: the emitted script run in bash with a failing after-line
+   seals SEALED.
+
+3. **The worksheet cut the eye's words and split one plan entry in two** (scProfile, the
+   commit after the author's answer). Named by the author: the note was cut at 300 characters,
+   which cut the actionable half of a two-clause finding often enough that it read the run's
+   ledger instead of the sheet; and a per-item entry (`native_patterns`, drawn as
+   `_incoming` and `_outgoing`) surfaced as two headings, so a reader answering "each kind
+   once" would fix the same entry twice. Now a finding is grouped under the plan entry that
+   claims its file, and the words are printed whole; on the real sheet 46 kinds became 43.
+   Test-first in `test_findings_become_work.py`.
+
+The author's answer met the gate before it met the repository: the portability scan refused
+`kernels/cellchat.py:774` - the comments quoted this cohort's population labels where they said
+what was found - and the refusal went back to the author with the rule ("no project, person,
+machine or cohort appears anywhere") to amend, the version left alone. What the gate could not
+name: the labels the built-in shapes do not know (the cohort's other populations), which the
+dispatcher's vocabulary check found on three more comment lines; the site's own term list
+(`SCPROFILE_FORBIDDEN_TERMS`) is the mechanism for those and is not set on this machine.
+
+The round's own checks before the author's answer is pasted: `sch dev rules --since f127a2b`
+4 held, 0 broken; `sch dev convert overfit` 0 fitted literals; the cohort's own vocabulary (106
+terms read from the run: populations, pathways, units, contrasts) is held against the author's
+diff before the paste, and the repository's portability scan runs in the commit gate.
 
 ## Results
 

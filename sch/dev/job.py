@@ -347,7 +347,9 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
         name=name, queue=queue, select=select, walltime=walltime,
         title=title or f"REPRODUCE {Path(ref_dir).name} AT {tool_commit[:7]}",
         when=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        ref=ref_dir, ref_commit=rec.get("commit") or "unrecorded",
+        # THE REFERENCE BY ITS KEY, NOT BY WHERE IT WAS READ: a replay's scratch path means
+        # nothing where the job runs and is the leak shape the site contract refuses.
+        ref=Path(ref_dir).name, ref_commit=rec.get("commit") or "unrecorded",
         ref_status=rec.get("status") or "unrecorded",
         ref_sv=rec.get("state_version") if rec.get("state_version") is not None else "unrecorded",
         ref_sources=", ".join(rec.get("sources") or ["none"]),

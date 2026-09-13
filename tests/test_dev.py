@@ -383,6 +383,17 @@ class Job(unittest.TestCase):
         self.assertTrue((self.d / "new" / "SEALED.txt").is_file(), r.stdout + r.stderr)
         self.assertIn("after: exit 1", r.stdout)
 
+    def test_the_reference_is_named_by_its_key_and_not_by_where_it_was_read(self):
+        """The job's header and its seal named the reference by the PATH the emitter read it at -
+        a replay under a workstation's scratch directory - which means nothing where the job
+        runs and is the leak shape (a node-local /tmp, a dated scratch path) the site contract
+        refuses: `sch conform` failed the emitted rerun of blind 0006 on it. A run's identity is
+        its key, the directory's own name, the same on every machine."""
+        text = J.emit(prediction="identical", **self.kw)
+        self.assertIn("reference=ref", text)
+        self.assertNotIn(f"reference={self.d / 'ref'}", text)
+        self.assertNotIn(f"#   {self.d / 'ref'}", text)
+
     def test_the_makers_status_is_written_to_the_run(self):
         text = J.emit(prediction="identical", maker_status=("k", "widget"), **self.kw)
         self.assertIn("sch dev convert status", text)
