@@ -156,7 +156,7 @@ code of this round can raise, and one on another node lost none.
 | A1 | held | the cold author answered 26 kinds without a question, edited 16, bumped 0.30.0 to 0.31.0 once, passed validate and the build 8 of 8; two comments naming the cohort were sent back and generalised |
 | A2 | **failed** | 25 kinds survive the fresh look (36 before): HOST 3, PLUGIN 5, TOOL 17; 44 findings on 44 of 139 figures |
 | D1 | held, with a finding | the six composed ratio claims cite the strength plate, not the count plate, and none was withdrawn for the figure; all six were narrowed because the plate totals each arm over the pooled pathway set and the sentence over the shared one (the reviewer's finding, open) |
-| D2 | _seal 711120 pending_ | |
+| D2 | held | writing run `20260913T185809Z__scprofile-7c188a4__04_profile__written`, PBS 711120 SEALED on compute1004: W1 945 png in the replay and the sealed run, W2 the written layer present, W3 the maker reads looked_at, written and delivered done from inside the writing run (audited todo, as it should) - the siblings rule of step 4 held where blind 0006's W3 failed |
 | C1 | half | `cost` reads answered, written by `capacity --cost --declare` from the run (high, 3,285 s per 100,000 cells); `cores` reads OWES on the burst - declared 4 at or above the sustained 3, peak 58.7 on a share of 4, which the gate names as the plugin's to cap and refuses to declare |
 | B1 | **failed** | eight defects of the mechanism, each fixed test-first the same day (six predicted); two suites found to mask their own failures |
 

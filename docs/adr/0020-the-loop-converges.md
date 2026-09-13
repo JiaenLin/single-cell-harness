@@ -78,4 +78,27 @@ prediction rewritten after the numbers are in.
 | 3 the composer's route | done | scProfile 8545fa5 | a sentence about a quantity cites the plate whose stem names that quantity first and a stem naming `count` last where the quantity is not a count (`_figs_for` takes `prefer`/`avoid`, the ratio sentence passes the words of the plugin's own quantity name); the known issue closed; test-first in the composer's citation suite |
 | 4 a writing run's siblings | done | scProfile a9bb0eb | a run's siblings are the runs beside it, and when its parent is not a run, is named like a run key and holds only this one, the parent's siblings are this run's; a scratch folder holding one run is not a stand-in (the loop-driver fixtures caught the looser rule carrying looks between unrelated runs); test-first: looks and answers carry into a writing run's replay and out of it |
 | 5 cores and cost measured | done in the mechanism; measured on the next run | scProfile 5936819 | every instance measures its process tree's CPU beside its memory, and its wall time; the run fits a cores model (the peak one-second reading) and a cost band (the median wall time per 100,000 cells; bands trivial/low/medium/high defined once) per plugin; `capacity --cores` and `--cost` are gates with `--declare` as the way out, writing the value on the line it shares with other keys; two test-phase stages declare them; the maker's status reads test 5 of 8 with `cores` and `cost` owing until a run records them; suites 97 green |
-| 6 blind 0007 | done but the seal | docs/blind/0007-the-loop-converges.md | H1, A1, D1 held; H2, A2, B1 failed; C1 half (cost by the tool, cores owes on the burst); D2 on the writing seal, PBS 711120 |
+| 6 blind 0007 | done | docs/blind/0007-the-loop-converges.md | H1, A1, D1, D2 held; H2, A2, B1 failed; C1 half (cost by the tool, cores owes on the burst); the writing seal PBS 711120 SEALED, 3 of 3 |
+
+## Closed, 2026-09-14
+
+The loop ran its second turn end to end on cold agents, and the number it was built to move went
+from 36 kinds to 25, not toward zero: the audit did not clear, and the goal in one number
+failed. What held: the mechanism answered the ten host kinds test-first (H1), the author
+answered its 26 without a question (A1), the composed claims cite the strength plate (D1), and
+the writing seal held all three predictions including the one that failed last round (D2), so a
+writing run now stands for the run it was written from. What failed: three of the ten host
+kinds came back with a finding, two of them made by the answers (H2); 25 kinds survive (A2);
+eight defects of the mechanism against six predicted (B1); and `cores` owes on a burst the gate
+refuses to declare (C1, half). Every one of the eight defects was in the reading of state - a
+status line, a listing's headline, a stale brief, a refusal's wording, a next step - and each is
+fixed test-first in the mechanism that exists; none was in what a run computes.
+
+What the next turn is about, in order: the seventeen tool kinds and five plugin kinds the fresh
+look left, which are the plugin author's; the composed ratio's basis - the host's two-scale table
+totals an arm over the pathways shared with one partner and the plugin's `how_much_total` plate
+over the pool of all four, so a sentence from one cannot be read off the other (the reviewer's
+finding, open in blind 0007); the plugin's cap on its threads so `cores` can be declared; and a
+third turn of this same loop, with the same rules, to see whether the number moves toward zero
+once the author has the seventeen.
+
