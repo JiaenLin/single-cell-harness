@@ -73,7 +73,7 @@ prediction rewritten after the numbers are in.
 | step | state | commits | notes |
 |---|---|---|---|
 | 0 record | done | this commit | |
-| 1 the host's ten | | | |
+| 1 the host's ten | done | scProfile 3dbc6f9, 6a988d5, fca2fba | each finding a failing check in the looker's words, then: the column fit and the save use the tight box unioned with every text's extent (C1 x2, P2); the flow panel's dagger and band keyed in its legend (C3); the interaction panel's two colours keyed (C5); the contribution panel says how much its bars carry and how many pairs carry the rest (N7); the design grid's asterisk has its footnote, pinned as an emitter of the aliasing (across the design); the matrix key above the colour bar (N3); touching counts as overlapping and a clump the vertical nudge cannot clear becomes a ladder with leader lines (N4, C4) - the paid-for rule that labels keep their own x now reads: unless a ladder ties them to their point; gate 96 green |
 | 2 the author's second answer, the rerun, the fresh look | | | |
 | 3 the composer's route | | | |
 | 4 a writing run's siblings | | | |
