@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N rerun
 #PBS -q super
-#PBS -l select=1:ncpus=64:mem=360gb:host=compute1017
+#PBS -l select=1:ncpus=64:mem=360gb:host=compute1016
 #PBS -l walltime=04:00:00
 #PBS -j oe
 #
@@ -9,7 +9,7 @@
 # REPRODUCE 20260913T042903Z__scprofile-c260046__04_profile__audit AT 1cbb5ae
 # ============================================================================================
 #
-# WRITTEN BY `sch dev job` ON 2026-09-14T04:46:17Z - do not hand-edit the derived sections below without
+# WRITTEN BY `sch dev job` ON 2026-09-14T05:57:58Z - do not hand-edit the derived sections below without
 # saying so here, because their whole value is that they were not typed from memory.
 #
 # THE REFERENCE RUN
@@ -25,7 +25,7 @@
 # and not the tool's.
 #
 # THE PREDICTION, WRITTEN BEFORE SUBMISSION:
-#   ADR-0022 R1: this run carries the stated legends of cellchat 0.33.0 into a sealed run; the looks and the stated answers of the run before it carry on identical bytes; the maker reads cores answered at the declared 2 and, after the writing seal, test 8 of 8 but the one carried finding on the host's role-shift panel. No drawing code changed since the run before, so every figure is expected byte-identical.
+#   ADR-0022 R1: this run carries the stated legends of cellchat 0.33.0 into a sealed run; the looks and the stated answers of the run before it carry on identical bytes; the maker reads cores answered at the declared 2 and, after the writing seal, test 8 of 8 but the one carried finding on the host's role-shift panel. No drawing code changed since the run before, so every figure is expected byte-identical. The previous submission (711296) was system-held on compute1017 after 21 failed attempts to start, with a second job holding 600 GB there; this one is pinned to compute1016, the other node the clean runs used.
 #
 # THE CHECKOUT IS FROZEN. The tool is expected at 1cbb5ae. If it has moved when this job
 # starts, the job refuses rather than measuring a mixture of two versions. Twice on 2026-09-06 a
@@ -35,9 +35,9 @@
 # rule-one: no-removal - this job reads inputs and writes only inside its own run directory.
 # Authored off-cluster and pushed (rule H1). No `git` command runs below.
 #
-# QUEUE/HOST: this job pins compute1017. That pin only works in a queue whose node
+# QUEUE/HOST: this job pins compute1016. That pin only works in a queue whose node
 # pool contains it; elsewhere PBS says "Can Never Run: Insufficient amount of
-# resource: host (compute1017)" while the node sits idle. Pin in the queue the run
+# resource: host (compute1016)" while the node sits idle. Pin in the queue the run
 # being reproduced actually used.
 #
 # THE COMMIT WAS GIVEN, NOT READ: the tree at /data/wangyb/home/jiaen.lin/tools/scProfile-cconly is not readable where this was written. The job reads the tree's own HEAD.txt or .git at start and refuses a mismatch.
@@ -47,7 +47,7 @@
 
 set -euo pipefail
 
-RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T044617Z__scprofile-1cbb5ae__04_profile__rerun"
+RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T055758Z__scprofile-1cbb5ae__04_profile__rerun"
 TOOLDIR="/data/wangyb/home/jiaen.lin/tools/scProfile-cconly"
 EXPECT_COMMIT="1cbb5ae"
 mkdir -p "$RUNDIR/logs"
@@ -143,7 +143,7 @@ echo "node: $(hostname -s)  cores: ${NCPUS:-unset}  started: $(date -u)"
 # `set -e` is lifted for exactly one line, so the code can be read and reported before the trap
 # uses it - under `set -e` the script would leave before `rc` was ever assigned.
 set +e
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T044617Z__scprofile-1cbb5ae__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow --no-cache
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T055758Z__scprofile-1cbb5ae__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow --no-cache
 rc=$?
 set -e
 echo "tool exit: $rc"
@@ -152,10 +152,10 @@ echo "tool exit: $rc"
 # Declared in DEVPOINTS.yaml under `run.after` (harness ADR-0019); each line is one command. Its
 # exit code is a VERDICT - `status` owing, `capacity --memory` refusing a declaration - which the
 # maker reads from this log; it is not a failure of the run, whose seal reads the products.
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli report --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T044617Z__scprofile-1cbb5ae__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli report --out {run}'" || echo "after: exit $? - '-m scprofile.cli report --out {run}'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T044617Z__scprofile-1cbb5ae__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T044617Z__scprofile-1cbb5ae__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T044617Z__scprofile-1cbb5ae__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli report --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T055758Z__scprofile-1cbb5ae__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli report --out {run}'" || echo "after: exit $? - '-m scprofile.cli report --out {run}'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T055758Z__scprofile-1cbb5ae__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T055758Z__scprofile-1cbb5ae__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T055758Z__scprofile-1cbb5ae__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
 # ------------------------------------------------------------- the maker's status, for the record
 HARNESS="${HARNESS:-$HOME/tools/single-cell-harness}"
 PYTHONPATH="$HARNESS" /data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m sch dev convert status --root /data/wangyb/home/jiaen.lin/tools/scProfile-cconly --point kernel --name cellchat --run "$RUNDIR" > "$RUNDIR/logs/maker_status.txt" 2>&1 || true
