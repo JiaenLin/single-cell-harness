@@ -38,9 +38,9 @@ test 6 of 8 with `cores` and `audited` owing.
 | the rerun: job, wall time, seal | PBS 711122 (`20260914T001114Z__scprofile-457c98d__04_profile__rerun`, compute1017) FAILED after 17 minutes: 12 of 18 instances refused, every one on `future.globals.maxSize` (741 MiB of globals exported to the workers the author's cap put CellChat's future plan on; the six smallest units fit under 500 MiB and ran), and the burst unchanged at a peak of 61.7 cores on a share of 4 (sustained 1.13) because the thread variables were set inside R after the BLAS had loaded; memory fitted at 2.9 GB + 6.5 GB per 100,000 cells; sent back to the author - the version stays, the run produced no result at it. Resubmitted as PBS 711127 (`20260914T004319Z__scprofile-b0cfe88__04_profile__rerun`) with the author's correction: the thread variables set in the environment every Rscript is started with, the future plan sequential, only mc.cores and data.table threads set inside R. PBS 711127 (`20260914T004319Z__scprofile-b0cfe88__04_profile__rerun`) ran 18 of 18 instances in 17 minutes with a peak of 4.31 cores on a share of 4 and `cores` answered, and sealed FAILED on the seven native compares (defect 2). Resubmitted as PBS 711204 (`20260914T021108Z__scprofile-d91a6c2__04_profile__rerun`) at the host fix: SEALED on compute1017 after 33 minutes, 18 of 18 instances, 945 figures, every declared plot produced; cores sustained 1.13, peak 2.44 on a share of 4, `cores` answered (T1 held); cost high; station 6b no machine residue, 24 eye findings carried (18 answered, awaiting a fresh look); 68 of the scan set's 139 outstanding, 71 carried |
 | lookers: figures handed, recorded, refusals, defects marked | 68 handed in two shards of 34 (71 of the 139 carried from the sibling runs); 68 recorded, 0 refused, 20 marked defect (12 and 8); the 18 answered figures settled by plain looks; 411k tokens, 80 tool uses, 6 and 5 min |
 | audited after the fresh look | 28 open findings on 16 kinds (HOST 1, PLUGIN 2, TOOL 13), from 25 kinds; station 6b: no machine residue (the host repaired 3 on 2 panels); station 7: 80 of 80 kinds, 139 of 139 of the scan set looked at |
-| writer and reviewer | writer: the accounting for the composed claims' 8 to 7 written and accepted (the missing one cited a figure the fresh look flagged), 4 claims recorded citing 12 figures, no refusal, a 1,304-word section carried in, stopped at the review round as told; 147k tokens, 33 tool uses, 6 min. reviewer: (below) |
-| defects of the mechanism | |
-| agents, tokens, wall time | |
+| writer and reviewer | writer: the accounting for the composed claims' 8 to 7 written and accepted (the missing one cited a figure the fresh look flagged), 4 claims recorded citing 12 figures, no refusal, a 1,304-word section carried in, stopped at the review round as told; 147k tokens, 33 tool uses, 6 min. reviewer: 11 verdicts, all standing (the five composed ratio claims and the writer's four checked against the two-scale table and the contrast table, the figures and their captions opened), no refusal; one probe round with placeholder reasoning recorded before the real one on the same claim (the ledger is append-only, both visible); 229k tokens, 56 tool uses, 10 min |
+| defects of the mechanism | 2 fixed test-first the same day (scProfile bb06d57 the portability suite on a one-kernel tree; d91a6c2 the compare context's share); the author's first cap failed a run and was corrected by the author, not the mechanism |
+| agents, tokens, wall time | 6 cold agents (author with three exchanges, two lookers, writer, reviewer): 1.42M tokens, 403 tool uses, 84 min of agent time; three submissions of the rerun (17, 17 and 33 min on the node) and one writing seal |
 
 ## Defects of the mechanism, as they came
 
@@ -62,4 +62,26 @@ the compare spec carries `resources.cores` as the per-unit in.json does. Found b
 
 ## Results
 
-To be written after the agents finish.
+| prediction | held? | what happened |
+|---|---|---|
+| R1 | held | the check that the ratio sentence's totals appear on the first cited plate failed on the composer as it was and passes after (scProfile 365ad3b) |
+| R2 | held | on the third rerun the five composed ratio claims cite the contrast's C1 strength plate first, whose caption states the shared-basis totals, and the reviewer left every one standing (last turn: all six narrowed) |
+| T1 | held, on the third submission | the first cap put CellChat's future plan on workers and refused twelve instances; the corrected cap measured sustained 1.14, peak 4.31 (711127) and 1.13, peak 2.44 (711204) on a share of 4, and the maker reads `cores` answered by the tool's declare |
+| A1 | held | the cold author answered 22 kinds and the cap without a question, bumped 0.31.0 to 0.32.0 once, passed validate and the build 8 of 8; two answers sent back on the repository's own gates and corrected, one on the run's own record |
+| A2 | **failed** | 16 kinds survive the fresh look (25 before; 36 before that): HOST 1, PLUGIN 2, TOOL 13; 28 findings on 28 of 139 figures |
+| A3 | failed on the letter | one finding on one of the three host kinds: the role-shift panel's crossing arrows, carried from the second rerun on identical bytes - the data's crossing, which the first look already named as such; the footnote and the floating labels did not come back |
+| S1 | _seal 711260 pending_ | |
+| B1 | held | two defects of the mechanism, each fixed test-first the same day (four predicted) |
+
+**What the round found.** The number moved, and this time the drop was the author's: 25 kinds
+to 16 with the host's contribution at one carried finding. Of the nine kinds the author cleared,
+seven were tool kinds answered by the plugin's own plan and code, and the cap answered a debt
+the tool had printed as checked by nobody for its whole life: the plugin now runs at a peak of
+two and a half cores on a share of four, where it burst to sixty. The composed ratio claims
+stood on their own basis for the first time. The two defects of the mechanism were both about
+the plugin's room: the suite that crashed on a one-kernel tree and the compare context that
+carried no share. What did not move is the shape of the curve: 36, 25, 16 is a third gone each
+turn, and thirteen of the sixteen are tool kinds whose findings are the upstream's own drawings
+- labels the plugin cannot reach, legends the upstream does not draw - which is the limit of
+what a worksheet answered in a plugin's plan can cure.
+
