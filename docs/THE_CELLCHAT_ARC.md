@@ -25,7 +25,7 @@ then the short list's own.
 
 **The audit converges to an honest floor.** Kinds surviving a fresh look: 36, 25, 16, then 1 by
 disclosure, then 6 found anew on the seventeen plates the upstream draws with a random start, then
-2 after the fifth answer, then the final run below. The number stopped falling on its own when
+2 after the fifth answer, then 1 on the final run. The number stopped falling on its own when
 what was left was the upstream's own drawing; the stated answer (ADR-0022) closes those by
 disclosure in the legend, checked mechanically, and the worksheet keeps the eye's later words
 where the disclosure understates. What remains each run is what the eye finds anew on plates
@@ -35,6 +35,8 @@ that never render the same twice, and that has a looker's cost, not an author's.
 caption states their totals (ADR-0021); a writer's claims are bound to figure hashes; a round
 records what it saw, and staleness is a figure changed since the latest record that saw it
 (ADR-0022). On the last reviewed run every claim stood.
+
+**The maker reads the whole test phase on one run but one stage.** On the final run: memory, cores, cost, promised, looked at, written and delivered answered; audited owing on the one finding above.
 
 **The run measures what it uses.** Memory, wall and CPU per instance, a cores model and a cost
 band per plugin, and the declarations written by the tool's own command from the run: memory
@@ -58,10 +60,10 @@ count (this ADR). The plugin caps its threads to the share it is given: a peak o
 |---|---|
 | runs sealed on the cluster in the arc | 11 reruns and 6 writing runs, every one through a validated job |
 | cellchat version | 0.28.0 to 0.34.0, six pasted answers |
-| kinds surviving a fresh look | 36 → 25 → 16 → 1 (disclosure) → 6 (nondeterministic plates) → 2 → (the final run: see ADR-0023) |
-| claims on the last reviewed run | 11, all standing |
-| cores | declared 2, sustained 1.1, peak 2.4 on a share of 4 before the cap was measured against the process count |
-| defects of the mechanism fixed test-first across the arc | 17 + 8 + 2 + 8 + 4 |
+| kinds surviving a fresh look | 36 → 25 → 16 → 1 (disclosure) → 6 (nondeterministic plates) → 2 → 1 (the final run: one caption's count against its bars) |
+| claims on the last reviewed run | 15, all standing (final run `20260914T083704Z__scprofile-defeff8__04_profile__rerun`, writing run PBS 711365 sealed 3 of 3) |
+| cores | declared 2 by the tool; on the final run sustained 1.18, peak 1.33 on a share of 2, process counts 2 to 6, answered |
+| defects of the mechanism fixed test-first across the arc | 17 + 8 + 2 + 8 + 4 (ADR-0019 to ADR-0023) |
 | rules of the round | 4 held, 0 broken at every commit; 0 fitted literals; held-out plugins untouched |
 
 ## The rules that held, and should hold for the eight
