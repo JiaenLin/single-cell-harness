@@ -70,7 +70,7 @@ the compare spec carries `resources.cores` as the per-unit in.json does. Found b
 | A1 | held | the cold author answered 22 kinds and the cap without a question, bumped 0.31.0 to 0.32.0 once, passed validate and the build 8 of 8; two answers sent back on the repository's own gates and corrected, one on the run's own record |
 | A2 | **failed** | 16 kinds survive the fresh look (25 before; 36 before that): HOST 1, PLUGIN 2, TOOL 13; 28 findings on 28 of 139 figures |
 | A3 | failed on the letter | one finding on one of the three host kinds: the role-shift panel's crossing arrows, carried from the second rerun on identical bytes - the data's crossing, which the first look already named as such; the footnote and the floating labels did not come back |
-| S1 | _seal 711260 pending_ | |
+| S1 | held | writing run `20260914T032359Z__scprofile-d91a6c2__04_profile__written`, PBS 711260 SEALED: W1 945 png in the replay and the sealed run, W2 the written layer present, W3 the maker reads looked_at, written and delivered done from inside the writing run |
 | B1 | held | two defects of the mechanism, each fixed test-first the same day (four predicted) |
 
 **What the round found.** The number moved, and this time the drop was the author's: 25 kinds

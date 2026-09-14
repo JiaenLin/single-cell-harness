@@ -63,5 +63,29 @@ prediction rewritten after the numbers are in.
 | 1 the composed ratio's basis | done | scProfile 365ad3b | the ratio sentence cites first a plate whose caption states both of its totals (`caption_states`, to half a percent); the host's contrast plates already print the shared-basis totals, so on the second rerun every composed ratio claim cites the contrast's C1 strength plate first and the route's plates after; test-first in the composer's citation suite; R1 held (the check failed on the composer as it was, passes after) |
 | 2 the author's third answer (twenty-two kinds and the cap) | done | scProfile 457c98d (author room at ac52840; suite fix bb06d57) | the cold author answered 22 kinds (21 edited, 1 answered) and the cap without a question; version bumped once; two answers sent back on the repository's own gates (a copied block, an unread argv) and corrected; A1 held |
 | 3 the rerun and the fresh look | done; 16 kinds survive | PBS 711204 SEALED, run key 20260914T021108Z__scprofile-d91a6c2__04_profile__rerun (harness 35c15dc) | 711122 failed on the author's first cap (future workers); 711127 at the corrected cap ran every instance clean - peak 4.31 on a share of 4, `cores` answered, T1 held on the instances - and lost the seven compares to the compare context's missing share (defect 2, fixed in the host, scProfile d91a6c2) | harness 7e3cc14 (jobs/rerun_0008.pbs), PBS 711122 FAILED | the author's cap put CellChat's future plan on worker processes, and twelve instances refused on the 500 MiB limit for globals shipped to workers; the thread variables set inside R reached no BLAS, so the burst stayed (peak 61.7 on a share of 4); sent back to the author with the run's own lines; T1 not yet graded |
-| 4 the pen, the review, the seal | written and reviewed; the seal submitted | writing run 20260914T032359Z__scprofile-d91a6c2__04_profile__written, PBS 711260 | the writer wrote 4 claims and a section, the reviewer left all 11 standing (R2 held), the page rendered, the layer sent |
-| 5 blind 0008 | | | |
+| 4 the pen, the review, the seal | done | writing run 20260914T032359Z__scprofile-d91a6c2__04_profile__written, PBS 711260 | the writer wrote 4 claims and a section, the reviewer left all 11 standing (R2 held), the page rendered, the layer sent |
+| 5 blind 0008 | done | docs/blind/0008-the-third-turn.md | R1, R2, T1, A1, S1, B1 held; A2 failed (16 kinds); A3 failed on the letter (one carried data finding on the role-shift panel) |
+
+## Closed, 2026-09-14
+
+The number moved and the drop was the author's: 25 kinds surviving a fresh look became 16, with
+the host's share of what survived one finding carried on identical bytes (the role-shift arrows,
+the data's). Six of eight predictions held: the composed ratio cites a plate on its own basis and
+the reviewer left every ratio claim standing (R1, R2); the plugin caps its threads to the share
+it is given and `cores` is answered by the tool's own declare, at a peak of 2.44 on a share of
+4 where it burst to 62 (T1); the cold author answered the twenty-two kinds and the cap without a
+question (A1); the writing seal held all three predictions (S1); two defects of the mechanism
+against four predicted (B1). Two failed: 16 survive against eight (A2), and one host kind came
+back with the finding it carried (A3). Three submissions were needed for one clean run: the
+author's first cap failed the run and its own record said exactly how, and the second exposed
+the compare context's missing share, the third divergence of the two contexts.
+
+What the curve says: 36, 25, 16 is a third gone each turn, and thirteen of the sixteen are tool
+kinds whose findings name the upstream's own drawing - a legend it does not draw, a label the
+plugin cannot reach through its plan. A fourth turn of this loop would move the number less than
+this one did. What comes next is a different question: which of the thirteen the plugin can
+answer by drawing the panel itself through the host's repertoire instead of the upstream's
+function, and which are the upstream's to keep, said so in the caption and closed as answered.
+That is a plan for the worksheet's language - an owner beyond TOOL, "upstream's own, stated" -
+and it is the next ADR.
+
