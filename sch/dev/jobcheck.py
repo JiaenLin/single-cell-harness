@@ -132,6 +132,16 @@ def _no_seal(text, _p):
     return [f"writes no {n}" for n in missing]
 
 
+@rule("kill-not-trapped", "a job that seals on EXIT must trap TERM, INT and HUP to a nonzero exit, "
+                          "or a killed job seals SEALED with exit=0")
+def _kill_not_trapped(text, _p):
+    # PBS 711339 (harness ADR-0022): deleted mid-copy, it sealed SEALED with exit=0, because the
+    # EXIT trap read `$?` - the shell's own status, which a signal leaves at zero.
+    seals_on_exit = re.search(r"^\s*trap\s+\S+\s+EXIT\b", text, flags=re.M)
+    traps_kill = re.search(r"^\s*trap\s+.*\bTERM\b", text, flags=re.M)
+    return ["seals on EXIT and traps no TERM"] if seals_on_exit and not traps_kill else []
+
+
 @rule("does-not-parse", "bash cannot read it, so the scheduler will not either")
 def _parses(_text, path):
     if not shutil.which("bash") or path is None:
@@ -143,7 +153,11 @@ def _parses(_text, path):
 def problems(path):
     """[(rule id, why, [offences])] for one job script. Empty list means it passed every rule."""
     p = Path(path)
-    text = p.read_text(encoding="utf-8", errors="replace")
+    return problems_text(p.read_text(encoding="utf-8", errors="replace"), p)
+
+
+def problems_text(text, p=None):
+    """`problems` over a script's text - what the rules read, without a file."""
     out = []
     for rid, why, fn in _RULES:
         # A JOB MAY SILENCE ONE RULE BY NAME, and must say so in the file where a reader will see

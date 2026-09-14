@@ -660,6 +660,27 @@ class JobScriptsKeepTheirExitCodes(unittest.TestCase):
                 self.assertIn("pipefail", text,
                               f"{f.name} pipes into tee without setting pipefail")
 
+    def test_a_job_that_seals_on_exit_traps_the_kill(self):
+        """PBS 711339 was deleted mid-copy and sealed SEALED with exit=0: the EXIT trap read
+        the shell's own status, which a signal leaves at zero. A job that seals on EXIT must
+        trap TERM, INT and HUP to a nonzero exit, so a killed job seals FAILED."""
+        import textwrap
+        from sch.dev import jobcheck as _JC
+        bad = textwrap.dedent("""\
+            #!/bin/bash
+            seal() { s=$?; echo "exit=$s" > SEALED.txt; }
+            trap seal EXIT
+            echo FAILED.txt
+        """)
+        good = bad.replace("trap seal EXIT", "trap 'exit 143' TERM INT HUP\ntrap seal EXIT")
+        hits = [h for rid, _w, hs in _JC.problems_text(bad) if rid == "kill-not-trapped" for h in hs]
+        self.assertTrue(hits, "an EXIT-only seal passes the rule")
+        self.assertEqual([h for rid, _w, hs in _JC.problems_text(good) if rid == "kill-not-trapped"
+                          for h in hs], [], "a job trapping the kill is still flagged")
+        for f in self.JOBS:
+            hits = [h for rid, _w, hs in _JC.problems(f) if rid == "kill-not-trapped" for h in hs]
+            self.assertEqual(hits, [], f"{f.name}: {hits}")
+
     def test_every_job_writes_one_seal_or_the_other(self):
         for f in self.JOBS:
             text = f.read_text(encoding="utf-8")

@@ -58,6 +58,7 @@ seal() {
   # THE SEAL: every file read-only, the logs excepted.
   find "$RUNDIR" -type f -not -path "$RUNDIR/logs/*" -exec chmod a-w {} + 2>/dev/null || true
 }
+trap 'exit 143' TERM INT HUP   # a killed job seals FAILED, not SEALED (harness ADR-0022)
 trap seal EXIT
 
 echo "=== the writing run - $(date -u)"
