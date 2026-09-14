@@ -6,10 +6,10 @@
 #PBS -j oe
 #
 # ============================================================================================
-# REPRODUCE 20260913T042903Z__scprofile-c260046__04_profile__audit AT b0cfe88
+# REPRODUCE 20260913T042903Z__scprofile-c260046__04_profile__audit AT d91a6c2
 # ============================================================================================
 #
-# WRITTEN BY `sch dev job` ON 2026-09-14T00:43:19Z - do not hand-edit the derived sections below without
+# WRITTEN BY `sch dev job` ON 2026-09-14T02:11:09Z - do not hand-edit the derived sections below without
 # saying so here, because their whole value is that they were not typed from memory.
 #
 # THE REFERENCE RUN
@@ -25,9 +25,9 @@
 # and not the tool's.
 #
 # THE PREDICTION, WRITTEN BEFORE SUBMISSION:
-#   ADR-0021 T1: this run measures cellchat's one-second peak at or under twice its share (8 on a share of 4) and the maker's status reads cores answered by the tool's own declare. A2: at most eight kinds survive the fresh look (25 before). A3: no finding on the three host kinds of blind 0007. The previous submission (711122) refused twelve instances on future's globals limit after the cap put the plan on workers, and the burst stayed because the thread variables were set inside R; both corrected by the author. Pinned to compute1017; expected to seal SEALED with every product the run's own record lists.
+#   ADR-0021 T1: this run measures cellchat's one-second peak at or under twice its share and the maker's status reads cores answered by the tool's own declare (711127 measured sustained 1.14, peak 4.31 on a share of 4, answered). A2: at most eight kinds survive the fresh look (25 before). A3: no finding on the three host kinds of blind 0007. The previous submission (711127) ran all 18 instances clean and lost all seven native compares to a host gap - the compare context carried no cores - fixed in the mechanism; this one is expected to seal SEALED with every product the run's own record lists.
 #
-# THE CHECKOUT IS FROZEN. The tool is expected at b0cfe88. If it has moved when this job
+# THE CHECKOUT IS FROZEN. The tool is expected at d91a6c2. If it has moved when this job
 # starts, the job refuses rather than measuring a mixture of two versions. Twice on 2026-09-06 a
 # pull landed in a live checkout; the rule existed and nothing enforced it, which is a prediction
 # rather than a guardrail.
@@ -47,9 +47,9 @@
 
 set -euo pipefail
 
-RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T004319Z__scprofile-b0cfe88__04_profile__rerun"
+RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T021108Z__scprofile-d91a6c2__04_profile__rerun"
 TOOLDIR="/data/wangyb/home/jiaen.lin/tools/scProfile-cconly"
-EXPECT_COMMIT="b0cfe88"
+EXPECT_COMMIT="d91a6c2"
 mkdir -p "$RUNDIR/logs"
 
 # ---------------------------------------------------------------- seal, whatever happens next
@@ -143,7 +143,7 @@ echo "node: $(hostname -s)  cores: ${NCPUS:-unset}  started: $(date -u)"
 # `set -e` is lifted for exactly one line, so the code can be read and reported before the trap
 # uses it - under `set -e` the script would leave before `rc` was ever assigned.
 set +e
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T004319Z__scprofile-b0cfe88__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow --no-cache
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T021108Z__scprofile-d91a6c2__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow --no-cache
 rc=$?
 set -e
 echo "tool exit: $rc"
@@ -152,10 +152,10 @@ echo "tool exit: $rc"
 # Declared in DEVPOINTS.yaml under `run.after` (harness ADR-0019); each line is one command. Its
 # exit code is a VERDICT - `status` owing, `capacity --memory` refusing a declaration - which the
 # maker reads from this log; it is not a failure of the run, whose seal reads the products.
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli report --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T004319Z__scprofile-b0cfe88__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli report --out {run}'" || echo "after: exit $? - '-m scprofile.cli report --out {run}'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T004319Z__scprofile-b0cfe88__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T004319Z__scprofile-b0cfe88__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T004319Z__scprofile-b0cfe88__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli report --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T021108Z__scprofile-d91a6c2__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli report --out {run}'" || echo "after: exit $? - '-m scprofile.cli report --out {run}'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T021108Z__scprofile-d91a6c2__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T021108Z__scprofile-d91a6c2__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260914T021108Z__scprofile-d91a6c2__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
 # ------------------------------------------------------------- the maker's status, for the record
 HARNESS="${HARNESS:-$HOME/tools/single-cell-harness}"
 PYTHONPATH="$HARNESS" /data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m sch dev convert status --root /data/wangyb/home/jiaen.lin/tools/scProfile-cconly --point kernel --name cellchat --run "$RUNDIR" > "$RUNDIR/logs/maker_status.txt" 2>&1 || true
