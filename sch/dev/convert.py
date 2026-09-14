@@ -2049,12 +2049,3 @@ def advance_command(row, doc, point_name, root, name, python="", run=""):
     return ""
 
 
-def plan_of_work(rows, doc, point_name, root, name, python="", run=""):
-    """[(stage, command|'', what a person must decide)] for every stage not yet done, in order."""
-    out = []
-    for r in rows:
-        if r["done"]:
-            continue
-        out.append((r, advance_command(r, doc, point_name, root, name, python, run),
-                    r["kind"] == "judgement"))
-    return out

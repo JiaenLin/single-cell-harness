@@ -100,26 +100,6 @@ def _literals(py: Path):
         yield v, node.lineno
 
 
-def code_only(text):
-    """`text` with its full-line comments removed, in every language it is made of.
-
-    A NAME MUST BE MATCHED IN CODE OR IT IS MATCHED IN PROSE. The artefacts of this family are
-    files where two thirds of the lines are English: the first version of this scan reported
-    `cache`, `detail`, `misses`, `dump` and `doctor` as constants naming one plugin, because each
-    happened to appear in exactly one plugin's COMMENTS. That is the same false alarm the
-    environment survey already paid for once, where `r-matrix` matched the English word `matrix`
-    in seven plugins' comments, and the fix is the same one: scope the search to the text the
-    spelling belongs to.
-
-    FULL-LINE ONLY, and both halves of that are deliberate. Prose in these files is written in
-    blocks, so removing lines whose first non-space character is `#` removes nearly all of it -
-    while `col = "#4C72B0"` keeps its colour and `import x  # noqa` keeps its code. And it is
-    language-neutral: `#` opens a comment in the host Python and in the R embedded inside it, so
-    one rule reads a file made of both without knowing which lines are which.
-    """
-    return "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
-
-
 def _pieces(literal):
     """The names inside a literal. A regex alternation is several names in one constant.
 

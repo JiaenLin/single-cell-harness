@@ -121,6 +121,3 @@ def discover(strict=False) -> dict:
     return out
 
 
-def for_kind(kind):
-    """[module] able to read this kind of upstream, in a stable order."""
-    return [m for _n, m in sorted(discover().items()) if m.EXTRACT.get("reads") == kind]

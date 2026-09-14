@@ -30,8 +30,8 @@ what is unnecessary, and fix everything that is worth it now, without another lo
    tool's seal on an exported tree reads the commit from the tree's own HEAD file (`commit=d91a6c2`
    on every seal of this turn). The third - the legacy family and placement maps - is the
    migration's, and stays until the eight migrate.
-4. **Dead mechanism is removed.** A scan for functions no code, test, doc or job names found six:
-   five in the harness's development suite and one in the tool's planner. Each is read before it
+4. **Dead mechanism is removed.** A scan for functions no code, test, doc or job names found five (a sixth was a
+   template string, not a function): four in the harness's development suite and one in the tool's planner. Each is read before it
    goes; the suites stay green.
 5. **Not worth fixing, recorded:** a review round's reasoning cannot be judged by a machine beyond
    its length, and the ledger is append-only so a probe round stays visible beside the real one;

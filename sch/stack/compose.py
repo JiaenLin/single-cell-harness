@@ -60,11 +60,3 @@ def load_layers(stack_dir, run_overrides: dict | None = None) -> list:
     return layers
 
 
-def set_path(data: dict, dotted: str, value):
-    """`keys.label=cell_type` style override into a nested dict."""
-    parts = dotted.split(".")
-    cur = data
-    for p in parts[:-1]:
-        cur = cur.setdefault(p, {})
-    cur[parts[-1]] = value
-    return data
