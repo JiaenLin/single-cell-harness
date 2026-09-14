@@ -747,6 +747,11 @@ def cmd_dev(a):
                       f"one beside the plan stage in DEVPOINTS.yaml.", file=sys.stderr)
                 return CANNOT_RUN
             keys = CV.layout_keys(stages)
+            # THE FORMAT'S OWN NAMES for what the trim also touches: the reuse key, and the
+            # plugin-side list of profile plots where the format keeps one.
+            keys["version"] = str(P.point(doc, point).get("version_field") or "version")
+            if st.get("profile_list"):
+                keys["profile_list"] = str(st["profile_list"])
             bad = 0
             for nm, spec in specs:
                 rep = L.check(spec, st, keys)
@@ -764,7 +769,9 @@ def cmd_dev(a):
                         continue
                     print(f"  applied to {f}: kept {done['kept']} entr(ies), dropped "
                           f"{len(done['dropped_ids'])} ({', '.join(done['dropped_ids'])}); "
-                          f"skips added for {', '.join(done['skips_added']) or 'nothing'}")
+                          f"skips added for {', '.join(done['skips_added']) or 'nothing'}"
+                          + (f"; version {done['version'][0]} -> {done['version'][1]}"
+                             if done.get("version") else ""))
                     print("  next: `scprofile scaffold <plugin> --force` regenerates the "
                           "companion; validate and the build status then read the trimmed plan")
                 elif not rep["ok"]:

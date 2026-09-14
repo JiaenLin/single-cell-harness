@@ -147,6 +147,45 @@ class ThePlanIsHeldToALayout(unittest.TestCase):
             self.assertIn("drawSpatial", text)
             self.assertIn("def run(ctx)", text)
 
+    def test_apply_also_clears_the_draw_sites_the_skips_and_the_version(self):
+        """What the gate found on the first trim of cellchat: two dropped entries shared one
+        upstream function and the skips carried it twice; the plugin's R protocol still called
+        `.draw("<id>")` for dropped entries, so every suite that holds the draw sites to the plan
+        refused; the profile marks named entries that were gone; and `version`, the reuse key,
+        had not moved for an artefact that draws differently. The verb does all four."""
+        text = PLUGIN.replace('    "name": "demo",', '    "name": "demo",\n    "version": "0.3.0",')
+        text = text.replace("'id': 'native_circle', 'kind': 'circle'",
+                            "'id': 'native_circle', 'profile': True, 'kind': 'circle'")
+        text = text.replace("'id': 'native_patterns', 'kind': 'patterns'",
+                            "'id': 'native_patterns', 'profile': True, 'kind': 'patterns'")
+        text = text.replace("'fn': 'drawDiff'", "'fn': 'drawBubble'")
+        text += ('\n_R = r"""\n.figures(prefix = "native_")\n.draw("native_circle")\n'
+                 '.draw("native_patterns")\n  .draw("nativecmp_bubble")\n.draw("nativecmp_diff")\n'
+                 'cat("done")\n"""\n')
+        with tempfile.TemporaryDirectory() as td:
+            f = Path(td) / "demo.py"
+            f.write_text(text, encoding="utf-8")
+            rep = L.apply(f, LAYOUT, dict(KEYS, version="version"))
+            out = f.read_text(encoding="utf-8")
+            spec = spec_of(out)
+            skips = spec["report"]["skips"]
+            # drawBubble is still called by the kept nativecmp_diff, so it takes no skip;
+            # drawPatterns is dropped once even though two axes dropped it
+            self.assertNotIn("drawBubble", skips)
+            self.assertEqual(skips["drawPatterns"]["skip"], "over_budget")
+            self.assertEqual(out.count("'drawPatterns': {'skip'"), 1)
+            self.assertNotIn('.draw("native_patterns")', out)
+            self.assertNotIn('.draw("nativecmp_bubble")', out)
+            self.assertIn('.draw("native_circle")', out)
+            self.assertIn('.draw("nativecmp_diff")', out)
+            self.assertEqual(spec["version"], "0.4.0")
+            self.assertEqual(rep["version"], ("0.3.0", "0.4.0"))
+            kept = {e["id"]: e for e in spec["report"]["figures"]}
+            self.assertTrue(kept["native_circle"].get("profile"))
+            self.assertTrue(kept["F2_presence"].get("profile"),
+                            "a kept sample-axis entry is the profile")
+            self.assertFalse(kept["native_matrix"].get("profile"))
+
     def test_a_plugin_under_budget_is_left_alone(self):
         small = {"report": {"figures": [
             {"id": "a", "kind": "circle", "drawn_by": "tool", "fn": "f", "axis": "unit",

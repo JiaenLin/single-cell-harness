@@ -242,12 +242,27 @@ def apply(path, layout, keys=None):
                 block = out
         if block != lines[a - 1:b]:
             edits.append((a, b, block))
-    # THE SKIPS: the dropped upstream functions no kept entry still calls
+        # THE PROFILE MARK: the sample axis is the per-unit profile under a layout, so a kept
+        # entry on it carries `profile: True` and a kept entry off it does not.
+        want_profile = str(new.get(axis_key) or "") in ("sample", "unit")
+        has_profile = bool(e.get("profile"))
+        if want_profile and not has_profile:
+            idp = re.compile(r"""(['"]id['"]\s*:\s*['"][^'"]+['"]\s*,)""")
+            block = [idp.sub(lambda m: m.group(1) + " 'profile': True,", l, count=1)
+                     if idp.search(l) else l for l in block]
+        elif has_profile and not want_profile:
+            pp = re.compile(r"""\s*['"]profile['"]\s*:\s*True\s*,?""")
+            block = [pp.sub("", l, count=1) if pp.search(l) else l for l in block]
+            block = [l for l in block if l.strip()]
+        if block != lines[a - 1:b]:
+            edits = [x for x in edits if x[0] != a] + [(a, b, block)]
+    # THE SKIPS: the dropped upstream functions no kept entry still calls, each once
     still = {str(e.get(fn_key) or "") for e in plan["kept"]}
-    skip_lines = []
+    skip_lines, seen_fn = [], set()
     for fn, d in dropped_fns:
-        if fn in still or fn in ((spec.get("report") or {}).get("skips") or {}):
+        if fn in still or fn in seen_fn or fn in ((spec.get("report") or {}).get("skips") or {}):
             continue
+        seen_fn.add(fn)
         skip_lines.append((fn, d))
     if skip_lines:
         if skips is None or not isinstance(skips, ast.Dict):
@@ -265,6 +280,36 @@ def apply(path, layout, keys=None):
     for a, b, repl in sorted(edits, key=lambda t: -t[0]):
         lines[a - 1:b] = repl
     out = "".join(lines)
+    # THE DRAW SITES: a protocol line that still calls a dropped entry by id goes with it. The
+    # companion would skip it and say so, and every suite that holds the sites to the plan
+    # would refuse; the plan is the one source.
+    site = re.compile(r"""^\s*\.draw\((['"])(%s)\1\)\s*$""" % "|".join(re.escape(i) for i in dropped_ids)) \
+        if dropped_ids else None
+    if site:
+        out = "".join(l for l in out.splitlines(keepends=True) if not site.match(l))
+    # THE PLUGIN'S OWN PROFILE LIST, where the format has one: the R guard's list of plot stems
+    # is rewritten to the kept profile, so the two halves of the profile declaration agree.
+    plist = _k(keys, "profile_list", "")
+    if plist:
+        prof = [str(e["id"]) for e in plan["kept"]
+                if str(e.get(axis_key) or "") in ("sample", "unit") or e.get("profile")]
+        stems = [i[len("native_"):] if i.startswith("native_") else i for i in prof]
+        pat = re.compile(r"(%s\s*=\s*\()([^)]*)(\))" % re.escape(plist), flags=re.S)
+        if pat.search(out):
+            out = pat.sub(lambda m: m.group(1) + ", ".join(repr(x) for x in stems)
+                          + ("," if len(stems) == 1 else "") + m.group(3), out, count=1)
+    # THE VERSION, THE REUSE KEY: an artefact that draws differently is a new version, and the
+    # freshness stage asks for it in the same commit.
+    vkey = _k(keys, "version", "")
+    version = None
+    if vkey:
+        vpat = re.compile(r"""(["']%s["']\s*:\s*["'])(\d+)\.(\d+)\.(\d+)(["'])""" % re.escape(vkey))
+        m = vpat.search(out)
+        if m:
+            old_v = f"{m.group(2)}.{m.group(3)}.{m.group(4)}"
+            new_v = f"{m.group(2)}.{int(m.group(3)) + 1}.0"
+            out = vpat.sub(lambda mm: mm.group(1) + new_v + mm.group(5), out, count=1)
+            version = (old_v, new_v)
     ast.parse(out)
     _pl, _f, _s = _plugin_nodes(out)
     after = ast.literal_eval(_pl)
@@ -273,7 +318,7 @@ def apply(path, layout, keys=None):
         raise ValueError(f"the trimmed plan still reads over budget on {rep['over']}; nothing written")
     p.write_text(out, encoding="utf-8")
     return {"dropped_ids": dropped_ids, "skips_added": [fn for fn, _ in skip_lines],
-            "kept": len(plan["kept"]), "check": rep}
+            "kept": len(plan["kept"]), "check": rep, "version": version}
 
 
 def format_report(name, rep, plan=None, root="", point="", apply_hint=True):
