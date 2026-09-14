@@ -48,6 +48,7 @@ finish() { s=$?
     [ -s "$RUNDIR/logs/verdict.txt" ] && cat "$RUNDIR/logs/verdict.txt"
   } > "$RUNDIR/$([ $s -eq 0 ] && echo SEALED.txt || echo FAILED.txt)"
   exit $s; }
+trap 'exit 143' TERM INT HUP   # a killed job seals FAILED, not SEALED (harness ADR-0022)
 trap finish EXIT
 
 : > "$RUNDIR/logs/verdict.txt"

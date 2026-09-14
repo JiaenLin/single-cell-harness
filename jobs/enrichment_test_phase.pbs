@@ -64,6 +64,7 @@ finish() {
     [ -s "$RUNDIR/PREDICTIONS.txt" ] && cat "$RUNDIR/PREDICTIONS.txt"
   } > "$RUNDIR/$([ "$s" -eq 0 ] && echo SEALED.txt || echo FAILED.txt)"
 }
+trap 'exit 143' TERM INT HUP   # a killed job seals FAILED, not SEALED (harness ADR-0022)
 trap finish EXIT
 exec >> "$RUNDIR/logs/driver.log" 2>&1
 echo "=== enrichment test phase - $RUNKEY - node $(hostname) - $(date -u) - PBS ${PBS_JOBID:-interactive}"

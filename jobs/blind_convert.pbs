@@ -80,6 +80,7 @@ seal() {
     [ -s "$RUNDIR/VERDICT.txt" ] && cat "$RUNDIR/VERDICT.txt"
   } > "$RUNDIR/$([ "$s" -eq 0 ] && echo SEALED.txt || echo FAILED.txt)"
 }
+trap 'exit 143' TERM INT HUP   # a killed job seals FAILED, not SEALED (harness ADR-0022)
 trap seal EXIT
 
 echo "=== blind conversion of $NAME - $(date -u)"
