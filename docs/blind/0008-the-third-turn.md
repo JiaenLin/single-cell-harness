@@ -34,7 +34,7 @@ test 6 of 8 with `cores` and `audited` owing.
 
 | | |
 |---|---|
-| the author: kinds edited, kinds answered, version, gates | |
+| the author: kinds edited, kinds answered, version, gates | 21 of 22 kinds edited, 1 answered (1 ledger record), 3 host kinds skipped, the cap written as one R prelude read by all three entry scripts; 0.31.0 to 0.32.0; two refusals sent back and answered (a comment naming an arm; the cap prelude copied three times and a compare argv passed unread - both the repository's gates, not the dispatcher's eye); validate 0/0, build 8 of 8, 0 vocabulary hits, 0 fitted literals, 4 rules held, gate 97 green; pasted as scProfile 457c98d; 403k tokens, 194 tool uses, 47 min |
 | the rerun: job, wall time, seal | |
 | lookers: figures handed, recorded, refusals, defects marked | |
 | audited after the fresh look | |
