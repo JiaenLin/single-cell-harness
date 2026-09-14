@@ -35,7 +35,7 @@ test 6 of 8 with `cores` and `audited` owing.
 | | |
 |---|---|
 | the author: kinds edited, kinds answered, version, gates | 21 of 22 kinds edited, 1 answered (1 ledger record), 3 host kinds skipped, the cap written as one R prelude read by all three entry scripts; 0.31.0 to 0.32.0; two refusals sent back and answered (a comment naming an arm; the cap prelude copied three times and a compare argv passed unread - both the repository's gates, not the dispatcher's eye); validate 0/0, build 8 of 8, 0 vocabulary hits, 0 fitted literals, 4 rules held, gate 97 green; pasted as scProfile 457c98d; 403k tokens, 194 tool uses, 47 min |
-| the rerun: job, wall time, seal | |
+| the rerun: job, wall time, seal | PBS 711122 (`20260914T001114Z__scprofile-457c98d__04_profile__rerun`, compute1017) FAILED after 17 minutes: 12 of 18 instances refused, every one on `future.globals.maxSize` (741 MiB of globals exported to the workers the author's cap put CellChat's future plan on; the six smallest units fit under 500 MiB and ran), and the burst unchanged at a peak of 61.7 cores on a share of 4 (sustained 1.13) because the thread variables were set inside R after the BLAS had loaded; memory fitted at 2.9 GB + 6.5 GB per 100,000 cells; sent back to the author - the version stays, the run produced no result at it |
 | lookers: figures handed, recorded, refusals, defects marked | |
 | audited after the fresh look | |
 | writer and reviewer | |
