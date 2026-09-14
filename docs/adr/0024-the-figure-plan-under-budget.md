@@ -67,7 +67,7 @@ fixed first. The eight held-out plugins stay untouched; they inherit the layout 
 | step | state | where | what |
 |---|---|---|---|
 | 0 record | done | this commit | |
-| 1 the layout declaration and the maker's stage | | | |
+| 1 the layout declaration and the maker's stage | done | harness ebb4d92 (`sch/dev/layout.py`, the verb, the status rule); scProfile a79966c (the `layout` stage in DEVPOINTS with the budgets, the axes sample/group/interaction, a trimmed plan still runs: tolerant companion, axis filter, the host's gate, the over_budget ruling) | L1 held: the verb on cellchat's plan before any change read OVER on sample (36 against 2), group (36 against 5) and contrast (39 against 10), under on interaction (15 against 20) and cohort; the trim would keep 23 entries and drop 35 |
 | 2 the trim, as the verb's output | | | |
 | 3 names, order, composition, legends, Methods | | | |
 | 4 the rerun, the looks, the writing | | | |
