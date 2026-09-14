@@ -35,7 +35,7 @@ test 6 of 8 with `cores` and `audited` owing.
 | | |
 |---|---|
 | the author: kinds edited, kinds answered, version, gates | 21 of 22 kinds edited, 1 answered (1 ledger record), 3 host kinds skipped, the cap written as one R prelude read by all three entry scripts; 0.31.0 to 0.32.0; two refusals sent back and answered (a comment naming an arm; the cap prelude copied three times and a compare argv passed unread - both the repository's gates, not the dispatcher's eye); validate 0/0, build 8 of 8, 0 vocabulary hits, 0 fitted literals, 4 rules held, gate 97 green; pasted as scProfile 457c98d; 403k tokens, 194 tool uses, 47 min |
-| the rerun: job, wall time, seal | PBS 711122 (`20260914T001114Z__scprofile-457c98d__04_profile__rerun`, compute1017) FAILED after 17 minutes: 12 of 18 instances refused, every one on `future.globals.maxSize` (741 MiB of globals exported to the workers the author's cap put CellChat's future plan on; the six smallest units fit under 500 MiB and ran), and the burst unchanged at a peak of 61.7 cores on a share of 4 (sustained 1.13) because the thread variables were set inside R after the BLAS had loaded; memory fitted at 2.9 GB + 6.5 GB per 100,000 cells; sent back to the author - the version stays, the run produced no result at it. Resubmitted as PBS 711127 (`20260914T004319Z__scprofile-b0cfe88__04_profile__rerun`) with the author's correction: the thread variables set in the environment every Rscript is started with, the future plan sequential, only mc.cores and data.table threads set inside R |
+| the rerun: job, wall time, seal | PBS 711122 (`20260914T001114Z__scprofile-457c98d__04_profile__rerun`, compute1017) FAILED after 17 minutes: 12 of 18 instances refused, every one on `future.globals.maxSize` (741 MiB of globals exported to the workers the author's cap put CellChat's future plan on; the six smallest units fit under 500 MiB and ran), and the burst unchanged at a peak of 61.7 cores on a share of 4 (sustained 1.13) because the thread variables were set inside R after the BLAS had loaded; memory fitted at 2.9 GB + 6.5 GB per 100,000 cells; sent back to the author - the version stays, the run produced no result at it. Resubmitted as PBS 711127 (`20260914T004319Z__scprofile-b0cfe88__04_profile__rerun`) with the author's correction: the thread variables set in the environment every Rscript is started with, the future plan sequential, only mc.cores and data.table threads set inside R. PBS 711127 (`20260914T004319Z__scprofile-b0cfe88__04_profile__rerun`) ran 18 of 18 instances in 17 minutes with a peak of 4.31 cores on a share of 4 and `cores` answered, and sealed FAILED on the seven native compares (defect 2). Resubmitted as PBS 711204 (`20260914T021108Z__scprofile-d91a6c2__04_profile__rerun`) at the host fix |
 | lookers: figures handed, recorded, refusals, defects marked | |
 | audited after the fresh look | |
 | writer and reviewer | |
@@ -51,6 +51,14 @@ the suite's organism checks indexed `scenic`, `velocity` and `cellcycle` by name
 cellchat.py" from a suite that had not finished. The checks now skip on a tree without those
 kernels and say which they needed; the checks about the tree still run. Found by the author.
 
+
+**2. The compare context carried no share** (scProfile d91a6c2). The host caps the compare
+launch's environment to `cores` and records it on the launch, and gave `ctx.cores` to the
+per-unit Context alone; the author's cap read it in `compare()` and every one of the seven native
+compares died in under a second with AttributeError, so PBS 711127 ran all 18 instances clean
+(peak 4.31 cores on a share of 4, `cores` answered) and sealed FAILED on the compare products.
+The third divergence of the two contexts; the suite that holds them together now names `cores`,
+the compare spec carries `resources.cores` as the per-unit in.json does. Found by the run.
 
 ## Results
 
