@@ -1,0 +1,17 @@
+#!/bin/bash
+# THE COMMIT GATE (harness ADR-0023). Installed once per clone by `git config core.hooksPath
+# setup/githooks`; `sch conform .` is red until it is. ADR-0022 closed with two commits landed
+# while the suite was red, which the tool's own gate (ADR-0015) would have refused.
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+if ! PYTHONPATH=. python3 -m unittest discover -s tests > /tmp/sch_precommit_suite.log 2>&1; then
+  echo "BLOCKED: the suite is red (python3 -m unittest discover -s tests):" >&2
+  tail -20 /tmp/sch_precommit_suite.log >&2
+  exit 1
+fi
+if ! PYTHONPATH=. python3 -m sch conform . > /tmp/sch_precommit_conform.log 2>&1; then
+  echo "BLOCKED: sch conform . is red:" >&2
+  tail -20 /tmp/sch_precommit_conform.log >&2
+  exit 1
+fi

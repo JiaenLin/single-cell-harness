@@ -498,3 +498,6 @@ none is a style opinion:
 A job may silence one rule by name with `jobcheck: allow <rule-id>` in the file, where a reader
 will see it. Anonymous suppression is how a check stops meaning anything.
 
+## The commit gate
+
+Install once per clone: `git config core.hooksPath setup/githooks`. The hook runs the suite and `sch conform` on the repository before every commit and refuses a red one; conform reports G1 red until the clone has it (harness ADR-0023, after two commits landed red in ADR-0022).

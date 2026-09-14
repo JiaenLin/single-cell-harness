@@ -189,6 +189,31 @@ def _check(checks, cid, ok, evidence, fix, level="error"):
                    "evidence": evidence, "fix": fix})
 
 
+def _commit_gate(checks, repo):
+    """G1: the commit gate is installed in this clone (harness ADR-0023).
+
+    ADR-0022 closed with two commits landed while the suite was red. The tool has had a commit
+    gate since ADR-0015 - a pre-commit hook that runs the suite - and this repository had none.
+    The hook is versioned at `setup/githooks/pre-commit`; git reads it only when the clone says
+    so, once: `git config core.hooksPath setup/githooks`.
+    """
+    import subprocess
+    repo = Path(repo)
+    hook = repo / "setup" / "githooks" / "pre-commit"
+    try:
+        r = subprocess.run(["git", "-C", str(repo), "config", "--get", "core.hooksPath"],
+                           capture_output=True, text=True, timeout=30)
+        path = r.stdout.strip()
+    except Exception:                                                     # noqa: BLE001
+        path = ""
+    ok = hook.is_file() and path == "setup/githooks"
+    _check(checks, "G1 ", ok,
+           [f"hook {'present' if hook.is_file() else 'MISSING'} at setup/githooks/pre-commit; "
+            f"core.hooksPath is {path!r}"],
+           "git config core.hooksPath setup/githooks   (once per clone; the hook runs the suite "
+           "and conform before every commit)")
+
+
 def conform_repo(repo, terms_file=None, shapes_file=None) -> list:
     _forget_listing()
     root = Path(repo).resolve()
@@ -406,6 +431,7 @@ def conform_repo(repo, terms_file=None, shapes_file=None) -> list:
            bool(re.search(r"escape|override", pkg_text)) and bool(re.search(r"\"by\"|'by'|decided_by|approved_by", pkg_text)),
            "", "every --allow / --no-* that lifts a refusal writes {ask:{gate, number, refusal}, decision:{by, why, when}}",
            level="warn")
+    _commit_gate(checks, repo)
     return checks
 
 

@@ -124,6 +124,25 @@ class TestConform(unittest.TestCase):
         self.assertFalse(by_id(checks, "R2 ")[0]["ok"])
         self.assertFalse(by_id(checks, "R4")[0]["ok"])
 
+    def test_the_commit_gate_is_a_check_of_the_repository(self):
+        """ADR-0022 closed with two commits landed on this repository while its suite was red:
+        the tool has had a commit gate since ADR-0015 and this repository had none. The gate is
+        `setup/githooks/pre-commit`, installed per clone by `git config core.hooksPath
+        setup/githooks`; conform says whether this clone has it."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as td:
+            r = Path(td)
+            subprocess.run(["git", "init", "-q", str(r)], check=True)
+            (r / "setup" / "githooks").mkdir(parents=True)
+            (r / "setup" / "githooks" / "pre-commit").write_text("#!/bin/bash\nexit 0\n")
+            g = by_id(conform_repo(r), "G1 ")[0]
+            self.assertFalse(g["ok"], "a clone with no hooksPath passes the gate check")
+            self.assertIn("core.hooksPath setup/githooks", g["fix"])
+            subprocess.run(["git", "-C", str(r), "config", "core.hooksPath", "setup/githooks"], check=True)
+            self.assertTrue(by_id(conform_repo(r), "G1 ")[0]["ok"])
+        self.assertTrue(by_id(conform_repo(ROOT), "G1 ")[0]["ok"],
+                        "this clone has no commit gate installed: git config core.hooksPath setup/githooks")
+
     def test_this_repository_conforms_to_its_own_scan(self):
         checks = conform_repo(ROOT)
         s1 = by_id(checks, "S1 ")[0]
