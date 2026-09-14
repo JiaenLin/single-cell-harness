@@ -159,6 +159,8 @@ class ThePlanIsHeldToALayout(unittest.TestCase):
         text = text.replace("'id': 'native_patterns', 'kind': 'patterns'",
                             "'id': 'native_patterns', 'profile': True, 'kind': 'patterns'")
         text = text.replace("'fn': 'drawDiff'", "'fn': 'drawBubble'")
+        text = text.replace("'id': 'native_roles', 'kind': 'role_scatter'",
+                            "'id': 'native_roles', 'profile': True, 'kind': 'role_scatter'")
         text += "\n_PROFILE_PLOTS = ('patterns', 'roles')\n"
         text += ('\n_R = r"""\n.figures(prefix = "native_")\n.draw("native_circle")\n'
                  '.draw("native_patterns")\n  .draw("nativecmp_bubble")\n.draw("nativecmp_diff")\n'
@@ -189,6 +191,8 @@ class ThePlanIsHeldToALayout(unittest.TestCase):
             # the R guard's list names the tool's own plots of the profile, by stem, and not the
             # plugin's Python panel, which no R function draws
             self.assertIn("_PROFILE_PLOTS = ('circle',)", out)
+            # an entry kept on the group axis alone loses the mark and leaves the list
+            self.assertFalse(kept["native_roles"].get("profile"))
 
     def test_a_plugin_under_budget_is_left_alone(self):
         small = {"report": {"figures": [
