@@ -26,9 +26,37 @@ def _k(keys, what, default):
     return str((keys or {}).get(what) or default)
 
 
-def _entries(spec):
+def _entries(spec, keys=None):
+    """The plan's plates. An entry the format marks as a side effect - a file the tool writes
+    while the method calls it, `generated: False` in one format - is an accounting entry and
+    not a plate: neither counted against a budget nor dropped by the trim."""
     rep = (spec or {}).get("report") or {}
-    return [e for e in (rep.get("figures") or []) if isinstance(e, dict) and e.get("id")]
+    side = _k(keys, "side_effect", "")
+    return [e for e in (rep.get("figures") or []) if isinstance(e, dict) and e.get("id")
+            and not (side and e.get(side) is False)]
+
+
+def host_files(layout):
+    """{axis: files} the host's own kept panels take on each axis, per occurrence.
+
+    The layout names every kind the host draws with its axis (`host`), and which of them a
+    reader is handed (`host_keep`); a kind not kept is not drawn, and the plugin carries the
+    decision as the list `host_list` names. `files` is per occurrence of the axis (a kind that
+    draws two matrices per contrast says 2), one where unsaid.
+    """
+    host = (layout or {}).get("host") or {}
+    keep = [k for k in ((layout or {}).get("host_keep") or []) if k in host]
+    out = {}
+    for k in keep:
+        ax = str((host[k] or {}).get("axis") or "cohort")
+        out[ax] = out.get(ax, 0) + max(1, int((host[k] or {}).get("files") or 1))
+    return out
+
+
+def host_kept(layout):
+    """The host kinds a reader is handed, in the layout's order - what the plugin will carry."""
+    host = (layout or {}).get("host") or {}
+    return [k for k in ((layout or {}).get("host_keep") or []) if k in host]
 
 
 def _files(e, bound):
@@ -56,15 +84,30 @@ def check(spec, layout, keys=None):
     keys = keys or {}
     bound = _k(keys, "bound", "at_most")
     axes = (layout or {}).get("axes") or {}
-    counts, per = {a: 0 for a in axes}, {a: [] for a in axes}
-    for e in _entries(spec):
+    host = host_files(layout)
+    counts, per = {a: host.get(a, 0) for a in axes}, {a: [] for a in axes}
+    for e in _entries(spec, keys):
         for a in axes_of(e, layout, keys):
             if a in counts:
                 counts[a] += _files(e, bound)
                 per[a].append((str(e["id"]), _files(e, bound)))
     budgets = {a: int((axes[a] or {}).get("budget") or 0) for a in axes}
     over = [a for a in axes if counts[a] > budgets[a]]
-    return {"ok": not over, "counts": counts, "budgets": budgets, "over": over, "entries": per}
+    # THE HOST'S LIST, CARRIED BY THE PLUGIN: what the layout keeps is what the plugin must
+    # declare, or the host draws every kind it owns and the count above is not the run's.
+    hlist = _k(keys, "host_list", "") or str((layout or {}).get("host_list") or "")
+    wanted = host_kept(layout) if (layout or {}).get("host") else None
+    declared = None
+    if hlist and wanted is not None:
+        node = spec or {}
+        for part in hlist.split("."):
+            node = node.get(part) if isinstance(node, dict) else None
+        declared = list(node) if isinstance(node, (list, tuple)) else None
+    list_ok = wanted is None or declared == wanted
+    return {"ok": not over and list_ok, "counts": counts, "budgets": budgets, "over": over,
+            "entries": per, "host": {a: n for a, n in host.items() if a in axes},
+            "host_list": ({"declared": declared, "wanted": wanted, "at": hlist}
+                          if wanted is not None else {})}
 
 
 def _rank(e, axis, layout, keys):
@@ -94,9 +137,12 @@ def trim(spec, layout, keys=None):
     axes = (layout or {}).get("axes") or {}
     decided = {}        # id -> {axis: files kept}
     dropped = []
-    entries = _entries(spec)
+    entries = _entries(spec, keys)
+    host = host_files(layout)
     for a in axes:
-        budget = int((axes[a] or {}).get("budget") or 0)
+        # THE HOST'S OWN PANELS TAKE THEIR FILES FIRST: the budget is the reader's, whoever drew
+        # the file, and the host's kinds are what the layout kept on purpose.
+        budget = int((axes[a] or {}).get("budget") or 0) - host.get(a, 0)
         cands = [(i, e) for i, e in enumerate(entries) if a in axes_of(e, layout, keys)]
         cands.sort(key=lambda ie: (_rank(ie[1], a, layout, keys), ie[0]))
         # THE PASS OF EACH CANDIDATE: its rank among the entries of its own kind.
@@ -130,7 +176,12 @@ def trim(spec, layout, keys=None):
         for fid, n in took.items():
             decided.setdefault(fid, {})[a] = n
     kept, gone = [], []
-    for e in entries:
+    side = _k(keys, "side_effect", "")
+    for e in [x for x in (((spec or {}).get("report") or {}).get("figures") or [])
+              if isinstance(x, dict) and x.get("id")]:
+        if side and e.get(side) is False:
+            kept.append(dict(e))          # an accounting entry: kept as it is, on no axis
+            continue
         d = decided.get(str(e["id"]))
         if not d:
             gone.append(str(e["id"]))
@@ -183,8 +234,12 @@ def read_spec(path):
     return ast.literal_eval(plug)
 
 
-def apply(path, layout, keys=None):
+def apply(path, layout, keys=None, as_version=None):
     """Trim the plan in the plugin's own file to the layout. Returns what changed.
+
+    `as_version` is the version the author states for the trimmed plugin; without it the minor
+    is raised by one, which is the maker's own bump and collides with nothing only while the
+    file's version is the newest in the repository's history.
 
     BY SPAN, NOT BY REGENERATION: every entry is a dict literal with its own lines, so a dropped
     entry's lines go, a kept entry's axis and ceiling are rewritten on their own lines, and
@@ -244,7 +299,9 @@ def apply(path, layout, keys=None):
             edits.append((a, b, block))
         # THE PROFILE MARK: the sample axis is the per-unit profile under a layout, so a kept
         # entry on it carries `profile: True` and a kept entry off it does not.
-        want_profile = str(new.get(axis_key) or "") in ("sample", "unit")
+        side_key = _k(keys, "side_effect", "")
+        want_profile = (str(new.get(axis_key) or "") in ("sample", "unit")
+                        and not (side_key and e.get(side_key) is False))
         has_profile = bool(e.get("profile"))
         if want_profile and not has_profile:
             idp = re.compile(r"""(['"]id['"]\s*:\s*['"][^'"]+['"]\s*,)""")
@@ -276,6 +333,24 @@ def apply(path, layout, keys=None):
                f"'budget': {int((((layout.get('axes') or {}).get(d.get('axis')) or {}).get('budget') or 0))}}},   # held to the layout\n"
                for fn, d in skip_lines]
         edits.append((a, a, [lines[a - 1]] + ins))
+    # THE HOST'S PANELS THE PAGES CARRY, as the list the format names, on its own line inside
+    # the report block - written once, rewritten in place when it is already there.
+    hlist = _k(keys, "host_list", "") or str((layout or {}).get("host_list") or "")
+    if hlist and (layout or {}).get("host"):
+        field = hlist.split(".")[-1]
+        rep_node = next((v for k, v in zip(plug.keys, plug.values)
+                         if isinstance(k, ast.Constant) and k.value == "report"), None)
+        kept_kinds = host_kept(layout)
+        line = (f"            {field!r}: [{', '.join(repr(k) for k in kept_kinds)}],"
+                f"   # held to the layout: the host's own panels these pages carry\n")
+        hpat = re.compile(r"""^\s*['"]%s['"]\s*:""" % re.escape(field))
+        have = [i for i in range(rep_node.lineno, rep_node.end_lineno + 1)
+                if hpat.match(lines[i - 1])] if rep_node is not None else []
+        if have:
+            edits.append((have[0], have[0], [line]))
+        elif rep_node is not None:
+            a = rep_node.lineno
+            edits.append((a, a, [lines[a - 1], line]))
     # APPLY FROM THE BOTTOM, so line numbers stay true
     for a, b, repl in sorted(edits, key=lambda t: -t[0]):
         lines[a - 1:b] = repl
@@ -291,9 +366,11 @@ def apply(path, layout, keys=None):
     # is rewritten to the kept profile, so the two halves of the profile declaration agree.
     plist = _k(keys, "profile_list", "")
     if plist:
+        _side = _k(keys, "side_effect", "")
         prof = [str(e["id"]) for e in plan["kept"]
                 if str(e.get(axis_key) or "") in ("sample", "unit")
-                and str(e.get("drawn_by") or "tool") == "tool"]
+                and str(e.get("drawn_by") or "tool") == "tool"
+                and not (_side and e.get(_side) is False)]
         stems = [i[len("native_"):] if i.startswith("native_") else i for i in prof]
         pat = re.compile(r"(%s\s*=\s*\()([^)]*)(\))" % re.escape(plist), flags=re.S)
         if pat.search(out):
@@ -308,7 +385,7 @@ def apply(path, layout, keys=None):
         m = vpat.search(out)
         if m:
             old_v = f"{m.group(2)}.{m.group(3)}.{m.group(4)}"
-            new_v = f"{m.group(2)}.{int(m.group(3)) + 1}.0"
+            new_v = str(as_version) if as_version else f"{m.group(2)}.{int(m.group(3)) + 1}.0"
             out = vpat.sub(lambda mm: mm.group(1) + new_v + mm.group(5), out, count=1)
             version = (old_v, new_v)
     ast.parse(out)
@@ -326,8 +403,20 @@ def format_report(name, rep, plan=None, root="", point="", apply_hint=True):
     L = [f"{name}: the figure plan against the layout"]
     for a in rep["counts"]:
         mark = "OVER" if a in rep["over"] else "ok  "
+        h = (rep.get("host") or {}).get(a, 0)
         L.append(f"  {mark} {a:12s} {rep['counts'][a]:4d} file(s) per occurrence against a "
-                 f"budget of {rep['budgets'][a]}")
+                 f"budget of {rep['budgets'][a]}"
+                 + (f"  ({h} of them the host's own panels)" if h else ""))
+    hl = rep.get("host_list") or {}
+    if hl:
+        if hl.get("declared") == hl.get("wanted"):
+            L.append(f"  ok   the host's own panels these pages carry, as `{hl['at']}` declares: "
+                     f"{', '.join(hl['wanted']) or 'none'}")
+        else:
+            L.append(f"  OWES `{hl['at']}`: the layout keeps {', '.join(hl['wanted']) or 'none'} "
+                     f"of the host's own panels and the plugin declares "
+                     f"{', '.join(hl['declared']) if hl.get('declared') is not None else 'nothing'}"
+                     f" - without it the host draws every kind it owns")
     if plan:
         L.append(f"  the trim keeps {len(plan['kept'])} entr(ies) and drops "
                  f"{len({d['id'] for d in plan['dropped']})}:")

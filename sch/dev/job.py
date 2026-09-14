@@ -72,7 +72,11 @@ def products_of(ref_dir, figures=True) -> list:
     the files the tool writes rather than the files somebody expected it to write.
 
     `figures=False` leaves the pictures out (harness ADR-0019): a rerun after figure changes
-    is allowed to change them, and the plan's promise and the eye judge those."""
+    is allowed to change them, and the plan's promise and the eye judge those. AND WHAT BELONGS
+    TO A FIGURE (harness ADR-0024): a plate's source data and legend sit beside it under a
+    `figures/` directory, and a report page other than the index exists only because plates
+    do - a plan trimmed by the layout wrote neither for the panels it no longer draws and
+    sealed FAILED on them with every table of the analysis present."""
     ref = Path(ref_dir)
     keep = {".json", ".csv", ".tsv", ".h5ad", ".html", ".md", ".png", ".pdf", ".npy"}
     if not figures:
@@ -80,6 +84,10 @@ def products_of(ref_dir, figures=True) -> list:
 
     def _wanted(rel):
         rel = Path(rel)
+        if not figures and ("figures" in rel.parts[:-1]
+                            or (rel.parts[0] == "report" and rel.suffix == ".html"
+                                and rel.name != "index.html")):
+            return False
         return (rel.suffix in keep and rel.parts[0] not in ("logs", "cache", "tmp")
                 and not rel.name.startswith(("RUNNING", "SEALED", "FAILED")))
 

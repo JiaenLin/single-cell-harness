@@ -356,6 +356,30 @@ class Job(unittest.TestCase):
         self.assertNotIn("figures/a.png", text)
         self.assertIn("the eye", text)
 
+    def test_a_redraw_expects_nothing_that_belongs_to_a_figure(self):
+        """A plate's source data and legend sit beside it, and a page exists only because plates
+        do: a plan trimmed by the layout (harness ADR-0024) drew fewer plates, wrote no source
+        table for a panel it no longer draws and no per-sample page, and sealed FAILED on 163
+        such files with every table of the analysis present. What belongs to a figure follows
+        the figure's rule."""
+        (self.d / "ref" / "kernels" / "p" / "U" / "figures").mkdir(parents=True)
+        (self.d / "ref" / "kernels" / "p" / "U" / "figures" / "F1_x.csv").write_bytes(b"x")
+        (self.d / "ref" / "kernels" / "p" / "U" / "figures" / "captions.tsv").write_bytes(b"x")
+        (self.d / "ref" / "kernels" / "p" / "U" / "tables").mkdir(parents=True)
+        (self.d / "ref" / "kernels" / "p" / "U" / "tables" / "edges.csv").write_bytes(b"x")
+        (self.d / "ref" / "report").mkdir()
+        (self.d / "ref" / "report" / "index.html").write_bytes(b"x")
+        (self.d / "ref" / "report" / "p_by_sample.html").write_bytes(b"x")
+        full = J.products_of(self.d / "ref")
+        self.assertIn("kernels/p/U/figures/F1_x.csv", full)
+        redraw = J.products_of(self.d / "ref", figures=False)
+        self.assertNotIn("kernels/p/U/figures/F1_x.csv", redraw)
+        self.assertNotIn("kernels/p/U/figures/captions.tsv", redraw)
+        self.assertNotIn("report/p_by_sample.html", redraw)
+        self.assertIn("kernels/p/U/tables/edges.csv", redraw)
+        self.assertIn("report/index.html", redraw)
+        self.assertIn("report.json", redraw)
+
     def test_what_follows_a_run_is_appended_from_the_declaration(self):
         text = J.emit(prediction="identical", python="/env/bin/python",
                       after=[["{python}", "-m", "t.cli", "report", "--out", "{run}"]], **self.kw)

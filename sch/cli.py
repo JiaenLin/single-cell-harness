@@ -762,7 +762,7 @@ def cmd_dev(a):
                     lives = str(P.point(doc, point).get("lives") or ".")
                     f = Path(doc["_root"]) / lives / f"{nm}.py"
                     try:
-                        done = L.apply(f, st, keys)
+                        done = L.apply(f, st, keys, as_version=getattr(a, "as_version", None))
                     except ValueError as e:
                         print(f"{nm}: {e}", file=sys.stderr)
                         bad += 1
@@ -1228,6 +1228,11 @@ def build_parser():
                    help="with a command stage named as the action and --run: run the stage's "
                         "declared `apply:` - what writes its fill into the declaration - "
                         "instead of its verification. A status never applies")
+    q.add_argument("--as-version", default=None,
+                   help="with `layout --apply`: the version the trimmed plugin is stated to be, "
+                        "instead of the maker's own bump of the minor - for a trim re-applied "
+                        "from an earlier version of the file, whose bump would collide with a "
+                        "version the repository's history already carries")
     q.add_argument("--worksheet", action="store_true",
                    help="with a command stage named as the action and --run: run the stage's "
                         "declared `worksheet:` - what prints the work only the author can "
