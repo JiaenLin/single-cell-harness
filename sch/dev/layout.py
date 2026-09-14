@@ -292,7 +292,8 @@ def apply(path, layout, keys=None):
     plist = _k(keys, "profile_list", "")
     if plist:
         prof = [str(e["id"]) for e in plan["kept"]
-                if str(e.get(axis_key) or "") in ("sample", "unit") or e.get("profile")]
+                if (str(e.get(axis_key) or "") in ("sample", "unit") or e.get("profile"))
+                and str(e.get("drawn_by") or "tool") == "tool"]
         stems = [i[len("native_"):] if i.startswith("native_") else i for i in prof]
         pat = re.compile(r"(%s\s*=\s*\()([^)]*)(\))" % re.escape(plist), flags=re.S)
         if pat.search(out):
