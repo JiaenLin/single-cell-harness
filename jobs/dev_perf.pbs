@@ -40,6 +40,7 @@ finish() { s=$?
     echo "NOT PROMOTABLE, synthetic fixture, no number here is about the biology"
   } > "$RUNDIR/$seal"
   rm -f "$RUNDIR/RUNNING.txt"; exit $s; }
+trap 'exit 143' TERM INT HUP   # a killed job seals FAILED, not SEALED (harness ADR-0022)
 trap finish EXIT
 echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$RUNDIR/RUNNING.txt"
 
