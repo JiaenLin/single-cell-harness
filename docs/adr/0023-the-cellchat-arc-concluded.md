@@ -44,6 +44,6 @@ properly before the eight.
 |---|---|---|---|
 | 1 the commit gate | done | harness 7699531 | `setup/githooks/pre-commit` runs the suite and conform; `git config core.hooksPath setup/githooks` installs it; conform G1 reports it; the gate refused its own commit's first attempt on a doc-surface test (G1 held) |
 | 2 the three kinds | done | scProfile f46ea44 (a host panel stated against the page's caption), 0213ebf (the role-shift caption), defeff8 (cellchat 0.34.0: the colour map passed, the scatter pair disclosed); the suite guard for one-kernel trees beside them | |
-| 3 the rerun | submitted | harness d380cc6 (jobs/rerun_0010.pbs), PBS 711346 on compute1016, run key 20260914T083704Z__scprofile-defeff8__04_profile__rerun | |
-| 4 the fresh look, the host's stated answer, the seal | | | |
+| 3 the rerun | done | harness d380cc6 (jobs/rerun_0010.pbs), PBS 711346 on compute1016, run key 20260914T083704Z__scprofile-defeff8__04_profile__rerun | SEALED in 37 minutes, 18 of 18, 945 figures; every instance recorded its process count (2 to 6) and the maker reads `cores` answered at the declared 2, sustained 1.18, peak 1.33 (P1 held) |
+| 4 the fresh look, the host's stated answer, the seal | in progress | the run's copy under blind5/; writing run 20260914T092235Z__scprofile-defeff8__04_profile__written prepared | 122 looks carried; the host recorded its stated answer on the role-shift panel against the page's caption; a looker on the 17 plates that render differently; the previous run's written layer laid over: 6 standing, 5 stale, 4 unreviewed for a reviewer |
 | 5 the conclusion | | | |
