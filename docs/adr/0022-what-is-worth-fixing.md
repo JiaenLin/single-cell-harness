@@ -66,9 +66,9 @@ prediction rewritten after the numbers are in.
 | step | state | where | what |
 |---|---|---|---|
 | 0 record | done | this commit | |
-| 1 the stated answer | | | |
-| 2 cores by the tool; the ADR-0016 debts | | | |
-| 3 dead mechanism removed | | | |
+| 1 the stated answer | done | scProfile 71b2d3d | `review --answer ... --stated`: refused until the sentence is in the plan entry's legend in the plugin's file; then the finding closes without a fresh look, the figure reads reviewed, the worksheet drops the kind, a redraw reopens it; nine checks test-first; the worksheet prints it as the third way. S1 held. (The cores declaration of step 2 rode in this commit: it was staged when the gate blocked its own commit on the then-red suite, and the stated commit picked it up - one commit carrying two changes, recorded rather than rewritten) |
+| 2 cores by the tool; the ADR-0016 debts | done | scProfile 71b2d3d (the `cores` line) | `capacity --cores --declare cellchat` wrote `"cores": 2` from the run's sustained 1.13; validate 0/0, build 8 of 8 (C1 held). ADR-0016's debts: the build status runs `validate`, which refuses a per-unit plugin without `report.unit_metrics` - closed as covered; the seal reads the tree's HEAD file (`commit=d91a6c2` on every seal of ADR-0021) - closed as done; the legacy family and placement maps stay until the eight migrate |
+| 3 dead mechanism removed | done | harness b6ceb57; scProfile 1ee0147 | five functions no code, test, doc or job names: plan_of_work, code_only, for_kind, set_path (harness), gap_text (tool); the job checks the scan also listed are registered by a decorator and a sixth was a template string, both kept; suites, conform and the round's rules green (D1 held) |
 | 4 the author's pass on the sixteen | | | |
 | 5 the rerun and the seal | | | |
 | 6 the record | | | |
