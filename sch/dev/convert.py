@@ -59,6 +59,10 @@ PLACES_KEY = "places_every"
 #: Both were commands with no stage, so nothing gated on either.
 LOAN_KEY = "every_requirement_declared"
 VERSION_KEY = "version_is_current"
+#: A stage that holds the figure plan to a LAYOUT - axes, a budget per axis, what to keep first
+#: (harness ADR-0024). The budgets are the stage's own declaration; `sch dev convert layout` is
+#: the verb that checks and, with --apply, trims the plan in the plugin's own file.
+LAYOUT_KEY = "under_layout"
 
 
 class ConvertError(Exception):
@@ -221,6 +225,23 @@ def artefact(doc, point_name, name):
     return target if target.is_file() else None
 
 
+def layout_keys(stages):
+    """The plan's `entry_keys` - what this format calls an axis, a ceiling, an upstream call."""
+    for st in stages or []:
+        if str(st.get("name")) == "plan" and isinstance(st.get("entry_keys"), dict):
+            return dict(st["entry_keys"])
+    return {}
+
+
+def layout_debt(st, spec, stages):
+    """{owes, report} for a stage declaring `under_layout`; {} for any other."""
+    if not st.get(LAYOUT_KEY):
+        return {}
+    from . import layout as L
+    rep = L.check(spec, st, layout_keys(stages))
+    return {"owes": not rep["ok"], "report": rep}
+
+
 def status(spec, doc, point_name, name="", source=None, python="", run=""):
     """[{stage, kind, done, missing, why}] in declared order. The whole resume mechanism.
 
@@ -291,6 +312,8 @@ def status(spec, doc, point_name, name="", source=None, python="", run=""):
         vers = version_debt(st, spec, doc, point_name, name)
         owes_loan = bool(loan.get("owes"))
         owes_vers = bool(vers.get("owes"))
+        lay = layout_debt(st, spec, stages)
+        owes_lay = bool(lay.get("owes"))
         # A COMMAND STAGE IS ANSWERED BY RUNNING IT, when there is a run to run it against. Until
         # this, `measure` and `promised` were judged by whether the field they fill was PRESENT -
         # a run-side check read as a declaration check - and the four run-side stations of the
@@ -345,9 +368,10 @@ def status(spec, doc, point_name, name="", source=None, python="", run=""):
                     # this is what the gate read, and `sch dev convert overfit` needs it to tell
                     # a stage that PASSED from one that had nothing to look at.
                     "places": places,
+                    "layout": lay,
                     "done": (not missing and not partial and not owes_place
                              and not owes_loan and not owes_vers and not owes_run
-                             and not unasked),
+                             and not owes_lay and not unasked),
                     "missing": missing,
                     "why": st.get("why", "")})
     return out
@@ -626,6 +650,15 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
             # again; the verdict, so the mark above is explained; the tail, because the
             # command's own last lines are the reason and this module does not know their
             # vocabulary.
+            if r.get("layout"):
+                rep = r["layout"].get("report") or {}
+                for ax in rep.get("counts") or {}:
+                    L.append(f"       {'OVER' if ax in rep.get('over', []) else 'ok  '} "
+                             f"{ax:12s} {rep['counts'][ax]:4d} file(s) per occurrence against "
+                             f"a budget of {rep['budgets'][ax]}")
+                if r["layout"].get("owes"):
+                    L.append(f"       apply it:  sch dev convert layout --root {root} --point "
+                             f"{point_name} --name {name or '<plugin>'} --apply")
             if r.get("ran"):
                 ran = r["ran"]
                 L.append(f"       ran:  {' '.join(ran['argv'])}")
@@ -1682,7 +1715,7 @@ def companion_paths(path, suffix=""):
 #: what only you can answer" about a MECHANICAL stage whose `finished_by` names the exact command
 #: to type. Found by generating a plugin from nothing and reading what the maker said to do next.
 ACTIONS = ("status", "freshness", "borrowed", "inventory", "account", "measure", "promised",
-           "defaults", "references", "contract", "plan", "overfit", "build")
+           "defaults", "references", "contract", "plan", "layout", "overfit", "build")
 
 
 # -----------------------------------------------------------------------------------------------
@@ -2017,6 +2050,9 @@ def advance_command(row, doc, point_name, root, name, python="", run=""):
     A status that names the stage and withholds the command is a status you need a guide beside.
     """
     stage = row["stage"]
+    if (row.get("layout") or {}).get("owes"):
+        return (f"sch dev convert layout --root {root} --point {point_name} "
+                f"--name {name or '<plugin>'} --apply")
     # A STAGE THAT OWES ON A RUN AND DECLARES HOW ITS FILL IS APPLIED is advanced by applying
     # it, not by verifying it again (harness ADR-0018).
     if row.get("ran", {}).get("owes") and row.get("apply"):

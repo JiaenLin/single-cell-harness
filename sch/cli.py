@@ -732,6 +732,44 @@ def cmd_dev(a):
                     bad += 1
                     print(f"{nm}: {e}", file=sys.stderr)
             return FAILED if bad else OK
+        if a.action == "layout":
+            # THE FIGURE PLAN UNDER A LAYOUT (harness ADR-0024): the budgets are the stage's own
+            # declaration in the tool's DEVPOINTS; this prints the plan against them and, with
+            # --apply, trims the plan in the plugin's own file. Nobody hand-edits a plugin to
+            # make it smaller.
+            from .dev import layout as L
+            from .dev import points as P
+            _ph, _up, stages = CV.plan(doc, point)
+            st = next((x for x in stages if str(x.get("name")) == "layout"), None)
+            if st is None or not st.get(CV.LAYOUT_KEY):
+                print(f"sch dev convert layout: point {point!r} declares no `layout` stage with "
+                      f"`under_layout: true`, so there are no budgets to hold a plan to. Declare "
+                      f"one beside the plan stage in DEVPOINTS.yaml.", file=sys.stderr)
+                return CANNOT_RUN
+            keys = CV.layout_keys(stages)
+            bad = 0
+            for nm, spec in specs:
+                rep = L.check(spec, st, keys)
+                planned = L.trim(spec, st, keys) if not rep["ok"] else None
+                print(L.format_report(nm, rep, planned, root=a.root, point=point,
+                                      apply_hint=not getattr(a, "apply", False)))
+                if getattr(a, "apply", False) and not rep["ok"]:
+                    lives = str(P.point(doc, point).get("lives") or ".")
+                    f = Path(doc["_root"]) / lives / f"{nm}.py"
+                    try:
+                        done = L.apply(f, st, keys)
+                    except ValueError as e:
+                        print(f"{nm}: {e}", file=sys.stderr)
+                        bad += 1
+                        continue
+                    print(f"  applied to {f}: kept {done['kept']} entr(ies), dropped "
+                          f"{len(done['dropped_ids'])} ({', '.join(done['dropped_ids'])}); "
+                          f"skips added for {', '.join(done['skips_added']) or 'nothing'}")
+                    print("  next: `scprofile scaffold <plugin> --force` regenerates the "
+                          "companion; validate and the build status then read the trimmed plan")
+                elif not rep["ok"]:
+                    bad += 1
+            return FAILED if bad else OK
         # GUARDED, because it was not. This block had no `if` on it and returned at the end, so
         # the `account` branch below was unreachable and `convert account` silently printed an
         # inventory. Dead code behind an unconditional return, which is the same shape as a test
