@@ -201,7 +201,7 @@ across more than one session - the table below is what a later session resumes f
 | step | state | where | what |
 |---|---|---|---|
 | 0 record | done | this commit | the diagnosis measured, the decisions taken, the draw fixed |
-| 1 the run made cheap | | | |
+| 1 the run made cheap | done | scProfile dc9bb46, harness 1402fab, 403ce2f; the control rerun `20260915T084449Z__scprofile-dc9bb46__04_profile__rerun` (PBS 711884, compute1016) | Four fixes, each test-first and seen red: the tool declares `run.redraw_drops: [--no-cache]` and the emitter drops it on a redraw, listing every flag it carries in the job's header (`--keep=FLAG` keeps one); the compare launches pooled at the plugin's declared share (2) under the run's budget, 32 at once, the phase record carrying `share` and `at_once`; `run.after` no longer names `report`; `run_all.py --jobs` defaults to 4, measured green serially (138 s) and three times in parallel (49 s) with the same verdict - a correction to the diagnosis: the commit gate had passed `--jobs 4` since ADR-0023, so the serial cost was the author's and the cluster's, not the gate's. **S1 held**: SEALED in 12 min 9 s of node time against 31; 18 of 18 units `reusing the saved CellChat object`, slowest unit 176 s against 699; seven compare launches of 66-80 s at once, the phase 2 min 45 s against 13.5; the figure set built once; the same 122 plates by name and pixel size as PBS 711759, 102 of them byte-identical - the 20 that differ are the permutation test's own randomness between a cached and a re-inferred object, recorded as an observation about reproducibility and not acted on |
 | 2 the surface and the verbs | | | |
 | 3 the editability pass | | | |
 | 4 the kill pass | | | |
