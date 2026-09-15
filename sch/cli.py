@@ -1310,8 +1310,12 @@ def cmd_dev(a):
                 print(f"sch dev job: no {point} named {a.plugin!r} under {a.root}; the build "
                       f"status cannot be read", file=sys.stderr)
                 return CANNOT_RUN
+            # A JUDGEMENT STAGE THAT RAN ITS COMMAND AND OWES COUNTS: the validator is one,
+            # and a plugin it refuses was emitted here on the first try. A judgement stage
+            # with no command is a person's call and does not hold a job.
             owing = [r["stage"] for r in rows if r.get("phase", "build") == "build"
-                     and not r["done"] and r["kind"] != "judgement"]
+                     and not r["done"]
+                     and (r["kind"] != "judgement" or bool((r.get("ran") or {}).get("owes")))]
             if owing and not getattr(a, "anyway", False):
                 print(f"sch dev job: REFUSED - the build of {a.plugin!r} owes on "
                       f"{', '.join(owing)}; `sch dev convert status --root {a.root} --point "

@@ -1,0 +1,183 @@
+#!/bin/bash
+#PBS -N mutantA
+#PBS -q super
+#PBS -l select=1:ncpus=64:mem=360gb:host=compute1016
+#PBS -l walltime=04:00:00
+#PBS -j oe
+#
+# ============================================================================================
+# REPRODUCE 20260913T042903Z__scprofile-c260046__04_profile__audit AT 7d8b5dd
+# ============================================================================================
+#
+# WRITTEN BY `sch dev job` ON 2026-09-15T10:18:41Z - do not hand-edit the derived sections below without
+# saying so here, because their whole value is that they were not typed from memory.
+#
+# THE REFERENCE RUN
+#   20260913T042903Z__scprofile-c260046__04_profile__audit
+#   commit       c260046
+#   status       ok
+#   state_version 1
+#   record read from: STATUS.json, STATUS.agenda.json, STATUS.capacity.json, STATUS.next.json, STATUS.paper.json, STATUS.report.json, STATUS.review.json, STATUS.status.json, report.json
+#
+# THE COMMAND, TAKEN FROM THE REFERENCE RUN'S OWN RECORDED argv, with only the destination
+# changed. It is not retyped from a stage script and not reconstructed from documentation - on
+# 2026-09-06 both of those produced a job that sealed FAILED for a difference that was the job's
+# and not the tool's.
+#
+# THE PREDICTION, WRITTEN BEFORE SUBMISSION:
+#   ADR-0026 step 5, run A (class A: a value inside its domain; six edits stacked by the verb, cellchat 0.42.0 on attack-0026-A). The maker said locally: group OVER 6 of 5 (the pair scatter moved to the group axis), contrast 10 of 10, plan 168 files, cache HIT, 4 kinds' disclosures unbound. Predictions: (1) 18 of 18 units reuse the saved object; (2) the pair scatter on the group axis cannot draw from one object - capacity --promised refuses its 4 group files; (3) at_most 2 on the single-file differential heatmap draws no second file, so the plan's 168 over-counts by 6 and the run holds 158 plan files (the figure set 116 plates) - a maker defect if so, recorded as K-m; (4) the six differential count heatmaps are 3600x2700 pixels; (5) the interaction-flow plates lead the main figures (overview); (6) the dotplot draws 30 pairs; (7) the chord legend on the page is the rewritten one; SEALED by the seal, promised refused, node time under 15 min.
+#
+# THE CHECKOUT IS FROZEN. The tool is expected at 7d8b5dd. If it has moved when this job
+# starts, the job refuses rather than measuring a mixture of two versions. Twice on 2026-09-06 a
+# pull landed in a live checkout; the rule existed and nothing enforced it, which is a prediction
+# rather than a guardrail.
+#
+# rule-one: no-removal - this job reads inputs and writes only inside its own run directory.
+# Authored off-cluster and pushed (rule H1). No `git` command runs below.
+#
+# QUEUE/HOST: this job pins compute1016. That pin only works in a queue whose node
+# pool contains it; elsewhere PBS says "Can Never Run: Insufficient amount of
+# resource: host (compute1016)" while the node sits idle. Pin in the queue the run
+# being reproduced actually used.
+#
+# THE COMMIT WAS GIVEN, NOT READ: the tree at /data/wangyb/home/jiaen.lin/tools/scProfile-cconly-A is not readable where this was written. The job reads the tree's own HEAD.txt or .git at start and refuses a mismatch.
+#
+# A REDRAW: figures are not expected products. The plan's promise (`capacity --promised`) and the eye judge them.
+#
+# FLAGS CARRIED FROM THE REFERENCE, one per line:
+#   --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad
+#   --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101729Z__scprofile-7d8b5dd__04_profile__rerun
+#   --kernel cellchat
+#   --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env
+#   --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv
+#   --label-key cell_type_forced
+#   --sample-key sample
+#   --batch-key batch
+#   --counts-layer counts
+#   --lognorm-layer lognorm
+#   --embedding X_scanvi
+#   --layout X_umap_scanvi
+#   --organism mouse
+#   --assay nucleus
+#   --timeout 21600
+#   --control age=young
+#   --control diet=chow
+#   --no-cache   <- DROPPED: the tool's DEVPOINTS names it as contradicting a redraw (run.redraw_drops); re-emit with `--keep=--no-cache` to keep it
+#
+# EMITTED --anyway OVER A BUILD THAT OWES on layout: the run measures that debt as much as the plugin.
+#
+# CACHE FORECAST for cellchat: HIT - the inference span and the keyed parameters are those of the run at c260046; the saved objects are reused (assuming the same environment)
+#
+
+set -euo pipefail
+
+RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101729Z__scprofile-7d8b5dd__04_profile__rerun"
+TOOLDIR="/data/wangyb/home/jiaen.lin/tools/scProfile-cconly-A"
+EXPECT_COMMIT="7d8b5dd"
+mkdir -p "$RUNDIR/logs"
+
+# ---------------------------------------------------------------- seal, whatever happens next
+finish() { s=$?
+  set +e
+  missing=""
+  for p in CAPACITY.json README.md RUN_CARD.json kernels/cellchat/AGENDA.md kernels/cellchat/Aging1/cellchat_db.csv kernels/cellchat/Aging1/cellchat_meta.csv kernels/cellchat/Aging1/figure_context.tsv kernels/cellchat/Aging1/in.json kernels/cellchat/Aging1/out.json kernels/cellchat/Aging1/tables/ccc_edges.csv kernels/cellchat/Aging1/tables/cellchat_centrality.csv kernels/cellchat/Aging1/tables/cellchat_composition.csv kernels/cellchat/Aging1/tables/cellchat_net_embedding.csv kernels/cellchat/Aging1/tables/cellchat_pathway_prob.csv kernels/cellchat/Aging1/tables/cellchat_rank_net.csv kernels/cellchat/Aging2/cellchat_db.csv kernels/cellchat/Aging2/cellchat_meta.csv kernels/cellchat/Aging2/figure_context.tsv kernels/cellchat/Aging2/in.json kernels/cellchat/Aging2/out.json kernels/cellchat/Aging2/tables/ccc_edges.csv kernels/cellchat/Aging2/tables/cellchat_centrality.csv kernels/cellchat/Aging2/tables/cellchat_composition.csv kernels/cellchat/Aging2/tables/cellchat_net_embedding.csv kernels/cellchat/Aging2/tables/cellchat_pathway_prob.csv kernels/cellchat/Aging2/tables/cellchat_rank_net.csv kernels/cellchat/Aging3/cellchat_db.csv kernels/cellchat/Aging3/cellchat_meta.csv kernels/cellchat/Aging3/figure_context.tsv kernels/cellchat/Aging3/in.json kernels/cellchat/Aging3/out.json kernels/cellchat/Aging3/tables/ccc_edges.csv kernels/cellchat/Aging3/tables/cellchat_centrality.csv kernels/cellchat/Aging3/tables/cellchat_composition.csv kernels/cellchat/Aging3/tables/cellchat_net_embedding.csv kernels/cellchat/Aging3/tables/cellchat_pathway_prob.csv kernels/cellchat/Aging3/tables/cellchat_rank_net.csv kernels/cellchat/Aging_HFD1/cellchat_db.csv kernels/cellchat/Aging_HFD1/cellchat_meta.csv kernels/cellchat/Aging_HFD1/figure_context.tsv kernels/cellchat/Aging_HFD1/in.json kernels/cellchat/Aging_HFD1/out.json kernels/cellchat/Aging_HFD1/tables/ccc_edges.csv kernels/cellchat/Aging_HFD1/tables/cellchat_centrality.csv kernels/cellchat/Aging_HFD1/tables/cellchat_composition.csv kernels/cellchat/Aging_HFD1/tables/cellchat_net_embedding.csv kernels/cellchat/Aging_HFD1/tables/cellchat_pathway_prob.csv kernels/cellchat/Aging_HFD1/tables/cellchat_rank_net.csv kernels/cellchat/Aging_HFD2/cellchat_db.csv kernels/cellchat/Aging_HFD2/cellchat_meta.csv kernels/cellchat/Aging_HFD2/figure_context.tsv kernels/cellchat/Aging_HFD2/in.json kernels/cellchat/Aging_HFD2/out.json kernels/cellchat/Aging_HFD2/tables/ccc_edges.csv kernels/cellchat/Aging_HFD2/tables/cellchat_centrality.csv kernels/cellchat/Aging_HFD2/tables/cellchat_composition.csv kernels/cellchat/Aging_HFD2/tables/cellchat_net_embedding.csv kernels/cellchat/Aging_HFD2/tables/cellchat_pathway_prob.csv kernels/cellchat/Aging_HFD2/tables/cellchat_rank_net.csv kernels/cellchat/Aging_HFD3/cellchat_db.csv kernels/cellchat/Aging_HFD3/cellchat_meta.csv kernels/cellchat/Aging_HFD3/figure_context.tsv kernels/cellchat/Aging_HFD3/in.json kernels/cellchat/Aging_HFD3/out.json kernels/cellchat/Aging_HFD3/tables/ccc_edges.csv kernels/cellchat/Aging_HFD3/tables/cellchat_centrality.csv kernels/cellchat/Aging_HFD3/tables/cellchat_composition.csv kernels/cellchat/Aging_HFD3/tables/cellchat_net_embedding.csv kernels/cellchat/Aging_HFD3/tables/cellchat_pathway_prob.csv kernels/cellchat/Aging_HFD3/tables/cellchat_rank_net.csv kernels/cellchat/HFD/cellchat_db.csv kernels/cellchat/HFD/cellchat_meta.csv kernels/cellchat/HFD/figure_context.tsv kernels/cellchat/HFD/in.json kernels/cellchat/HFD/out.json kernels/cellchat/HFD/tables/ccc_edges.csv kernels/cellchat/HFD/tables/cellchat_centrality.csv kernels/cellchat/HFD/tables/cellchat_composition.csv kernels/cellchat/HFD/tables/cellchat_net_embedding.csv kernels/cellchat/HFD/tables/cellchat_pathway_prob.csv kernels/cellchat/HFD/tables/cellchat_rank_net.csv kernels/cellchat/PAPER.cellchat.md kernels/cellchat/WRITING_BRIEF.md kernels/cellchat/Young1/cellchat_db.csv kernels/cellchat/Young1/cellchat_meta.csv kernels/cellchat/Young1/figure_context.tsv kernels/cellchat/Young1/in.json kernels/cellchat/Young1/out.json kernels/cellchat/Young1/tables/ccc_edges.csv kernels/cellchat/Young1/tables/cellchat_centrality.csv kernels/cellchat/Young1/tables/cellchat_composition.csv kernels/cellchat/Young1/tables/cellchat_net_embedding.csv kernels/cellchat/Young1/tables/cellchat_pathway_prob.csv kernels/cellchat/Young1/tables/cellchat_rank_net.csv kernels/cellchat/Young2/cellchat_db.csv kernels/cellchat/Young2/cellchat_meta.csv kernels/cellchat/Young2/figure_context.tsv kernels/cellchat/Young2/in.json kernels/cellchat/Young2/out.json kernels/cellchat/Young2/tables/ccc_edges.csv kernels/cellchat/Young2/tables/cellchat_centrality.csv kernels/cellchat/Young2/tables/cellchat_composition.csv kernels/cellchat/Young2/tables/cellchat_net_embedding.csv kernels/cellchat/Young2/tables/cellchat_pathway_prob.csv kernels/cellchat/Young2/tables/cellchat_rank_net.csv kernels/cellchat/Young_HFD1/cellchat_db.csv kernels/cellchat/Young_HFD1/cellchat_meta.csv kernels/cellchat/Young_HFD1/figure_context.tsv kernels/cellchat/Young_HFD1/in.json kernels/cellchat/Young_HFD1/out.json kernels/cellchat/Young_HFD1/tables/ccc_edges.csv kernels/cellchat/Young_HFD1/tables/cellchat_centrality.csv kernels/cellchat/Young_HFD1/tables/cellchat_composition.csv kernels/cellchat/Young_HFD1/tables/cellchat_net_embedding.csv kernels/cellchat/Young_HFD1/tables/cellchat_pathway_prob.csv kernels/cellchat/Young_HFD1/tables/cellchat_rank_net.csv kernels/cellchat/Young_HFD2/cellchat_db.csv kernels/cellchat/Young_HFD2/cellchat_meta.csv kernels/cellchat/Young_HFD2/figure_context.tsv kernels/cellchat/Young_HFD2/in.json kernels/cellchat/Young_HFD2/out.json kernels/cellchat/Young_HFD2/tables/ccc_edges.csv kernels/cellchat/Young_HFD2/tables/cellchat_centrality.csv kernels/cellchat/Young_HFD2/tables/cellchat_composition.csv kernels/cellchat/Young_HFD2/tables/cellchat_net_embedding.csv kernels/cellchat/Young_HFD2/tables/cellchat_pathway_prob.csv kernels/cellchat/Young_HFD2/tables/cellchat_rank_net.csv kernels/cellchat/aged/cellchat_db.csv kernels/cellchat/aged/cellchat_meta.csv kernels/cellchat/aged/figure_context.tsv kernels/cellchat/aged/in.json kernels/cellchat/aged/out.json kernels/cellchat/aged/tables/ccc_edges.csv kernels/cellchat/aged/tables/cellchat_centrality.csv kernels/cellchat/aged/tables/cellchat_composition.csv kernels/cellchat/aged/tables/cellchat_net_embedding.csv kernels/cellchat/aged/tables/cellchat_pathway_prob.csv kernels/cellchat/aged/tables/cellchat_rank_net.csv kernels/cellchat/aged_HFD/cellchat_db.csv kernels/cellchat/aged_HFD/cellchat_meta.csv kernels/cellchat/aged_HFD/figure_context.tsv kernels/cellchat/aged_HFD/in.json kernels/cellchat/aged_HFD/out.json kernels/cellchat/aged_HFD/tables/ccc_edges.csv kernels/cellchat/aged_HFD/tables/cellchat_centrality.csv kernels/cellchat/aged_HFD/tables/cellchat_composition.csv kernels/cellchat/aged_HFD/tables/cellchat_net_embedding.csv kernels/cellchat/aged_HFD/tables/cellchat_pathway_prob.csv kernels/cellchat/aged_HFD/tables/cellchat_rank_net.csv kernels/cellchat/aged_chow/cellchat_db.csv kernels/cellchat/aged_chow/cellchat_meta.csv kernels/cellchat/aged_chow/figure_context.tsv kernels/cellchat/aged_chow/in.json kernels/cellchat/aged_chow/out.json kernels/cellchat/aged_chow/tables/ccc_edges.csv kernels/cellchat/aged_chow/tables/cellchat_centrality.csv kernels/cellchat/aged_chow/tables/cellchat_composition.csv kernels/cellchat/aged_chow/tables/cellchat_net_embedding.csv kernels/cellchat/aged_chow/tables/cellchat_pathway_prob.csv kernels/cellchat/aged_chow/tables/cellchat_rank_net.csv kernels/cellchat/chow/cellchat_db.csv kernels/cellchat/chow/cellchat_meta.csv kernels/cellchat/chow/figure_context.tsv kernels/cellchat/chow/in.json kernels/cellchat/chow/out.json kernels/cellchat/chow/tables/ccc_edges.csv kernels/cellchat/chow/tables/cellchat_centrality.csv kernels/cellchat/chow/tables/cellchat_composition.csv kernels/cellchat/chow/tables/cellchat_net_embedding.csv kernels/cellchat/chow/tables/cellchat_pathway_prob.csv kernels/cellchat/chow/tables/cellchat_rank_net.csv kernels/cellchat/compare/_across_arms/figure_context.tsv kernels/cellchat/compare/_across_arms/in.json kernels/cellchat/compare/_across_arms/interactions.tsv kernels/cellchat/compare/_across_arms/out.json kernels/cellchat/compare/_across_arms/removals.csv kernels/cellchat/compare/_across_arms/unit_values.tsv 'kernels/cellchat/compare/age | diet = HFD/figure_context.tsv' 'kernels/cellchat/compare/age | diet = HFD/in.json' 'kernels/cellchat/compare/age | diet = HFD/out.json' 'kernels/cellchat/compare/age | diet = HFD/removals.csv' 'kernels/cellchat/compare/age | diet = HFD/tables/rank_net_comparison.csv' 'kernels/cellchat/compare/age | diet = chow/figure_context.tsv' 'kernels/cellchat/compare/age | diet = chow/in.json' 'kernels/cellchat/compare/age | diet = chow/out.json' 'kernels/cellchat/compare/age | diet = chow/removals.csv' 'kernels/cellchat/compare/age | diet = chow/tables/rank_net_comparison.csv' kernels/cellchat/compare/age/figure_context.tsv kernels/cellchat/compare/age/in.json kernels/cellchat/compare/age/out.json kernels/cellchat/compare/age/removals.csv kernels/cellchat/compare/age/tables/rank_net_comparison.csv 'kernels/cellchat/compare/diet | age = aged/figure_context.tsv' 'kernels/cellchat/compare/diet | age = aged/in.json' 'kernels/cellchat/compare/diet | age = aged/out.json' 'kernels/cellchat/compare/diet | age = aged/removals.csv' 'kernels/cellchat/compare/diet | age = aged/tables/rank_net_comparison.csv' 'kernels/cellchat/compare/diet | age = young/figure_context.tsv' 'kernels/cellchat/compare/diet | age = young/in.json' 'kernels/cellchat/compare/diet | age = young/out.json' 'kernels/cellchat/compare/diet | age = young/removals.csv' 'kernels/cellchat/compare/diet | age = young/tables/rank_net_comparison.csv' kernels/cellchat/compare/diet/figure_context.tsv kernels/cellchat/compare/diet/in.json kernels/cellchat/compare/diet/out.json kernels/cellchat/compare/diet/removals.csv kernels/cellchat/compare/diet/tables/rank_net_comparison.csv kernels/cellchat/compare/phase.json kernels/cellchat/tables/cellchat_two_scale.csv kernels/cellchat/young/cellchat_db.csv kernels/cellchat/young/cellchat_meta.csv kernels/cellchat/young/figure_context.tsv kernels/cellchat/young/in.json kernels/cellchat/young/out.json kernels/cellchat/young/tables/ccc_edges.csv kernels/cellchat/young/tables/cellchat_centrality.csv kernels/cellchat/young/tables/cellchat_composition.csv kernels/cellchat/young/tables/cellchat_net_embedding.csv kernels/cellchat/young/tables/cellchat_pathway_prob.csv kernels/cellchat/young/tables/cellchat_rank_net.csv kernels/cellchat/young_HFD/cellchat_db.csv kernels/cellchat/young_HFD/cellchat_meta.csv kernels/cellchat/young_HFD/figure_context.tsv kernels/cellchat/young_HFD/in.json kernels/cellchat/young_HFD/out.json kernels/cellchat/young_HFD/tables/ccc_edges.csv kernels/cellchat/young_HFD/tables/cellchat_centrality.csv kernels/cellchat/young_HFD/tables/cellchat_composition.csv kernels/cellchat/young_HFD/tables/cellchat_net_embedding.csv kernels/cellchat/young_HFD/tables/cellchat_pathway_prob.csv kernels/cellchat/young_HFD/tables/cellchat_rank_net.csv kernels/cellchat/young_chow/cellchat_db.csv kernels/cellchat/young_chow/cellchat_meta.csv kernels/cellchat/young_chow/figure_context.tsv kernels/cellchat/young_chow/in.json kernels/cellchat/young_chow/out.json kernels/cellchat/young_chow/tables/ccc_edges.csv kernels/cellchat/young_chow/tables/cellchat_centrality.csv kernels/cellchat/young_chow/tables/cellchat_composition.csv kernels/cellchat/young_chow/tables/cellchat_net_embedding.csv kernels/cellchat/young_chow/tables/cellchat_pathway_prob.csv kernels/cellchat/young_chow/tables/cellchat_rank_net.csv objects/cohort_profiled.h5ad report.json report/index.html report/panels.json tables/cellchat_ccc_edges__Aging1.csv tables/cellchat_ccc_edges__Aging2.csv tables/cellchat_ccc_edges__Aging3.csv tables/cellchat_ccc_edges__Aging_HFD1.csv tables/cellchat_ccc_edges__Aging_HFD2.csv tables/cellchat_ccc_edges__Aging_HFD3.csv tables/cellchat_ccc_edges__HFD.csv tables/cellchat_ccc_edges__Young1.csv tables/cellchat_ccc_edges__Young2.csv tables/cellchat_ccc_edges__Young_HFD1.csv tables/cellchat_ccc_edges__Young_HFD2.csv tables/cellchat_ccc_edges__aged.csv tables/cellchat_ccc_edges__aged_HFD.csv tables/cellchat_ccc_edges__aged_chow.csv tables/cellchat_ccc_edges__chow.csv tables/cellchat_ccc_edges__young.csv tables/cellchat_ccc_edges__young_HFD.csv tables/cellchat_ccc_edges__young_chow.csv tables/cellchat_composition__Aging1.csv tables/cellchat_composition__Aging2.csv tables/cellchat_composition__Aging3.csv tables/cellchat_composition__Aging_HFD1.csv tables/cellchat_composition__Aging_HFD2.csv tables/cellchat_composition__Aging_HFD3.csv tables/cellchat_composition__HFD.csv tables/cellchat_composition__Young1.csv tables/cellchat_composition__Young2.csv tables/cellchat_composition__Young_HFD1.csv tables/cellchat_composition__Young_HFD2.csv tables/cellchat_composition__aged.csv tables/cellchat_composition__aged_HFD.csv tables/cellchat_composition__aged_chow.csv tables/cellchat_composition__chow.csv tables/cellchat_composition__young.csv tables/cellchat_composition__young_HFD.csv tables/cellchat_composition__young_chow.csv; do
+    [ -s "$RUNDIR/$p" ] || missing="$missing $p"
+  done
+  # A SEAL THAT SAYS FAILED MUST EXIT NON-ZERO. Otherwise the scheduler records success while
+  # the directory records failure, and whichever one a reader happens to look at is the answer.
+  if [ "$s" -eq 0 ] && [ -z "$missing" ]; then
+    seal="$RUNDIR/SEALED.txt"
+  else
+    seal="$RUNDIR/FAILED.txt"
+    [ "$s" -eq 0 ] && s=1
+  fi
+  { echo "exit=$s"
+     echo "jobid=${PBS_JOBID:-none}"
+     echo "host=$(hostname -s)"
+     echo "finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+     echo "reference=20260913T042903Z__scprofile-c260046__04_profile__audit"
+     echo "tool_commit_expected=$EXPECT_COMMIT"
+     echo "tool_commit_actual=${ACTUAL_COMMIT:-unread}"
+     [ -n "$missing" ] && echo "missing=$missing"
+     echo "products_expected=282"
+  } > "$seal"
+  rm -f "$RUNDIR/RUNNING.txt"
+  exit $s
+}
+trap 'exit 143' TERM INT HUP   # a killed job seals FAILED, not SEALED (harness ADR-0022)
+trap finish EXIT
+
+{ echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "jobid=${PBS_JOBID:-none}"
+  echo "host=$(hostname -s)"
+} > "$RUNDIR/RUNNING.txt"
+
+# ---------------------------------------------------------- the checkout has not moved under us
+# Read by FILE: compute nodes on this cluster have no git binary. A function with `local`
+# declarations rather than a multi-line command substitution - the substitution form tripped
+# `set -u` on its own internals, so the guard exited the script before it could compare anything
+# and the job sealed on the products alone. A guard that fails open is worse than no guard,
+# because the header claims it ran.
+read_commit() {
+  local gd="$1/.git" head_ ref_
+  # A TREE EXPORTED WITHOUT .git CARRIES HEAD.txt - read that first (harness ADR-0019).
+  if [ ! -e "$gd" ] && [ -f "$1/HEAD.txt" ]; then cut -d' ' -f1 "$1/HEAD.txt"; return 0; fi
+  if [ -f "$gd" ]; then gd="$(sed 's/^gitdir: //' "$gd")"; fi
+  head_="$(cat "$gd/HEAD" 2>/dev/null || true)"
+  case "$head_" in
+    "")    return 1 ;;
+    ref:*) ref_="${head_#ref: }"
+           if [ -f "$gd/$ref_" ]; then cat "$gd/$ref_"
+           else grep " $ref_\$" "$gd/packed-refs" 2>/dev/null | cut -d' ' -f1; fi ;;
+    *)     printf '%s' "$head_" ;;
+  esac
+}
+ACTUAL_COMMIT="$(read_commit "$TOOLDIR" || true)"
+[ -n "$ACTUAL_COMMIT" ] || { echo "REFUSED: cannot read a commit from $TOOLDIR/.git" >&2; exit 3; }
+echo "tool commit: $ACTUAL_COMMIT (expected $EXPECT_COMMIT)"
+if [ "$ACTUAL_COMMIT" != "$EXPECT_COMMIT" ]; then
+  echo "REFUSED: $TOOLDIR moved between submission and start." >&2
+  echo "         expected $EXPECT_COMMIT, found $ACTUAL_COMMIT" >&2
+  echo "         A run spanning two versions measures neither. Re-emit the job." >&2
+  exit 3
+fi
+
+export PYTHONNOUSERSITE=1
+# THE CODE THAT RUNS IS THE TREE THAT WAS VERIFIED (harness ADR-0019, blind 0006). The commit
+# guard above reads the TREE; the interpreter resolves a module from wherever the package is
+# installed - on one cluster, the full checkout beside a one-plugin export, so a nine-plugin
+# resolver demanded an environment that did not exist (PBS 711058). The tree goes first on
+# PYTHONPATH, and a module command is asked where its package imports from before it runs.
+export PYTHONPATH="$TOOLDIR${PYTHONPATH:+:$PYTHONPATH}"
+export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
+export OMP_NUM_THREADS="${NCPUS:-1}" MKL_NUM_THREADS="${NCPUS:-1}" OPENBLAS_NUM_THREADS="${NCPUS:-1}"
+mkdir -p "$RUNDIR/cache"
+
+echo "node: $(hostname -s)  cores: ${NCPUS:-unset}  started: $(date -u)"
+
+# ------------------------------------------------------------------------------- the tool runs
+# NOT PIPED, AND NOT TEED. `| tee` and `| tail` return the last command's status, which hid a
+# refusal three times in this project; process substitution avoids that but can lose the tail of
+# a log at exit. `#PBS -j oe` already captures both streams, so neither is needed here.
+# `set -e` is lifted for exactly one line, so the code can be read and reported before the trap
+# uses it - under `set -e` the script would leave before `rc` was ever assigned.
+set +e
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python /data/wangyb/home/jiaen.lin/tools/scProfile-cconly/scprofile/cli.py run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101729Z__scprofile-7d8b5dd__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow
+rc=$?
+set -e
+echo "tool exit: $rc"
+[ "$rc" -eq 0 ] || exit "$rc"
+# ------------------------------------------------------ what the repository says follows a run
+# Declared in DEVPOINTS.yaml under `run.after` (harness ADR-0019); each line is one command. Its
+# exit code is a VERDICT - `status` owing, `capacity --memory` refusing a declaration - which the
+# maker reads from this log; it is not a failure of the run, whose seal reads the products.
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101729Z__scprofile-7d8b5dd__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101729Z__scprofile-7d8b5dd__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101729Z__scprofile-7d8b5dd__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
+# ------------------------------------------------------------- the maker's status, for the record
+HARNESS="${HARNESS:-$HOME/tools/single-cell-harness}"
+PYTHONPATH="$HARNESS" /data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m sch dev convert status --root /data/wangyb/home/jiaen.lin/tools/scProfile-cconly-A --point kernel --name cellchat --run "$RUNDIR" > "$RUNDIR/logs/maker_status.txt" 2>&1 || true
+tail -30 "$RUNDIR/logs/maker_status.txt"
+[ "$rc" -eq 0 ] || exit "$rc"
+
+echo "finished: $(date -u)"

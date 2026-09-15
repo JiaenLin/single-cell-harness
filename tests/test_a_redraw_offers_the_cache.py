@@ -162,6 +162,17 @@ points:
         head = (self.d / "job.pbs").read_text().split("set -euo pipefail")[0]
         self.assertIn("CACHE FORECAST for demo: MISS", head)
 
+    def test_a_judgement_stage_whose_command_refuses_holds_the_job_too(self):
+        (self.d / "DEVPOINTS.yaml").write_text(self.DECL.replace(
+            "        - {name: judgement, kind: judgement, fills: [summary]}",
+            "        - {name: judgement, kind: judgement, fills: [summary], "
+            "command: [\"{python}\", \"-c\", \"raise SystemExit(2)\"]}"))
+        (self.d / "kernels" / "demo.py").write_text(
+            'PLUGIN = {"name": "demo", "summary": "s", "inject": {"required": []}}\n')
+        p = self.sch()
+        self.assertNotEqual(p.returncode, 0, p.stdout)
+        self.assertIn("judgement", p.stderr + p.stdout)
+
     def test_anyway_emits_over_an_owing_build_and_the_header_says_so(self):
         (self.d / "kernels" / "demo.py").write_text(
             'PLUGIN = {"name": "demo", "summary": "s", "inject": "TODO"}\n')
