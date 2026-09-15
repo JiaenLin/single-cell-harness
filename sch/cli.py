@@ -1069,11 +1069,14 @@ def cmd_dev(a):
         # WHAT FOLLOWS A RUN, from the repository's own declaration when the root has one
         # (harness ADR-0019): a rerun renders its pages and reads its own status without
         # anybody retyping the commands.
-        after = []
+        after, drop = [], []
         try:
-            after = P.run_after(P.load(a.root))
+            doc = P.load(a.root)
+            after = P.run_after(doc)
+            # WHAT A REDRAW MUST NOT CARRY, from the same declaration (harness ADR-0026).
+            drop = P.run_redraw_drops(doc)
         except Exception:                                                 # noqa: BLE001
-            after = []
+            after, drop = [], []
         try:
             info = J.write(a.out, ref_dir=a.ref, rundir=a.rundir, tooldir=a.tool,
                            prediction=a.predict, queue=a.queue, select=a.select,
@@ -1081,6 +1084,7 @@ def cmd_dev(a):
                            python=getattr(a, "python", None),
                            tool_commit=getattr(a, "tool_commit", None),
                            redraw=bool(getattr(a, "redraw", False)), after=after,
+                           drop=drop, keep=list(getattr(a, "keep", None) or []),
                            maker_status=((a.plugin, a.point) if getattr(a, "plugin", None)
                                          else None))
         except (ValueError, OSError) as e:
@@ -1094,6 +1098,9 @@ def cmd_dev(a):
         print(f"  reference commit    {info['ref_commit']}")
         print(f"  tool frozen at      {info['tool_commit']}")
         print(f"  products expected   {info['products']}")
+        print(f"  flags carried       " + (", ".join(info.get("flags") or []) or "none"))
+        for f in info.get("dropped") or []:
+            print(f"  flag DROPPED        {f}   (a redraw; keep it by name with --keep=FLAG)")
         print(f"\n  {info['submit']}")
         return 0
     raise SystemExit(f"unknown dev subcommand {a.sub!r}")
@@ -1259,6 +1266,9 @@ def build_parser():
     q.add_argument("--tool-commit", dest="tool_commit", default=None,
                    help="the tool's commit, when --tool is not readable where this is written; "
                         "the job reads the tree's own at start and refuses a mismatch")
+    q.add_argument("--keep", action="append", default=[],
+                   help="a flag named in the tool's run.redraw_drops to keep on this redraw "
+                        "anyway, written --keep=--no-cache (harness ADR-0026)")
     q.add_argument("--redraw", action="store_true",
                    help="a rerun after figure changes: figures are not expected products; the "
                         "plan's promise and the eye judge them")

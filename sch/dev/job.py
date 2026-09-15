@@ -189,6 +189,35 @@ def rebuild_argv(record: dict, new_out: str, python: str | None = None,
     return out
 
 
+def carried_flags(argv, drop=(), keep=()):
+    """(argv, flags, dropped): the argv with the dropped flags removed, every flag it carries
+    as `--flag value` strings, and the ones removed (harness ADR-0026).
+
+    A flag is `-x` or `--x`, its value the next argument when that is not itself a flag; a
+    dropped flag takes its value with it. `keep` wins over `drop`, by name."""
+    keep = set(keep or ())
+    drop = {d for d in (drop or ()) if d not in keep}
+    out, flags, dropped, i = [], [], [], 0
+    while i < len(argv):
+        a = str(argv[i])
+        if a.startswith("-") and len(a) > 1:
+            name = a.split("=", 1)[0]
+            has_value = "=" not in a and i + 1 < len(argv) and not str(argv[i + 1]).startswith("-")
+            shown = a if not has_value else f"{a} {argv[i + 1]}"
+            if name in drop:
+                dropped.append(shown)
+            else:
+                flags.append(shown)
+                out.append(a)
+                if has_value:
+                    out.append(argv[i + 1])
+            i += 2 if has_value else 1
+            continue
+        out.append(a)
+        i += 1
+    return out, flags, dropped
+
+
 HEADER = r"""#!/bin/bash
 #PBS -N {name}
 #PBS -q {queue}
@@ -342,14 +371,16 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
          walltime: str = "04:00:00", name: str = "reproduce", title: str | None = None,
          env: dict | None = None, products: list | None = None, python: str | None = None,
          tool_commit: str | None = None, redraw: bool = False, after=(),
-         maker_status=None) -> str:
+         maker_status=None, drop=(), keep=()) -> str:
     """The script text. Raises rather than guessing anything it cannot read.
 
     THE RERUN OF THE LOOP (harness ADR-0019): `python` prefixes a script argv; `tool_commit`
     is used where the tree is not readable here and the job verifies it at start; `redraw`
     leaves figures out of the expected products; `after` is what the repository declares
     follows a run (`run.after`); `maker_status=(plugin, point)` writes the maker's status of
-    the new run into its logs."""
+    the new run into its logs; `drop` is what the repository declares a redraw must not carry
+    (`run.redraw_drops`), removed from the argv on a redraw only, unless named in `keep`
+    (harness ADR-0026)."""
     from ..conform import run_record
     if not prediction or not prediction.strip():
         raise ValueError(
@@ -364,6 +395,7 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
         raise ValueError(f"{ref_dir} has no products to expect; a job that checks for nothing "
                          f"seals SEALED whatever happens.")
     argv = rebuild_argv(rec, rundir, python=python, tooldir=tooldir)
+    argv, flags, dropped = carried_flags(argv, drop=drop if redraw else (), keep=keep)
     given = bool(tool_commit)
     tool_commit = tool_commit or commit_of(tooldir)
     if not tool_commit:
@@ -376,6 +408,16 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
                    f"and refuses a mismatch.\n#\n" if given else "")
     redraw_note = ("# A REDRAW: figures are not expected products. The plan's promise "
                    "(`capacity --promised`) and the eye judge them.\n#\n" if redraw else "")
+    # EVERY FLAG WHERE A READER LOOKS (harness ADR-0026). The command below is one line of
+    # nine hundred characters; fourteen redraws carried `--no-cache` from an audit reference
+    # and nobody saw it. Listed one per line, with what a redraw dropped and why.
+    flags_note = "# FLAGS CARRIED FROM THE REFERENCE, one per line:\n" + "".join(
+        f"#   {f}\n" for f in flags)
+    if dropped:
+        flags_note += "".join(
+            f"#   {f}   <- DROPPED: the tool's DEVPOINTS names it as contradicting a redraw "
+            f"(run.redraw_drops); re-emit with `--keep={f.split()[0]}` to keep it\n" for f in dropped)
+    flags_note += "#\n"
     fill_ = {"python": python or "python3", "run": str(rundir), "root": str(tooldir)}
 
     def _fill(a):
@@ -431,7 +473,7 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
         prediction="\n".join(f"#   {ln}" for ln in prediction.strip().splitlines()),
         tool_commit=tool_commit, rundir=rundir, tooldir=tooldir,
         products=" ".join(shlex.quote(p) for p in prods), n_products=len(prods),
-        queue_note=host_note + commit_note + redraw_note,
+        queue_note=host_note + commit_note + redraw_note + flags_note,
         env_lines="\n".join(f'export {k}={shlex.quote(str(v))}' for k, v in (env or {}).items()),
         command=" ".join(shlex.quote(a) for a in argv),
         after_lines=after_lines, maker_lines=maker_lines, import_guard=import_guard)
@@ -452,4 +494,10 @@ def write(path, **kw) -> dict:
             "tool_commit": kw.get("tool_commit") or commit_of(kw["tooldir"]),
             "products": len(kw.get("products")
                             or products_of(kw["ref_dir"], figures=not kw.get("redraw"))),
+            # THE FLAGS, AND WHAT A REDRAW DROPPED (harness ADR-0026): the summary the CLI
+            # prints carries them too, so a dropped flag is seen at submission and not at
+            # column nine hundred of the command.
+            **dict(zip(("flags", "dropped"), carried_flags(
+                rebuild_argv(rec, kw["rundir"], python=kw.get("python"), tooldir=kw["tooldir"]),
+                drop=kw.get("drop") if kw.get("redraw") else (), keep=kw.get("keep"))[1:])),
             "submit": f"qsub -q {kw['queue']} -o {kw['rundir']}/logs/pbs.log {p}"}

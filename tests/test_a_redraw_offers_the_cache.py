@@ -1,0 +1,85 @@
+"""A redraw carries the reference's argv, and says which flags it carries; a flag the tool
+declares as contradicting a redraw is dropped from one, and said so (harness ADR-0026, step 1).
+
+EVERY RERUN OF THE ARC RE-INFERRED CELLCHAT ON ALL EIGHTEEN UNITS. `sch dev job` copies the
+reference run's argv verbatim, as it should; the reference was the audit reproduction, which
+ruled the cache out with `--no-cache` on purpose, and every rerun job since jobs/rerun_0006
+carried that flag at column ~900 of one line - eight minutes of every thirty, fourteen times,
+read by nobody. The emitter stays tool-agnostic: the TOOL's DEVPOINTS names the flags a redraw
+must not carry (`run.redraw_drops`), the emitter drops them on a redraw only, lists every flag
+it carries in the header where a reader looks, and keeps one by name when asked.
+"""
+import json
+import shutil
+import tempfile
+import unittest
+from pathlib import Path
+
+from sch.dev import job as J
+from sch.dev import points as P
+
+
+class ARedrawOffersTheCache(unittest.TestCase):
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "ref").mkdir()
+        (self.d / "tool" / ".git").mkdir(parents=True)
+        (self.d / "tool" / ".git" / "HEAD").write_text("a" * 40 + "\n")
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok",
+             "argv": ["t", "run", "--key", "cell_type_forced", "--out", "/old", "--timeout",
+                      "21600", "--no-cache"]}))
+        (self.d / "ref" / "report.json").write_text('{"seed": 1}')
+        self.kw = dict(ref_dir=str(self.d / "ref"), rundir=str(self.d / "new"),
+                       tooldir=str(self.d / "tool"), queue="long", select="select=1:ncpus=1")
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def test_the_tool_declares_which_flags_a_redraw_drops(self):
+        (self.d / "DEVPOINTS.yaml").write_text(
+            "tool: t\ndevpoints: 1\nrun:\n  redraw_drops: [\"--no-cache\"]\n"
+            "points:\n  widget:\n    what: w\n    lives: widgets\n    proves: p\n"
+            "    cannot_prove: c\n")
+        self.assertEqual(P.run_redraw_drops(P.load(self.d)), ["--no-cache"])
+        (self.d / "DEVPOINTS.yaml").write_text(
+            "tool: t\ndevpoints: 1\npoints:\n  widget:\n    what: w\n    lives: widgets\n"
+            "    proves: p\n    cannot_prove: c\n")
+        self.assertEqual(P.run_redraw_drops(P.load(self.d)), [])
+
+    def test_a_reproduction_carries_every_flag_and_lists_them(self):
+        text = J.emit(prediction="identical", **self.kw)
+        self.assertIn("--no-cache", text.split("set -euo pipefail")[1])
+        head = text.split("set -euo pipefail")[0]
+        self.assertIn("FLAGS CARRIED FROM THE REFERENCE", head)
+        self.assertIn("--key cell_type_forced", head)
+        self.assertIn("--timeout 21600", head)
+        self.assertIn("--no-cache", head)
+
+    def test_a_redraw_drops_the_declared_flag_and_says_so(self):
+        text = J.emit(prediction="identical", redraw=True, drop=["--no-cache"], **self.kw)
+        body = text.split("set -euo pipefail")[1]
+        self.assertNotIn("--no-cache", body)
+        self.assertIn("--timeout 21600", body)
+        head = text.split("set -euo pipefail")[0]
+        self.assertIn("--no-cache", head)
+        self.assertIn("dropped", head.lower())
+
+    def test_a_flag_kept_by_name_stays_on_a_redraw(self):
+        text = J.emit(prediction="identical", redraw=True, drop=["--no-cache"],
+                      keep=["--no-cache"], **self.kw)
+        self.assertIn("--no-cache", text.split("set -euo pipefail")[1])
+
+    def test_a_reproduction_that_is_not_a_redraw_drops_nothing(self):
+        text = J.emit(prediction="identical", drop=["--no-cache"], **self.kw)
+        self.assertIn("--no-cache", text.split("set -euo pipefail")[1])
+
+    def test_the_written_record_names_the_flags_and_the_dropped(self):
+        info = J.write(str(self.d / "job.pbs"), prediction="identical", redraw=True,
+                       drop=["--no-cache"], **self.kw)
+        self.assertIn("--no-cache", info["dropped"])
+        self.assertIn("--key cell_type_forced", info["flags"])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -61,6 +61,21 @@ def run_after(doc):
     if not isinstance(run, dict):
         return []
     return [list(x) for x in (run.get("after") or []) if isinstance(x, list)]
+
+
+def run_redraw_drops(doc):
+    """[flag, ...] - the flags of this tool's own run command a REDRAW must not carry
+    (`run.redraw_drops`), or [].
+
+    READ BY THE JOB EMITTER (harness ADR-0026). The emitter copies the reference's argv verbatim
+    and knows no tool's flags; the tool says which of them contradict a redraw. The case that
+    paid for this: an audit reference ruled the cache out with `--no-cache`, and fourteen
+    redraws inherited it and re-inferred every unit.
+    """
+    run = (doc or {}).get("run") or {}
+    if not isinstance(run, dict):
+        return []
+    return [str(x) for x in (run.get("redraw_drops") or []) if str(x).startswith("-")]
 SCHEMA = 1
 
 # Every point must answer these. `proves`/`cannot_prove` are not documentation: the ladder prints
