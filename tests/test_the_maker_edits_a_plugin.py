@@ -185,6 +185,16 @@ class TheMakerEditsAPlugin(unittest.TestCase):
         self.assertIn("plan:nativecmp_delta", spec["report"]["provides_evidence"]["who_changed"])
         self.assertEqual(rep["sites_not_followed"], [])
 
+    def test_a_side_effect_entry_is_not_renamed_because_the_tool_names_its_files(self):
+        # run B of ADR-0026: the renamed side-effect entry promised a file the tool never writes
+        # under that name and left twenty files accounted for by nothing.
+        text = self.text().replace("'fn': 'drawMatrix',", "'fn': 'drawMatrix', 'generated': False,")
+        self.f.write_text(text, encoding="utf-8")
+        with self.assertRaises(ValueError) as e:
+            E.edit(self.f, [("rename", "native_matrix", "native_matrix_x")], KEYS)
+        self.assertIn("generated", str(e.exception))
+        self.assertEqual(self.text(), text)
+
     # ---- remove / add / duplicate / swap
     def test_remove_takes_the_draw_site_and_the_profile_stem_and_needs_a_skip_for_a_lone_fn(self):
         with self.assertRaises(ValueError) as e:

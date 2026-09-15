@@ -306,7 +306,16 @@ def op_rename(text: str, old: str, new: str, keys: dict) -> tuple:
     """(text, sites_not_followed): the id in the literal, the routes, the draw sites and the
     profile list follow; a remaining whole-word occurrence in the file is reported by line."""
     tree, plug = _parse(text)
-    _entry(plug, old)
+    _figs, e = _entry(plug, old)
+    # A SIDE-EFFECT ENTRY'S ID IS THE FILE STEM THE TOOL WRITES (harness ADR-0026, run B): the
+    # tool names those files itself, so a renamed id promises a file nobody writes and leaves
+    # the tool's own files accounted for by nothing.
+    side = keys.get("side_effect", "generated")
+    _k, gen = _get(e, side)
+    if isinstance(gen, ast.Constant) and gen.value is False:
+        raise ValueError(f"{old!r} declares `{side}: False`: its files are written by the tool "
+                         f"under the tool's own name, and the id is that name. Renaming it "
+                         f"promises a file nothing writes; leave the id as the tool spells it.")
     src = _Src(text)
     edits = []
     for node in ast.walk(plug):
