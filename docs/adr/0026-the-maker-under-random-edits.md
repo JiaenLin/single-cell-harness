@@ -281,8 +281,9 @@ Then PBS system-held the four queued behind the first after 21 failed starts on 
 | B1 | **failed** | 28 defects of the mechanism fixed test-first the same day against at most 15 predicted (4 in step 1, 3 of the verb in step 3, 13 in the kill pass, 6 from the runs, 2 from the replay), and 2 recorded open: the fixture run as the only gate on a fitted literal, and the static reading of which script holds a draw site |
 
 What the round leaves for the plugin, recorded and not done, because the plugin is not the
-subject: three kinds whose stated disclosures the 0.39.0 register rewrite dropped (read now by
-the corrected binding); four tables the R writes and never registers; a memory declaration
+subject: the stated disclosure the 0.39.0 register rewrite dropped (three kinds when step 4
+first read it; one kind on the binding as it stands - the outgoing signalling-role heatmaps, three
+plates, the colour key's floor - read by the worksheet against the run copy on 2026-09-15); four tables the R writes and never registers; a memory declaration
 that should be the envelope of the reuse path and the inference path; and the cache store that
 keeps one object per parameter key, overwritten by whichever run wrote it last.
 
