@@ -332,6 +332,51 @@ def _convert_specs(doc, point, root, only):
     return out
 
 
+def _edit_value(text: str):
+    """A VALUE on the command line: a Python literal when it reads as one, a string otherwise -
+    so `at_most=2` is the integer and `axis=group` the word."""
+    import ast
+    try:
+        return ast.literal_eval(text)
+    except (ValueError, SyntaxError):
+        return text
+
+
+def _edit_ops(ops, skip=None):
+    """The command line's edits as the verb takes them: PATH=VALUE split and read, a legend as
+    a set on the entry's legend, a removal carrying the ruling given with --skip."""
+    import ast
+    out = []
+    for op in ops:
+        name, args = op[0], list(op[1:])
+        if name in ("set", "list_add", "list_remove"):
+            if "=" not in args[0]:
+                raise ValueError(f"--{name.replace('_', '-')} takes PATH=VALUE, got {args[0]!r}")
+            path, value = args[0].split("=", 1)
+            out.append((name, path.strip(), _edit_value(value.strip())))
+        elif name == "legend":
+            out.append(("set", f"report.figures[{args[0]}].legend", str(args[1])))
+        elif name == "add":
+            try:
+                entry = ast.literal_eval(args[0])
+            except (ValueError, SyntaxError) as e:
+                raise ValueError(f"--add takes a dict literal: {e}")
+            if not isinstance(entry, dict):
+                raise ValueError("--add takes a dict literal")
+            out.append(("add", entry))
+        elif name == "remove":
+            ruling = None
+            if skip:
+                try:
+                    ruling = ast.literal_eval(skip)
+                except (ValueError, SyntaxError) as e:
+                    raise ValueError(f"--skip takes a dict literal: {e}")
+            out.append(("remove", args[0], ruling) if ruling else ("remove", args[0]))
+        else:
+            out.append((name, *args))
+    return out
+
+
 def cmd_dev(a):
     from . import dev as D
     from .dev import ladder, points as P
@@ -498,6 +543,102 @@ def cmd_dev(a):
         print(f"job scripts read: {len(paths)}")
         bad = JC.report(paths)
         print(f"  {bad} of {len(paths)} with at least one problem")
+        return FAILED if bad else OK
+
+    if a.sub == "edit":
+        from .dev import convert as CV
+        from .dev import edit as ED
+        from .dev import layout as L
+        try:
+            doc = P.load(a.root)
+        except D.DevpointsError as e:
+            print(f"sch dev edit: {e}", file=sys.stderr)
+            return CANNOT_RUN
+        point = a.point or next(iter(doc.get("points") or {}), None)
+        if not point:
+            print(f"sch dev edit: {a.root} declares no extension points.", file=sys.stderr)
+            return CANNOT_RUN
+        try:
+            _ph, _up, stages = CV.plan(doc, point)
+        except CV.ConvertError as e:
+            print(f"sch dev edit: {e}", file=sys.stderr)
+            return CANNOT_RUN
+        pt = P.point(doc, point)
+        f = Path(doc["_root"]) / str(pt.get("lives") or ".") / f"{a.name}.py"
+        if not f.is_file():
+            print(f"sch dev edit: no {point} named {a.name!r} at {f}", file=sys.stderr)
+            return CANNOT_RUN
+        ops = list(getattr(a, "ops", None) or [])
+        if not ops:
+            print("sch dev edit: nothing to do. The edits: " + ", ".join(
+                "--" + o.replace("_", "-") for o in ED.OPS), file=sys.stderr)
+            return CANNOT_RUN
+        try:
+            ops = _edit_ops(ops, getattr(a, "skip", None))
+        except ValueError as e:
+            print(f"sch dev edit: {e}", file=sys.stderr)
+            return CANNOT_RUN
+        keys = CV.layout_keys(stages)
+        keys["version"] = str(pt.get("version_field") or "version")
+        st_layout = next((x for x in stages if str(x.get("name")) == "layout"), None)
+        if st_layout and st_layout.get("profile_list"):
+            keys["profile_list"] = str(st_layout["profile_list"])
+        before = L.read_spec(f)
+        try:
+            rep = ED.edit(f, ops, keys, as_version=getattr(a, "as_version", None),
+                          dry=bool(getattr(a, "dry", False)))
+        except ValueError as e:
+            print(f"{a.name}: REFUSED - {e}", file=sys.stderr)
+            return FAILED
+        if getattr(a, "dry", False):
+            print(rep["diff"] or "  (no change)")
+            print("  a dry run: nothing written")
+            return OK
+        if not rep["changed"]:
+            print(f"  {f}: nothing changed")
+            return OK
+        print(f"  edited {f}: " + ", ".join(rep["ops"])
+              + (f"; version {rep['version'][0]} -> {rep['version'][1]}" if rep.get("version") else ""))
+        for ln, line in rep["sites_not_followed"]:
+            print(f"  NOT FOLLOWED  line {ln}: {line[:100]}")
+        if rep["sites_not_followed"]:
+            print("  a site in hand-written code carries the old name; the maker rewrites the "
+                  "declaration and the sites it knows, never code. An author follows these, or "
+                  "the plugin stops reading its plan by literal names.")
+        # THE STATE AFTER, READ NOT ASSUMED: the plan's count per axis against the layout, when
+        # the tool declares one, and what the edit did to the plan.
+        after = L.read_spec(f)
+        if st_layout and st_layout.get(CV.LAYOUT_KEY):
+            rep_l = L.check(after, st_layout, keys)
+            print(L.format_report(a.name, rep_l, None, root=a.root, point=point, apply_hint=False))
+        n_before = len(((before.get("report") or {}).get("figures") or []))
+        n_after = len(((after.get("report") or {}).get("figures") or []))
+        plan_changed = ((before.get("report") or {}).get("figures")
+                        != (after.get("report") or {}).get("figures"))
+        print(f"  the plan: {n_before} -> {n_after} entr(ies)"
+              + (", changed" if plan_changed else ", unchanged"))
+        # THE FOLLOWERS THE TOOL DECLARES (`plan.after_edit`), run here when the interpreter is
+        # given, printed as the next step when it is not.
+        st_plan = next((x for x in stages if str(x.get("name")) == "plan"), None)
+        follow = [list(c) for c in ((st_plan or {}).get("after_edit") or []) if isinstance(c, list)]
+        fill = {"python": getattr(a, "python", None) or "python3", "name": a.name,
+                "root": str(doc["_root"])}
+
+        def _fill(x):
+            for k, v in fill.items():
+                x = str(x).replace("{" + k + "}", v)
+            return x
+        bad = 0
+        for cmd in follow:
+            argv = [_fill(x) for x in cmd]
+            if not getattr(a, "python", None):
+                print("  next: " + " ".join(argv))
+                continue
+            r = subprocess.run(argv, cwd=str(doc["_root"]), capture_output=True, text=True)
+            tail = (r.stdout + r.stderr).strip().splitlines()
+            print(f"  after: exit {r.returncode} - {' '.join(argv[1:])}"
+                  + (f"  ({tail[-1][:120]})" if tail else ""))
+            bad += 1 if r.returncode else 0
         return FAILED if bad else OK
 
     if a.sub == "rules":
@@ -1244,6 +1385,45 @@ def build_parser():
                    help="with a command stage named as the action and --run: run the stage's "
                         "declared `worksheet:` - what prints the work only the author can "
                         "answer - instead of its verification. A status names it, never runs it")
+    q.set_defaults(fn=cmd_dev)
+    class _Op(argparse.Action):
+        """Every edit lands on one list, in the order typed, whatever its flag."""
+
+        def __call__(self, parser_, ns, values, option_string=None):
+            ops = list(getattr(ns, "ops", None) or [])
+            vals = values if isinstance(values, list) else [values]
+            ops.append((self.dest,) + tuple(vals))
+            setattr(ns, "ops", ops)
+
+    q = rooted(ds.add_parser(
+        "edit", help="edit a plugin's declaration by span, one verb per change (harness "
+                     "ADR-0026); the prose around the change survives, the sites the maker "
+                     "knows follow, a site in code is reported"))
+    q.add_argument("--point", default=None); q.add_argument("--name", required=True)
+    q.add_argument("--set", dest="set", action=_Op, metavar="PATH=VALUE",
+                   help="a value, e.g. report.figures[native_x].at_most=2 (VALUE is a Python "
+                        "literal; a bare word is a string)")
+    q.add_argument("--delete", dest="delete", action=_Op, metavar="PATH")
+    q.add_argument("--list-add", dest="list_add", action=_Op, metavar="PATH=VALUE")
+    q.add_argument("--list-remove", dest="list_remove", action=_Op, metavar="PATH=VALUE")
+    q.add_argument("--rename", dest="rename", action=_Op, nargs=2, metavar=("ID", "NEW"))
+    q.add_argument("--remove", dest="remove", action=_Op, metavar="ID")
+    q.add_argument("--skip", default=None, metavar="LITERAL",
+                   help="with --remove of the last entry drawing an upstream function: the "
+                        "ruling for report.skips, e.g. \"{'skip': 'not_applicable', "
+                        "'evidence': '...'}\"")
+    q.add_argument("--add", dest="add", action=_Op, metavar="LITERAL",
+                   help="a whole entry as a dict literal")
+    q.add_argument("--duplicate", dest="duplicate", action=_Op, nargs=2, metavar=("ID", "NEW"))
+    q.add_argument("--swap", dest="swap", action=_Op, nargs=2, metavar=("ID", "ID"))
+    q.add_argument("--rename-key", dest="rename_key", action=_Op, nargs=2, metavar=("PATH", "NEW"))
+    q.add_argument("--legend", dest="legend", action=_Op, nargs=2, metavar=("ID", "TEXT"))
+    q.add_argument("--dry", action="store_true", help="print the diff, write nothing")
+    q.add_argument("--as-version", default=None,
+                   help="the version the author states, instead of the maker's minor bump")
+    q.add_argument("--python", default=None,
+                   help="the interpreter the plugin's own env uses; with it the tool's declared "
+                        "`plan.after_edit` followers run here")
     q.set_defaults(fn=cmd_dev)
     q = rooted(ds.add_parser("rules"))
     q.add_argument("--point", default=None)
