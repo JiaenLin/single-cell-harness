@@ -299,6 +299,9 @@ finish() {{ s=$?
      echo "tool_commit_actual=${{ACTUAL_COMMIT:-unread}}"
      [ -n "$missing" ] && echo "missing=$missing"
      echo "products_expected={n_products}"
+     # WHAT WAS NOT CHECKED, when a gate before the tool could not run (exit 3 of `sch dev
+     # check` is not exit 2): the third reading, written where a reader looks.
+     [ -n "${{INCOMPLETE_CHECKS:-}}" ] && echo "incomplete_checks=$INCOMPLETE_CHECKS"
   }} > "$seal"
   rm -f "$RUNDIR/RUNNING.txt"
   exit $s
@@ -310,6 +313,7 @@ trap finish EXIT
   echo "jobid=${{PBS_JOBID:-none}}"
   echo "host=$(hostname -s)"
 }} > "$RUNDIR/RUNNING.txt"
+INCOMPLETE_CHECKS=""
 
 # ---------------------------------------------------------- the checkout has not moved under us
 # Read by FILE: compute nodes on this cluster have no git binary. A function with `local`
@@ -497,11 +501,19 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
             "frc=$?\n"
             "set -e\n"
             'tail -40 "$RUNDIR/logs/fixture.txt"\n'
-            'if [ "$frc" -ne 0 ]; then\n'
-            '  echo "REFUSED: the plugin did not hold on the two-shape fixture (exit $frc); '
+            "# EXIT 3 IS NOT EXIT 2: `sch dev check` exits 3 when a tier COULD NOT RUN and 2 when\n"
+            "# one FAILED. Neither runs the cohort - a gate that could not run is no gate - but\n"
+            "# the seal says which, so 'not checked' never reads as 'broken'.\n"
+            'case "$frc" in\n'
+            "  0) ;;\n"
+            '  3) INCOMPLETE_CHECKS="$INCOMPLETE_CHECKS fixture"\n'
+            '     echo "REFUSED: the fixture tiers could not run (exit 3), so the plugin is unchecked; '
+            'logs/fixture.txt says what was missing" >&2\n'
+            "     exit 4 ;;\n"
+            '  *) echo "REFUSED: the plugin did not hold on the two-shape fixture (exit $frc); '
             'logs/fixture.txt says where" >&2\n'
-            "  exit 4\n"
-            "fi\n"
+            "     exit 4 ;;\n"
+            "esac\n"
             'echo "fixture: both shapes held"\n\n')
     host_note = ""
     if "host=" in select:

@@ -237,6 +237,12 @@ class ThePluginRunsOnTheFixtureBeforeTheCohort(unittest.TestCase):
         self.assertIn('exit 4', gate)
         self.assertIn("did not hold on the two-shape fixture", gate)
         self.assertNotIn("sch dev check", rest.split("the maker's status")[0])
+        # EXIT 3 IS NOT EXIT 2 (the repository's own rule, tests/test_convert.py): a tier that
+        # could not run is routed to INCOMPLETE_CHECKS, the cohort is still not run, and the
+        # seal says what was not checked.
+        self.assertRegex(gate, r"3\)\s*INCOMPLETE_CHECKS")
+        self.assertIn("could not run", gate)
+        self.assertIn("incomplete_checks=", body.split("the checkout has not moved")[0])
 
     def test_without_the_declaration_no_gate_is_written(self):
         (self.d / "DEVPOINTS.yaml").write_text(AJobIsNotEmittedOverABuildThatOwes.DECL)
