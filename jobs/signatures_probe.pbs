@@ -1,0 +1,49 @@
+#!/bin/bash
+#PBS -N sch_signatures
+#PBS -q short
+#PBS -l select=1:ncpus=4:mem=64gb
+#PBS -l walltime=00:40:00
+#PBS -j oe
+#
+# ============================================================================================
+# THE SIGNATURES OF THE WRAPPED TOOL'S EXPORTS, RECORDED ONCE WHERE IT IS INSTALLED
+# ============================================================================================
+#
+# harness ADR-0026, step 4 (the kill pass). A plan entry's `args` names a function's
+# parameters; an argument the function has not got was learned from a thirty-minute run
+# (ADR-0025, the palette name). The maker's own inventory verb reads the exports and their
+# signatures through the environment's Rscript and records them; the file travels back to the
+# plugin's tree as maker output (`kernels/<plugin>.signatures.json`) and the tool's validator
+# reads it before any job. 64 GB and forty minutes because loading the namespace once peaked
+# high on this site (jobs/r_probe_diag.pbs).
+#
+# rule-one: no-removal. Writes only inside $RUNDIR.
+# Authored on the workstation and pushed (rule H1). No `git` runs below.
+#
+#   qsub -v RUNDIR=...,RSCRIPT=<env>/bin/Rscript,TOOLDIR=~/tools/scProfile-cconly  jobs/signatures_probe.pbs
+
+set -euo pipefail
+cd "$PBS_O_WORKDIR"
+RUNDIR="${RUNDIR:?pass -v RUNDIR=<run directory>}"
+RSCRIPT="${RSCRIPT:?pass -v RSCRIPT=<the environments own Rscript>}"
+TOOLDIR="${TOOLDIR:?pass -v TOOLDIR=<the tool tree the plugin lives in>}"
+PLUGIN="${PLUGIN:-cellchat}"
+HARNESS="${HARNESS:-$HOME/tools/single-cell-harness}"
+PY="${PY:-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python}"
+mkdir -p "$RUNDIR/logs"
+finish() { s=$?
+  { echo "exit=$s"; echo "jobid=${PBS_JOBID:-none}"; echo "host=$(hostname -s)"
+    echo "finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "purpose=the wrapped tools export signatures, recorded by sch dev convert inventory --record"
+    echo "product=$RUNDIR/$PLUGIN.signatures.json"
+    [ -s "$RUNDIR/$PLUGIN.signatures.json" ] || { echo "missing=$PLUGIN.signatures.json"; [ "$s" -eq 0 ] && s=1; }
+  } > "$RUNDIR/$([ $s -eq 0 ] && echo SEALED.txt || echo FAILED.txt)"
+  exit $s; }
+trap 'exit 143' TERM INT HUP
+trap finish EXIT
+echo "node: $(hostname -s)  started: $(date -u)"
+"$RSCRIPT" --vanilla -e 'cat(R.version.string); cat("\n")'
+PYTHONPATH="$HARNESS" "$PY" -m sch dev convert inventory --root "$TOOLDIR" --point kernel \
+  --name "$PLUGIN" --rscript "$RSCRIPT" --record "$RUNDIR/$PLUGIN.signatures.json" \
+  2>&1 | tee "$RUNDIR/logs/inventory.log" | tail -5
+echo "finished: $(date -u)"

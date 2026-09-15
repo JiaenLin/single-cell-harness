@@ -168,3 +168,33 @@ points:
         p = self.sch("--anyway")
         self.assertEqual(p.returncode, 0, p.stderr + p.stdout)
         self.assertIn("contract", (self.d / "job.pbs").read_text().split("set -euo pipefail")[0])
+
+
+class TheSignaturesAreRecordedOnce(unittest.TestCase):
+    """`sch dev convert inventory --record FILE` writes the upstream's functions and signatures
+    where the tool is installed, as maker output the plugin's validator reads (harness
+    ADR-0026): an argument the function has not got was learned from a thirty-minute run."""
+
+    def test_the_record_carries_every_function_and_its_signature(self):
+        import subprocess
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
+        from test_convert import _fake_package, DECL
+        d = Path(tempfile.mkdtemp())
+        (d / "DEVPOINTS.yaml").write_text(DECL)
+        (d / "widgets").mkdir()
+        (d / "widgets" / "w.py").write_text('PLUGIN = {"name": "w", "wraps": {"tool": "fakepkg"}}\n')
+        try:
+            with _fake_package(pl=True) as py:
+                p = subprocess.run([sys.executable, "-m", "sch", "dev", "convert", "inventory",
+                                    "--root", str(d), "--point", "widget", "--name", "w",
+                                    "--python", py, "--record", str(d / "w.signatures.json")],
+                                   capture_output=True, text=True,
+                                   cwd=str(Path(__file__).resolve().parents[1]))
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            rec = json.loads((d / "w.signatures.json").read_text())
+            self.assertEqual(rec["tool"], "fakepkg")
+            self.assertIn("pl.umap", rec["functions"])
+            self.assertIn("recorded", rec)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)

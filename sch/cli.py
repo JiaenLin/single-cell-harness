@@ -997,6 +997,21 @@ def cmd_dev(a):
                         print(f"  {ext}: {len(inv)} function(s) - {inv.how}")
                         for fn in inv.names:
                             print(f"      {fn}")
+                        # THE SIGNATURES, RECORDED ONCE WHERE THE TOOL IS INSTALLED (harness
+                        # ADR-0026): a plan entry's `args` names the function's parameters, and
+                        # an argument the function has not got was learned from a thirty-minute
+                        # run. The record travels back to the plugin's tree as maker output and
+                        # the tool's validator reads it.
+                        if getattr(a, "record", None):
+                            import time as _time
+                            rec = {"tool": tool, "extractor": ext, "how": inv.how,
+                                   "recorded": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+                                   "functions": {fn: (inv.detail or {}).get(fn, {}).get("signature", "")
+                                                 for fn in inv.names}}
+                            Path(a.record).parent.mkdir(parents=True, exist_ok=True)
+                            Path(a.record).write_text(json.dumps(rec, indent=1, sort_keys=True) + "\n",
+                                                      encoding="utf-8")
+                            print(f"  recorded {len(inv.names)} signature(s) to {a.record}")
                     else:
                         print(f"  {ext}: could not look - {inv.why_not}")
                 if not looked:
@@ -1488,6 +1503,9 @@ def build_parser():
                         "instead of the maker's own bump of the minor - for a trim re-applied "
                         "from an earlier version of the file, whose bump would collide with a "
                         "version the repository's history already carries")
+    q.add_argument("--record", default=None, metavar="FILE",
+                   help="with `inventory`: write the functions and their signatures to FILE "
+                        "(the plugin's `<name>.signatures.json`, maker output; harness ADR-0026)")
     q.add_argument("--worksheet", action="store_true",
                    help="with a command stage named as the action and --run: run the stage's "
                         "declared `worksheet:` - what prints the work only the author can "
