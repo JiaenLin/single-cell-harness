@@ -682,17 +682,16 @@ def cmd_dev(a):
                 # the reason follows the ERROR line, indented under it, in this family's
                 # validators; print each ERROR with the line after it
                 shown = 0
-                fails = [x for x in tail if x.strip().startswith("FAIL")]
-                for x in fails[:4]:
+                for x in [x for x in tail if x.strip().startswith("FAIL")][:3]:
                     print(f"        {x.strip()[:220]}")
                     shown += 1
                 for i, x in enumerate(tail):
-                    if shown >= 4 or fails:
+                    if shown >= 6:
                         break
-                    if "ERROR" in x or "refus" in x.lower():
+                    if "ERROR" in x or (not shown and "refus" in x.lower()):
                         print(f"        {x.strip()[:160]}")
-                        if i + 1 < len(tail) and not ("ERROR" in tail[i + 1]):
-                            print(f"          {tail[i + 1].strip()[:220]}")
+                        if i + 1 < len(tail) and "ERROR" not in tail[i + 1]:
+                            print(f"          {tail[i + 1].strip()[:240]}")
                         shown += 1
                 print("  the followers after this one did not run; the file carries the edit - "
                       "`git diff` shows it, `git checkout` takes it back")
