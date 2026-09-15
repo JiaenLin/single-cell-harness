@@ -64,6 +64,23 @@ K-m to K-p and K-s from the runs, K-q and K-r from the cold maintainer, and the 
 the reference's tree for a tree of another name. Two recorded open: a fitted literal has no
 static gate (the fixture run is it), and the maker cannot say which script holds a draw site.
 
+## After the round: the open items closed (2026-09-15/16)
+
+The user read the six open items and their impact and had them all closed, housekeeping
+included, then one more run for review. The record is the ADR's "open items, closed" section;
+the finding under it: the fixture gate that "was the gate" for a fitted literal had never
+existed for this repository - the kernel point's tiers planned and refused "not ready in this
+installation" on every ladder, cluster included, and had a plugin run, the fixture's neutral gene
+names would have given a ligand-receptor database nothing to match. Three jobs for one: PBS
+712312 ran cellchat on the synthetic cohort for the first time and read two things about itself
+(twenty units for nine; a shape passed without running), 712313's gate refused the cohort and
+said two true things and one untrue (a promise on an axis a one-factor design never launches;
+a plan not told the roles, accepted on the installation's words), 712314 sealed in 14 min 9 s
+with both shapes run end to end, 18 of 18 objects reused under the store's new key, the same
+122 plates, and every machine stage done. Eleven more mechanism defects fixed test-first
+(scProfile 11b0240 to f7e5a0d, harness f7e7c5e to 4f33e56); the plugin written only by the
+tool's verbs (`--declare`, `--legend`): cellchat 0.42.0.
+
 ## Results
 
 S1 held; V1 held; K1 held on the count and failed on the letter; R1 failed on the letter (three
