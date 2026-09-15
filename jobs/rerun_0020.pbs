@@ -6,10 +6,10 @@
 #PBS -j oe
 #
 # ============================================================================================
-# REPRODUCE 20260913T042903Z__scprofile-c260046__04_profile__audit AT 161afbe
+# REPRODUCE 20260913T042903Z__scprofile-c260046__04_profile__audit AT 8c65f51
 # ============================================================================================
 #
-# WRITTEN BY `sch dev job` ON 2026-09-15T10:22:35Z - do not hand-edit the derived sections below without
+# WRITTEN BY `sch dev job` ON 2026-09-15T11:19:33Z - do not hand-edit the derived sections below without
 # saying so here, because their whole value is that they were not typed from memory.
 #
 # THE REFERENCE RUN
@@ -27,7 +27,7 @@
 # THE PREDICTION, WRITTEN BEFORE SUBMISSION:
 #   ADR-0026 step 5, run F (class F: code-side changes, three patches on attack-0026-F, cellchat 0.42.0). The maker said locally: CACHE FORECAST MISS - the inference span changed (1 line), every unit re-infers; the plan unchanged (164 files). Predictions: (1) 0 of 18 units reuse the saved object - every unit log says the object store was written, not read - and the wave takes 250-700 s per unit again, so node time is 25-35 min; (2) the coverage panel's extra file F1_extra_nobody_asked.png exists in every unit's figures and capacity --promised, or the output-nobody-asked-for check, refuses 18 files no plan entry names; (3) the differential strength heatmaps (nativecmp_diff_heatmap_weight) are drawn from the count matrix and differ in bytes from the control's, while their legend still says strength - a defect only the eye finds, and the stated disclosures of that kind are now at risk with nothing local saying so (recorded as K-c's limit for expr); (4) 122 plates by name and size otherwise; SEALED, node time over 25 min.
 #
-# THE CHECKOUT IS FROZEN. The tool is expected at 161afbe. If it has moved when this job
+# THE CHECKOUT IS FROZEN. The tool is expected at 8c65f51. If it has moved when this job
 # starts, the job refuses rather than measuring a mixture of two versions. Twice on 2026-09-06 a
 # pull landed in a live checkout; the rule existed and nothing enforced it, which is a prediction
 # rather than a guardrail.
@@ -46,7 +46,7 @@
 #
 # FLAGS CARRIED FROM THE REFERENCE, one per line:
 #   --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad
-#   --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun
+#   --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111931Z__scprofile-8c65f51__04_profile__rerun
 #   --kernel cellchat
 #   --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env
 #   --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv
@@ -69,9 +69,9 @@
 
 set -euo pipefail
 
-RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun"
+RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111931Z__scprofile-8c65f51__04_profile__rerun"
 TOOLDIR="/data/wangyb/home/jiaen.lin/tools/scProfile-cconly-F"
-EXPECT_COMMIT="161afbe"
+EXPECT_COMMIT="8c65f51"
 mkdir -p "$RUNDIR/logs"
 
 # ---------------------------------------------------------------- seal, whatever happens next
@@ -166,7 +166,7 @@ echo "node: $(hostname -s)  cores: ${NCPUS:-unset}  started: $(date -u)"
 # `set -e` is lifted for exactly one line, so the code can be read and reported before the trap
 # uses it - under `set -e` the script would leave before `rc` was ever assigned.
 set +e
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111931Z__scprofile-8c65f51__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow
 rc=$?
 set -e
 echo "tool exit: $rc"
@@ -175,9 +175,9 @@ echo "tool exit: $rc"
 # Declared in DEVPOINTS.yaml under `run.after` (harness ADR-0019); each line is one command. Its
 # exit code is a VERDICT - `status` owing, `capacity --memory` refusing a declaration - which the
 # maker reads from this log; it is not a failure of the run, whose seal reads the products.
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111931Z__scprofile-8c65f51__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111931Z__scprofile-8c65f51__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111931Z__scprofile-8c65f51__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
 # ------------------------------------------------------------- the maker's status, for the record
 HARNESS="${HARNESS:-$HOME/tools/single-cell-harness}"
 PYTHONPATH="$HARNESS" /data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m sch dev convert status --root /data/wangyb/home/jiaen.lin/tools/scProfile-cconly-F --point kernel --name cellchat --run "$RUNDIR" > "$RUNDIR/logs/maker_status.txt" 2>&1 || true

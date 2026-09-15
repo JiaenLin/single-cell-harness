@@ -6,10 +6,10 @@
 #PBS -j oe
 #
 # ============================================================================================
-# REPRODUCE 20260913T042903Z__scprofile-c260046__04_profile__audit AT 1b24b79
+# REPRODUCE 20260913T042903Z__scprofile-c260046__04_profile__audit AT 080cca3
 # ============================================================================================
 #
-# WRITTEN BY `sch dev job` ON 2026-09-15T10:22:38Z - do not hand-edit the derived sections below without
+# WRITTEN BY `sch dev job` ON 2026-09-15T11:19:36Z - do not hand-edit the derived sections below without
 # saying so here, because their whole value is that they were not typed from memory.
 #
 # THE REFERENCE RUN
@@ -25,9 +25,9 @@
 # and not the tool's.
 #
 # THE PREDICTION, WRITTEN BEFORE SUBMISSION:
-#   ADR-0026 step 5, run G (class G: targeted at the stages the draw left; six edits on attack-0026-G, cellchat 0.42.0, emitted --anyway over a judgement stage that owes - the validator refuses the writing template). The maker said locally: validate ERROR on report.writing_template; cores, cost and measure read RUN?; cache HIT. Predictions: (1) 18 of 18 units reuse the saved object; (2) the wave plans 4 cores per instance - 16 at once, so 18 instances in 2 waves - and the run is a few minutes longer than the control; (3) after the run the cost stage refuses (declared low, measured high) and the measure stage refuses (declared base 1.2 GB, fitted 2.4); the cores stage passes (4 above the peak); (4) the `when` clause `nrow(pos) >= 14` draws the pair-scatter framing only on contrasts whose shared population set reaches 14 and skips the rest - fewer plates of that kind than the control's, and capacity --promised reads the skipped ones as the plan's own `when`, not as broken promises; (5) the reference's package name changes nothing the run reads; (6) the writing brief names a template that does not exist - the run cannot say so, the writer would; SEALED, node time under 20 min.
+#   ADR-0026 step 5, run G (class G: targeted at the stages the draw left; six edits on attack-0026-G, cellchat 0.42.0, second cut, without the writing template the run refuses at its door - the first cut measured that refusal and nothing else). The maker said locally: build 9 of 9; cores, cost and measure read RUN?; cache HIT. Predictions: (1) 18 of 18 units reuse the saved object; (2) the wave plans 4 cores per instance - 16 at once, so 18 instances in 2 waves - and the run is a few minutes longer than the control; (3) after the run the cost stage refuses (declared low, measured high) and the measure stage refuses (declared base 1.2 GB, fitted 2.4); the cores stage passes (4 above the peak); (4) the `when` clause `nrow(pos) >= 14` draws the pair-scatter framing only on contrasts whose shared population set reaches 14 and skips the rest - fewer plates of that kind than the control's, and capacity --promised reads the skipped ones as the plan's own `when`, not as broken promises; (5) the reference's package name changes nothing the run reads; (6) the first cut showed the run REFUSES a template that does not exist at its door, as the validator and the emitter do; SEALED, node time under 20 min.
 #
-# THE CHECKOUT IS FROZEN. The tool is expected at 1b24b79. If it has moved when this job
+# THE CHECKOUT IS FROZEN. The tool is expected at 080cca3. If it has moved when this job
 # starts, the job refuses rather than measuring a mixture of two versions. Twice on 2026-09-06 a
 # pull landed in a live checkout; the rule existed and nothing enforced it, which is a prediction
 # rather than a guardrail.
@@ -46,7 +46,7 @@
 #
 # FLAGS CARRIED FROM THE REFERENCE, one per line:
 #   --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad
-#   --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102236Z__scprofile-1b24b79__04_profile__rerun
+#   --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111934Z__scprofile-080cca3__04_profile__rerun
 #   --kernel cellchat
 #   --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env
 #   --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv
@@ -64,16 +64,14 @@
 #   --control diet=chow
 #   --no-cache   <- DROPPED: the tool's DEVPOINTS names it as contradicting a redraw (run.redraw_drops); re-emit with `--keep=--no-cache` to keep it
 #
-# EMITTED --anyway OVER A BUILD THAT OWES on judgement: the run measures that debt as much as the plugin.
-#
 # CACHE FORECAST for cellchat: HIT - the inference span and the keyed parameters are those of the run at c260046; the saved objects are reused (assuming the same environment)
 #
 
 set -euo pipefail
 
-RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102236Z__scprofile-1b24b79__04_profile__rerun"
+RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111934Z__scprofile-080cca3__04_profile__rerun"
 TOOLDIR="/data/wangyb/home/jiaen.lin/tools/scProfile-cconly-G"
-EXPECT_COMMIT="1b24b79"
+EXPECT_COMMIT="080cca3"
 mkdir -p "$RUNDIR/logs"
 
 # ---------------------------------------------------------------- seal, whatever happens next
@@ -168,7 +166,7 @@ echo "node: $(hostname -s)  cores: ${NCPUS:-unset}  started: $(date -u)"
 # `set -e` is lifted for exactly one line, so the code can be read and reported before the trap
 # uses it - under `set -e` the script would leave before `rc` was ever assigned.
 set +e
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102236Z__scprofile-1b24b79__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111934Z__scprofile-080cca3__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow
 rc=$?
 set -e
 echo "tool exit: $rc"
@@ -177,9 +175,9 @@ echo "tool exit: $rc"
 # Declared in DEVPOINTS.yaml under `run.after` (harness ADR-0019); each line is one command. Its
 # exit code is a VERDICT - `status` owing, `capacity --memory` refusing a declaration - which the
 # maker reads from this log; it is not a failure of the run, whose seal reads the products.
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102236Z__scprofile-1b24b79__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102236Z__scprofile-1b24b79__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102236Z__scprofile-1b24b79__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111934Z__scprofile-080cca3__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111934Z__scprofile-080cca3__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T111934Z__scprofile-080cca3__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
 # ------------------------------------------------------------- the maker's status, for the record
 HARNESS="${HARNESS:-$HOME/tools/single-cell-harness}"
 PYTHONPATH="$HARNESS" /data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m sch dev convert status --root /data/wangyb/home/jiaen.lin/tools/scProfile-cconly-G --point kernel --name cellchat --run "$RUNDIR" > "$RUNDIR/logs/maker_status.txt" 2>&1 || true
