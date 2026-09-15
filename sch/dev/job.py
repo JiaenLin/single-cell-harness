@@ -200,6 +200,11 @@ def carried_flags(argv, drop=(), keep=()):
     out, flags, dropped, i = [], [], [], 0
     while i < len(argv):
         a = str(argv[i])
+        if a == "-m" and i == 1 and i + 1 < len(argv):
+            # THE INTERPRETER'S MODULE SWITCH, put there by rebuild_argv: not the tool's flag.
+            out += [a, argv[i + 1]]
+            i += 2
+            continue
         if a.startswith("-") and len(a) > 1:
             name = a.split("=", 1)[0]
             has_value = "=" not in a and i + 1 < len(argv) and not str(argv[i + 1]).startswith("-")

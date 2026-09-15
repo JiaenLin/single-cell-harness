@@ -65,6 +65,15 @@ class ARedrawOffersTheCache(unittest.TestCase):
         self.assertIn("--no-cache", head)
         self.assertIn("dropped", head.lower())
 
+    def test_the_interpreters_module_switch_is_not_a_flag_of_the_tool(self):
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok",
+             "argv": [str(self.d / "tool" / "pkg" / "cli.py"), "run", "--out", "/old", "--x", "1"]}))
+        info = J.write(str(self.d / "job.pbs"), prediction="identical", python="/env/bin/python",
+                       **self.kw)
+        self.assertEqual([f for f in info["flags"] if f.startswith("-m")], [])
+        self.assertIn("--x 1", info["flags"])
+
     def test_a_flag_kept_by_name_stays_on_a_redraw(self):
         text = J.emit(prediction="identical", redraw=True, drop=["--no-cache"],
                       keep=["--no-cache"], **self.kw)
