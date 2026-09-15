@@ -225,6 +225,21 @@ commit and never the plugin's build status, so a plan over budget, a refused axi
 entry can be emitted and submitted (K-l). The kill pass (step 4) fixes K-a to K-h and K-j, K-l;
 K-i is recorded.
 
+## Step 5, measured: the runs that check the maker
+
+Each mutant is one verb call (or three recorded patches) on a branch of its own, each run against
+its own cellchat-only tree, the predictions in the job's header. The first submission of all
+five failed in a second: the emitter turned the reference's script into `-m` only for a tree of
+the reference's name, so each mutant job ran the reference's tree, unguarded (harness f736f2a).
+Then PBS system-held the four queued behind the first after 21 failed starts on the pinned node
+(as ADR-0022 saw); they ran one at a time after it.
+
+| run | node time | reused | what the maker said | what the run did | held? |
+|---|---|---|---|---|---|
+| control (PBS 711884, 0.39.0 unchanged) | 12 min 9 s | 18 of 18 | cache HIT; 122 plates | 122 plates by name and size, 102 byte-identical; `measure` owes: the base fitted 2.9 GB under reuse against 2.4 declared - a control finding step 1 did not read | S1 held on what it named; the memory base under the cached path is new |
+| B (PBS 712289, class B) | 11 min 21 s | 18 of 18 | plan unchanged, HIT, the code's `C["dotplot_n"]` followed, no site unfollowed | 122 plates, the drawn family under its new name and none under the old; the title "Intercellular signalling"; `declared` owes exactly the two edits (never_written.csv declared, ccc_edges.csv undeclared, 18 units each) and nothing else - the four optional tables no longer drift; `promised` OWES: the renamed side-effect entry promised `estimationNumCluster_renamed.png` and the tool wrote twenty `estimationNumCluster` files accounted for by nothing | (1)-(4) held; (5) moot - the dotplot is off the plan; the side-effect rename is a new one, K-p: the maker read 9 of 9 over an id the tool never uses (fixed: the verb refuses to rename a `generated: False` entry) |
+| A (PBS 712280, class A) | 12 min 1 s | 18 of 18 | group OVER 6 of 5, plan 168 files, HIT, 4 disclosures unbound | 122 plates, the same set as the control by name; the six count heatmaps 3600x2700; `declared` and `promised` done, `measure` owes as on the control | (1) held; (4) held; (2) FAILED - the pair scatter's `axis` moved nothing, its draw site being in the compare script (K-o, fixed: the companion refuses a site whose script does not draw by the entry's axis; the static half recorded); (3) held in direction - the plan's 168 counted files no run holds (K-m, fixed: a ceiling above one needs items or a file rule) |
+
 ## Predictions, before any change
 
 - **S1** the control rerun at the unchanged 0.39.0 reuses all eighteen saved objects (`reusing
