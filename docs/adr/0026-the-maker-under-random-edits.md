@@ -165,6 +165,66 @@ locally. A cold agent replays six fresh edits at the end, as the measure of "eas
 Classes: A a value inside its domain; B a rename; C add, remove, duplicate, reorder; D a value
 outside the domain; E a missing key; F a code-side change; G targeted at a stage the draw left.
 
+## Step 3, measured: the 42 edits through the maker
+
+Every declaration edit (1-30, 37-41) went through `sch dev edit` in ONE command: the verb 0.44-0.52 s
+including its three followers (validate, scaffold, the baseline record), the build status 1.8 s
+after. Verb defects found and fixed as they came: `--list-add` on a list whose bracket closes on
+the last element's line left the file unparseable (7; test added); a string replacing a
+double-quoted span took single quotes (10; the quote style now follows the span); the followers
+ran validate last, so a refused plan was regenerated and recorded before it was refused (20-22;
+validate first, stop at the first refusal, print what it refused).
+
+| n | what the maker said, locally, in the seconds above | as the draw expected? |
+|---|---|---|
+| 1 axis contrast->group | OVER group 6 of 5; build 8 of 9 (layout) | yes |
+| 2 config default | build 9 of 9; nothing about the cache | no reading of the cache (K-e) |
+| 3 legend rewrite | build 9 of 9; nothing about stated disclosures | no reading of the disclosures (K-c) |
+| 4 at_most 1->2 | OVER contrast 11 of 10 | yes |
+| 5 position | changed, 9 of 9 | yes |
+| 6 w,h | changed, the companion follows, 9 of 9 | yes |
+| 7 produces path never written | contract `done` | DEAD (K-a) |
+| 8 subject | changed, 9 of 9 | yes |
+| 9 rename side-effect id | the literal follows; no site to follow | yes |
+| 10 config key rename | the literal and `C["dotplot_n"]` in code follow | yes |
+| 11 rename a drawn id | the literal and the draw site follow, no site left | yes |
+| 12 produces: the primary table removed, a path never written added | contract `done` | DEAD (K-a) |
+| 13 swap | changed, counts unchanged | yes |
+| 14 duplicate | OVER contrast 11 of 10, 25 entries, companion follows | yes |
+| 15 add from the skips | the skip lifted (14 used, 21 skipped), OVER contrast, companion gains the site | yes |
+| 16 produces: the object removed | contract `done` | DEAD (K-a) |
+| 17 host kind added | OWES `report.host_panels`: the layout keeps four and the plugin declares five | the layout decides, not the plugin - right by ADR-0024 |
+| 18 remove an entry | 23 entries, the fn still drawn elsewhere so no skip owed, 9 of 9 | yes |
+| 19 an R argument the function lacks (side-effect entry) | 9 of 9; nothing | no formals (K-d); and `args` on a `generated: False` entry has no site and nobody says so (K-h) |
+| 20 unknown axis | validate refuses by name; build 7 of 9 | yes |
+| 21 unknown kind | validate refuses, names the registered kinds | yes |
+| 22 unknown position | validate refuses, names the four | yes |
+| 23 duplicate id | the verb refuses before writing, 0.09 s | yes |
+| 24 a cohort word in a legend | verb, validate, build 9 of 9 all pass; the portability suite refuses (9 s), when somebody runs it | SILENT at the maker (K-f) |
+| 25 no state_version | validate refuses | yes |
+| 26 no axis | plan stage PART, 1 of 24 not ruled on; the layout counts it under sample (OVER 3 of 2) | readable; the layout's count is wrong (K-j) |
+| 27 no requires.packages | environment todo | yes |
+| 28 no host_panels | OWES `report.host_panels` | yes |
+| 29 a parameter with no default | defaults `done`, validate passes, 9 of 9 | DEAD (K-b) |
+| 30 no version | freshness todo | yes |
+| 31 a panel writes an extra file (patch) | nothing local reads code | the run's (step 5) |
+| 32 the companion edited by hand (patch) | the companion test FAILs; plan stage todo | yes |
+| 33 a comment in the recipe span (patch) | nothing about the cache | no reading (K-e); the run's (step 5) |
+| 34 a plan change by hand, baseline not re-recorded (patch) | the baseline test refuses (164 -> 170); freshness, plan and layout todo | yes, three ways |
+| 35 a plan change by hand, version not bumped (patch) | freshness STALE, the commit to raise it in named | yes |
+| 36 an expr changed to another measure (patch) | nothing | no reading of the disclosures at risk (K-c) |
+| 37 a bundled reference's package name | references `done` | cannot be proven without R; by the point's own declaration |
+| 38 cores 2->4 | RUN?; against the last run's copy: done (the declaration may exceed the peak) | by design |
+| 39 cost high->low | RUN?; against the run: cost todo | yes |
+| 40 memory base halved | RUN?; against the run: measure todo | yes |
+| 41 a writing template that does not exist | 9 of 9; against the run: written and delivered done | DEAD (K-g) |
+| 42 a fitted literal in a `when` clause (patch) | rules held, overfit 0 (it reads the maker's own elements, not the plugin's) | no static gate; the two-shape fixture run is the gate (K-i, recorded) |
+
+And one the edits showed about the emitter: `sch dev job` reads the reference run and the tool
+commit and never the plugin's build status, so a plan over budget, a refused axis or an unruled
+entry can be emitted and submitted (K-l). The kill pass (step 4) fixes K-a to K-h and K-j, K-l;
+K-i is recorded.
+
 ## Predictions, before any change
 
 - **S1** the control rerun at the unchanged 0.39.0 reuses all eighteen saved objects (`reusing
@@ -203,7 +263,7 @@ across more than one session - the table below is what a later session resumes f
 | 0 record | done | this commit | the diagnosis measured, the decisions taken, the draw fixed |
 | 1 the run made cheap | done | scProfile dc9bb46, harness 1402fab, 403ce2f; the control rerun `20260915T084449Z__scprofile-dc9bb46__04_profile__rerun` (PBS 711884, compute1016) | Four fixes, each test-first and seen red: the tool declares `run.redraw_drops: [--no-cache]` and the emitter drops it on a redraw, listing every flag it carries in the job's header (`--keep=FLAG` keeps one); the compare launches pooled at the plugin's declared share (2) under the run's budget, 32 at once, the phase record carrying `share` and `at_once`; `run.after` no longer names `report`; `run_all.py --jobs` defaults to 4, measured green serially (138 s) and three times in parallel (49 s) with the same verdict - a correction to the diagnosis: the commit gate had passed `--jobs 4` since ADR-0023, so the serial cost was the author's and the cluster's, not the gate's. **S1 held**: SEALED in 12 min 9 s of node time against 31; 18 of 18 units `reusing the saved CellChat object`, slowest unit 176 s against 699; seven compare launches of 66-80 s at once, the phase 2 min 45 s against 13.5; the figure set built once; the same 122 plates by name and pixel size as PBS 711759, 102 of them byte-identical - the 20 that differ are the permutation test's own randomness between a cached and a re-inferred object, recorded as an observation about reproducibility and not acted on |
 | 2 the surface and the verbs | | | |
-| 3 the editability pass | | | |
+| 3 the editability pass | done | scProfile branch `attack-0026` (the edits applied and reverted, none kept); harness 935fea7 and the verb fixes in the next commit; the per-edit table above | 35 declaration edits in one verb each (0.44-0.52 s plus 1.8 s of status), 7 code-side patches; 3 verb defects fixed as they came; the maker read the state truly on 24 of 42, was silent or wrong on 11 (K-a to K-l), and 7 belong to a run |
 | 4 the kill pass | | | |
 | 5 the runs | | | |
 | 6 the cold replay | | | |

@@ -156,6 +156,18 @@ class TheMakerEditsAPlugin(unittest.TestCase):
         self.assertEqual(spec["report"]["host_panels"], ["across_design", "unit_totals", "interaction"])
         self.assertEqual(spec["produces"], ["[optional] objects/demo.rds"])
 
+    def test_list_add_on_a_list_whose_bracket_closes_on_the_last_line(self):
+        # the plugin's own `produces`: one element per line, the bracket on the last one
+        text = self.text().replace(
+            '"produces": ["tables/edges.csv", "[optional] objects/demo.rds"],',
+            '"produces": ["tables/edges.csv",\n                 "[optional] objects/demo.rds"],')
+        self.f.write_text(text, encoding="utf-8")
+        E.edit(self.f, [("list_remove", "produces", "[optional] objects/demo.rds"),
+                        ("list_add", "produces", "tables/z.csv")], KEYS)
+        self.assertEqual(spec_of(self.text())["produces"], ["tables/edges.csv", "tables/z.csv"])
+        E.edit(self.f, [("list_add", "produces", "tables/y.csv")], KEYS)
+        self.assertEqual(spec_of(self.text())["produces"][-1], "tables/y.csv")
+
     # ---- rename
     def test_rename_follows_the_literal_the_routes_the_draw_site_and_the_profile_list(self):
         rep = E.edit(self.f, [("rename", "native_circle", "native_ring")], KEYS)

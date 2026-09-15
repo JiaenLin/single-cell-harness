@@ -34,8 +34,15 @@ class Raw:
         self.text = str(text)
 
 
-def _src_of(value) -> str:
-    return value.text if isinstance(value, Raw) else repr(value)
+def _src_of(value, like: bytes = b"") -> str:
+    """The source of a value; a string keeps the quote style of the span it replaces (`like`)
+    when it can, so an edited line looks like the lines around it."""
+    if isinstance(value, Raw):
+        return value.text
+    if isinstance(value, str) and like[:1] == b'"' and '"' not in value and "\\" not in value \
+            and "\n" not in value:
+        return '"' + value + '"'
+    return repr(value)
 
 
 # ------------------------------------------------------------------------------- the literal
@@ -174,7 +181,7 @@ def op_set(text: str, path: str, value) -> str:
     src = _Src(text)
     if vnode is not None:
         a, b = src.span(vnode)
-        return src.replace(a, b, _src_of(value))
+        return src.replace(a, b, _src_of(value, like=src.b[a:a + 1]))
     # A KEY THE MAPPING LACKS: after its first key, on its own line when the keys have their own
     # lines (the layout's own rule for the ceiling), inline otherwise.
     if not parent.keys:
@@ -235,9 +242,13 @@ def op_list_add(text: str, path: str, value) -> str:
         a, b = src.span(vnode)
         return src.replace(a, b, f"[{_src_of(value)}]")
     last = vnode.elts[-1]
-    multi = last.lineno != vnode.lineno or vnode.end_lineno != last.end_lineno
+    # A NEW LINE ONLY WHEN THE BRACKET HAS ONE OF ITS OWN: a list whose `]` closes on the last
+    # element's line (`"c.csv"],`) takes the new element inline, or the line after the bracket
+    # would carry it and the file would not parse (found on the plugin's own `produces`).
+    own_line = last.lineno != vnode.lineno and _own_line(src, last)
+    closes_on_last = vnode.end_lineno == last.end_lineno
     _, b = src.span(last)
-    if multi and _own_line(src, last):
+    if own_line and not closes_on_last:
         _, end = src.line_bounds(last.end_lineno)
         ins = f"{_indent_of(src, last.lineno)}{_src_of(value)},\n"
         return src.replace(end, end, ins)
@@ -295,10 +306,11 @@ def op_rename(text: str, old: str, new: str, keys: dict) -> tuple:
     edits = []
     for node in ast.walk(plug):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            a0, _b0 = src.span(node)
             if node.value == old:
-                edits.append((src.span(node), repr(new)))
+                edits.append((src.span(node), _src_of(new, like=src.b[a0:a0 + 1])))
             elif node.value == f"plan:{old}":
-                edits.append((src.span(node), repr(f"plan:{new}")))
+                edits.append((src.span(node), _src_of(f"plan:{new}", like=src.b[a0:a0 + 1])))
     out = src.b
     for (a, b), rep in sorted(edits, key=lambda t: -t[0][0]):
         out = out[:a] + rep.encode("utf-8") + out[b:]
@@ -452,7 +464,7 @@ def op_rename_key(text: str, path: str, new: str) -> tuple:
         raise ValueError(f"{path}: no such key")
     src = _Src(text)
     a, b = src.span(knode)
-    text = src.replace(a, b, repr(new))
+    text = src.replace(a, b, _src_of(new, like=src.b[a:a + 1]))
     followed = 0
     if segments(path)[0] == "config":
         pat = re.compile(r"""((?:\bC|\bconfig|\.config)\[)(["'])%s\2(\])""" % re.escape(str(key)))

@@ -638,7 +638,23 @@ def cmd_dev(a):
             tail = (r.stdout + r.stderr).strip().splitlines()
             print(f"  after: exit {r.returncode} - {' '.join(argv[1:])}"
                   + (f"  ({tail[-1][:120]})" if tail else ""))
-            bad += 1 if r.returncode else 0
+            if r.returncode:
+                # WHAT IT REFUSED, not only that it did: the lines that say so, then stop -
+                # a follower after a refusal would record or regenerate a plan the tool
+                # refuses.
+                # the reason follows the ERROR line, indented under it, in this family's
+                # validators; print each ERROR with the line after it
+                shown = 0
+                for i, x in enumerate(tail):
+                    if ("ERROR" in x or "refus" in x.lower()) and shown < 4:
+                        print(f"        {x.strip()[:160]}")
+                        if i + 1 < len(tail) and not ("ERROR" in tail[i + 1]):
+                            print(f"          {tail[i + 1].strip()[:220]}")
+                        shown += 1
+                print("  the followers after this one did not run; the file carries the edit - "
+                      "`git diff` shows it, `git checkout` takes it back")
+                bad += 1
+                break
         return FAILED if bad else OK
 
     if a.sub == "rules":
