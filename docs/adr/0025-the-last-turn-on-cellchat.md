@@ -89,9 +89,9 @@ three hours of wall clock.
 | step | state | where | what |
 |---|---|---|---|
 | 0 record | done | this commit | |
-| 1 the author's pass | | | |
-| 2 the rerun | | | |
-| 3 the fresh look | | | |
+| 1 the author's pass | done | scProfile ad1b76d (cellchat 0.37.0) | A cold author answered the five items in one pass: the strength circle (`native_circle_weight`, the profile list and the draw site following), the interaction family at 6 with the hand-written dedup that had kept the second framing from drawing removed (the ceiling alone would have changed nothing - the author found the real gate 250 lines below the entry), the role heatmap's floor stated, all 24 legends in register, the three unmarked notes answered. One exchange back: two of the repository's own tests held a legend to "RED means" and "NO interaction" in capitals - the tests corrected, the author lifted the exception. A1 held: one refusal-equivalent, 0.36.0 to 0.37.0 once, interaction 19 of 20, no hand edit by the dispatcher |
+| 2 the rerun | done | PBS 711706 (`20260915T011642Z__scprofile-ad1b76d__04_profile__rerun`, compute1016, 34 min) | SEALED, every after-step exit 0; 122 plates exactly, both interaction directions drawn, 16 main figures and 20 supplementary; cores peak 2.18 on 2, cost high. R1 held |
+| 3 the fresh look | in progress | two cold lookers on the 40 plates the palette redrew (40 carried); scProfile a7f247b (cellchat 0.38.0); PBS 711745 (`20260915T023343Z__scprofile-a7f247b__04_profile__rerun`) | 40 recorded, 0 refused, 28 marked defect; the worksheet: 33 findings on 12 kinds - because the legends rewritten in register had unbound every disclosure a stated answer was tied to, the findings those had closed came back. The author, in a second exchange: 22 re-stated in the legends' new words, four legends given one sentence, and the two differential heatmaps given the tool's own diverging palette (their key ran in one colour over a grid holding both) - the one edit that needs a redraw, so a second rerun of this turn was submitted for it. E1 is graded on that run |
 | 4 the section against the set | | | |
 | 5 the writing seal, the status | | | |
 | 6 the record | | | |
