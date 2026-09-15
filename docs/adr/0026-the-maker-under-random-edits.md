@@ -287,6 +287,29 @@ plates, the colour key's floor - read by the worksheet against the run copy on 2
 that should be the envelope of the reuse path and the inference path; and the cache store that
 keeps one object per parameter key, overwritten by whichever run wrote it last.
 
+## The open items, closed (2026-09-15, after the round)
+
+The user read the six open items above and their impact and said close them all, housekeeping
+included, then run cellchat once more for review. Each close was test-first and seen red; the
+plugin was written only by the tool's verbs (`capacity --memory --declare`, `sch dev edit
+--legend`) and never by hand.
+
+| item | what closed it | where |
+|---|---|---|
+| a fitted literal has no static gate (K-i) | the fixture tiers RUN the plugin, and the emitted job runs both shapes before the cohort (`run.fixture_first`), refusing the cohort if either fails - and the finding under it: the gate had never existed. scProfile's fixture tiers planned and refused "not ready in this installation" on every ladder, the cluster's included (`{out}/prefix` was a fresh directory); no plugin of the repository had ever been executed on the two-shape cohort; and had cellchat run, the fixture's neutral gene names would have given a ligand-receptor database nothing to match. So: the fixture's marker blocks carry real ligand-receptor symbols in place of GENExxxx from the second type on - a rename, the counts byte-identical, the digest moved to ae50a42592c02c25 deliberately with no baseline recorded on the old names; `{prefix}` fills from the site's SCH_DEV_PREFIX; the fixture command runs `scprofile run` on each shape with the fixture's own role names, `--factor` naming its one factor, organism human, then `capacity --promised` on that run; a declared refusal ends the command list; exit 3 (could not run) is told from exit 2 (failed) and the seal says `incomplete_checks=`. Running the tiers on the workstation before any job found two tool debts: `run` launched twenty instances that each failed "no environment" where `plan` refuses once at its door - it refuses at its door now, in the plan's words; and every column of a design table was a factor - `--factor COLUMN` names the factors a run is about | harness f7e7c5e, f383255, a473e0e; scProfile f5d3955, 581dbba |
+| the maker cannot say which script holds a draw site (the static half of K-o) | `declare.draw_site_phase`: the plugin's own Python says which R string `run(ctx)` and `compare(ctx)` launch (`ctx.rscript(_R_RUN, ...)`; a literal beneath the `.replace` splice is read to its text), the strings say where each `.draw` site is, and `PHASE_AXES` - the two sets the companion holds a site to at run time - says what each phase draws by; the validator refuses the mismatch by id, script, phase and way out, so the maker's first follower prints it. Run A's edit, replayed on a scratch copy, is refused in a second; cellchat as it stands passes | scProfile b17949e |
+| one kind's disclosure the register rewrite dropped | `sch dev edit --legend nativecmp_signalingRole_heatmap ...` put the author's recorded sentence back in place of the rephrased one (the author's own words, pasted); the worksheet against the 0.39.0 run reads 0 open findings on 0 kinds; cellchat 0.42.0 | scProfile 58b7338 |
+| four tables the R writes and never registers | the host registers, when `run(ctx)` returns, every file under `tables/` that a `produces` table declaration names and nothing else (`manifest.declared_tables`, stdlib-only: it runs in the plugin's environment); the plugin's R untouched | scProfile 11b0240 |
+| the memory declaration should be the envelope of both paths | `capacity --memory --declare` raises a term the fit exceeds and keeps one it does not, saying so - a run on another path is not evidence the ceiling was wrong; lowering one on purpose is the maker's `--set`. Applied to the control run by the tool's own verb: base 2.4 -> 3.2, rate 14.3 kept (the existing test that asserted replacement now asserts the envelope) | scProfile 4461be5 |
+| the cache store keeps one object per parameter key, last writer wins | the unit's cache directory is keyed by a digest of the declared inference span (`landscape.span_key`): a run of another span writes beside, never over, and the stamp inside the object still decides validity; the forecast's HIT no longer hedges about overwrites and names the one thing that still defeats it (clearing); and it says MISS, once, when the store's key itself changed since the run named - which this very change did, so the first run after it re-infers and the job says so | scProfile dcfe2ac, 6aed091 |
+| housekeeping | the cluster's harness and cellchat-only trees at the pushed heads (the old tree retired under `~/_archive/`); the stray `Rplots.pdf` of 2026-09-13 out of the harness root | - |
+
+The runs that check the closes, each with its prediction in the job:
+
+| run | node time | fixture gate | reuse | plates | the stages | against the prediction |
+|---|---|---|---|---|---|---|
+| (filled below as the runs seal) | | | | | | |
+
 ## Cost, estimated before
 
 Six cluster runs of about ten minutes each after step 1 (the control may re-infer if S1 is
