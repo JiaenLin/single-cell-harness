@@ -376,7 +376,7 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
          walltime: str = "04:00:00", name: str = "reproduce", title: str | None = None,
          env: dict | None = None, products: list | None = None, python: str | None = None,
          tool_commit: str | None = None, redraw: bool = False, after=(),
-         maker_status=None, drop=(), keep=()) -> str:
+         maker_status=None, drop=(), keep=(), note: str = "") -> str:
     """The script text. Raises rather than guessing anything it cannot read.
 
     THE RERUN OF THE LOOP (harness ADR-0019): `python` prefixes a script argv; `tool_commit`
@@ -384,7 +384,8 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
     leaves figures out of the expected products; `after` is what the repository declares
     follows a run (`run.after`); `maker_status=(plugin, point)` writes the maker's status of
     the new run into its logs; `drop` is what the repository declares a redraw must not carry
-    (`run.redraw_drops`), removed from the argv on a redraw only, unless named in `keep`
+    (`run.redraw_drops`), removed from the argv on a redraw only, unless named in `keep`;
+    `note` is a header block the caller adds, such as the emitter's word that the build owes
     (harness ADR-0026)."""
     from ..conform import run_record
     if not prediction or not prediction.strip():
@@ -478,7 +479,7 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
         prediction="\n".join(f"#   {ln}" for ln in prediction.strip().splitlines()),
         tool_commit=tool_commit, rundir=rundir, tooldir=tooldir,
         products=" ".join(shlex.quote(p) for p in prods), n_products=len(prods),
-        queue_note=host_note + commit_note + redraw_note + flags_note,
+        queue_note=host_note + commit_note + redraw_note + flags_note + (note or ""),
         env_lines="\n".join(f'export {k}={shlex.quote(str(v))}' for k, v in (env or {}).items()),
         command=" ".join(shlex.quote(a) for a in argv),
         after_lines=after_lines, maker_lines=maker_lines, import_guard=import_guard)

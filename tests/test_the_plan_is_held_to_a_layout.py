@@ -306,6 +306,30 @@ class ThePlanIsHeldToALayout(unittest.TestCase):
         plan = L.trim(small, LAYOUT, KEYS)
         self.assertEqual(plan["dropped"], [])
 
+    def test_an_entry_with_no_axis_is_not_counted_and_not_dropped(self):
+        """An entry the plan stage has not ruled on (no axis) is neither a sample plate nor a
+        group plate; the layout counted it under both and the trim would have dropped it as
+        over budget (harness ADR-0026, found by deleting an entry's axis at random)."""
+        spec = spec_of(PLUGIN)
+        spec["report"]["figures"] = [e for e in spec["report"]["figures"]
+                                     if e["id"] in ("F2_presence", "native_circle")]
+        del spec["report"]["figures"][0]["axis"]                   # native_circle, unruled
+        rep = L.check(spec, LAYOUT, KEYS)
+        self.assertEqual(rep["counts"]["sample"], 1, rep)          # presence alone (unit axis)
+        self.assertEqual(rep["counts"]["group"], 1, rep)           # presence again; not the circle
+        self.assertEqual(rep.get("unruled"), ["native_circle"], rep)
+        self.assertIn("native_circle", L.format_report("demo", rep))
+        plan = L.trim(spec, LAYOUT, KEYS)
+        self.assertNotIn("native_circle", [d["id"] for d in plan["dropped"]])
+        with tempfile.TemporaryDirectory() as td:
+            f = Path(td) / "demo.py"
+            text = PLUGIN.replace("'axis': 'unit', 'position': 'contrast', 'legend': 'a circle'",
+                                  "'position': 'contrast', 'legend': 'a circle'")
+            f.write_text(text, encoding="utf-8")
+            L.apply(f, LAYOUT, KEYS)
+            ids = [e["id"] for e in spec_of(f.read_text(encoding="utf-8"))["report"]["figures"]]
+            self.assertIn("native_circle", ids)
+
     def test_the_verb_is_reachable_and_refuses_the_current_cellchat_plan(self):
         """The stage is declared in the tool's DEVPOINTS and reachable as a maker verb."""
         tool = Path.home() / "tools" / "scProfile"

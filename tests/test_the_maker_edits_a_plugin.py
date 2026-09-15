@@ -274,6 +274,11 @@ points:
           entry_keys: {upstream: fn, bound: at_most, axis: axis, position: position, skips: report.skips, routes: report.provides_evidence, side_effect: generated}
           after_edit:
             - ["{python}", "-c", "import sys; print('scaffolded {name}')"]
+        - name: audited
+          phase: test
+          fills: []
+          command: ["{python}", "-c", "print('audited')"]
+          worksheet: ["{python}", "worksheet.py", "{run}"]
         - name: layout
           fills: [report.figures]
           under_layout: true
@@ -301,6 +306,13 @@ class TheVerbIsReachable(unittest.TestCase):
         (self.root / "kernels").mkdir()
         self.f = self.root / "kernels" / "demo.py"
         self.f.write_text(PLUGIN, encoding="utf-8")
+        # the audited stage's worksheet, standing in: what the real one prints after a legend
+        # rewrite, read on a run with the declaration in this tree
+        (self.root / "worksheet.py").write_text(
+            "import sys\n"
+            "print('# THE WORKSHEET on ' + sys.argv[1] + ': 2 open finding(s) on 1 kind(s)')\n"
+            "print('# STATED, AND THE LEGEND NO LONGER SAYS IT: 1 kind(s)')\n"
+            "print('   - native_circle: \"the summed strength\"')\n", encoding="utf-8")
 
     def tearDown(self):
         self.td.cleanup()
@@ -334,6 +346,15 @@ class TheVerbIsReachable(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn("next:", p.stdout)
         self.assertIn("unchanged", p.stdout)                     # the plan did not change
+
+    def test_with_a_run_the_verb_reads_the_disclosures_a_legend_edit_unbinds(self):
+        run = self.root / "run"
+        run.mkdir()
+        p = self.sch("--legend", "native_circle", "One ring.", "--run", str(run))
+        self.assertEqual(p.returncode, 0, p.stderr + p.stdout)
+        self.assertIn("2 open finding(s)", p.stdout)
+        self.assertIn("NO LONGER SAYS IT", p.stdout)
+        self.assertIn("native_circle", p.stdout.split("NO LONGER")[1])
 
     def test_a_rename_reports_the_site_it_could_not_follow(self):
         p = self.sch("--rename", "native_circle", "native_ring")

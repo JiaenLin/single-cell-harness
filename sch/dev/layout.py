@@ -67,8 +67,12 @@ def _files(e, bound):
 
 
 def axes_of(e, layout, keys):
-    """The layout axes an entry counts against, from its declared axis and kind."""
-    ax = str(e.get(_k(keys, "axis", "axis")) or "unit")
+    """The layout axes an entry counts against, from its declared axis and kind. An entry with
+    NO declared axis counts against none (harness ADR-0026): the plan stage has not ruled on it,
+    and counting it as a unit plate charged it to two axes and let the trim drop it."""
+    if not e.get(_k(keys, "axis", "axis")):
+        return []
+    ax = str(e.get(_k(keys, "axis", "axis")))
     axes = (layout or {}).get("axes") or {}
     if ax == "unit":
         return [a for a in UNIT_AXES if a in axes] or ["unit"]
@@ -86,6 +90,7 @@ def check(spec, layout, keys=None):
     axes = (layout or {}).get("axes") or {}
     host = host_files(layout)
     counts, per = {a: host.get(a, 0) for a in axes}, {a: [] for a in axes}
+    unruled = [str(e["id"]) for e in _entries(spec, keys) if not e.get(_k(keys, "axis", "axis"))]
     for e in _entries(spec, keys):
         for a in axes_of(e, layout, keys):
             if a in counts:
@@ -106,6 +111,7 @@ def check(spec, layout, keys=None):
     list_ok = wanted is None or declared == wanted
     return {"ok": not over and list_ok, "counts": counts, "budgets": budgets, "over": over,
             "entries": per, "host": {a: n for a, n in host.items() if a in axes},
+            "unruled": unruled,
             "host_list": ({"declared": declared, "wanted": wanted, "at": hlist}
                           if wanted is not None else {})}
 
@@ -266,6 +272,8 @@ def apply(path, layout, keys=None, as_version=None):
         e = ast.literal_eval(node)
         fid = str(e.get("id") or "")
         a, b = node.lineno, node.end_lineno
+        if fid not in kept and fid not in {str(d.get("id")) for d in plan["dropped"]}:
+            continue                       # unruled: no axis, counted nowhere, left as it is
         if fid not in kept:
             dropped_ids.append(fid)
             fn = str(e.get(fn_key) or "")
@@ -407,6 +415,9 @@ def format_report(name, rep, plan=None, root="", point="", apply_hint=True):
         L.append(f"  {mark} {a:12s} {rep['counts'][a]:4d} file(s) per occurrence against a "
                  f"budget of {rep['budgets'][a]}"
                  + (f"  ({h} of them the host's own panels)" if h else ""))
+    if rep.get("unruled"):
+        L.append(f"  PART {len(rep['unruled'])} entr(ies) with no axis, counted nowhere until the "
+                 f"plan stage rules on them: {', '.join(rep['unruled'])}")
     hl = rep.get("host_list") or {}
     if hl:
         if hl.get("declared") == hl.get("wanted"):

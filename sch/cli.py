@@ -617,6 +617,34 @@ def cmd_dev(a):
                         != (after.get("report") or {}).get("figures"))
         print(f"  the plan: {n_before} -> {n_after} entr(ies)"
               + (", changed" if plan_changed else ", unchanged"))
+        # AGAINST A RUN, WHEN ONE IS NAMED (harness ADR-0026): the audited stage's worksheet,
+        # read on the run with the declaration in THIS tree, says which stated disclosures the
+        # edit unbound and which findings that reopens - before any rerun, not after the next
+        # redraw. The stage's own declared `worksheet:` command is what runs.
+        run_dir = getattr(a, "run", None)
+        if run_dir:
+            st_aud = next((x for x in stages if x.get("worksheet")), None)
+            if st_aud is None:
+                print("  --run: no stage declares a `worksheet:`; nothing to read against the run")
+            else:
+                argv = [str(x).replace("{python}", getattr(a, "python", None) or "python3")
+                        .replace("{run}", str(run_dir)).replace("{name}", a.name)
+                        .replace("{root}", str(doc["_root"])) for x in st_aud["worksheet"]]
+                r = subprocess.run(argv, cwd=str(doc["_root"]), capture_output=True, text=True)
+                lines = (r.stdout + r.stderr).splitlines()
+                shown = [ln for ln in lines if "open finding" in ln or "NO LONGER SAYS IT" in ln]
+                after_gone = False
+                for ln in lines:
+                    if "NO LONGER SAYS IT" in ln:
+                        after_gone = True
+                        continue
+                    if after_gone and ln.startswith("   - "):
+                        shown.append(ln)
+                    elif after_gone and ln.strip() == "":
+                        after_gone = False
+                print(f"  against {Path(str(run_dir)).name} ({st_aud.get('name')}):")
+                for ln in shown or ["  (the worksheet read nothing to say)"]:
+                    print("    " + ln.strip()[:200])
         # THE FOLLOWERS THE TOOL DECLARES (`plan.after_edit`), run here when the interpreter is
         # given, printed as the next step when it is not.
         st_plan = next((x for x in stages if str(x.get("name")) == "plan"), None)
@@ -1226,14 +1254,45 @@ def cmd_dev(a):
         # WHAT FOLLOWS A RUN, from the repository's own declaration when the root has one
         # (harness ADR-0019): a rerun renders its pages and reads its own status without
         # anybody retyping the commands.
-        after, drop = [], []
+        after, drop, doc = [], [], None
         try:
             doc = P.load(a.root)
             after = P.run_after(doc)
             # WHAT A REDRAW MUST NOT CARRY, from the same declaration (harness ADR-0026).
             drop = P.run_redraw_drops(doc)
         except Exception:                                                 # noqa: BLE001
-            after, drop = [], []
+            after, drop, doc = [], [], None
+        # THE PLUGIN'S BUILD MUST BE DONE BEFORE ITS RUN IS EMITTED (harness ADR-0026): the
+        # emitter read the reference run and the tool's commit and never the maker's own status,
+        # so a plan over budget, a refused axis or an unruled entry could be emitted, validated
+        # and submitted, and thirty minutes of node time found what two seconds here say.
+        owing_note = ""
+        if getattr(a, "plugin", None) and doc is not None:
+            from .dev import convert as CV
+            point = getattr(a, "point", None) or next(iter(doc.get("points") or {}), None)
+            try:
+                specs = _convert_specs(doc, point, a.root, a.plugin)
+                rows = (CV.status(specs[0][1], doc, point, a.plugin) if specs else [])
+            except Exception as e:                                        # noqa: BLE001
+                specs, rows = [], []
+                print(f"sch dev job: cannot read the build status of {a.plugin!r}: {e}",
+                      file=sys.stderr)
+            if not specs:
+                print(f"sch dev job: no {point} named {a.plugin!r} under {a.root}; the build "
+                      f"status cannot be read", file=sys.stderr)
+                return CANNOT_RUN
+            owing = [r["stage"] for r in rows if r.get("phase", "build") == "build"
+                     and not r["done"] and r["kind"] != "judgement"]
+            if owing and not getattr(a, "anyway", False):
+                print(f"sch dev job: REFUSED - the build of {a.plugin!r} owes on "
+                      f"{', '.join(owing)}; `sch dev convert status --root {a.root} --point "
+                      f"{point} --name {a.plugin}` says what. A run of a plugin whose build "
+                      f"owes measures the debt, not the plugin. --anyway emits regardless.",
+                      file=sys.stderr)
+                return FAILED
+            if owing:
+                owing_note = (f"# EMITTED --anyway OVER A BUILD THAT OWES on {', '.join(owing)}: "
+                              f"the run measures that debt as much as the plugin.\n#\n")
         try:
             info = J.write(a.out, ref_dir=a.ref, rundir=a.rundir, tooldir=a.tool,
                            prediction=a.predict, queue=a.queue, select=a.select,
@@ -1242,6 +1301,7 @@ def cmd_dev(a):
                            tool_commit=getattr(a, "tool_commit", None),
                            redraw=bool(getattr(a, "redraw", False)), after=after,
                            drop=drop, keep=list(getattr(a, "keep", None) or []),
+                           note=owing_note,
                            maker_status=((a.plugin, a.point) if getattr(a, "plugin", None)
                                          else None))
         except (ValueError, OSError) as e:
@@ -1435,6 +1495,9 @@ def build_parser():
     q.add_argument("--rename-key", dest="rename_key", action=_Op, nargs=2, metavar=("PATH", "NEW"))
     q.add_argument("--legend", dest="legend", action=_Op, nargs=2, metavar=("ID", "TEXT"))
     q.add_argument("--dry", action="store_true", help="print the diff, write nothing")
+    q.add_argument("--run", default=None, metavar="RUNDIR",
+                   help="a completed run to read the edit against: the audited stage's worksheet "
+                        "says which stated disclosures the edit unbinds and which findings reopen")
     q.add_argument("--as-version", default=None,
                    help="the version the author states, instead of the maker's minor bump")
     q.add_argument("--python", default=None,
@@ -1462,6 +1525,9 @@ def build_parser():
     q.add_argument("--tool-commit", dest="tool_commit", default=None,
                    help="the tool's commit, when --tool is not readable where this is written; "
                         "the job reads the tree's own at start and refuses a mismatch")
+    q.add_argument("--anyway", action="store_true",
+                   help="emit even though the plugin's build owes; the header says so "
+                        "(harness ADR-0026)")
     q.add_argument("--keep", action="append", default=[],
                    help="a flag named in the tool's run.redraw_drops to keep on this redraw "
                         "anyway, written --keep=--no-cache (harness ADR-0026)")

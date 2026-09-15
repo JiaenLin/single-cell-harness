@@ -92,3 +92,73 @@ class ARedrawOffersTheCache(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AJobIsNotEmittedOverABuildThatOwes(unittest.TestCase):
+    """`sch dev job --plugin NAME` reads the maker's build status for that plugin first and
+    refuses to emit while a build stage owes (harness ADR-0026, found by editing the plugin at
+    random: a plan over budget, a refused axis, an unruled entry could all be emitted and
+    submitted). `--anyway` emits regardless and the header says so."""
+
+    DECL = """
+tool: t
+devpoints: 1
+points:
+  kernel:
+    what: a kernel
+    lives: kernels
+    proves: it runs
+    cannot_prove: that it is right
+    convert:
+      placeholder: "TODO"
+      upstream: wraps.tool
+      stages:
+        - {name: contract, fills: [inject]}
+        - {name: judgement, kind: judgement, fills: [summary]}
+"""
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "DEVPOINTS.yaml").write_text(self.DECL)
+        (self.d / "kernels").mkdir()
+        (self.d / "ref").mkdir()
+        (self.d / "tool" / ".git").mkdir(parents=True)
+        (self.d / "tool" / ".git" / "HEAD").write_text("a" * 40 + "\n")
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok", "argv": ["t", "run", "--out", "/old"]}))
+        (self.d / "ref" / "report.json").write_text('{"seed": 1}')
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def sch(self, *args):
+        import subprocess
+        import sys
+        return subprocess.run(
+            [sys.executable, "-m", "sch", "dev", "job", "--root", str(self.d), "--ref",
+             str(self.d / "ref"), "--rundir", str(self.d / "new"), "--tool", str(self.d / "tool"),
+             "--queue", "q", "--select", "select=1:ncpus=1", "--predict", "identical",
+             "--out", str(self.d / "job.pbs"), "--point", "kernel", "--plugin", "demo", *args],
+            capture_output=True, text=True, cwd=str(Path(__file__).resolve().parents[1]))
+
+    def test_a_build_that_owes_refuses_the_job_and_names_the_stage(self):
+        (self.d / "kernels" / "demo.py").write_text(
+            'PLUGIN = {"name": "demo", "summary": "s", "inject": "TODO"}\n')
+        p = self.sch()
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("contract", p.stderr + p.stdout)
+        self.assertFalse((self.d / "job.pbs").exists())
+
+    def test_a_build_that_is_done_emits(self):
+        (self.d / "kernels" / "demo.py").write_text(
+            'PLUGIN = {"name": "demo", "summary": "s", "inject": {"required": []}}\n')
+        p = self.sch()
+        self.assertEqual(p.returncode, 0, p.stderr + p.stdout)
+        self.assertTrue((self.d / "job.pbs").exists())
+
+    def test_anyway_emits_over_an_owing_build_and_the_header_says_so(self):
+        (self.d / "kernels" / "demo.py").write_text(
+            'PLUGIN = {"name": "demo", "summary": "s", "inject": "TODO"}\n')
+        p = self.sch("--anyway")
+        self.assertEqual(p.returncode, 0, p.stderr + p.stdout)
+        self.assertIn("contract", (self.d / "job.pbs").read_text().split("set -euo pipefail")[0])
