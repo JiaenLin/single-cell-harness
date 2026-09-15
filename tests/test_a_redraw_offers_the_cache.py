@@ -103,6 +103,8 @@ class AJobIsNotEmittedOverABuildThatOwes(unittest.TestCase):
     DECL = """
 tool: t
 devpoints: 1
+run:
+  forecast: ["{python}", "forecast.py", "{run}", "{name}"]
 points:
   kernel:
     what: a kernel
@@ -120,6 +122,8 @@ points:
     def setUp(self):
         self.d = Path(tempfile.mkdtemp())
         (self.d / "DEVPOINTS.yaml").write_text(self.DECL)
+        (self.d / "forecast.py").write_text(
+            "import sys\nprint('  CACHE FORECAST for ' + sys.argv[2] + ': MISS - the span changed')\n")
         (self.d / "kernels").mkdir()
         (self.d / "ref").mkdir()
         (self.d / "tool" / ".git").mkdir(parents=True)
@@ -149,12 +153,14 @@ points:
         self.assertIn("contract", p.stderr + p.stdout)
         self.assertFalse((self.d / "job.pbs").exists())
 
-    def test_a_build_that_is_done_emits(self):
+    def test_a_build_that_is_done_emits_and_the_header_carries_the_forecast(self):
         (self.d / "kernels" / "demo.py").write_text(
             'PLUGIN = {"name": "demo", "summary": "s", "inject": {"required": []}}\n')
         p = self.sch()
         self.assertEqual(p.returncode, 0, p.stderr + p.stdout)
         self.assertTrue((self.d / "job.pbs").exists())
+        head = (self.d / "job.pbs").read_text().split("set -euo pipefail")[0]
+        self.assertIn("CACHE FORECAST for demo: MISS", head)
 
     def test_anyway_emits_over_an_owing_build_and_the_header_says_so(self):
         (self.d / "kernels" / "demo.py").write_text(

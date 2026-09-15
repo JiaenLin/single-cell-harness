@@ -63,6 +63,16 @@ def run_after(doc):
     return [list(x) for x in (run.get("after") or []) if isinstance(x, list)]
 
 
+def run_forecast(doc):
+    """[argv] - what the tool declares is read BEFORE a job about the run it follows
+    (`run.forecast`), e.g. whether the saved objects will be reused, or [] (harness ADR-0026).
+    `{python}`, `{run}`, `{name}` and `{root}` are filled by the caller."""
+    run = (doc or {}).get("run") or {}
+    if not isinstance(run, dict) or not isinstance(run.get("forecast"), list):
+        return []
+    return [str(x) for x in run["forecast"]]
+
+
 def run_redraw_drops(doc):
     """[flag, ...] - the flags of this tool's own run command a REDRAW must not carry
     (`run.redraw_drops`), or [].

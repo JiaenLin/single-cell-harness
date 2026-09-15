@@ -258,6 +258,8 @@ tool: demo
 devpoints: 1
 tests:
   command: ["{python}", "-c", "print(1)"]
+run:
+  forecast: ["{python}", "forecast.py", "{run}", "{name}"]
 points:
   kernel:
     what: a kernel
@@ -313,6 +315,10 @@ class TheVerbIsReachable(unittest.TestCase):
             "print('# THE WORKSHEET on ' + sys.argv[1] + ': 2 open finding(s) on 1 kind(s)')\n"
             "print('# STATED, AND THE LEGEND NO LONGER SAYS IT: 1 kind(s)')\n"
             "print('   - native_circle: \"the summed strength\"')\n", encoding="utf-8")
+        # the tool's forecast, standing in: what `run.forecast` prints about the cache
+        (self.root / "forecast.py").write_text(
+            "import sys\nprint('  CACHE FORECAST for ' + sys.argv[2] + ': HIT - the span is that of the run')\n",
+            encoding="utf-8")
 
     def tearDown(self):
         self.td.cleanup()
@@ -355,6 +361,7 @@ class TheVerbIsReachable(unittest.TestCase):
         self.assertIn("2 open finding(s)", p.stdout)
         self.assertIn("NO LONGER SAYS IT", p.stdout)
         self.assertIn("native_circle", p.stdout.split("NO LONGER")[1])
+        self.assertIn("CACHE FORECAST for demo: HIT", p.stdout)
 
     def test_a_rename_reports_the_site_it_could_not_follow(self):
         p = self.sch("--rename", "native_circle", "native_ring")

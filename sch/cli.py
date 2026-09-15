@@ -645,6 +645,15 @@ def cmd_dev(a):
                 print(f"  against {Path(str(run_dir)).name} ({st_aud.get('name')}):")
                 for ln in shown or ["  (the worksheet read nothing to say)"]:
                     print("    " + ln.strip()[:200])
+            # AND WHAT THE TOOL DECLARES IS READ BEFORE A JOB (`run.forecast`): the cache.
+            fc = P.run_forecast(doc)
+            if fc:
+                argv = [str(x).replace("{python}", getattr(a, "python", None) or "python3")
+                        .replace("{run}", str(run_dir)).replace("{name}", a.name)
+                        .replace("{root}", str(doc["_root"])) for x in fc]
+                r = subprocess.run(argv, cwd=str(doc["_root"]), capture_output=True, text=True)
+                for ln in (r.stdout + r.stderr).strip().splitlines()[-3:]:
+                    print("  " + ln.strip()[:220])
         # THE FOLLOWERS THE TOOL DECLARES (`plan.after_edit`), run here when the interpreter is
         # given, printed as the next step when it is not.
         st_plan = next((x for x in stages if str(x.get("name")) == "plan"), None)
@@ -673,8 +682,14 @@ def cmd_dev(a):
                 # the reason follows the ERROR line, indented under it, in this family's
                 # validators; print each ERROR with the line after it
                 shown = 0
+                fails = [x for x in tail if x.strip().startswith("FAIL")]
+                for x in fails[:4]:
+                    print(f"        {x.strip()[:220]}")
+                    shown += 1
                 for i, x in enumerate(tail):
-                    if ("ERROR" in x or "refus" in x.lower()) and shown < 4:
+                    if shown >= 4 or fails:
+                        break
+                    if "ERROR" in x or "refus" in x.lower():
                         print(f"        {x.strip()[:160]}")
                         if i + 1 < len(tail) and not ("ERROR" in tail[i + 1]):
                             print(f"          {tail[i + 1].strip()[:220]}")
@@ -1293,6 +1308,22 @@ def cmd_dev(a):
             if owing:
                 owing_note = (f"# EMITTED --anyway OVER A BUILD THAT OWES on {', '.join(owing)}: "
                               f"the run measures that debt as much as the plugin.\n#\n")
+            # THE FORECAST THE TOOL DECLARES, IN THE HEADER (harness ADR-0026): whether this
+            # run will reuse the saved objects the reference left, read from the declaration
+            # against the reference's tool commit. Fourteen reruns re-inferred every unit and
+            # no header said so.
+            fc = P.run_forecast(doc)
+            if fc:
+                argv = [str(x).replace("{python}", getattr(a, "python", None) or sys.executable)
+                        .replace("{run}", str(a.ref)).replace("{name}", a.plugin)
+                        .replace("{root}", str(doc["_root"])) for x in fc]
+                # the forecast reads THIS tree against the reference's commit, so it runs with
+                # the interpreter this maker runs under, whatever the job's own is
+                argv[0] = sys.executable if argv[0] == (getattr(a, "python", None) or sys.executable) \
+                    and not Path(argv[0]).exists() else argv[0]
+                r = subprocess.run(argv, cwd=str(doc["_root"]), capture_output=True, text=True)
+                said = (r.stdout + r.stderr).strip().splitlines()
+                owing_note += ("# " + (said[-1].strip() if said else "no forecast") + "\n#\n")
         try:
             info = J.write(a.out, ref_dir=a.ref, rundir=a.rundir, tooldir=a.tool,
                            prediction=a.predict, queue=a.queue, select=a.select,
