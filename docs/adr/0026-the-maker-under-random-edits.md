@@ -308,7 +308,7 @@ The runs that check the closes, each with its prediction in the job:
 
 | run | node time | fixture gate | reuse | plates | the stages | against the prediction |
 |---|---|---|---|---|---|---|
-| (filled below as the runs seal) | | | | | | |
+| first (PBS 712312, `20260915T150852Z__scprofile-f5d3955__04_profile__rerun`, cellchat 0.42.0) | 24 min 49 s (the fixture 3 min 20 s, the cohort re-inferred) | fixture_a ok in 192 s: cellchat ran on the synthetic cohort - 19 inferences, 50 plates, `--promised` done; fixture_b ok in 1.9 s, **falsely**: `plan` could not key shape b's design on `library_id`, refused with the accepted phrase, and the log held the exit line alone | 0 of 18, as forecast (the store's key changed); the keyed directory `e14c2e2bb4` written beside the old layout | 122, the same set as the control by name and pixel size | build 9 of 9; measure, cores, cost, declared (6 tables a unit, no drift), promised done; looked_at, audited, written, delivered todo | (1) FAILED in two ways it named: shape a ran twenty units for nine (`--factor` restricted the factors list and not the rows the unit resolver reads) and shape b passed without running (fixed: scProfile 63c2e1d keys the table on `--sample-key`, the host's reading and the plugin's alike, and restricts the rows; harness fde528b keeps the refusal's own words); (2) held; (3) held; (4) held on the machine's stages and FAILED on `looked_at`, which the prediction had credited to the carry - a re-inferred object's plates are new bytes no looker has seen, which is the mechanism being right |
 
 ## Cost, estimated before
 
