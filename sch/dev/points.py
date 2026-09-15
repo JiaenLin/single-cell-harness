@@ -73,6 +73,15 @@ def run_forecast(doc):
     return [str(x) for x in run["forecast"]]
 
 
+def run_fixture_first(doc) -> bool:
+    """Whether this tool declares that a job runs the plugin on the harness's two-shape fixture
+    BEFORE the cohort (`run.fixture_first`), refusing the cohort if either shape fails
+    (harness ADR-0026, the open items). A literal fitted to this cohort has no static gate;
+    the fixture, where the plugin's environment lives, is it."""
+    run = (doc or {}).get("run") or {}
+    return bool(isinstance(run, dict) and run.get("fixture_first") is True)
+
+
 def run_redraw_drops(doc):
     """[flag, ...] - the flags of this tool's own run command a REDRAW must not carry
     (`run.redraw_drops`), or [].

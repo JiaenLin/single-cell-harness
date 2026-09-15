@@ -354,7 +354,7 @@ mkdir -p "$RUNDIR/cache"
 {env_lines}
 echo "node: $(hostname -s)  cores: ${{NCPUS:-unset}}  started: $(date -u)"
 
-# ------------------------------------------------------------------------------- the tool runs
+{fixture_lines}# ------------------------------------------------------------------------------- the tool runs
 # NOT PIPED, AND NOT TEED. `| tee` and `| tail` return the last command's status, which hid a
 # refusal three times in this project; process substitution avoids that but can lose the tail of
 # a log at exit. `#PBS -j oe` already captures both streams, so neither is needed here.
@@ -383,7 +383,7 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
          walltime: str = "04:00:00", name: str = "reproduce", title: str | None = None,
          env: dict | None = None, products: list | None = None, python: str | None = None,
          tool_commit: str | None = None, redraw: bool = False, after=(),
-         maker_status=None, drop=(), keep=(), note: str = "") -> str:
+         maker_status=None, drop=(), keep=(), note: str = "", fixture_first: bool = False) -> str:
     """The script text. Raises rather than guessing anything it cannot read.
 
     THE RERUN OF THE LOOP (harness ADR-0019): `python` prefixes a script argv; `tool_commit`
@@ -393,7 +393,9 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
     the new run into its logs; `drop` is what the repository declares a redraw must not carry
     (`run.redraw_drops`), removed from the argv on a redraw only, unless named in `keep`;
     `note` is a header block the caller adds, such as the emitter's word that the build owes
-    (harness ADR-0026)."""
+    (harness ADR-0026); `fixture_first` (the tool's `run.fixture_first`) runs the plugin on
+    the harness's two-shape fixture before the cohort, with the reference's own `--prefix` as
+    the site's, and refuses the cohort if either shape fails."""
     from ..conform import run_record
     if not prediction or not prediction.strip():
         raise ValueError(
@@ -466,6 +468,41 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
                        f'{shlex.quote(str(_pt))} --name {shlex.quote(str(_pl))} --run "$RUNDIR" '
                        f'> "$RUNDIR/logs/maker_status.txt" 2>&1 || true\n'
                        f'tail -30 "$RUNDIR/logs/maker_status.txt"')
+    fixture_lines = ""
+    if fixture_first:
+        if not maker_status:
+            raise ValueError("run.fixture_first needs the plugin and the point (--plugin, --point): "
+                             "the fixture tiers run for one plugin")
+        prefix = next((str(argv[i + 1]) for i, x in enumerate(argv[:-1]) if str(x) == "--prefix"),
+                      None)
+        if not prefix:
+            raise ValueError("run.fixture_first: the reference's argv names no --prefix, so the "
+                             "fixture cannot find the plugin's environment and the gate would "
+                             "refuse 'not ready' on every shape - which is no gate. Give a "
+                             "reference that ran with --prefix.")
+        _pl, _pt = maker_status
+        fixture_lines = (
+            "# --------------------------------- the plugin on two synthetic cohorts, before the cohort\n"
+            "# Declared in DEVPOINTS.yaml under `run.fixture_first` (harness ADR-0026, the open items): a\n"
+            "# literal fitted to this cohort has no static gate. The plugin runs on the harness's\n"
+            "# two-shape fixture first - the tool's own `fixture` tiers, with the reference's --prefix\n"
+            "# as the site's - and the job refuses before the cohort if either shape fails. The\n"
+            "# fixture is generated into the run directory; its log is logs/fixture.txt.\n"
+            'HARNESS="${HARNESS:-$HOME/tools/single-cell-harness}"\n'
+            "set +e\n"
+            f'SCH_DEV_PREFIX={shlex.quote(prefix)} PYTHONPATH="$HARNESS:$PYTHONPATH" '
+            f'{shlex.quote(python or "python3")} -m sch dev check --root "$TOOLDIR" --point '
+            f'{shlex.quote(str(_pt))} --name {shlex.quote(str(_pl))} --only fixture_a --only fixture_b '
+            f'--fixture-dir "$RUNDIR/fixture" > "$RUNDIR/logs/fixture.txt" 2>&1\n'
+            "frc=$?\n"
+            "set -e\n"
+            'tail -40 "$RUNDIR/logs/fixture.txt"\n'
+            'if [ "$frc" -ne 0 ]; then\n'
+            '  echo "REFUSED: the plugin did not hold on the two-shape fixture (exit $frc); '
+            'logs/fixture.txt says where" >&2\n'
+            "  exit 4\n"
+            "fi\n"
+            'echo "fixture: both shapes held"\n\n')
     host_note = ""
     if "host=" in select:
         host = select.split("host=", 1)[1].split(":")[0]
@@ -489,7 +526,8 @@ def emit(ref_dir, rundir, tooldir, *, prediction: str, queue: str, select: str,
         queue_note=host_note + commit_note + redraw_note + flags_note + (note or ""),
         env_lines="\n".join(f'export {k}={shlex.quote(str(v))}' for k, v in (env or {}).items()),
         command=" ".join(shlex.quote(a) for a in argv),
-        after_lines=after_lines, maker_lines=maker_lines, import_guard=import_guard)
+        after_lines=after_lines, maker_lines=maker_lines, import_guard=import_guard,
+        fixture_lines=fixture_lines)
 
 
 def write(path, **kw) -> dict:

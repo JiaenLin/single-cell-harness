@@ -181,6 +181,78 @@ points:
         self.assertIn("contract", (self.d / "job.pbs").read_text().split("set -euo pipefail")[0])
 
 
+class ThePluginRunsOnTheFixtureBeforeTheCohort(unittest.TestCase):
+    """A literal fitted to this cohort has no static gate (harness ADR-0026, the open items):
+    the fixture tiers had planned and refused on every ladder, and a `when` clause equal to a
+    count of the cohort passed every local light. The tool declares `run.fixture_first`, and the
+    emitted job then runs the plugin on the harness's two-shape fixture - where its environment
+    lives, `SCH_DEV_PREFIX` being the reference's own `--prefix` - and refuses before the cohort
+    if either shape fails."""
+
+    DECL = AJobIsNotEmittedOverABuildThatOwes.DECL.replace(
+        "run:\n", "run:\n  fixture_first: true\n")
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        (self.d / "DEVPOINTS.yaml").write_text(self.DECL)
+        (self.d / "forecast.py").write_text("print('  CACHE FORECAST for x: HIT - same')\n")
+        (self.d / "kernels").mkdir()
+        (self.d / "kernels" / "demo.py").write_text(
+            'PLUGIN = {"name": "demo", "summary": "s", "inject": {"required": []}}\n')
+        (self.d / "ref").mkdir()
+        (self.d / "tool" / ".git").mkdir(parents=True)
+        (self.d / "tool" / ".git" / "HEAD").write_text("a" * 40 + "\n")
+        # the argv names the reference's own directory as its output, as a real record does,
+        # so the emitter rewrites that flag by value and leaves `--prefix` - the site's
+        # environments - where it is
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok",
+             "argv": ["t", "run", "--out", str(self.d / "ref"), "--prefix", "/site/env",
+                      "--kernel", "demo"]}))
+        (self.d / "ref" / "report.json").write_text('{"seed": 1}')
+
+    def tearDown(self):
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def sch(self, *args):
+        import subprocess
+        import sys
+        return subprocess.run(
+            [sys.executable, "-m", "sch", "dev", "job", "--root", str(self.d), "--ref",
+             str(self.d / "ref"), "--rundir", str(self.d / "new"), "--tool", str(self.d / "tool"),
+             "--queue", "q", "--select", "select=1:ncpus=1", "--predict", "identical",
+             "--out", str(self.d / "job.pbs"), "--point", "kernel", "--plugin", "demo", *args],
+            capture_output=True, text=True, cwd=str(Path(__file__).resolve().parents[1]))
+
+    def test_the_job_runs_the_fixture_tiers_first_with_the_sites_prefix_and_refuses_on_failure(self):
+        p = self.sch()
+        self.assertEqual(p.returncode, 0, p.stderr + p.stdout)
+        body = (self.d / "job.pbs").read_text()
+        gate, _, rest = body.partition("# ---------------------------------------------------"
+                                       "---------------------------- the tool runs")
+        self.assertIn("sch dev check", gate)
+        self.assertIn("--only fixture_a --only fixture_b", gate)
+        self.assertIn("SCH_DEV_PREFIX=/site/env", gate)
+        self.assertIn("--point kernel --name demo", gate)
+        self.assertIn('exit 4', gate)
+        self.assertIn("did not hold on the two-shape fixture", gate)
+        self.assertNotIn("sch dev check", rest.split("the maker's status")[0])
+
+    def test_without_the_declaration_no_gate_is_written(self):
+        (self.d / "DEVPOINTS.yaml").write_text(AJobIsNotEmittedOverABuildThatOwes.DECL)
+        p = self.sch()
+        self.assertEqual(p.returncode, 0, p.stderr + p.stdout)
+        self.assertNotIn("sch dev check", (self.d / "job.pbs").read_text())
+
+    def test_a_reference_that_names_no_prefix_cannot_carry_the_gate_and_says_so(self):
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok", "argv": ["t", "run", "--out", str(self.d / "ref")]}))
+        p = self.sch()
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("--prefix", p.stderr + p.stdout)
+        self.assertFalse((self.d / "job.pbs").exists())
+
+
 class TheSignaturesAreRecordedOnce(unittest.TestCase):
     """`sch dev convert inventory --record FILE` writes the upstream's functions and signatures
     where the tool is installed, as maker output the plugin's validator reads (harness

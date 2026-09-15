@@ -165,7 +165,11 @@ class ACrossedDesign(unittest.TestCase):
         """THE WHOLE CONSTRAINT. Every recorded baseline in five repositories rests on this
         string. A second factor that moved it would have bought one plugin's tier with everyone
         else's evidence."""
-        self.assertEqual(F.digest(F.build()), "d423a5817fdcb29e")
+        # ae50a42592c02c25 since 2026-09-15 (harness ADR-0026, the open items): the marker
+        # blocks carry ligand-receptor symbols; the counts are what they were, and no baseline
+        # had been recorded on the old names. The other pin, and the counts' own digest, are in
+        # tests/test_the_fixture_builds_at_the_sizes_it_advertises.py.
+        self.assertEqual(F.digest(F.build()), "ae50a42592c02c25")
 
     def test_a_crossed_cohort_is_a_different_cohort_and_says_so(self):
         self.assertNotEqual(F.digest(F.build(crossed=True)), F.digest(F.build()))
@@ -707,6 +711,40 @@ class RefusalIsNotFailure(unittest.TestCase):
         r = self._tier({"command": ["python3", "-c", "raise SystemExit(2)"], "accepts_refusal": True})
         self.assertFalse(r["ok"])
         self.assertTrue(any("without refusal_says" in e for e in r["evidence"]))
+
+    def test_what_follows_a_declared_refusal_is_not_run(self):
+        """A refusal is a result, and the commands after it read that result (harness ADR-0026,
+        the open items): the fixture's `run` refuses "not ready" on a workstation and the
+        `capacity --promised` declared after it, asked about a run that never happened, failed
+        the tier for a fact the refusal had already stated."""
+        r = self._tier({"command": [["python3", "-c", "import sys; print('DESIGN IS CONFOUNDED'); sys.exit(2)"],
+                                    ["python3", "-c", "raise SystemExit(3)"]],
+                        "accepts_refusal": True, "refusal_says": "DESIGN IS CONFOUNDED"})
+        self.assertTrue(r["ok"], r["evidence"])
+        self.assertTrue(any("not run" in e for e in r["evidence"]), r["evidence"])
+        self.assertFalse(any("exit 3" in e for e in r["evidence"]), r["evidence"])
+
+    def test_the_prefix_is_the_sites_when_the_site_names_one(self):
+        """WHERE THE ENVIRONMENTS LIVE is a site's fact, not a declaration's (harness ADR-0026,
+        the open items): a fixture command that runs a plugin needs the prefix its environment
+        was built under, and the only prefix a declaration could carry is a path - which the
+        leak tier is right to refuse. `{prefix}` fills from SCH_DEV_PREFIX where the site sets
+        it - the emitted job does - and from a fresh directory under the tier's output
+        otherwise, where a tool correctly refuses "not ready in this installation"."""
+        import os
+        spec = {"command": ["python3", "-c", "import sys; print('PREFIX=' + sys.argv[1])",
+                            "{prefix}"]}
+        os.environ.pop("SCH_DEV_PREFIX", None)
+        r = self._tier(spec)
+        self.assertTrue(r["ok"], r["evidence"])
+        self.assertTrue(any("PREFIX=" in e and str(self.d / "fx") in e and e.rstrip().endswith("prefix")
+                            for e in r["evidence"]), r["evidence"])
+        os.environ["SCH_DEV_PREFIX"] = "/site/env"
+        try:
+            r = self._tier(spec)
+        finally:
+            os.environ.pop("SCH_DEV_PREFIX", None)
+        self.assertTrue(any(e.rstrip().endswith("/site/env") for e in r["evidence"]), r["evidence"])
 
 
 class BaselineRecordsOnlyWhatTwoRunsAgreedOn(unittest.TestCase):

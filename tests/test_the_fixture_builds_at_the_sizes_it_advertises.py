@@ -32,9 +32,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sch.dev import fixture as F                                           # noqa: E402
 
-#: The digest of the default cohort, recorded before the marker block was clipped. A change here
-#: is a change to every baseline in this family and must be a deliberate one.
-DEFAULT_DIGEST = "d423a5817fdcb29e"
+#: The digest of the default cohort. A change here is a change to every baseline in this family
+#: and must be a deliberate one. d423a5817fdcb29e was recorded before the marker block was
+#: clipped; ae50a42592c02c25 on 2026-09-15 (harness ADR-0026, the open items), when the marker
+#: blocks were given ligand-receptor symbols in place of GENExxxx - the names moved, the
+#: numbers did not (the test below holds the counts' own digest), and no baseline in the
+#: family had been recorded on the old names.
+DEFAULT_DIGEST = "ae50a42592c02c25"
 
 
 class TheFixtureBuildsAtTheSizesItAdvertises(unittest.TestCase):
@@ -80,6 +84,37 @@ class TheFixtureBuildsAtTheSizesItAdvertises(unittest.TestCase):
         self.assertGreaterEqual(marked, 3,
                                 "the marker blocks no longer stand out, so the fixture's cell "
                                 "types are not distinguishable by expression")
+
+    def test_a_ligand_receptor_method_finds_something_and_the_numbers_have_not_moved(self):
+        # NEVER RUN ON THIS COHORT (harness ADR-0026, the open items): cellchat's fixture tiers
+        # planned and refused on every ladder, and had the plugin run, the neutral gene names
+        # would have given its ligand-receptor database nothing to match - so a literal fitted
+        # to the real cohort had no gate at all. The marker blocks now carry real pairs, the
+        # ligand in one type's block and every receptor subunit in another's, and the COUNTS are
+        # what they were: a rename, not a new cohort.
+        import hashlib
+        c = F.build()
+        self.assertEqual("8f6ed77d20070377", hashlib.sha256(c["X"].tobytes()).hexdigest()[:16],
+                         "the numbers moved; only names were meant to")
+        genes = list(c["genes"])
+        block = {g: i // 20 for i, g in enumerate(genes) if i < len(F.TYPES) * 20}
+        self.assertGreaterEqual(len(F.LR_PAIRS), 20)
+        for lig, recs in F.LR_PAIRS:
+            with self.subTest(pair=(lig, recs)):
+                self.assertIn(lig, block, f"{lig} is not in a marker block")
+                for r in recs:
+                    self.assertIn(r, block, f"{r} is not in a marker block")
+                self.assertEqual(1, len({block[r] for r in recs}),
+                                 "a receptor complex's subunits sit in one block")
+                self.assertNotEqual(block[lig], block[recs[0]],
+                                    "the ligand and its receptor are in the same block: autocrine only")
+        self.assertEqual(len(genes), len(set(genes)), "a symbol is used twice")
+        self.assertEqual(F.REAL_GENES, genes[:len(F.REAL_GENES)])
+        self.assertEqual("condition", genes[len(F.REAL_GENES)])
+        # at a size below the blocks, the rename clips like the markers do
+        small = F.build(n_cells=120, n_genes=60)
+        self.assertEqual(60, len(small["genes"]))
+        self.assertEqual(len(small["genes"]), len(set(small["genes"])))
 
     def test_build_needs_no_anndata(self):
         """THE REASON THIS FILE EXISTS. `write` needs a library to put the object in a file;

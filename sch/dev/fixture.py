@@ -105,6 +105,45 @@ REAL_GENES = ["ACTB", "GAPDH", "PTPRC", "EPCAM", "COL1A1", "PECAM1", "MKI67", "R
               "MT-CO1", "MT-CO2", "MT-ND1", "MT-ND4", "MT-ATP6"]
 TYPES = ["Type_alpha", "Type_beta", "Type_gamma", "Type delta / epsilon", "Type_zeta", "Type_eta"]
 
+# LIGAND-RECEPTOR PAIRS, so a method that reads communication between populations finds
+# something (harness ADR-0026, the open items). cellchat had never run on this cohort: its
+# fixture tiers planned and refused on every ladder, and had the plugin run, the neutral gene
+# names would have given its ligand-receptor database nothing to match - so a literal fitted to
+# the real cohort had no gate. Human symbols, as REAL_GENES are. Each type's marker block from
+# the second onward carries these names in place of GENExxxx - a RENAME, the counts untouched -
+# with a pair's ligand in one type's block and every subunit of its receptor in another's, so
+# the signal is directional. Nothing here is biology: which type "sends" TGFB1 was decided by
+# the block index, and no result on it is evidence about anything.
+LR_BLOCKS = {
+    1: ["CXCL12", "MIF", "VEGFA", "PDGFB", "TGFB1", "CSF1", "GAS6", "IGF1", "HGF", "JAG1",
+        "CCL2", "IL6", "TNF", "EGF", "BMP2", "FGF2", "SPP1", "ANGPT1", "KITLG", "PSAP"],
+    2: ["CXCR4", "CD74", "CD44", "KDR", "PDGFRB", "TGFBR1", "TGFBR2", "CSF1R", "AXL", "IGF1R",
+        "MET", "NOTCH1", "CCR2", "IL6R", "IL6ST", "TNFRSF1A", "EGFR", "BMPR1A", "BMPR2", "FGFR1"],
+    3: ["ITGAV", "ITGB1", "TEK", "KIT", "GPR37", "SORT1", "HAVCR2", "TNFRSF1B", "FLT1", "NCL",
+        "SDC2", "SDC4", "ITGA5", "INSR", "EPHB2", "CD28", "SELPLG", "TIGIT", "SIRPA", "ITGA4"],
+    4: ["GRN", "LGALS9", "MDK", "PTN", "FN1", "APP", "NAMPT", "EFNB1", "DLL1", "CD80",
+        "CD86", "ICAM1", "VCAM1", "SELE", "NECTIN2", "CD47", "THBS1", "NRG1", "WNT5A", "CD99"],
+    5: ["ITGAL", "ITGB2", "ERBB3", "FZD1", "LRP6", "CD36", "CDH5", "CDH1", "JAM2", "JAM3",
+        "ESAM", "LAMB1", "LAMC1", "COL4A1", "SEMA3A", "NRP1", "PLXNA1", "CD274", "PDCD1", "CTLA4"],
+}
+#: (ligand, receptor subunits): the pairs the blocks above were laid out for, ligand and
+#: receptor in different blocks. The test holds the layout to this list.
+LR_PAIRS = [
+    ("CXCL12", ("CXCR4",)), ("MIF", ("CD74", "CXCR4")), ("MIF", ("CD74", "CD44")),
+    ("VEGFA", ("KDR",)), ("VEGFA", ("FLT1",)), ("PDGFB", ("PDGFRB",)),
+    ("TGFB1", ("TGFBR1", "TGFBR2")), ("CSF1", ("CSF1R",)), ("GAS6", ("AXL",)),
+    ("IGF1", ("IGF1R",)), ("HGF", ("MET",)), ("JAG1", ("NOTCH1",)), ("CCL2", ("CCR2",)),
+    ("IL6", ("IL6R", "IL6ST")), ("TNF", ("TNFRSF1A",)), ("TNF", ("TNFRSF1B",)),
+    ("EGF", ("EGFR",)), ("BMP2", ("BMPR1A", "BMPR2")), ("FGF2", ("FGFR1",)),
+    ("SPP1", ("CD44",)), ("SPP1", ("ITGAV", "ITGB1")), ("ANGPT1", ("TEK",)),
+    ("KITLG", ("KIT",)), ("PSAP", ("GPR37",)), ("GRN", ("SORT1",)), ("LGALS9", ("CD44",)),
+    ("LGALS9", ("HAVCR2",)), ("MDK", ("NCL",)), ("PTN", ("NCL",)), ("FN1", ("ITGA5", "ITGB1")),
+    ("APP", ("CD74",)), ("NAMPT", ("INSR",)), ("EFNB1", ("EPHB2",)), ("DLL1", ("NOTCH1",)),
+    ("CD80", ("CD28",)), ("CD86", ("CD28",)), ("ICAM1", ("ITGAL", "ITGB2")),
+    ("VCAM1", ("ITGA4", "ITGB1")), ("SELE", ("SELPLG",)), ("NECTIN2", ("TIGIT",)),
+    ("CD47", ("SIRPA",)), ("THBS1", ("CD36",)), ("NRG1", ("ERBB3",)), ("WNT5A", ("FZD1", "LRP6")),
+]
+
 
 def _rng(seed):
     import numpy as np
@@ -206,6 +245,14 @@ def build(seed: int = 20260906, n_cells: int = 2000, n_genes: int = 520,
 
     genes = REAL_GENES + [f"GENE{i:04d}" for i in range(n_genes - len(REAL_GENES))]
     genes[len(REAL_GENES)] = "condition"          # gene_named_like_obs
+    # THE PAIRS, IN THE BLOCKS THE MARKERS WERE MULTIPLIED IN: a name for a column whose counts
+    # already carry the type's signal. Clipped as the blocks are, and kept clear of the two
+    # hazard columns at the end.
+    for k, syms in LR_BLOCKS.items():
+        for i, sym in enumerate(syms):
+            pos = k * 20 + i
+            if pos < n_genes - 2:
+                genes[pos] = sym
     # ORDER MATTERS AND THE TWO HAZARDS COLLIDE. An all-zero cell makes every gene non-constant,
     # so `constant_gene` is constant over the cells that have any counts at all - which is the
     # realistic form of the trap anyway: the variance is zero only after QC drops the empty cell,

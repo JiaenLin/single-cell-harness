@@ -1369,7 +1369,10 @@ def cmd_dev(a):
                            drop=drop, keep=list(getattr(a, "keep", None) or []),
                            note=owing_note,
                            maker_status=((a.plugin, a.point) if getattr(a, "plugin", None)
-                                         else None))
+                                         else None),
+                           # THE PLUGIN ON THE FIXTURE BEFORE THE COHORT, where the tool
+                           # declares it (harness ADR-0026, the open items).
+                           fixture_first=bool(doc is not None and P.run_fixture_first(doc)))
         except (ValueError, OSError) as e:
             print(e, file=sys.stderr)
             return FAILED

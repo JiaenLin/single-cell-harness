@@ -341,16 +341,31 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=
     # the refusal itself contains, so that a crash - which says nothing in particular - still
     # fails. Accepting every non-zero exit would turn this tier off.
     says = str(spec.get("refusal_says") or "")
-    for raw in _commands(spec):
+    # WHERE THE ENVIRONMENTS LIVE is the site's fact, not the declaration's (harness ADR-0026,
+    # the open items): a command that RUNS a plugin on the fixture needs the prefix its
+    # environment was built under, and a declaration may not carry a path. `{prefix}` is
+    # SCH_DEV_PREFIX where the site sets it - the emitted job does - and a fresh directory
+    # under the tier's output otherwise, where a tool correctly refuses "not ready".
+    prefix = os.environ.get("SCH_DEV_PREFIX") or str(out / "prefix")
+    cmds = _commands(spec)
+    for ci, raw in enumerate(cmds):
         cmd = _fill(raw, python=sys.executable, observations=obs, design=dsn, out=out,
-                    name=name, shape=shape, root=doc["_root"], jobs=_jobs(), **_roles(shape))
+                    name=name, shape=shape, root=doc["_root"], jobs=_jobs(), prefix=prefix,
+                    **_roles(shape))
         r = _run(cmd, doc["_root"], env=env, timeout=int(spec.get("timeout") or 1800))
         secs += r["seconds"]
         ev.append(f"exit {r['code']} in {r['seconds']:.1f}s: {' '.join(r['cmd'])}")
         if r["code"] != 0:
             if spec.get("accepts_refusal") and says and says in r["out"]:
                 ev.append(f"refused, as this point declares it should: {says!r} is in the output")
-                continue
+                # A REFUSAL IS A RESULT, AND WHAT FOLLOWS READS THAT RESULT (harness ADR-0026,
+                # the open items): the command after a refused `run` asks about a run that
+                # never happened, and its failure would restate the refusal as a crash.
+                rest = len(cmds) - ci - 1
+                if rest:
+                    ev.append(f"{rest} command(s) declared after it not run: they read what it "
+                              f"declined to produce")
+                break
             if spec.get("accepts_refusal") and not says:
                 ev.append("accepts_refusal is declared without refusal_says, so a crash would "
                           "pass as a refusal; refusing to accept it")
