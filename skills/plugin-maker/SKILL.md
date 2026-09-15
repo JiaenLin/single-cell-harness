@@ -204,13 +204,30 @@ One row per figure family the plugin declares — who draws it, over which axis,
 function with its parameters printed beside it, the items it is drawn once per, its ceiling,
 where a result places it, its kind, whether it carries a legend — and under each row what it
 still lacks. **This table is the plugin's figures.** To change what a figure shows, how many of
-a family there are, what a call is passed or how a panel is described, edit the entry; then:
+a family there are, what a call is passed or how a panel is described, **edit the entry with the
+maker's verb** (harness ADR-0026) — one command per change, the prose around the change untouched:
 
 ```
-scprofile plan --h5ad <object> --kernel <plugin>       # the count and placement, before a job
-scprofile scaffold <plugin> --force                    # regenerates the companion from the plan
-sch dev convert status --root . --point kernel --name <plugin>
+sch dev edit --root . --point kernel --name <plugin> --python <interp> --set report.figures[native_ring].at_most=2
+sch dev edit ... --set report.figures[native_ring].axis=group          # a value; PATH=VALUE, VALUE a Python literal
+sch dev edit ... --legend <id> "One sentence per thing the panel shows."
+sch dev edit ... --rename <id> <new-id>                         # the draw sites, profile list and routes follow
+sch dev edit ... --remove <id> [--skip "{'skip': 'not_applicable', 'evidence': '...'}"]
+sch dev edit ... --add "{'id': ..., 'kind': ..., 'drawn_by': 'tool', 'fn': ..., 'axis': ..., 'position': ..., 'at_most': 1, 'expr': ..., 'legend': ...}"
+sch dev edit ... --duplicate <id> <new-id> | --swap <id> <id> | --delete PATH | --list-add PATH=VALUE | --list-remove PATH=VALUE | --rename-key config.<k> <new>
+sch dev edit ... --dry                                          # the diff, nothing written
+sch dev edit ... --run <a completed run>                        # what the edit unbinds, and whether the cache will hit
 ```
+
+The verb writes by source span, so every comment in the file stays; it bumps `version` once
+per call (or takes `--as-version`); it prints the plan's count per axis against the layout and
+the plan's delta; and it runs the followers the tool declares under `plan.after_edit` — the
+validator first, then the companion regenerated, the plan baseline re-recorded, the vocabulary
+guard — stopping at the first that refuses and printing why. A site in hand-written code it
+cannot follow (a string in a function body) is printed as NOT FOLLOWED, never guessed at: follow
+it yourself, or better, ask why the plugin reads its plan by a literal name. With `--run` it
+also says which stated disclosures a legend or expr change unbinds and whether the saved
+objects will be reused (the cache forecast) — before any rerun.
 
 The status confirms the companion is *generated*, not *drifted*. **Never edit a draw site**: the
 sites are generated from the entries, and a site edited by hand is exactly the drift the

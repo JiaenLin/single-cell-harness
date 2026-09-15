@@ -69,7 +69,9 @@ def _commands():
                 # `command<two or more spaces>description`; stripping `[--optional]` before the
                 # split collapses the separator and swallows the description into the command.
                 line = re.split(r"\s{2,}", raw.strip(), 1)[0].strip()
-                line = re.sub(r"\[[^\]]*\]", " ", line)        # [--optional] is notation
+                # [--optional] and [FILE] are notation; `figures[native_ring]` is a path into a
+                # declaration (`sch dev edit`, harness ADR-0026) and stays a token
+                line = re.sub(r"\[(?:-|[A-Z])[^\]]*\]", " ", line)
                 if "..." in line or "…" in line or "|" in line:
                     continue
                 line = re.sub(r"<[^>]+>", lambda m: STAND_IN.get(m.group(0)[1:-1].upper(), "/tmp/x"), line)
