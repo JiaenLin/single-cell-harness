@@ -78,8 +78,12 @@ echo; echo "=== the replay: the sealed run's light half, writable"
 rsync -rlt --no-p --chmod=Du+rwx,Fu+rw \
       --exclude 'objects/' --exclude '*.h5ad' --exclude '*.rds' --exclude '*.h5' \
       --exclude 'cache/' --exclude '_cache/' --exclude 'logs/' \
+      --exclude 'fixture/' \
       --exclude 'SEALED.txt' --exclude 'FAILED.txt' --exclude 'RUNNING.txt' \
       "$REF"/ "$RUNDIR/replay"/ > "$RUNDIR/logs/copy.txt" 2>&1
+# `fixture/` is the fixture gate's scratch under the run (run.fixture_first, harness ADR-0026):
+# the job's, not the run's - the tool's readers walk the run's own trees and leave it out, and
+# so does the replay a cold writer works on.
 chmod -R u+rwX "$RUNDIR/replay"
 echo "  replay: $(du -sh "$RUNDIR/replay" | cut -f1)"
 

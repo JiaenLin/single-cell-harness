@@ -317,6 +317,30 @@ never existed found, on its first two runs, four things about the tool and one a
 own record, each fixed test-first before the third. What the reader reviews is the third run's
 paper page, published as it was written.
 
+**The standard, scanned after (2026-09-16).** The user's standard is that a cold agent can
+carry a run through scProfile to the end of the agentic writing with no human in the loop.
+Scanning the cold agent's path on the run for review, not running it, found one break, the
+round's own: the fixture gate's scratch sits inside the run directory (the job writes only
+there, by its own rule) and three readers swept the whole directory - `review.figures`
+(station 7, the shards, the scan set, `--adopt`) would have handed a cold looker the two
+synthetic cohorts' plates beside the real ones, `capacity.measure` would have read a
+hundred-odd figures gained against the reference, and the run's own product record listed the
+scratch. The user chose: the scratch stays inside the run (rule-one as written), the readers
+learn the run's own trees from one declaration (`manifest.OWN_TREES`: kernels, report, tables,
+objects, and the files at the top - a denylist of names would miss the next foreign
+directory), the proof is tests plus the first station read on 712314, and 712314 stays the run
+for review. Done at scProfile 2fd5f0d and d933b13, harness (this commit): every reader that
+walks a run walks its own trees; the writing seal's replay leaves the scratch out. Two more
+found on the way and fixed: `run`'s door refusal had broken the status contract (no FAILED.txt,
+no "no plugin ran") and the commit gate had said green because its interpreter has no array
+stack and the contract's CLI half printed SKIP - the gate runs under the repository's `.venv`
+now, says which interpreter, and counts every SKIP in its summary; and the portability scan
+skips what `.gitignore` names. The first station on a copy of 712314 with its scratch inside:
+`review --shards 3` lists 80 figures for the lookers (the paper's own and one instance of every
+other kind), none synthetic; `capacity --against` the control reads no regression (one gain,
+the 72 side tables now registered); the maker's status reads what the cluster read, 5 of 9
+with `looked_at` next. A cold agent's path is clear to the eye; the eye is ADR-0027's.
+
 ## Cost, estimated before
 
 Six cluster runs of about ten minutes each after step 1 (the control may re-infer if S1 is

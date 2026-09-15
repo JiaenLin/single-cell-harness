@@ -244,6 +244,13 @@ class ThePluginRunsOnTheFixtureBeforeTheCohort(unittest.TestCase):
         self.assertIn("could not run", gate)
         self.assertIn("incomplete_checks=", body.split("the checkout has not moved")[0])
 
+    def test_the_writing_seal_leaves_the_gates_scratch_out_of_the_replay(self):
+        """The writing seal copies the sealed run's light half into the replay a cold writer
+        works on; the fixture gate's scratch is the job's, not the run's, and the tool's readers
+        know it - the replay should not carry it either."""
+        text = (Path(__file__).resolve().parents[1] / "jobs" / "writing_seal.pbs").read_text()
+        self.assertIn("--exclude 'fixture/'", text)
+
     def test_without_the_declaration_no_gate_is_written(self):
         (self.d / "DEVPOINTS.yaml").write_text(AJobIsNotEmittedOverABuildThatOwes.DECL)
         p = self.sch()
