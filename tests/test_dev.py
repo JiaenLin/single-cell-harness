@@ -712,6 +712,23 @@ class RefusalIsNotFailure(unittest.TestCase):
         self.assertFalse(r["ok"])
         self.assertTrue(any("without refusal_says" in e for e in r["evidence"]))
 
+    def test_an_accepted_refusal_records_the_refusals_own_words(self):
+        """FOUND ON THE CLUSTER (harness ADR-0026, the open items): shape b of the fixture
+        passed in two seconds because `plan` refused with the declared phrase for a reason the
+        tier did not record - the design table could not be keyed - and the log held only the
+        exit line. The tier keeps the refusal's own lines: the one carrying the phrase and the
+        ones before it that say what was declined."""
+        # the printed words are built at run time, so the command line the tier echoes cannot
+        # satisfy the assertions below by itself
+        r = self._tier({"command": ["python3", "-c",
+                                    "import sys; print('design table ' + 'NOT AVAIL' + 'ABLE - no sample column'); "
+                                    "print('PREPAR' + 'ATION: 1 plugin(s) DESIGN IS CONFOUNDED here'); sys.exit(2)"],
+                        "accepts_refusal": True, "refusal_says": "DESIGN IS CONFOUNDED"})
+        self.assertTrue(r["ok"], r["evidence"])
+        kept = [e for e in r["evidence"] if e.startswith("  | ")]
+        self.assertTrue(any("NOT AVAILABLE - no sample column" in e for e in kept), r["evidence"])
+        self.assertTrue(any("PREPARATION: 1 plugin(s)" in e for e in kept), r["evidence"])
+
     def test_what_follows_a_declared_refusal_is_not_run(self):
         """A refusal is a result, and the commands after it read that result (harness ADR-0026,
         the open items): the fixture's `run` refuses "not ready" on a workstation and the

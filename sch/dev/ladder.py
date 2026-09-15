@@ -358,6 +358,13 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=
         if r["code"] != 0:
             if spec.get("accepts_refusal") and says and says in r["out"]:
                 ev.append(f"refused, as this point declares it should: {says!r} is in the output")
+                # THE REFUSAL'S OWN WORDS (harness ADR-0026, the open items): a shape passed in
+                # two seconds on the cluster because the phrase was said for a reason nobody
+                # recorded - the design could not be keyed - and the log held the exit line
+                # alone. The line carrying the phrase and the ones before it, kept.
+                lines = [ln for ln in r["out"].splitlines() if ln.strip()]
+                at = next((i for i, ln in enumerate(lines) if says in ln), len(lines) - 1)
+                ev += ["  | " + ln.strip()[:200] for ln in lines[max(0, at - 6):at + 1]]
                 # A REFUSAL IS A RESULT, AND WHAT FOLLOWS READS THAT RESULT (harness ADR-0026,
                 # the open items): the command after a refused `run` asks about a run that
                 # never happened, and its failure would restate the refusal as a crash.
