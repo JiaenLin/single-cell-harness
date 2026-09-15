@@ -247,12 +247,17 @@ def op_list_add(text: str, path: str, value) -> str:
     # would carry it and the file would not parse (found on the plugin's own `produces`).
     own_line = last.lineno != vnode.lineno and _own_line(src, last)
     closes_on_last = vnode.end_lineno == last.end_lineno
-    _, b = src.span(last)
+    a, b = src.span(last)
+    new = _src_of(value, like=src.b[a:a + 1])
     if own_line and not closes_on_last:
         _, end = src.line_bounds(last.end_lineno)
-        ins = f"{_indent_of(src, last.lineno)}{_src_of(value)},\n"
+        ins = f"{_indent_of(src, last.lineno)}{new},\n"
         return src.replace(end, end, ins)
-    return src.replace(b, b, f", {_src_of(value)}")
+    if own_line:
+        # one element per line, the bracket on the last: the new element takes a line of its
+        # own and the bracket moves down with it
+        return src.replace(b, b, f",\n{_indent_of(src, last.lineno)}{new}")
+    return src.replace(b, b, f", {new}")
 
 
 def op_list_remove(text: str, path: str, value) -> str:
