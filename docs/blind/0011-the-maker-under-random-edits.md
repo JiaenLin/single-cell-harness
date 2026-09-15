@@ -41,3 +41,33 @@ against a run; the maker's documents as its only instruction (`skills/plugin-mak
 Its own words on what was slow: quoting the `--add` literal; telling an earned refusal from a
 pre-existing one by exit code alone; not seeing the site the verb wrote into hand-authored R.
 All three are closed above.
+
+## The runs (step 5), in one table
+
+| run | node time | reused | the maker's word held? |
+|---|---|---|---|
+| control | 12 min 9 s (was 31) | 18 of 18 | S1 held; `measure` owes under reuse (2.9 GB fitted, 2.4 declared) |
+| A | 12 min 1 s | 18 of 18 | the count heatmaps' size yes; an entry's `axis` moved nothing at run time (K-o); a ceiling of 2 on a single-file entry counted six plates no run holds (K-m) |
+| B | 11 min 21 s | 18 of 18 | the rename, the title and the new `declared` stage exact; the renamed side-effect entry promised a file the tool never writes under that name (K-p) |
+| C | 12 min 28 s | 18 of 18 | 128 plates to the plate; the added entry never drew - its site inside another entry's else-branch (K-r) and its call naming an unbound `pop` (K-n) |
+| F, first cut | 11 min 35 s to failure | 0 of 18 | every unit re-inferred as forecast, then `NameError: Path` - the campaign's own patch, and nothing local had read the plugin's Python (K-s) |
+| G, first cut | 14 s | - | `scprofile run` refused the unknown writing template at its door - a control the prediction had not credited |
+| F, second cut | 11 min 52 s | 18 of 18 | the 18 extra files accounted for by nothing, the strength heatmaps redrawn from count and only the eye to see it; the forecast said MISS and the first cut had already written the store |
+| G, second cut | 19 min 46 s | 0 of 18 | cost and measure owe after the run as predicted; the store had been overwritten by F's first cut and this run wrote it back; the `when` literal bit nothing |
+
+## Defects of the mechanism, as they came
+
+Twenty-eight fixed test-first the same day, listed in the ADR's step 3, 4, 5 and 6 rows: the
+cache flag inherited from the audit reference, the serial compare phase, the double report, the
+serial suite default; three of the verb's own; the eleven the kill pass turned red (K-a to K-l);
+K-m to K-p and K-s from the runs, K-q and K-r from the cold maintainer, and the emitter running
+the reference's tree for a tree of another name. Two recorded open: a fitted literal has no
+static gate (the fixture run is it), and the maker cannot say which script holds a draw site.
+
+## Results
+
+S1 held; V1 held; K1 held on the count and failed on the letter; R1 failed on the letter (three
+of six runs held every prediction, each miss a state the maker had misread); C1 held on the
+measure and failed on the letter (four refusals were the suite's own); B1 failed (28 against
+15). The plugin is back to what it was plus three declared things the maker reads, every one of
+them the verb's write. The eight held-out plugins are ADR-0027.
