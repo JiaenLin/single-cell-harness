@@ -185,6 +185,13 @@ def rebuild_argv(record: dict, new_out: str, python: str | None = None,
             if mod is None and Path(tooldir).name in script.parts:
                 rel = Path(*script.parts[script.parts.index(Path(tooldir).name) + 1:])
                 mod = ".".join(rel.with_suffix("").parts) or None
+        # A TREE UNDER ANOTHER NAME (harness ADR-0026): the reference ran `<its tree>/pkg/cli.py`
+        # and this job's tree is `<name>-A`; neither rule above reaches it, and the fallback ran
+        # the REFERENCE's script from the reference's tree - the wrong tree, with no import
+        # guard, failing on a relative import. The script's own package and stem name the
+        # module; the job's guard then verifies it imports from this tree.
+        if mod is None and script.parent.name.isidentifier() and script.stem.isidentifier():
+            mod = f"{script.parent.name}.{script.stem}"
         out = ([python, "-m", mod] if mod else [python, str(script)]) + out[1:]
     return out
 

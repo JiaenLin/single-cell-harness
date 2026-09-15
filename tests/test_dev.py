@@ -347,6 +347,18 @@ class Job(unittest.TestCase):
         self.assertIn("/env/bin/python -m pkg.cli run", text)
         self.assertNotIn(str(self.d / "tool" / "pkg" / "cli.py") + " run", text)
 
+    def test_a_script_under_a_tree_of_another_name_still_runs_as_its_module(self):
+        """The reference ran `<tree>/pkg/cli.py`; this job's tree is `<tree>-A`. The script's
+        own package and stem name the module, so the import guard - built only for `-m` - holds
+        the job to THIS tree (harness ADR-0026: five mutant runs ran the reference's tree)."""
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok",
+             "argv": ["/else/where/scProfile-cconly/pkg/cli.py", "run", "--out", "/old"]}))
+        text = J.emit(prediction="identical", python="/env/bin/python", **self.kw)
+        self.assertIn("/env/bin/python -m pkg.cli run", text)
+        self.assertNotIn("scProfile-cconly/pkg/cli.py run", text)
+        self.assertIn("IMPORTED=", text)
+
     def test_a_redraw_expects_no_figure_as_a_product(self):
         (self.d / "ref" / "figures").mkdir()
         (self.d / "ref" / "figures" / "a.png").write_bytes(b"x")

@@ -9,7 +9,7 @@
 # REPRODUCE 20260913T042903Z__scprofile-c260046__04_profile__audit AT 161afbe
 # ============================================================================================
 #
-# WRITTEN BY `sch dev job` ON 2026-09-15T10:17:40Z - do not hand-edit the derived sections below without
+# WRITTEN BY `sch dev job` ON 2026-09-15T10:22:35Z - do not hand-edit the derived sections below without
 # saying so here, because their whole value is that they were not typed from memory.
 #
 # THE REFERENCE RUN
@@ -46,7 +46,7 @@
 #
 # FLAGS CARRIED FROM THE REFERENCE, one per line:
 #   --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad
-#   --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101738Z__scprofile-161afbe__04_profile__rerun
+#   --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun
 #   --kernel cellchat
 #   --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env
 #   --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv
@@ -69,7 +69,7 @@
 
 set -euo pipefail
 
-RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101738Z__scprofile-161afbe__04_profile__rerun"
+RUNDIR="/data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun"
 TOOLDIR="/data/wangyb/home/jiaen.lin/tools/scProfile-cconly-F"
 EXPECT_COMMIT="161afbe"
 mkdir -p "$RUNDIR/logs"
@@ -147,6 +147,12 @@ export PYTHONNOUSERSITE=1
 # resolver demanded an environment that did not exist (PBS 711058). The tree goes first on
 # PYTHONPATH, and a module command is asked where its package imports from before it runs.
 export PYTHONPATH="$TOOLDIR${PYTHONPATH:+:$PYTHONPATH}"
+IMPORTED="$(/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -c 'import importlib, os, sys; m = importlib.import_module(sys.argv[1]); print(os.path.realpath(os.path.dirname(os.path.dirname(os.path.abspath(m.__file__)))))' scprofile)"
+TOOLREAL="$(cd "$TOOLDIR" && pwd -P)"
+case "$IMPORTED" in
+  "$TOOLREAL"|"$TOOLREAL"/*) echo "tool code: scprofile imports from $IMPORTED" ;;
+  *) echo "REFUSED: scprofile imports from $IMPORTED, not from the verified tree $TOOLDIR. The tree was checked and something else would have run." >&2; exit 3 ;;
+esac
 export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
 export OMP_NUM_THREADS="${NCPUS:-1}" MKL_NUM_THREADS="${NCPUS:-1}" OPENBLAS_NUM_THREADS="${NCPUS:-1}"
 mkdir -p "$RUNDIR/cache"
@@ -160,7 +166,7 @@ echo "node: $(hostname -s)  cores: ${NCPUS:-unset}  started: $(date -u)"
 # `set -e` is lifted for exactly one line, so the code can be read and reported before the trap
 # uses it - under `set -e` the script would leave before `rc` was ever assigned.
 set +e
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python /data/wangyb/home/jiaen.lin/tools/scProfile-cconly/scprofile/cli.py run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101738Z__scprofile-161afbe__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli run --h5ad /data/wangyb/home/jiaen.lin/projects/SAMBO/results/03_integrate/objects/cohort_integrated.h5ad --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun --kernel cellchat --prefix /data/wangyb/home/jiaen.lin/projects/SAMBO/env --design /data/wangyb/home/jiaen.lin/projects/SAMBO/stages/04_profile/design.csv --label-key cell_type_forced --sample-key sample --batch-key batch --counts-layer counts --lognorm-layer lognorm --embedding X_scanvi --layout X_umap_scanvi --organism mouse --assay nucleus --timeout 21600 --control age=young --control diet=chow
 rc=$?
 set -e
 echo "tool exit: $rc"
@@ -169,9 +175,9 @@ echo "tool exit: $rc"
 # Declared in DEVPOINTS.yaml under `run.after` (harness ADR-0019); each line is one command. Its
 # exit code is a VERDICT - `status` owing, `capacity --memory` refusing a declaration - which the
 # maker reads from this log; it is not a failure of the run, whose seal reads the products.
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101738Z__scprofile-161afbe__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101738Z__scprofile-161afbe__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
-/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T101738Z__scprofile-161afbe__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli status --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun && echo "after: exit 0 - '-m scprofile.cli status --out {run}'" || echo "after: exit $? - '-m scprofile.cli status --out {run}'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun --promised && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --promised'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --promised'"
+/data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m scprofile.cli capacity --out /data/wangyb/home/jiaen.lin/projects/SAMBO/runs/scprofile/04_profile/20260915T102233Z__scprofile-161afbe__04_profile__rerun --memory && echo "after: exit 0 - '-m scprofile.cli capacity --out {run} --memory'" || echo "after: exit $? - '-m scprofile.cli capacity --out {run} --memory'"
 # ------------------------------------------------------------- the maker's status, for the record
 HARNESS="${HARNESS:-$HOME/tools/single-cell-harness}"
 PYTHONPATH="$HARNESS" /data/wangyb/home/jiaen.lin/projects/SAMBO/env/scprofile-host/bin/python -m sch dev convert status --root /data/wangyb/home/jiaen.lin/tools/scProfile-cconly-F --point kernel --name cellchat --run "$RUNDIR" > "$RUNDIR/logs/maker_status.txt" 2>&1 || true
