@@ -175,6 +175,9 @@ def _own_line(src: _Src, node) -> bool:
 
 
 # ------------------------------------------------------------------------------- operations
+_SITES = []        # the draw sites an add or duplicate wrote, with their context, per edit() call
+
+
 def op_set(text: str, path: str, value) -> str:
     tree, plug = _parse(text)
     parent, key, knode, vnode = resolve(plug, path)
@@ -422,12 +425,33 @@ def op_add(text: str, entry: dict, keys: dict) -> str:
                 text = op_delete(text, f"{skips_path}.{fn}")
         except ValueError:
             pass
-    # the protocol's draw site, after the last one
-    m = None
-    for m in re.finditer(r"""^[ \t]*\.draw\((["'])[^"']+\1\)[ \t]*\n""", text, flags=re.M):
-        pass
-    if m:
+    # THE DRAW SITE, WITH ITS OWN KIND OF AXIS, AT THE TOP LEVEL (harness ADR-0026, K-r): a
+    # site appended after the textually last `.draw(` landed inside an unrelated if/else of
+    # another entry, and nothing said where. The new line goes after the last UNINDENTED site
+    # whose entry is drawn on the same kind of axis - the compare script's sites for a
+    # contrast or interaction entry, the per-unit script's for a unit, sample or group entry -
+    # and the lines around it are reported.
+    axis_key = keys.get("axis", "axis")
+    _t2, _plug3 = _parse(text)
+    _p3, _k3, _kn3, figs3 = resolve(_plug3, "report.figures")
+    axis_of = {}
+    for e3 in figs3.elts:
+        if isinstance(e3, ast.Dict):
+            _, idv = _get(e3, "id")
+            _, axv = _get(e3, axis_key)
+            if isinstance(idv, ast.Constant) and isinstance(axv, ast.Constant):
+                axis_of[str(idv.value)] = str(axv.value)
+    unit_axes = ("unit", "sample", "group")
+    mine = str(entry.get(axis_key) or "unit")
+    same_kind = (lambda ax: (ax in unit_axes) == (mine in unit_axes))
+    sites = list(re.finditer(r"""^\.draw\((["'])([^"']+)\1\)[ \t]*\n""", text, flags=re.M))
+    fitting = [m for m in sites if same_kind(axis_of.get(m.group(2), "unit"))] or sites
+    if fitting:
+        m = fitting[-1]
         text = text[:m.end()] + f'.draw("{fid}")\n' + text[m.end():]
+        at = text[:m.end()].count("\n") + 1
+        ctx_lines = text.splitlines()[max(0, at - 2):at + 2]
+        _SITES.append(f"line {at}: " + " | ".join(ctx_lines))
     if str(entry.get(keys.get("axis", "axis")) or "") in ("sample", "unit") \
             and str(entry.get("drawn_by") or "tool") == "tool":
         text = _profile_list_edit(text, keys.get("profile_list", ""),
@@ -446,9 +470,13 @@ def op_duplicate(text: str, fid: str, new_id: str, keys: dict) -> str:
     ia, ib = src.span(idv)
     block = block[:ia - a] + repr(new_id) + block[ib - a:]
     text = src.replace(b, b, block)
-    text = re.sub(r"""^([ \t]*)\.draw\((["'])%s\2\)([ \t]*\n)""" % re.escape(fid),
-                  lambda m: m.group(0) + f'{m.group(1)}.draw("{new_id}"){m.group(3)}', text,
-                  count=1, flags=re.M)
+    text, n_ = re.subn(r"""^([ \t]*)\.draw\((["'])%s\2\)([ \t]*\n)""" % re.escape(fid),
+                       lambda m: m.group(0) + f'{m.group(1)}.draw("{new_id}"){m.group(3)}', text,
+                       count=1, flags=re.M)
+    if n_:
+        at = text.index(f'.draw("{new_id}")')
+        ln = text[:at].count("\n") + 1
+        _SITES.append(f"line {ln}: " + " | ".join(text.splitlines()[max(0, ln - 2):ln + 1]))
     _, ax = _get(e, keys.get("axis", "axis"))
     if isinstance(ax, ast.Constant) and ax.value in ("sample", "unit") and _drawn_by_tool(e):
         text = _profile_list_edit(text, keys.get("profile_list", ""),
@@ -506,7 +534,8 @@ OPS = ("set", "delete", "list_add", "list_remove", "rename", "remove", "add", "d
 def apply_ops(text: str, ops: list, keys: dict) -> tuple:
     """(text, report) after every op, in order; each op re-reads the spans from the text the
     previous one left."""
-    rep = {"sites_not_followed": [], "sites_followed": 0, "ops": []}
+    rep = {"sites_not_followed": [], "sites_followed": 0, "ops": [], "sites_written": []}
+    del _SITES[:]
     for op in ops:
         name, args = op[0], list(op[1:])
         if name == "set":
@@ -534,6 +563,7 @@ def apply_ops(text: str, ops: list, keys: dict) -> tuple:
         else:
             raise ValueError(f"unknown edit {name!r}; the edits are " + ", ".join(OPS))
         rep["ops"].append(name)
+    rep["sites_written"] = list(_SITES)
     return text, rep
 
 

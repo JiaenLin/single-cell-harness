@@ -357,10 +357,19 @@ def _edit_ops(ops, skip=None):
         elif name == "legend":
             out.append(("set", f"report.figures[{args[0]}].legend", str(args[1])))
         elif name == "add":
+            # `@FILE` reads the literal from a file: a dict with an R call inside it is two
+            # levels of quoting on a command line, and the cold maintainer of ADR-0026 wrote
+            # it to a file first anyway.
+            lit = args[0]
+            if str(lit).startswith("@"):
+                try:
+                    lit = Path(str(lit)[1:]).read_text(encoding="utf-8")
+                except OSError as e:
+                    raise ValueError(f"--add @FILE: {e}")
             try:
-                entry = ast.literal_eval(args[0])
+                entry = ast.literal_eval(lit)
             except (ValueError, SyntaxError) as e:
-                raise ValueError(f"--add takes a dict literal: {e}")
+                raise ValueError(f"--add takes a dict literal (or @FILE holding one): {e}")
             if not isinstance(entry, dict):
                 raise ValueError("--add takes a dict literal")
             out.append(("add", entry))
@@ -605,18 +614,24 @@ def cmd_dev(a):
             print("  a site in hand-written code carries the old name; the maker rewrites the "
                   "declaration and the sites it knows, never code. An author follows these, or "
                   "the plugin stops reading its plan by literal names.")
-        # THE STATE AFTER, READ NOT ASSUMED: the plan's count per axis against the layout, when
-        # the tool declares one, and what the edit did to the plan.
+        for site in rep.get("sites_written") or []:
+            print(f"  SITE WRITTEN  {site[:200]}")
+        # THE STATE AFTER, READ NOT ASSUMED - printed after the followers below, so a value
+        # the validator refuses is not read as "ok" on the layout's line above the refusal
+        # (the cold maintainer of ADR-0026 read exactly that).
         after = L.read_spec(f)
-        if st_layout and st_layout.get(CV.LAYOUT_KEY):
-            rep_l = L.check(after, st_layout, keys)
-            print(L.format_report(a.name, rep_l, None, root=a.root, point=point, apply_hint=False))
-        n_before = len(((before.get("report") or {}).get("figures") or []))
-        n_after = len(((after.get("report") or {}).get("figures") or []))
-        plan_changed = ((before.get("report") or {}).get("figures")
-                        != (after.get("report") or {}).get("figures"))
-        print(f"  the plan: {n_before} -> {n_after} entr(ies)"
-              + (", changed" if plan_changed else ", unchanged"))
+
+        def _state_after():
+            if st_layout and st_layout.get(CV.LAYOUT_KEY):
+                rep_l = L.check(after, st_layout, keys)
+                print(L.format_report(a.name, rep_l, None, root=a.root, point=point,
+                                      apply_hint=False))
+            n_before = len(((before.get("report") or {}).get("figures") or []))
+            n_after = len(((after.get("report") or {}).get("figures") or []))
+            plan_changed = ((before.get("report") or {}).get("figures")
+                            != (after.get("report") or {}).get("figures"))
+            print(f"  the plan: {n_before} -> {n_after} entr(ies)"
+                  + (", changed" if plan_changed else ", unchanged"))
         # AGAINST A RUN, WHEN ONE IS NAMED (harness ADR-0026): the audited stage's worksheet,
         # read on the run with the declaration in THIS tree, says which stated disclosures the
         # edit unbound and which findings that reopens - before any rerun, not after the next
@@ -697,6 +712,8 @@ def cmd_dev(a):
                       "`git diff` shows it, `git checkout` takes it back")
                 bad += 1
                 break
+        if not bad:
+            _state_after()
         return FAILED if bad else OK
 
     if a.sub == "rules":

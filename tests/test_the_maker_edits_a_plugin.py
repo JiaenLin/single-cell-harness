@@ -220,6 +220,32 @@ class TheMakerEditsAPlugin(unittest.TestCase):
         self.assertNotIn("drawBubble", spec["report"]["skips"])
         self.assertIn('.draw("nativecmp_bubble")', text)
 
+    def test_add_puts_the_draw_site_with_its_axis_at_the_top_level_and_says_where(self):
+        """The cold maintainer of ADR-0026 found the new site appended after the textually
+        last `.draw(` - inside an unrelated if/else - with nothing printed about where it went.
+        A site goes after the last TOP-LEVEL site of an entry on the same kind of axis, and the
+        verb reports the lines around it."""
+        text = self.text().replace(
+            'R_PROTOCOL = """\n.draw("native_circle")\n.draw("native_matrix")\n.draw("nativecmp_diff")\n"""',
+            'R_PROTOCOL = """\n.draw("native_circle")\n.draw("native_matrix")\n"""\n\n'
+            'R_COMPARE = """\n.draw("nativecmp_diff")\nif (is.null(lr)) {\n  x <- 1\n} else {\n  .draw("nativecmp_diff")\n}\n"""')
+        self.f.write_text(text, encoding="utf-8")
+        rep = E.edit(self.f, [("add", {"id": "nativecmp_bubble", "kind": "other", "drawn_by": "tool",
+                                       "fn": "drawBubble", "axis": "contrast", "position": "contrast",
+                                       "at_most": 1, "legend": "bubbles"})], KEYS)
+        lines = self.text().splitlines()
+        i = lines.index('.draw("nativecmp_bubble")')
+        self.assertEqual(lines[i - 1], '.draw("nativecmp_diff")')      # after the top-level one
+        self.assertEqual(lines[i + 1], "if (is.null(lr)) {")            # not inside the block
+        self.assertTrue(rep.get("sites_written"), rep)
+        self.assertIn('.draw("nativecmp_bubble")', "\n".join(rep["sites_written"]))
+        rep = E.edit(self.f, [("add", {"id": "native_ring2", "kind": "circle", "drawn_by": "tool",
+                                       "fn": "drawRing", "axis": "unit", "position": "contrast",
+                                       "legend": "rings"})], KEYS)
+        lines = self.text().splitlines()
+        j = lines.index('.draw("native_ring2")')
+        self.assertEqual(lines[j - 1], '.draw("native_matrix")')        # with the unit sites
+
     def test_duplicate_and_swap(self):
         E.edit(self.f, [("duplicate", "native_matrix", "native_matrix_twin")], KEYS)
         spec = spec_of(self.text())
