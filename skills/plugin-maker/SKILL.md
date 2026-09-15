@@ -269,6 +269,14 @@ code that asks for a capability passes both and code that knows a column name pa
 
 Every tier prints what it does **not** prove. A green ladder does not say the numbers are right.
 
+The fixture tiers RUN the plugin where its environment lives (ADR-0026, the open items): on a
+workstation without it, `run` refuses at its door and the tier accepts the refusal, so the
+green you see here is the plan's; the emitted job runs both shapes on the cluster before the
+cohort (`run.fixture_first` in the tool's DEVPOINTS) and refuses the cohort if either fails —
+a plate an entry promised and did not draw on the fixture is where a `when` or a count fitted
+to the cohort shows, and nothing static can see it. The seal tells "could not run" from
+"failed" (`incomplete_checks=`); neither runs the cohort.
+
 ## What good looks like
 
 cellchat is the only finished conversion in the family and the standard the rest are measured
