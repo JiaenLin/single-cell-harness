@@ -500,6 +500,20 @@ class Job(unittest.TestCase):
         self.assertIn("REFUSED", r2.stderr + r2.stdout)
         self.assertNotIn("the decoy ran", r2.stderr + r2.stdout)
 
+    def test_the_fixture_gates_scratch_is_not_a_product_of_the_run(self):
+        """FOUND BY PBS 712313 (harness ADR-0026, the open items): the job runs the plugin on
+        the two-shape fixture under `$RUNDIR/fixture` before the cohort, the tool's own record
+        then lists every file it finds in its directory, and the next job emitted from that
+        reference expected the fixture's twenty unit directories as products - under the unit
+        names of a design that no longer resolved that way. The gate's scratch is the job's,
+        not the run's; it is left out as `logs` and `cache` are."""
+        (self.d / "ref" / "STATUS.json").write_text(json.dumps(
+            {"tool": "t", "status": "ok", "argv": ["t", "run", "--out", "/old"],
+             "products": [{"path": "STATUS.json", "bytes": 10}, {"path": "report.json", "bytes": 10},
+                          {"path": "fixture/run_a/run/kernels/t/U1/out.json", "bytes": 10},
+                          {"path": "fixture/fixture_a.h5ad", "bytes": 10}]}))
+        self.assertEqual(sorted(J.products_of(self.d / "ref")), ["STATUS.json", "report.json"])
+
     def test_the_expected_products_are_the_ones_the_reference_run_recorded(self):
         """The job expected every non-figure file in the reference DIRECTORY, and a directory
         holds more than the run: the reference's hand-written job had also run four of the

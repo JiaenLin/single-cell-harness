@@ -88,7 +88,9 @@ def products_of(ref_dir, figures=True) -> list:
                             or (rel.parts[0] == "report" and rel.suffix == ".html"
                                 and rel.name != "index.html")):
             return False
-        return (rel.suffix in keep and rel.parts[0] not in ("logs", "cache", "tmp")
+        # `fixture` is the gate's scratch under the run directory (run.fixture_first), the
+        # job's and not the run's, left out as `logs` and `cache` are (harness ADR-0026).
+        return (rel.suffix in keep and rel.parts[0] not in ("logs", "cache", "tmp", "fixture")
                 and not rel.name.startswith(("RUNNING", "SEALED", "FAILED")))
 
     # THE RUN'S OWN RECORD FIRST (harness ADR-0019, blind 0006). A directory holds more than the
