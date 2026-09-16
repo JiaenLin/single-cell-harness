@@ -8,6 +8,11 @@ allowed-tools: Read, Write, Edit, Bash, WebFetch, WebSearch, Grep, Glob
 
 ## Do not assume the format. Ask the repository.
 
+Before touching a run you did not make, read the tool's own dissection of one:
+`docs/ANATOMY_OF_A_RUN.md` in the scProfile repository - every layer, step and element of a run
+as the code does it, the readers, the store, the loop and its open limits.
+
+
 This family has more than one. The harness's own plugins are directories with a `plugin.yml`
 ([`PLUGIN_FORMAT.md`](../../PLUGIN_FORMAT.md)). scProfile's kernels are ONE FILE with a `PLUGIN`
 dict and a `run(ctx)` — and that format exists because the six-file one was an assembly kit; see
