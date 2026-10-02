@@ -35,7 +35,7 @@
 # rule-one: no-removal. Reads five checkouts, writes only inside $RUNDIR.
 # Authored on the workstation and pushed (rule H1). No `git` runs below.
 #
-#   qsub -v RUNDIR=...,TOOLS=...,REPO=...,PY=... jobs/dev_suite.pbs
+#   qsub -o "$RUNDIR/logs/" -v RUNDIR=...,TOOLS=...,REPO=...,PY=... jobs/dev_suite.pbs
 
 set -euo pipefail
 cd "$PBS_O_WORKDIR"
@@ -46,6 +46,14 @@ TOOLS="${TOOLS:?pass -v TOOLS=<the directory holding scQC scAnno scIntegrate scP
 PY="${PY:?pass -v PY=<a python with anndata>}"
 
 mkdir -p "$RUNDIR/logs" "$RUNDIR/fixture" "$RUNDIR/checks"
+
+# THE LOG LIVES IN THE RUN, whatever the qsub line said. This job carried no `#PBS -o` and its
+# usage line passed none, so PBS wrote `sch_dev_suite.o<jobid>` into the submitting directory -
+# the harness checkout under ~/tools, five times (707436 to 708052), outside every project
+# (LAYOUT 3.7). Found 2026-10-02 as five untracked files in the tool (ADR-0027, step 0) and moved
+# into the runs they belong to. A qsub without -o now leaves only this one pointer line behind.
+echo "driver log -> $RUNDIR/logs/driver.log"
+exec >> "$RUNDIR/logs/driver.log" 2>&1
 
 finish() { s=$?
   set +e
