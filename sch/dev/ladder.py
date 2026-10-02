@@ -604,7 +604,7 @@ def t5_leak(doc, fixdir, results, terms=None):
     shapes, so it needs no exemption and grants none - and on 2026-09-06 it found a cohort's name
     in the comment of the one file whose job is to prove the cohort's name is absent, sitting in
     the blind spot the wholesale exemption creates."""
-    from ..conform.checks import _load_terms, _read, _text_files
+    from ..conform.checks import _load_terms, _read, _text_files, term_files
     t0 = time.time()
     root = Path(doc["_root"])
     # THE WORD LIST LIVES OUTSIDE THE REPOSITORY, ALWAYS. A tool that ships the cohort's
@@ -615,7 +615,7 @@ def t5_leak(doc, fixdir, results, terms=None):
     candidates = [terms, os.environ.get(env_var), os.environ.get("SCH_FORBIDDEN_TERMS")]
     if doc.get("terms"):
         candidates.append(root / doc["terms"])
-    tf = next((c for c in candidates if c and Path(c).is_file()), None)
+    tf = next((c for c in candidates if c and term_files(c)), None)   # one list per project
     words = _load_terms(str(tf)) if tf else []
     if not words:
         return _t(results, "leak", True,

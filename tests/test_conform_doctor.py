@@ -143,6 +143,22 @@ class TestConform(unittest.TestCase):
         self.assertTrue(by_id(conform_repo(ROOT), "G1 ")[0]["ok"],
                         "this clone has no commit gate installed: git config core.hooksPath setup/githooks")
 
+    def test_each_cohort_brings_its_own_term_list_and_all_are_read(self):
+        """A word list lives with the cohort it protects (ADR-0027). The second cohort brought a
+        second list; a scan that read only the first would pass a tool carrying the second
+        cohort's library names."""
+        import os as _os
+        r = self._repo(leaky=False)
+        (r / "tool" / "x.py").write_text("LIB = 'LIBWT_1'\n")
+        one, two = self.tmp / "one.txt", self.tmp / "two.txt"
+        one.write_text("# first cohort\nfirstcohortname\n")
+        two.write_text("LIBWT_1\n")
+        s1 = by_id(conform_repo(r, terms_file=f"{one}{_os.pathsep}{two}"), "S1 ")[0]
+        self.assertFalse(s1["ok"])
+        self.assertTrue(any("LIBWT_1" in e for e in s1["evidence"]), s1["evidence"])
+        with self.assertRaises(FileNotFoundError):
+            conform_repo(r, terms_file=f"{one}{_os.pathsep}{self.tmp / 'typo.txt'}")
+
     def test_a_cohort_axis_with_a_literal_default_is_named(self):
         """S13, harness ADR-0027. scQC's mitochondrial step read `params.get("assay", "snrna")`
         from a task never handed `assay`: every cohort was filtered as single-nucleus, the leak

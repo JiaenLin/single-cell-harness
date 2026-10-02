@@ -93,12 +93,29 @@ _SNIFF_CAND = re.compile(r"CANDIDATES\s*=\s*[\[(]")
 RUNKEY = re.compile(r"^[0-9]{8}T[0-9]{4,6}Z__[a-z][a-z0-9]*-[0-9a-f]{7,40}__[0-9]{2}_[a-z0-9_]+(__[a-z0-9-]+)?$")
 
 
+def term_files(spec) -> list:
+    """The files a terms argument names: ONE PER PROJECT, joined by `os.pathsep` (harness ADR-0027).
+
+    A word list lives with the cohort it protects, never in a tool, so a second cohort brings a
+    second list - and a scan that reads only the first would pass a tool carrying the second
+    cohort's library names. A list that is named and missing raises: a typo in the path must not
+    quietly shrink what the guard looks for."""
+    files = [Path(x) for x in str(spec).split(os.pathsep) if x.strip()]
+    missing = [str(f) for f in files if not f.exists()]
+    if missing and len(files) > 1:
+        raise FileNotFoundError(f"term list(s) named and not found: {', '.join(missing)}")
+    return [f for f in files if f.exists()]
+
+
 def _load_terms(terms_file) -> list:
     cands = [terms_file, os.environ.get("SCH_SITE_TERMS"),
              (Path(os.environ["SCH_SITE"]) / "forbidden_terms.txt") if os.environ.get("SCH_SITE") else None]
     for c in cands:
-        if c and Path(c).exists():
-            return [l.strip() for l in Path(c).read_text().splitlines() if l.strip() and not l.startswith("#")]
+        files = term_files(c) if c else []
+        if files:
+            words = [l.strip() for f in files for l in f.read_text().splitlines()
+                     if l.strip() and not l.startswith("#")]
+            return list(dict.fromkeys(words))
     return []
 
 

@@ -29,6 +29,21 @@
 #     and that belongs where somebody reading the seal will see it.
 #   nothing outside this run directory is written.
 #
+# THE PREDICTION FOR HARNESS ADR-0027 (steps 1 and 3), WRITTEN BEFORE THE RUN, 2026-10-02 - the
+# first run of this job with the shapes differing in VALUES and with the `agree` tier:
+#   the three new invariants hold (b's control sorts last, a's first; the same mito genes).
+#   contract FAILS for scqc and scanno: S13, four literal `assay` defaults each - the defects the
+#     round fixes in step 4. scintegrate, scprofile and sch pass S13.
+#   agree FAILS for scprofile/abundance: scCODA's formula takes the alphabetically first level as
+#     baseline (ADR-0027 P2), `ctrl` on a and `treated` on b, so its effects change sign. Not
+#     necessarily an exact SIGN FLIPPED: the chains are drawn on a different design matrix.
+#   agree passes for scintegrate/harmony and scanno/rescue (neither reads the control level, and
+#     scAnno reads both mitochondrial spellings); scqc writes no numbers (`describe`).
+#   leak FAILS for sch: with both projects' word lists supplied, the harness's own jobs/ and
+#     ADRs 0017-0019 name the first cohort (since 2026-09-12) and ADR-0027 names the second.
+#     Documents of record - flagged here, not exempted, and decided in the ADR.
+#   so the seal is FAILED by design, and each failure must be one of those named above.
+#
 # NOT A REPRODUCTION and nothing here is about the biology. No result from this run may be
 # quoted: the cohort is synthetic and says so in its own manifest.
 #
@@ -133,6 +148,12 @@ checks = {
   "shape b carries b names":  all(y in B.obs for _, y in R.values() if y != "raw_counts"),
   "a's names absent from b":  not any(x in B.obs for x, y in R.values() if x != y and x != "counts"),
   "counts layer renamed":     "counts" in A.layers and "raw_counts" in B.layers,
+  # THE VALUES (harness ADR-0027): shape b's control is its LAST category, as a string and as a
+  # factor level, and both shapes flag the same genes as mitochondrial under their own spelling.
+  "b's control sorts last":   list(B.obs[R["condition"][1]].cat.categories)[-1] == F.VALUES["control"]["b"],
+  "a's control sorts first":  list(A.obs[R["condition"][0]].cat.categories)[0] == F.VALUES["control"]["a"],
+  "same mito genes, spelled per shape": A.var["mt"].tolist() == B.var["mt"].tolist()
+                              and all(g.startswith(F.VALUES["mt_prefix"]["b"]) for g in B.var_names[B.var["mt"].values]),
 }
 o = A.obs; X = np.asarray(A.X); g = list(A.var_names)
 haz = {
