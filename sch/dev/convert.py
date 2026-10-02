@@ -1058,9 +1058,21 @@ def run_stage(st, doc, name, run, timeout=1800):
     A COMMAND THAT CANNOT RUN OWES, AND SAYS WHY. Nothing here can turn "could not run" into a
     pass, which is the same rule every other reader in this module keeps.
     """
-    argv = fill(list(st.get("command") or []), {"python": sys.executable, "run": str(run),
-                                                "root": str(doc.get("_root") or "."),
-                                                "name": name or ""})
+    raw = list(st.get("command") or [])
+    # A WORD THE DECLARATION'S PARSER TURNED INTO SOMETHING ELSE. `command: [true]` reads as the
+    # boolean True, and the string of that is "True" - which a case-insensitive filesystem finds
+    # as /usr/bin/true and Linux does not find at all. Four stages of this repository's own suite
+    # passed on the workstation and owed on the cluster for exactly this (harness ADR-0027, PBS
+    # 719922). A number stringifies to what was meant; a boolean or a null does not, so those
+    # two are refused with the fix rather than run as a different word.
+    odd = [x for x in raw if isinstance(x, bool) or x is None]
+    if odd:
+        return {"argv": [str(x) for x in raw], "rc": None, "owes": True,
+                "says": [f"could not run: the command holds {odd!r}, which the declaration's "
+                         f"parser read as {'a boolean' if isinstance(odd[0], bool) else 'null'}, "
+                         f"not a word - quote it: [\"true\"]"]}
+    argv = fill(raw, {"python": sys.executable, "run": str(run),
+                      "root": str(doc.get("_root") or "."), "name": name or ""})
     try:
         p = subprocess.run(argv, cwd=str(doc.get("_root") or "."), capture_output=True,
                            text=True, timeout=timeout)

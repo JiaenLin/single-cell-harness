@@ -124,6 +124,9 @@ class TestConform(unittest.TestCase):
         self.assertFalse(by_id(checks, "R2 ")[0]["ok"])
         self.assertFalse(by_id(checks, "R4")[0]["ok"])
 
+    # A COMPUTE NODE HAS NO GIT. This test inits a repository, so there it errored rather than
+    # saying what it could not check (ADR-0027, PBS 719922); a SKIP says so.
+    @unittest.skipUnless(shutil.which("git"), "no git binary here - a compute node has none")
     def test_the_commit_gate_is_a_check_of_the_repository(self):
         """ADR-0022 closed with two commits landed on this repository while its suite was red:
         the tool has had a commit gate since ADR-0015 and this repository had none. The gate is

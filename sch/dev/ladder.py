@@ -428,12 +428,22 @@ def _in_a_words(text, vocab):
     return text
 
 
+#: A byte count measures a FILE, and a file's bytes carry the names it holds: a status contract
+#: lists each product with its size, and shape b's `library_id` is four bytes longer than shape a's
+#: `sample` in every row that spells it. Not a number about the data, so `agree` does not compare it
+#: - for the reason it does not compare an opaque product's bytes. Measured on the first cluster run
+#: of the tier (PBS 719917): its only two findings were `products[*].bytes`, in scAnno and scIntegrate.
+_SIZE_OF_A_FILE = re.compile(r"(?:^|[.\]])(?:bytes|n_bytes|size_bytes)$")
+
+
 def _collapse(numbers):
     """{path with every [i] as [*]: sorted values}. Two shapes may list the same results in a
     different order - a tool that sorts its arms by name sorts `ctrl, treated` and `treated,
     untreated` differently, correctly - and that is not a disagreement about any number."""
     out: dict = {}
     for k, v in numbers.items():
+        if _SIZE_OF_A_FILE.search(k):
+            continue
         out.setdefault(re.sub(r"\[\d+\]", "[*]", k), []).append(v)
     return {k: sorted(v, key=lambda x: (isinstance(x, str), x)) for k, v in out.items()}
 

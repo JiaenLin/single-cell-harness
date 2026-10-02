@@ -109,7 +109,7 @@ class AnsweredByRunning(unittest.TestCase):
         """`promised` read done on a plugin nothing had run, because the field it fills was
         present. A command is the stage's question; presence says somebody wrote it down."""
         d = _repo(extra="        - name: weighed\n          phase: test\n          fills: [api]\n"
-                        "          command: [true]\n          why: fills and runs\n")
+                        "          command: [\"true\"]\n          why: fills and runs\n")
         try:
             doc = P.load(d)
             rows = {r["stage"]: r for r in CV.status({"api": 1}, doc, "seam", "alpha")}
@@ -186,7 +186,7 @@ class AnsweredByRunning(unittest.TestCase):
             "        - name: welformed" + "\n"
             "          phase: build" + "\n"
             "          fills: [api]" + "\n"
-            "          command: [true]" + "\n"
+            "          command: [\"true\"]" + "\n"
             "          why: the validator accepts it" + "\n")
         d = _repo(extra=extra)
         try:
@@ -241,8 +241,18 @@ class AStageFillsOrRuns(unittest.TestCase):
         finally:
             shutil.rmtree(d, ignore_errors=True)
 
+    def test_a_word_the_parser_made_a_boolean_is_refused_not_run_as_True(self):
+        """`command: [true]` is the boolean True, and its string is "True": a case-insensitive
+        filesystem finds /usr/bin/true, Linux does not. Four stages of this suite passed on the
+        workstation and owed on the cluster for that alone (ADR-0027, PBS 719922)."""
+        r = CV.run_stage({"command": [True]}, {"_root": "."}, "x", ".")
+        self.assertTrue(r["owes"])
+        self.assertIsNone(r["rc"])
+        self.assertIn('quote it: ["true"]', r["says"][0])
+        self.assertFalse(CV.run_stage({"command": ["true"]}, {"_root": "."}, "x", ".")["owes"])
+
     def test_a_stage_with_no_fills_key_at_all_is_still_refused(self):
-        d = _repo(extra="        - name: bare\n          phase: test\n          command: [true]\n"
+        d = _repo(extra="        - name: bare\n          phase: test\n          command: [\"true\"]\n"
                         "          why: no fills key\n")
         try:
             with self.assertRaises(CV.ConvertError) as cm:
@@ -262,7 +272,7 @@ class TheDeclarationTierDoesNotDemandWhatOnlyARunCanFill(unittest.TestCase):
     DECL = DEVPOINTS.replace("must_declare: [api]", "must_declare: [api, weight]").replace(
         "{extra}",
         "        - name: weighed\n          phase: test\n          fills: [weight]\n"
-        "          command: [true]\n          why: from a run\n")
+        "          command: [\"true\"]\n          why: from a run\n")
 
     def setUp(self):
         self.d = Path(tempfile.mkdtemp(prefix="sch-tier0-"))

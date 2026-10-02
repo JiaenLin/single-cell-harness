@@ -1344,6 +1344,15 @@ class TheShapesMustAgree(unittest.TestCase):
         self._csv(self.b, "extra.csv", ["v"], [[1]])
         self.assertEqual(self._found(), ["extra.csv: written by shape b only"])
 
+    def test_the_size_of_a_file_is_not_a_number_about_the_data(self):
+        """The tier's first cluster run (PBS 719917) found exactly two disagreements, both
+        `STATUS.json::products[*].bytes`: shape b's names are longer, so its files are."""
+        self._json(self.a, "STATUS.json", {"products": [{"path": "x.h5ad", "bytes": 1000}], "n": 3})
+        self._json(self.b, "STATUS.json", {"products": [{"path": "x.h5ad", "bytes": 1064}], "n": 3})
+        self.assertEqual(self._found(), [])
+        self._json(self.b, "STATUS.json", {"products": [{"path": "x.h5ad", "bytes": 1064}], "n": 4})
+        self.assertEqual(len(self._found()), 1, "a real number beside a size must still be compared")
+
     def test_a_field_the_baseline_calls_unstable_is_not_compared(self):
         self._csv(self.a, "emb.csv", ["x"], [[0.10], [0.20]])
         self._csv(self.b, "emb.csv", ["x"], [[0.11], [0.19]])
