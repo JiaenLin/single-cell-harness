@@ -106,6 +106,15 @@ Beyond the generic contract, a single-cell plugin MUST:
 - **name what a removal removes, not the category it belongs to.** A mask's `reason` carries the
   actual criterion and the count; the enumerated identities are recoverable from the mask file.
 - **declare `{counts}` rather than assume `X`** where it models counts.
+- **never assume a cohort axis** (ADR-0027). What makes one dataset differ from another before
+  any biology - `species`, `organism`, `assay`, `platform`, `chemistry`, `mt_prefix`,
+  `ribo_pattern`, `reference`, `genome`, `tissue`, the profile's `axes:` - is declared once, in the
+  stack's `profile_context` (`sch init --context species=homo_sapiens --context assay=scrna`), and
+  every plugin receives it there. A name that is not an axis is refused at `init`. A plugin that
+  depends on an axis declares `gates: {axes_declared: required}`; `sch conform` S13 refuses a tool
+  that gives any axis a literal default. The case that put this here: a mitochondrial step read
+  `assay` with a default of the first cohort's single-nucleus value, from a task never given it, and
+  bounded a whole-cell cohort as nuclei with every test green.
 
 ## 8. The probe library
 
@@ -122,6 +131,7 @@ answer, declares its cost, and states what it cannot establish.
 | `tail(metric, n)` | the actual observations at an extreme, with their identities |
 | `observations(n, where=)` | a handful of real rows, not a summary of them |
 | `differential(mask, by=)` | removal rate per arm of the design |
+| `axes()` | the species from the gene identifiers and the symbol convention, beside the declared `profile_context`; the assay as not measurable |
 | `integrality(matrix)` | whether a matrix is counts, measured rather than named |
 | `freshness(artifact)` | whether an artifact is older than its inputs |
 | `render(view)` | **draws it, and returns the image** |
@@ -130,7 +140,9 @@ answer, declares its cost, and states what it cannot establish.
 statistic reports — a population dispersed rather than aligned, a cluster that is a doublet ridge,
 a correction that tore the manifold.
 
-`differential`, `integrality` and `freshness` are each the instrument behind a gate (**G3**).
+`differential`, `integrality`, `freshness` and `axes` are each the instrument behind a gate
+(**G3**); `axes` stands behind `axes_declared`, which refuses a declared species the identifiers
+contradict and asks for any axis that is measurable and undeclared.
 
 ## 9. The stack
 

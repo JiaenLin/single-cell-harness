@@ -68,7 +68,7 @@ def _emit(a, obj, text=None):
 def cmd_init(a):
     from .kernel import Stack
     st = Stack.init(a.dir, a.profile, a.observations, a.design, _kv(a.key),
-                    plugin_paths=a.plugin_path or None)
+                    plugin_paths=a.plugin_path or None, context=_kv(a.context))
     _emit(a, {"stack": str(st.dir), "profile": st.profile.id}, f"initialised {st.dir} ({st.profile.id})")
     st.close()
     return 0
@@ -1404,6 +1404,8 @@ def build_parser():
     p = sub.add_parser("init"); p.add_argument("dir"); p.add_argument("--profile", required=True)
     p.add_argument("--observations", required=True); p.add_argument("--design")
     p.add_argument("--key", action="append", metavar="KEY=COLUMN"); p.add_argument("--plugin-path", action="append")
+    p.add_argument("--context", action="append", metavar="AXIS=VALUE",
+                   help="what the dataset is, declared once: one of the profile's axes (ADR-0027)")
     p.set_defaults(fn=cmd_init)
     p = sub.add_parser("stack"); stackable(p); p.add_argument("--dump", action="store_true"); p.set_defaults(fn=cmd_stack)
     p = sub.add_parser("plan"); stackable(p); p.add_argument("plugin"); p.add_argument("--param", action="append")

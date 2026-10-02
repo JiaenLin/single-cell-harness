@@ -1,0 +1,28 @@
+contract: "1.0"
+profile: single-cell/1.0
+name: axes_declared
+version: 0.1.0
+summary: refuse a declared cohort axis the data contradicts; review one that is measurable and undeclared
+when_to_use: required by any plugin that depends on a cohort axis - a mitochondrial prefix, a marker corpus, a ligand-receptor database, a species-keyed reference (opt in with `gates: {axes_declared: required}`)
+
+class: gate
+layer: stack
+reversible: true
+measures_with: axes
+verdict: [PASS, REVIEW, REFUSE]
+escape: --escape axes_declared
+params: {}
+inject: [probe]
+needs: []
+provides: []
+sees: []
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: low}
+
+cannot_show:
+  - PASS means nothing the data can show contradicts the declaration; it does not mean the declaration is complete.
+  - A species read from symbol case is a convention, so a mismatch there is a REVIEW, never a REFUSE.
+  - The assay cannot be measured from counts; this gate asks that it be declared and can check nothing beyond that.

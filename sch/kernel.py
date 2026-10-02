@@ -139,11 +139,23 @@ class Stack:
 
     @classmethod
     def init(cls, stack_dir, profile: str, observations: str, design: str | None = None,
-             keys: dict | None = None, plugin_paths: list | None = None) -> "Stack":
+             keys: dict | None = None, plugin_paths: list | None = None,
+             context: dict | None = None) -> "Stack":
+        prof = load_profile(profile)
+        # WHAT THE DATASET IS, DECLARED ONCE (harness ADR-0027): `profile_context`, which every
+        # plugin receives and the kernel never reads. Its names are the profile's `axes:`; any
+        # other name is refused here, because a misspelt declaration is a missing one that looks
+        # present - and a missing one is exactly what a tool fills with the first cohort's value.
+        ctx = {str(k): str(v) for k, v in (context or {}).items()}
+        unknown = sorted(set(ctx) - set(prof.axes))
+        if unknown:
+            raise StackError(f"profile {prof.id} declares no axis {', '.join(map(repr, unknown))}; "
+                             f"its axes are {', '.join(prof.axes) or '(none)'}")
         d = Path(stack_dir)
         d.mkdir(parents=True, exist_ok=True)
-        prof = load_profile(profile)
         decl = {"profile": prof.id, "observations": str(observations)}
+        if ctx:
+            decl["profile_context"] = ctx
         if design:
             decl["design"] = str(design)
         decl["keys"] = dict(keys or {})

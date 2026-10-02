@@ -1,0 +1,24 @@
+contract: "1.0"
+profile: single-cell/1.0
+name: axes
+version: 0.1.0
+summary: what the data says it is, beside what the stack declares it is - species from the gene identifiers, the symbol convention, and which axes cannot be read off a count matrix at all
+when_to_use: before any plugin that depends on a cohort axis (a mitochondrial prefix, a marker corpus, a ligand-receptor database, a species-keyed reference) - a declared species the gene identifiers contradict is the first cohort's value carried onto the second
+
+class: probe
+layer: stack
+reversible: true
+inject: [dataset]
+needs: []
+provides: []
+sees: []
+
+language: python
+entry: run.py
+needs_env: true
+executor: {cost: low}
+
+cannot_show:
+  - A species read from Ensembl gene identifiers is decisive; one read from symbol case is a convention, not evidence - mouse and rat share it, as do human and macaque.
+  - It cannot tell cells from nuclei. A count matrix carries no intronic fraction; the assay is reported as declared or absent, never as measured.
+  - It reads the identifiers the object carries. An object re-keyed to symbols with the identifiers dropped can only be read by convention.
