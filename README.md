@@ -161,7 +161,7 @@ reads the declaration.
 sch dev map                          where a new thing plugs in here, and what it must declare
 sch dev new POINT NAME               a skeleton, a SPEC written before the code, and a test
 sch dev fixture DIR                  a synthetic cohort in two shapes (below)
-sch dev check --point P --name N     seven tiers, cheapest first, each saying what it cannot prove
+sch dev check --point P --name N     the tiers, cheapest first, each saying what it cannot prove
 sch dev baseline record RUN --path FILE   record a fingerprint over two executions
 sch dev baseline check RUN --path FILE    "the numbers did not move", in seconds
 sch dev job --ref REF --predict ...  a reproduction written from the reference run's own argv

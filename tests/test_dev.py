@@ -1173,7 +1173,7 @@ class TheReuseDecisionItselfNeedsNoCohort(unittest.TestCase):
 
     def _record(self, **over):
         rec = {"shape": "a", "seed": 20260906, "cells": 2000, "genes": 520,
-               "splice": False, "crossed": False,
+               "splice": False, "crossed": False, "spelling": F.SPELLING,
                "observations": str(self.h5), "design": str(self.csv), "digest": "x"}
         rec.update(over)
         (self.d / "FIXTURE_a.json").write_text(json.dumps(rec))
@@ -1205,6 +1205,16 @@ class TheReuseDecisionItselfNeedsNoCohort(unittest.TestCase):
         self.assertIsNone(self._match())
         self.assertIsNone(self._match(splice=True))
 
+    def test_a_record_written_before_the_values_were_spelled_is_rebuilt(self):
+        """ADR-0027 gave the shapes different VALUES - shape b's control sorts last, its mito
+        genes are `mt-` - and the digest reads the core, so it cannot see that. A fixture on
+        disk from before would be reused, and shape b would hold shape a's values: the very
+        defects the change exists to catch would pass again, quietly."""
+        rec = self._record()
+        del rec["spelling"]
+        (self.d / "FIXTURE_a.json").write_text(json.dumps(rec))
+        self.assertIsNone(self._match())
+
     def test_a_record_naming_files_that_are_gone_is_not_a_match(self):
         self._record()
         self.h5.unlink()
@@ -1217,3 +1227,144 @@ class TheReuseDecisionItselfNeedsNoCohort(unittest.TestCase):
         self.assertIsNone(self._match())
         (self.d / "FIXTURE_a.json").write_text("{not json")
         self.assertIsNone(self._match())
+
+
+class TheShapesDifferInValuesToo(unittest.TestCase):
+    """ADR-0027. Until the second real cohort the shapes differed only in what columns are
+    CALLED, so a defect whose trigger is a VALUE could not fail a tier: a contrast taken in sort
+    order, a mitochondrial prefix spelled one species' way. These pin the values that now differ,
+    and the property each one is there for."""
+
+    def test_the_control_sorts_first_in_shape_a_and_last_in_shape_b(self):
+        a, b = F.VALUES["control"]["a"], F.VALUES["control"]["b"]
+        self.assertEqual(sorted([a, "treated"])[0], a)
+        self.assertEqual(sorted([b, "treated"])[-1], b,
+                         "shape b's control must sort LAST, or `sorted(levels)` passes both shapes")
+
+    def test_shape_a_holds_what_the_core_holds(self):
+        """Shape a is the core as built; every baseline was recorded on it."""
+        c = F.build(n_cells=300, n_genes=120)
+        self.assertIn(F.VALUES["control"]["a"], set(c["obs"]["_role_condition"].astype(str)))
+        self.assertEqual([F.respell(g, "a") for g in c["genes"]], c["genes"])
+        self.assertTrue(any(g.startswith(F.VALUES["mt_prefix"]["a"]) for g in c["genes"]))
+
+    def test_respelling_moves_only_mitochondrial_and_ribosomal_symbols(self):
+        moved = {g: F.respell(g, "b") for g in F.REAL_GENES if F.respell(g, "b") != g}
+        self.assertTrue(moved, "shape b respells nothing")
+        for a, b in moved.items():
+            self.assertTrue(b.startswith(F.VALUES["mt_prefix"]["b"])
+                            or re.match(F.VALUES["ribo_pattern"]["b"], b), (a, b))
+            self.assertEqual(a.upper(), b.upper(), "a respelling changed a gene, not its spelling")
+        for g in ("ACTB", "CXCL12", "condition", "GENE0001"):
+            self.assertEqual(F.respell(g, "b"), g)
+
+    def test_the_ladder_tells_a_tool_every_value_it_tells_it_the_roles(self):
+        for sh in F.SHAPES:
+            filled = L._fill(["--control", "{role_condition}={control}", "--mt", "{mt_prefix}",
+                              "--ribo", "{ribo_pattern}"], **L._roles(sh))
+            self.assertEqual(filled[1], f"{F.ROLES['condition'][sh]}={F.VALUES['control'][sh]}")
+            self.assertEqual(filled[3], F.VALUES["mt_prefix"][sh])
+            self.assertEqual(filled[5], F.VALUES["ribo_pattern"][sh])
+
+    def test_the_written_shapes_hold_their_own_values(self):
+        try:
+            import anndata as ad
+        except ImportError:
+            self.skipTest("the fixture needs anndata")
+        import pandas as pd
+        with tempfile.TemporaryDirectory() as td:
+            recs = F.write_both(td, n_cells=300, n_genes=120, force=True)
+            self.assertEqual(recs[0]["digest"], recs[1]["digest"])
+            objs = {r["shape"]: ad.read_h5ad(r["observations"]) for r in recs}
+            for sh, A in objs.items():
+                cats = list(A.obs[F.ROLES["condition"][sh]].cat.categories)
+                self.assertEqual(cats, sorted(cats))
+                self.assertIn(F.VALUES["control"][sh], cats)
+                d = pd.read_csv(Path(td) / f"design_{sh}.csv")
+                self.assertIn(F.VALUES["control"][sh], set(d[F.ROLES["condition"][sh]]))
+                self.assertEqual(A.uns["sch_dev_fixture"]["declared"]["control"], F.VALUES["control"][sh])
+            self.assertEqual(list(objs["b"].obs[F.ROLES["condition"]["b"]].cat.categories)[-1],
+                             F.VALUES["control"]["b"])
+            self.assertEqual(objs["a"].var["mt"].tolist(), objs["b"].var["mt"].tolist())
+            self.assertIn("mt-Co1", objs["b"].var_names)
+            self.assertIn("MT-CO1", objs["a"].var_names)
+
+
+class TheShapesMustAgree(unittest.TestCase):
+    """The `agree` tier (ADR-0027): two shapes of one cohort must write the same numbers. Built
+    from run directories written by hand, so it runs where anndata does not."""
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.d, True)
+        self.a, self.b = self.d / "run_a", self.d / "run_b"
+        self.a.mkdir(); self.b.mkdir()
+
+    def _csv(self, run, rel, header, rows):
+        p = run / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("\n".join([",".join(header)] + [",".join(map(str, r)) for r in rows]) + "\n")
+
+    def _json(self, run, rel, obj):
+        (run / rel).write_text(json.dumps(obj))
+
+    def _found(self, unstable=()):
+        return L.shape_disagreements(B.fingerprint(self.a), B.fingerprint(self.b), unstable)
+
+    def test_the_same_numbers_under_shape_b_names_agree(self):
+        self._csv(self.a, "tables/by_sample.csv", ["sample", "gene", "log2fc"],
+                  [["S1", "MT-CO1", 1.5], ["S2", "ACTB", -0.25]])
+        self._csv(self.b, "tables/by_library_id.csv", ["library_id", "gene", "log2fc"],
+                  [["S1", "mt-Co1", 1.5], ["S2", "ACTB", -0.25]])
+        self._json(self.a, "summary.json", {"ctrl": {"n": 3}, "treated": {"n": 4}, "arm_pairs": 1})
+        self._json(self.b, "summary.json", {"untreated": {"n": 3}, "treated": {"n": 4}, "arm_pairs": 1})
+        self.assertEqual(self._found(), [])
+
+    def test_a_contrast_taken_the_other_way_round_is_named_as_a_sign_flip(self):
+        """The case the tier exists for: DE in sort order. `ctrl` sorts first, `untreated` last,
+        so shape b's fold changes come out negated and nothing errors."""
+        self._csv(self.a, "de.csv", ["gene", "log2FoldChange", "pvalue"],
+                  [["g1", 2.0, 0.01], ["g2", -0.5, 0.2], ["g3", 1.0, 0.04]])
+        self._csv(self.b, "de.csv", ["gene", "log2FoldChange", "pvalue"],
+                  [["g1", -2.0, 0.01], ["g2", 0.5, 0.2], ["g3", -1.0, 0.04]])
+        found = self._found()
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("de.csv::log2FoldChange: SIGN FLIPPED", found[0])
+
+    def test_a_json_list_in_another_order_agrees_and_a_negated_one_does_not(self):
+        self._json(self.a, "effects.json", {"effects": [0.3, -1.2, 2.5]})
+        self._json(self.b, "effects.json", {"effects": [2.5, 0.3, -1.2]})
+        self.assertEqual(self._found(), [])
+        self._json(self.b, "effects.json", {"effects": [-0.3, 1.2, -2.5]})
+        self.assertIn("SIGN FLIPPED", " ".join(self._found()))
+
+    def test_a_product_one_shape_wrote_and_the_other_did_not_is_named(self):
+        self._csv(self.a, "x.csv", ["v"], [[1]])
+        self._csv(self.b, "x.csv", ["v"], [[1]])
+        self._csv(self.b, "extra.csv", ["v"], [[1]])
+        self.assertEqual(self._found(), ["extra.csv: written by shape b only"])
+
+    def test_a_field_the_baseline_calls_unstable_is_not_compared(self):
+        self._csv(self.a, "emb.csv", ["x"], [[0.10], [0.20]])
+        self._csv(self.b, "emb.csv", ["x"], [[0.11], [0.19]])
+        self.assertTrue(self._found())
+        self.assertEqual(self._found(unstable=["emb.csv::x"]), [])
+
+    def test_the_tier_needs_both_shapes_and_says_so(self):
+        doc = {"_root": str(self.d), "fixture": {"command": ["true"]}}
+        res = [{"tier": "fixture_a", "ok": True, "skipped": False},
+               {"tier": "fixture_b", "ok": False, "skipped": False}]
+        L.t_agree(doc, "", "", self.d, res)
+        self.assertTrue(res[-1]["skipped"])
+        res = [{"tier": "fixture_a", "ok": True, "skipped": False},
+               {"tier": "fixture_b", "ok": True, "skipped": False}]
+        self._csv(self.a, "de.csv", ["log2FoldChange"], [[1.0], [-3.0]])
+        self._csv(self.b, "de.csv", ["log2FoldChange"], [[-1.0], [3.0]])
+        L.t_agree(doc, "", "", self.d, res)
+        self.assertFalse(res[-1]["ok"])
+        self.assertIn("SIGN FLIPPED", res[-1]["evidence"][0])
+
+    def test_no_fixture_command_means_nothing_to_compare_not_a_failure(self):
+        res = []
+        L.t_agree({"_root": str(self.d)}, "", "", self.d, res)
+        self.assertFalse(res[-1]["applicable"])

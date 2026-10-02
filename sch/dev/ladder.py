@@ -1,4 +1,4 @@
-"""Seven tiers between an idea and a queue, in the order that makes the cheapest failure first.
+"""The tiers between an idea and a queue, in the order that makes the cheapest failure first.
 
 WHAT THIS IS FOR. The proof that a change is sound has, until now, cost a cluster run against the
 real cohort: an hour, a queue slot, and a reproduction that either matches or does not. That is
@@ -12,6 +12,8 @@ reaches the queue carrying three defects instead of one.
     T2  unit          the repository's own suite, as the repository defines it
     T3  fixture a     it runs end to end on synthetic data and leaves a valid status behind
     T4  fixture b     the same, with every role renamed - the overfit detector
+        agree         the two shapes wrote the same numbers - the overfit detector for VALUES:
+                      a contrast in sort order, a mito prefix spelled one species' way (ADR-0027)
     T5  leak          no cohort or site term in the source, the tests, or the output
     T6  baseline      the numbers that were not supposed to move did not move
 
@@ -45,7 +47,7 @@ from . import baseline as bl
 from . import fixture as fx
 from . import points as pts
 
-TIERS = ("declaration", "rules", "contract", "unit", "fixture_a", "fixture_b", "leak",
+TIERS = ("declaration", "rules", "contract", "unit", "fixture_a", "fixture_b", "agree", "leak",
          "baseline")
 
 
@@ -162,8 +164,12 @@ def _commands(spec):
 def _roles(shape):
     """Every role, under the name it carries in this shape. A tool that is TOLD which column
     holds the samples is behaving correctly; the fixture must be able to tell it, or shape b
-    fails for the wrong reason and the overfit detector cries wolf."""
-    return {f"role_{r}": names[shape] for r, names in fx.ROLES.items()}
+    fails for the wrong reason and the overfit detector cries wolf.
+
+    AND EVERY VALUE THE SHAPE HOLDS (harness ADR-0027): `{control}`, `{mt_prefix}`,
+    `{ribo_pattern}`. The same reasoning one level down - a tool told the control level is
+    behaving correctly, so the fixture must be able to tell it."""
+    return {f"role_{r}": names[shape] for r, names in fx.ROLES.items()} | fx.declared(shape)
 
 
 def _fixture_spec(doc, point_name):
@@ -405,6 +411,173 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=
               seconds=secs)
 
 
+def _vocabulary():
+    """[(shape-b spelling, shape-a spelling)], longest first: every role name, every value, every
+    respelled gene. What `agree` uses to read shape b's products in shape a's words."""
+    pairs = {n["b"]: n["a"] for n in fx.ROLES.values()}
+    pairs |= {v["b"]: v["a"] for v in fx.VALUES.values() if v["a"] != v["b"]}
+    for g in fx.REAL_GENES:
+        if fx.respell(g, "b") != g:
+            pairs[fx.respell(g, "b")] = g
+    return sorted(pairs.items(), key=lambda kv: -len(kv[0]))
+
+
+def _in_a_words(text, vocab):
+    for b, a in vocab:
+        text = re.sub(rf"(?<![A-Za-z0-9]){re.escape(b)}(?![A-Za-z0-9])", a, text)
+    return text
+
+
+def _collapse(numbers):
+    """{path with every [i] as [*]: sorted values}. Two shapes may list the same results in a
+    different order - a tool that sorts its arms by name sorts `ctrl, treated` and `treated,
+    untreated` differently, correctly - and that is not a disagreement about any number."""
+    out: dict = {}
+    for k, v in numbers.items():
+        out.setdefault(re.sub(r"\[\d+\]", "[*]", k), []).append(v)
+    return {k: sorted(v, key=lambda x: (isinstance(x, str), x)) for k, v in out.items()}
+
+
+def shape_disagreements(fa, fb, unstable=()) -> list:
+    """What shape b produced that shape a did not, after reading b in a's words. Empty means the
+    two shapes agree on every number either one wrote.
+
+    REPAIRED ONLY WHERE IT DOES NOT ALREADY MATCH. A product, key or column of shape b is
+    translated into shape a's vocabulary only when it has no partner as written, so a tool's own
+    word that happens to equal a shape-b name ("arm" in `arm_pairs`) is never rewritten into a
+    mismatch.
+
+    A SIGN FLIP IS NAMED AS ONE. A column whose sum, minimum and maximum come back negated and
+    swapped is the signature of a contrast taken the other way round, which is what this tier
+    exists to find (ADR-0027, P1); saying "sum differs" would leave a reader to work that out.
+    """
+    vocab = _vocabulary()
+    rtol, atol = bl.RTOL, bl.ATOL
+    skip = set(unstable)
+
+    def fix(name, partners):
+        if name in partners:
+            return name
+        t = _in_a_words(name, vocab)
+        return t if t in partners else name
+
+    pa, pb = fa.get("products", {}), {}
+    for rel, item in fb.get("products", {}).items():
+        pb[fix(rel, pa)] = item
+    out = []
+    for rel in sorted(set(pa) - set(pb)):
+        out.append(f"{rel}: written by shape a only")
+    for rel in sorted(set(pb) - set(pa)):
+        out.append(f"{rel}: written by shape b only")
+    for rel in sorted(set(pa) & set(pb)):
+        a, b = pa[rel], pb[rel]
+        if a.get("kind") != b.get("kind"):
+            out.append(f"{rel}: a {a.get('kind')} in shape a, a {b.get('kind')} in shape b")
+            continue
+        if a["kind"] == "csv":
+            hb = [fix(h, a.get("header") or []) for h in b.get("header") or []]
+            if hb != (a.get("header") or []):
+                out.append(f"{rel}: columns differ - a {a.get('header')}, b {b.get('header')}")
+            if a.get("rows") != b.get("rows"):
+                out.append(f"{rel}: {a.get('rows')} rows in shape a, {b.get('rows')} in shape b")
+            an = a.get("numbers", {})
+            bn = {fix(k, an): v for k, v in (b.get("numbers") or {}).items()}
+            for col in sorted(set(an) & set(bn)):
+                if f"{rel}::{col}" in skip:
+                    continue
+                x, y = an[col], bn[col]
+                stats = [s for s in ("n", "nan", "sum", "min", "max")
+                         if not bl._close(y.get(s), x.get(s), rtol, atol)]
+                if not stats:
+                    continue
+                flipped = (x.get("sum") not in (None, 0) and y.get("min") is not None
+                           and bl._close(y.get("sum"), -x["sum"], rtol, atol)
+                           and bl._close(y.get("min"), -(x.get("max") or 0.0), rtol, atol)
+                           and bl._close(y.get("max"), -(x.get("min") or 0.0), rtol, atol))
+                out.append(f"{rel}::{col}: SIGN FLIPPED between the shapes - a contrast taken the "
+                           f"other way round on one of them (sum {x.get('sum')} vs {y.get('sum')})"
+                           if flipped else
+                           f"{rel}::{col}: {', '.join(stats)} differ - a {x}, b {y}")
+            continue
+        if a["kind"] == "json":
+            an = _collapse(a.get("numbers") or {})
+            bn = _collapse({fix(k, a.get("numbers") or {}): v
+                            for k, v in (b.get("numbers") or {}).items()})
+            for k in sorted(set(an) ^ set(bn)):
+                out.append(f"{rel}::{k}: present in shape {'a' if k in an else 'b'} only")
+            for k in sorted(set(an) & set(bn)):
+                if f"{rel}::{k}" in skip:
+                    continue
+                x, y = an[k], bn[k]
+                if len(x) != len(y) or not all(bl._close(p, q, rtol, atol) for p, q in zip(x, y)):
+                    neg = (len(x) == len(y) and any(isinstance(p, float) and p for p in x)
+                           and all(isinstance(p, float) and isinstance(q, float)
+                                   and bl._close(q, p, rtol, atol)
+                                   for p, q in zip(x, sorted(-v for v in y))))
+                    out.append(f"{rel}::{k}: SIGN FLIPPED between the shapes" if neg else
+                               f"{rel}::{k}: a {x[:4]}{'...' if len(x) > 4 else ''}, "
+                               f"b {y[:4]}{'...' if len(y) > 4 else ''}")
+    return out
+
+
+def t_agree(doc, point_name, name, fixdir, results):
+    """THE TWO SHAPES MUST PRODUCE THE SAME NUMBERS (harness ADR-0027).
+
+    The shapes hold the same counts under different names and different spellings, so every
+    number a tool writes from them should come out the same. Until this tier, nothing compared
+    them: a shape passed if it ran, which catches a tool that ASSUMES a name - it crashes on b -
+    and misses a tool that assumes a VALUE, which runs on both and answers differently. A DE
+    contrast taken in alphabetical order is the case that made the point: the control sorts
+    first in shape a and last in shape b, and the sign of every fold change flips without a
+    single error anywhere.
+
+    Fields the tool's own baseline measured as not execution-stable are skipped, as `baseline`
+    skips them: two shapes are two executions, and a number that moves between two runs of the
+    same shape says nothing about names."""
+    t0 = time.time()
+    spec = _fixture_spec(doc, point_name)
+    if not spec.get("command"):
+        return _t(results, "agree", True, ["no `fixture.command` declared - nothing ran to compare"],
+                  skipped=True, applicable=False)
+    shapes = {r["tier"]: r for r in results if r["tier"] in ("fixture_a", "fixture_b")}
+    ran_ok = [t for t in ("fixture_a", "fixture_b") if t in shapes and shapes[t]["ok"]
+              and not shapes[t]["skipped"]]
+    if len(ran_ok) < 2:
+        return _t(results, "agree", False,
+                  [f"only {', '.join(ran_ok) or 'neither shape'} ran clean - two shapes are "
+                   f"needed to compare, and the shape that did not is already reported"],
+                  skipped=True)
+    run_a, run_b = Path(fixdir) / "run_a", Path(fixdir) / "run_b"
+    st = None
+    if spec.get("accepts_refusal"):
+        for d in (run_a, run_b):
+            try:
+                st = json.loads((d / "STATUS.json").read_text(encoding="utf-8")).get("status")
+            except (OSError, ValueError):
+                st = None
+            if st == "refused":
+                break
+    if st == "refused":
+        return _t(results, "agree", True,
+                  ["a declared refusal on the fixture: no numbers were written to compare"],
+                  skipped=True, applicable=False)
+    unstable = []
+    ref = Path(doc["_root"]) / (doc.get("baseline_dir") or "tests/baselines") / f"{name}.baseline.json"
+    if name and ref.is_file():
+        try:
+            unstable = json.loads(ref.read_text(encoding="utf-8")).get("not_execution_stable") or []
+        except (OSError, ValueError):
+            unstable = []
+    found = shape_disagreements(bl.fingerprint(run_a), bl.fingerprint(run_b), unstable)
+    return _t(results, "agree", not found,
+              found[:25] + ([f"... {len(found) - 25} more"] if len(found) > 25 else [])
+              or ["every number either shape wrote agrees, read in shape a's words"],
+              cannot=("that a number is right - only that it does not depend on what a column is "
+                      "called or how a value is spelled; opaque products (an .h5ad, an .rds) are "
+                      "not compared, because their bytes carry the names"),
+              seconds=time.time() - t0)
+
+
 def t5_leak(doc, fixdir, results, terms=None):
     """Cohort and site terms in the REPOSITORY. Not in what a run produced, and that boundary
     took two passes on the cluster to get right.
@@ -608,6 +781,8 @@ def run(root=".", point_name=None, name=None, only=None, skip=(), keep_going=Fal
                 if stop():
                     break
                 _fixture_tier(doc, point_name or "", name or "", sh, tmp, results, f"fixture_{sh}")
+    if made_fixture and not stop() and want("agree"):
+        t_agree(doc, point_name or "", name or "", tmp, results)
     if not stop() and want("leak"):
         t5_leak(doc, tmp, results, terms)
     if not stop() and want("baseline") and name:

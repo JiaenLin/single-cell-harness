@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 SHAPES = ("a", "b")
@@ -69,6 +70,55 @@ def roles(crossed=False):
     return {r: n for r, n in ROLES.items() if crossed or not n.get("crossed_only")}
 
 
+# ONE VALUE, TWO SPELLINGS (harness ADR-0027). ROLES rename what a column is CALLED; these rename
+# what a column or a gene HOLDS. A tool that is TOLD the value - the ladder passes each as a
+# placeholder, `{control}`, `{mt_prefix}`, `{ribo_pattern}` - gives the same answer on both
+# shapes. A tool that ASSUMES one gives a different answer on the other, and the `agree` tier,
+# which compares what the two shapes produced, reports it.
+#
+# WHY NAMES WERE NOT ENOUGH. Until this table the shapes differed only in column names, so every
+# defect whose trigger is a VALUE was invisible here: a contrast taken in alphabetical order, a
+# mitochondrial prefix spelled one species' way, an assay defaulted to the first cohort's. The
+# second real cohort (ADR-0027) found all three in a day; none of them could fail a tier.
+#
+# THE COUNTS DO NOT MOVE, so `digest()` - computed from the core, before any renaming - is the
+# same for both shapes, and every baseline recorded on shape a is untouched.
+VALUES = {
+    # The condition's CONTROL level. Shape a's sorts FIRST ("ctrl" < "treated"); shape b's sorts
+    # LAST ("treated" < "untreated"). A contrast taken in sort order - `sorted(levels)`, a patsy
+    # treatment default, a factor's first category - runs one way round on a and the other way
+    # round on b; only a tool that resolves the control gives one sign on both. scProfile's DE
+    # did the first (ADR-0027, P1). "ctrl" is what `build` writes; shape a must keep it.
+    "control":      {"a": "ctrl", "b": "untreated"},
+    # The mitochondrial and ribosomal symbol spellings: shape a as one species writes them,
+    # shape b as another. The genes and their counts are the same. A tool told the pattern finds
+    # the same genes in both; a tool that hard-codes one finds none in the other.
+    "mt_prefix":    {"a": "MT-", "b": "mt-"},
+    "ribo_pattern": {"a": "^RP[SL]", "b": "^Rp[sl]"},
+}
+
+#: Bumped whenever VALUES changes what a shape holds. A fixture on disk written under another
+#: spelling is rebuilt rather than reused (`matching`), because its digest - which reads the core,
+#: not the file - cannot see the difference.
+SPELLING = 1
+
+
+def declared(shape):
+    """{name: value} that this shape holds, under the placeholder names the ladder fills."""
+    return {k: v[shape] for k, v in VALUES.items()}
+
+
+def respell(gene: str, shape: str) -> str:
+    """A gene symbol as shape `shape` spells it. Only mitochondrial and ribosomal symbols move."""
+    if shape == "a":
+        return gene
+    if gene.startswith(VALUES["mt_prefix"]["a"]):
+        return VALUES["mt_prefix"][shape] + gene[len(VALUES["mt_prefix"]["a"]):].capitalize()
+    if re.match(VALUES["ribo_pattern"]["a"], gene):
+        return gene.capitalize()
+    return gene
+
+
 HAZARDS = {
     "tiny_sample":            "one sample carries 7 cells - too few for a per-sample fit",
     "arm_exclusive_type":     "a population present in one arm only - no paired comparison exists",
@@ -84,7 +134,8 @@ HAZARDS = {
     "awkward_label":          "a label containing a space and a slash",
     "mixed_object_obs":       "an object column holding strings and None together",
     "design_row_without_cells": "a design row for a sample that contributed no cells",
-    "mito_genes":             "MT- prefixed genes, so a mitochondrial fraction is computable",
+    "mito_genes":             "mitochondrial genes, so a mitochondrial fraction is computable - spelled\n"
+                              "                               MT- in shape a and mt- in shape b (VALUES)",
     "constant_covariate_in_arm": "a numeric covariate with no spread inside one arm",
 }
 
@@ -339,7 +390,7 @@ def matching(out, shape, seed, n_cells, n_genes, splice, crossed):
             and Path(rec.get("design", "")).is_file()):
         return None                      # the record outlived what it describes
     want = {"seed": int(seed), "cells": int(n_cells), "genes": int(n_genes),
-            "splice": bool(splice), "crossed": bool(crossed)}
+            "splice": bool(splice), "crossed": bool(crossed), "spelling": SPELLING}
     got = {k: rec.get(k) for k in want}
     return rec if got == want else None
 
@@ -376,8 +427,16 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
     out.mkdir(parents=True, exist_ok=True)
 
     obs = _rename(c["obs"].copy(), shape)
-    var = pd.DataFrame(index=pd.Index(c["genes"], name=None))
-    var["mt"] = [g.startswith("MT-") for g in c["genes"]]
+    # THE VALUES, SPELLED FOR THIS SHAPE (VALUES above). The condition is rebuilt with SORTED
+    # categories, as any tool building a factor from strings would, so shape b's control is the
+    # LAST category as well as the last string - a "first category is the reference" rule meets
+    # the same trap as `sorted()`.
+    cond = ROLES["condition"][shape]
+    ctl = VALUES["control"][shape]
+    obs[cond] = pd.Categorical([ctl if v == VALUES["control"]["a"] else v for v in obs[cond].astype(str)])
+    genes = [respell(g, shape) for g in c["genes"]]
+    var = pd.DataFrame(index=pd.Index(genes, name=None))
+    var["mt"] = [g.startswith(VALUES["mt_prefix"][shape]) for g in genes]
     A = ad.AnnData(X=c["X"].copy(), obs=obs, var=var)
     A.layers[ROLES["counts"][shape]] = c["X"].copy()
     # A LOG-NORMALISED LAYER, UNDER THE NAME THE HOST'S RESOLVER LOOKS FOR FIRST. Every plugin
@@ -410,12 +469,14 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
     A.obsm["X_pca"] = np.ascontiguousarray(
         (Z @ np.linalg.svd(Z, full_matrices=False)[2][:20].T).astype("float32"))
     A.uns["sch_dev_fixture"] = {"shape": shape, "seed": c["seed"], "synthetic": True,
-                                "quotable": False}
+                                "quotable": False, "declared": declared(shape)}
 
     h5 = out / f"fixture_{shape}.h5ad"
     A.write_h5ad(h5)
     dsn = out / f"design_{shape}.csv"
-    _rename(c["design"].copy(), shape).to_csv(dsn, index=False)
+    d = _rename(c["design"].copy(), shape)
+    d[cond] = [ctl if v == VALUES["control"]["a"] else v for v in d[cond].astype(str)]
+    d.to_csv(dsn, index=False)
 
     # THE ROLES ARE WHAT THIS OBJECT ACTUALLY CARRIES. Listing `stratum` on a one-factor
     # fixture would promise a column that is not there, and a resolver believing it would report
@@ -431,6 +492,9 @@ def write(out, shape: str = "a", seed: int = 20260906, n_cells: int = 2000, n_ge
            # that asked for the layers would match a record written without them and be handed
            # an object missing the only thing it needs.
            "splice": bool(splice),
+           # WHAT THIS SHAPE HOLDS, and under which spelling version (VALUES, ADR-0027). The
+           # ladder fills `{control}`, `{mt_prefix}` and `{ribo_pattern}` from the same table.
+           "declared": declared(shape), "spelling": SPELLING,
            # THE LAYERS THE OBJECT CARRIES, by name, so a reader can ask without opening it.
            # anndata 0.13 lists the main matrix among them under the key None; the named
            # layers are what a plugin resolves, and None sorts against no string.
