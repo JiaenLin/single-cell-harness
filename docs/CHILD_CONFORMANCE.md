@@ -26,6 +26,7 @@ in a file **outside** the repository (`--terms FILE`, `$SCH_SITE_TERMS`, or
 | **S10** | declares `sees`, `cannot_show` and `state_version` | a method that saw the labels beats one that did not, partly for having been told the answer | one declaration block per tool or method |
 | S11 | resolves keys from a declaration, never by sniffing column names | `("cluster_FLAG", "scqc_flag", "FLAG")` is the upstream pipeline's vocabulary, i.e. one project's | keys declared in the call or the object; hints may suggest, never decide |
 | S12 | records every escape as an ask/decision pair with who and why | a gate with no recorded escapes gets switched off | `{ask:{gate, number, refusal}, decision:{by, why, when}}` |
+| **S13** | gives no cohort axis a literal default — `species`, `organism`, `assay`, `platform`, `chemistry`, `mt_prefix`, `ribo_pattern`, `reference`, `genome`, `tissue` (the profile's `axes:`) | `params.get("assay", "snrna")` filtered every cohort as single-nucleus; the leak guard was clean and every test passed, because the only cohort ever run *was* nuclei (ADR-0027) | absent means refuse, or infer from the data and record that it was inferred; `None` and `""` are not findings |
 
 Bold rows fail the scan; the others warn.
 

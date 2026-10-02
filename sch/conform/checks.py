@@ -214,7 +214,7 @@ def _commit_gate(checks, repo):
            "and conform before every commit)")
 
 
-def conform_repo(repo, terms_file=None, shapes_file=None) -> list:
+def conform_repo(repo, terms_file=None, shapes_file=None, profile="single-cell") -> list:
     _forget_listing()
     root = Path(repo).resolve()
     checks: list = []
@@ -431,8 +431,92 @@ def conform_repo(repo, terms_file=None, shapes_file=None) -> list:
            bool(re.search(r"escape|override", pkg_text)) and bool(re.search(r"\"by\"|'by'|decided_by|approved_by", pkg_text)),
            "", "every --allow / --no-* that lifts a refusal writes {ask:{gate, number, refusal}, decision:{by, why, when}}",
            level="warn")
+    # S13 no cohort axis has a literal default (harness ADR-0027)
+    axes = _profile_axes(profile)
+    found = axis_defaults(root, axes)
+    _check(checks, "S13 no cohort axis is given a literal default (species, assay, platform, ...)",
+           not found, found[:25] + ([f"... {len(found) - 25} more"] if len(found) > 25 else []),
+           "an axis the caller did not give is absent, never the first cohort's value: drop the "
+           "default and refuse when it is missing, or infer it from the data and record that it "
+           "was inferred. Axes are the profile's `axes:` list")
     _commit_gate(checks, repo)
     return checks
+
+
+def _profile_axes(profile) -> list:
+    from ..profile import load_profile
+    try:
+        return load_profile(profile).axes
+    except Exception:                                                     # noqa: BLE001
+        return []
+
+
+def axis_defaults(root, axes) -> list:
+    """`path:line what` for every place package code gives a cohort axis a literal default.
+
+    THE DEFECT THIS EXISTS FOR CARRIES NO NAME. scQC read `task.params.get("assay", "snrna")`
+    from a task that was never handed `assay`, so every cohort was filtered as single-nucleus.
+    The leak guard was clean - "snrna" is a word of the field, not of any cohort - and every test
+    passed, because the only cohort the family had ever run WAS single-nucleus: the default and
+    the truth were the same word. An overfit that names nothing is invisible to a name scan; it
+    has a SHAPE, and the shape is a literal standing where a declaration should be.
+
+    Four shapes, read from the syntax tree, never from text:
+      `.get("<axis>", <literal>)`, `.setdefault`/`.pop` likewise, `getattr(x, "<axis>", <literal>)`,
+      `add_argument("--<axis>", default=<literal>)`, and a parameter named for an axis whose
+      default is a literal.
+
+    NOT A FINDING: `None`, `""` and booleans. Each says "absent" rather than claiming a value, and
+    an absent axis that is then refused or inferred is exactly the behaviour this asks for.
+    Python only: an R default is not read, and the check says so where it reports.
+    """
+    import ast
+    want = {str(a).lower() for a in axes}
+    if not want:
+        return []
+
+    def norm(s):
+        return s.lstrip("-").replace("-", "_").lower()
+
+    def claims(node):
+        return (isinstance(node, ast.Constant) and node.value is not None
+                and not isinstance(node.value, bool) and node.value != "")
+
+    def axis(node):
+        return isinstance(node, ast.Constant) and isinstance(node.value, str) and norm(node.value) in want
+
+    root = Path(root)
+    out = []
+    for p in _pkg_files(root):
+        if p.suffix != ".py":
+            continue
+        try:
+            tree = ast.parse(_read(p))
+        except SyntaxError:
+            continue
+        rel = p.relative_to(root)
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Call):
+                f, a = n.func, n.args
+                name = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
+                if name in ("get", "setdefault", "pop") and len(a) >= 2 and axis(a[0]) and claims(a[1]):
+                    out.append(f"{rel}:{n.lineno} .{name}({a[0].value!r}, {a[1].value!r})")
+                elif name == "getattr" and len(a) >= 3 and axis(a[1]) and claims(a[2]):
+                    out.append(f"{rel}:{n.lineno} getattr(..., {a[1].value!r}, {a[2].value!r})")
+                elif name == "add_argument" and a and axis(a[0]):
+                    for k in n.keywords:
+                        if k.arg == "default" and claims(k.value):
+                            out.append(f"{rel}:{n.lineno} add_argument({a[0].value!r}, "
+                                       f"default={k.value.value!r})")
+            elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                g = n.args
+                pos = g.posonlyargs + g.args
+                pairs = list(zip(pos[len(pos) - len(g.defaults):], g.defaults))
+                pairs += [(x, d) for x, d in zip(g.kwonlyargs, g.kw_defaults) if d is not None]
+                for x, d in pairs:
+                    if norm(x.arg) in want and claims(d):
+                        out.append(f"{rel}:{d.lineno} def {n.name}(... {x.arg}={d.value!r})")
+    return sorted(set(out), key=lambda s: (s.split(":")[0], int(s.split(":")[1].split()[0])))
 
 
 def conform_run(run_dir) -> list:

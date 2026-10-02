@@ -143,10 +143,45 @@ class TestConform(unittest.TestCase):
         self.assertTrue(by_id(conform_repo(ROOT), "G1 ")[0]["ok"],
                         "this clone has no commit gate installed: git config core.hooksPath setup/githooks")
 
+    def test_a_cohort_axis_with_a_literal_default_is_named(self):
+        """S13, harness ADR-0027. scQC's mitochondrial step read `params.get("assay", "snrna")`
+        from a task never handed `assay`: every cohort was filtered as single-nucleus, the leak
+        guard was clean, and every test passed because the only cohort ever run was nuclei. The
+        four shapes it reads, each planted once; and the three absences it must NOT name, because
+        "absent, then refused or inferred" is the behaviour it asks for."""
+        r = self._repo(leaky=False)
+        (r / "tool" / "axes.py").write_text(
+            'import argparse\n'
+            'def ceiling(stats, assay="snrna"):\n    return stats\n'
+            'def run(params):\n    return params.get("assay", "snrna")\n'
+            'def org(ctx):\n    return getattr(ctx, "organism", "mouse")\n'
+            'ap = argparse.ArgumentParser()\nap.add_argument("--mt-prefix", default="mt-")\n'
+            'def fine(params, species=None, tissue=""):\n'
+            '    return params.get("platform"), params.get("reference", ""), params.get("chemistry", None)\n')
+        s13 = by_id(conform_repo(r), "S13")[0]
+        self.assertFalse(s13["ok"])
+        got = " | ".join(s13["evidence"])
+        for want in ("ceiling(... assay='snrna')", ".get('assay', 'snrna')",
+                     "getattr(..., 'organism', 'mouse')", "add_argument('--mt-prefix', default='mt-')"):
+            self.assertIn(want, got)
+        self.assertEqual(len(s13["evidence"]), 4, s13["evidence"])
+        # Tests are not package code: a fixture row that SAYS snrna is data, not a default.
+        (r / "tool" / "axes.py").unlink()
+        (r / "tests" / "test_x.py").write_text('def row(assay="snrna"):\n    return assay\n')
+        self.assertTrue(by_id(conform_repo(r), "S13")[0]["ok"])
+
+    def test_the_axes_are_the_profiles_not_the_checks(self):
+        from sch.profile import load_profile
+        self.assertIn("assay", load_profile("single-cell").axes)
+        self.assertEqual(load_profile("table").axes, [],
+                         "the domain-free profile names no cohort axis, so S13 has nothing to ask")
+
     def test_this_repository_conforms_to_its_own_scan(self):
         checks = conform_repo(ROOT)
         s1 = by_id(checks, "S1 ")[0]
         self.assertTrue(s1["ok"], s1["evidence"])
+        s13 = by_id(checks, "S13")[0]
+        self.assertTrue(s13["ok"], s13["evidence"])
 
 
 class TestDoctor(unittest.TestCase):

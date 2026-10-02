@@ -74,6 +74,12 @@ class Profile:
         return list(self.data.get("domain_terms") or [])
 
     @property
+    def axes(self) -> list[str]:
+        """The properties a cohort differs on before any biology (harness ADR-0027). A tool may
+        be told each and may infer some; `sch conform` S13 refuses a literal default for any."""
+        return list(self.data.get("axes") or [])
+
+    @property
     def required(self) -> dict:
         return dict(self.data.get("required") or {})
 

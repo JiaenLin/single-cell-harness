@@ -22,6 +22,14 @@ slots:
 
 keys: [label, sample, batch, counts, lognorm, embedding, compartment]
 
+# COHORT AXES (harness ADR-0027): what makes one dataset differ from another before any biology.
+# A tool may be TOLD each of these, and may infer some from the data; it may never ASSUME one.
+# `sch conform` S13 refuses a literal default for any of them, in any repository. The case that
+# put this here: scQC's mitochondrial step read `params.get("assay", "snrna")` from a task that
+# was never given `assay`, so every cohort got the first cohort's assay - and no test could see
+# it, because on the first cohort the default and the truth were the same word.
+axes: [species, organism, assay, platform, chemistry, mt_prefix, ribo_pattern, reference, genome, tissue]
+
 capabilities:
   "capability:embedding": embedding/*
   "capability:labels":    column/{label}
