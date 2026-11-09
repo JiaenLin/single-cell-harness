@@ -5,11 +5,10 @@ something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP
 
 ## Verdict
 
-**NOT HAPPY: 0 of 20 tests PASS (5 PARTIAL, 15 FAIL).** These are the grades of audit pass 0001, the
-gap review of the harness and the four tools, and of pass 0001b, which reviewed the platform and graded
-A6.2 and A6.3. The records are [`audits/0001-gap-review.md`](audits/0001-gap-review.md) and
-[`audits/0001b-platform-review.md`](audits/0001b-platform-review.md). Their 59 + 24 gaps are in
-[`ledger/gaps.tsv`](ledger/gaps.tsv).
+**NOT HAPPY: 0 of 20 tests PASS (7 PARTIAL, 13 FAIL)** at audit pass 0002
+([`audits/0002-audit.md`](audits/0002-audit.md)). Pass 0001 had 5 PARTIAL and 15 FAIL. A1.3 and A3.3
+moved FAIL → PARTIAL. All 16 claimed closures were re-checked and hold. 47 gaps of size M or larger
+remain open.
 
 ## Scoreboard (GOALS.md layer 3; pass 0001)
 
@@ -17,13 +16,13 @@ A6.2 and A6.3. The records are [`audits/0001-gap-review.md`](audits/0001-gap-rev
 |---|---|---|
 | A1.1 one request, every stage | FAIL | The kernel runs none of the four tools: there is no adapter, and the `pbs` executor is refused. SAMBO ran stage by stage with glue at every boundary (GAP-001, GAP-002). |
 | A1.2 the ten steps mapped | PARTIAL | No map exists, and differential abundance has never run (GAP-058, GAP-041). |
-| A1.3 environments from main | FAIL | scProfile cannot build from `main` (GAP-038 → **W002**). scQC and scIntegrate leave packages unpinned (GAP-018, GAP-036). |
+| A1.3 environments from main | PARTIAL | scProfile builds from its lock on a fresh prefix (PBS 782609). No fresh-prefix PBS build from main yet for scQC, scAnno or scIntegrate (GAP-107). |
 | A2.1 pre-declared reproduction | PARTIAL | Stages 1 and 3 reproduce. Stage 2's promoted run has never been reproduced (GAP-033). Stage 4 has no promoted run (GAP-055). |
 | A2.2 documentation true | FAIL | Every tool has false docs (GAP-009, -022, -031 → **W003**, -037 → **W004**, -052). |
 | A2.3 cold reproduction | FAIL | Never attempted (GAP-004). |
 | A3.1 held-out cohorts | FAIL | C46 stopped after stage 1. Fixtures reach only scIntegrate's pipeline. The leak list misses factor levels (GAP-056, -007, -023, -008). |
 | A3.2 design-aware | PARTIAL | DE contrasts levels in alphabetical order. Covariates are neither modelled nor refused (GAP-039, -040). |
-| A3.3 assay rule sets | FAIL | scQC `main` schedules CellBender on single cells (GAP-017 = GAP-C01 → **W001**). The assay is unused in scAnno, scIntegrate and scProfile (GAP-029 → **W003**, -034 → **W004**, -050). |
+| A3.3 assay rule sets | PARTIAL | scQC, scAnno and scIntegrate have per-assay rules with no silent default. scProfile changes captions only. |
 | A3.4 scale | FAIL | No cohort of 1M cells or more. Three tools record no memory (GAP-016, -015). |
 | A4.1 existing pool in one format | FAIL | Only CellChat is in the maker's layout (GAP-044). |
 | A4.2 maker on new tools | FAIL | The maker has never converted a tool drawn from the catalogue (GAP-046). |
@@ -88,6 +87,15 @@ None of these blocks a running lane.
      Re-promoting the moved run stays yours.
    - **(c)** As (b), but each such merge comes to you.
    Meanwhile these fixes go default-off or scoped, with SAMBO IDENTICAL, so no lane waits.
+   **A merge already made under the same question (GAP-102, raised by audit pass 0002):** I merged
+   W007 (scQC `0a9d2ce`) although its reproduction against the promoted run missed as written. The
+   miss was two record keys that `main`'s earlier commit `0e6a5f6` added. The comparison that
+   justified the merge was designed AFTER submission: it was against 720930, whose code is
+   identical to `main`, and it found no `/metrics` value differing. That puts the merge outside
+   your standing yes. Recommended: accept it. W007 moved no computed value, and reverting brings
+   back the first-cohort fallback registry and seven other fixed defects. Your answer to 0b decides
+   it. From now on, any comparison a merge relies on is written into the job before submission
+   (RULES tier IV).
 0c. **SAMBO's sealed run directories are missing on the cluster** (BLK-007). The promoted stage-1 run
    (`runs/scqc/01_qc/20260824T161519Z__scqc-133a951__01_qc__ribo`) and every other stage-1 run except
    720930's are gone, along with the promoted stage-3 run's directory and the CellChat reference

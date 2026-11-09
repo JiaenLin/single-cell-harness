@@ -1,3 +1,4 @@
 stamp	pass	kind	verdict	A1.1	A1.2	A1.3	A2.1	A2.2	A2.3	A3.1	A3.2	A3.3	A3.4	A4.1	A4.2	A4.3	A4.4	A5.1	A5.2	A6.1	A6.2	A6.3	A7.1	report
 2026-11-09T06:29:00Z	0001	gap review (full, read-only; the harness and four tools)	NOT HAPPY	FAIL	PARTIAL	FAIL	PARTIAL	FAIL	FAIL	FAIL	PARTIAL	FAIL	FAIL	FAIL	FAIL	PARTIAL	FAIL	PARTIAL	FAIL	FAIL	PARTIAL	UNKNOWN	FAIL	autodev/audits/0001-gap-review.md
 2026-11-09T07:40:00Z	0001b	platform review (A6.2, A6.3, A2.2 for Studio/Lab/Service; others not graded)	NOT HAPPY	-	-	-	-	FAIL	-	-	-	-	-	-	-	-	-	-	-	-	FAIL	FAIL	-	autodev/audits/0001b-platform-review.md
+2026-11-09T10:06:15Z	0002	full audit (fresh; all 20 tests; mains at scQC 0a9d2ce, scAnno a126756, scIntegrate 9a2d7d1, scProfile f5175ea, harness 3860507)	NOT HAPPY	FAIL	PARTIAL	PARTIAL	PARTIAL	FAIL	FAIL	FAIL	PARTIAL	PARTIAL	FAIL	FAIL	FAIL	PARTIAL	FAIL	PARTIAL	FAIL	FAIL	FAIL	FAIL	FAIL	autodev/audits/0002-audit.md
