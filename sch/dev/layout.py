@@ -59,6 +59,91 @@ def host_kept(layout):
     return [k for k in ((layout or {}).get("host_keep") or []) if k in host]
 
 
+def _at(spec, path):
+    """The value at a dotted path of a declaration, or None. Never raises on a missing branch."""
+    node = spec or {}
+    for part in str(path or "").split("."):
+        node = node.get(part) if isinstance(node, dict) else None
+    return node
+
+
+def host_for_plugin(spec, layout, keys=None):
+    """{earns, why, kinds, declared, unknown, at} - which of the host's own panels THIS plugin's
+    pages carry, and so what the layout charges to them (autodev W019, GAP-C40).
+
+    THE HOST DRAWS ITS PANELS FOR SOME PLUGINS, NOT FOR EVERY ONE. They are aggregations of a
+    plugin's per-unit network, and a plugin that has none - de, which runs once over the whole
+    cohort - gets none of them. Charging them to every plugin put de's six plates over the cohort
+    budget by construction (three host files against a budget of three), and the trim would have
+    deleted all six. Which plugins earn them is the tool's to say: `host_for` names the field of a
+    plugin's own declaration whose presence earns them. Where the layout names none, every plugin
+    is charged, as before, and the report says how to say otherwise.
+
+    AND THE LIST IS THE PLUGIN'S. A plugin the host draws for carries the kinds its pages show
+    (`host_list`), any of the host's kinds: it was demanded EQUAL to the layout's `host_keep`, so
+    a plugin whose network cannot feed a kind could not decline it. A kind the host does not draw
+    is still a debt, and so is no list at all - the host then draws every kind it owns - which is
+    charged as `host_keep` until the plugin says.
+    """
+    layout = layout or {}
+    host = layout.get("host") or {}
+    at = _k(keys, "host_list", "") or str(layout.get("host_list") or "")
+    rec = {"earns": bool(host), "why": "", "kinds": [], "declared": None, "unknown": [], "at": at}
+    if not host:
+        return rec
+    earned_by = str(layout.get("host_for") or "")
+    if earned_by:
+        got = _at(spec, earned_by)
+        rec["earns"] = bool(got)
+        rec["why"] = (f"it declares `{earned_by}`" if got else
+                      f"it declares no `{earned_by}`, which is what earns the host's panels")
+    else:
+        rec["why"] = ("the layout names no `host_for`, so every plugin is charged the host's "
+                      "panels; declare the field that earns them to charge only those it draws for")
+    if not rec["earns"]:
+        return rec
+    node = _at(spec, at) if at else None
+    declared = [str(k) for k in node] if isinstance(node, (list, tuple)) else None
+    rec["declared"] = declared
+    if declared is None:
+        rec["kinds"] = host_kept(layout)
+    else:
+        rec["unknown"] = [k for k in declared if k not in host]
+        rec["kinds"] = [k for k in declared if k in host]
+    return rec
+
+
+def host_files_for(kinds, layout):
+    """{axis: files} the named host kinds take on each axis, per occurrence (see host_files)."""
+    host = (layout or {}).get("host") or {}
+    out = {}
+    for k in kinds:
+        if k in host:
+            ax = str((host[k] or {}).get("axis") or "cohort")
+            out[ax] = out.get(ax, 0) + max(1, int((host[k] or {}).get("files") or 1))
+    return out
+
+
+def pooled(spec, layout, keys=None):
+    """Whether a plugin runs ONCE OVER THE WHOLE COHORT and the layout gives such a plugin its own
+    budget (autodev W019, GAP-C40). The cohort axis is a per-unit plugin's summary: three files
+    there were the host's census for every unit. A pooled plugin's whole page is drawn once for
+    the cohort, so where the layout declares `pooled` (a budget and a keep, like an axis) that is
+    its budget in place of the cohort axis's. Whether a plugin runs per unit is a field of its own
+    declaration, named by the plan stage (`entry_keys.per_unit`); not named, nothing is pooled."""
+    pu = _k(keys, "per_unit", "")
+    return bool(pu and isinstance((layout or {}).get("pooled"), dict) and not _at(spec, pu))
+
+
+def _effective(spec, layout, keys):
+    """The layout as it applies to this plugin: a pooled plugin's cohort axis is `pooled`."""
+    if not pooled(spec, layout, keys):
+        return layout or {}
+    axes = dict((layout or {}).get("axes") or {})
+    axes["cohort"] = dict(layout["pooled"])
+    return dict(layout, axes=axes)
+
+
 def _files(e, bound):
     try:
         return max(1, int(e.get(bound) or 1))
@@ -87,8 +172,12 @@ def check(spec, layout, keys=None):
     """{ok, counts, budgets, over: [axis], entries: {axis: [(id, files)]}} for a plan."""
     keys = keys or {}
     bound = _k(keys, "bound", "at_most")
+    hp = host_for_plugin(spec, layout, keys)
+    is_pooled = pooled(spec, layout, keys)
+    layout = _effective(spec, layout, keys)
     axes = (layout or {}).get("axes") or {}
-    host = host_files(layout)
+    # THE HOST'S FILES WHERE THE HOST DRAWS THEM, AS THIS PLUGIN DECLARES THEM (autodev W019).
+    host = host_files_for(hp["kinds"], layout) if hp["earns"] else {}
     counts, per = {a: host.get(a, 0) for a in axes}, {a: [] for a in axes}
     unruled = [str(e["id"]) for e in _entries(spec, keys) if not e.get(_k(keys, "axis", "axis"))]
     for e in _entries(spec, keys):
@@ -98,22 +187,17 @@ def check(spec, layout, keys=None):
                 per[a].append((str(e["id"]), _files(e, bound)))
     budgets = {a: int((axes[a] or {}).get("budget") or 0) for a in axes}
     over = [a for a in axes if counts[a] > budgets[a]]
-    # THE HOST'S LIST, CARRIED BY THE PLUGIN: what the layout keeps is what the plugin must
-    # declare, or the host draws every kind it owns and the count above is not the run's.
-    hlist = _k(keys, "host_list", "") or str((layout or {}).get("host_list") or "")
-    wanted = host_kept(layout) if (layout or {}).get("host") else None
-    declared = None
-    if hlist and wanted is not None:
-        node = spec or {}
-        for part in hlist.split("."):
-            node = node.get(part) if isinstance(node, dict) else None
-        declared = list(node) if isinstance(node, (list, tuple)) else None
-    list_ok = wanted is None or declared == wanted
-    return {"ok": not over and list_ok, "counts": counts, "budgets": budgets, "over": over,
+    # THE HOST'S LIST, CARRIED BY A PLUGIN THE HOST DRAWS FOR: without it the host draws every
+    # kind it owns and the count above is not the run's; with a kind the host does not draw, a
+    # panel nobody draws is promised.
+    owes_list = bool(hp["earns"] and hp["at"] and (hp["declared"] is None or hp["unknown"]))
+    return {"ok": not over and not owes_list, "counts": counts, "budgets": budgets, "over": over,
             "entries": per, "host": {a: n for a, n in host.items() if a in axes},
-            "unruled": unruled,
-            "host_list": ({"declared": declared, "wanted": wanted, "at": hlist}
-                          if wanted is not None else {})}
+            "unruled": unruled, "pooled": is_pooled,
+            "host_list": ({"declared": hp["declared"], "wanted": host_kept(layout),
+                           "at": hp["at"], "earns": hp["earns"], "why": hp["why"],
+                           "unknown": hp["unknown"], "owes": owes_list}
+                          if (layout or {}).get("host") and hp["at"] else {})}
 
 
 def _rank(e, axis, layout, keys):
@@ -140,11 +224,13 @@ def trim(spec, layout, keys=None):
     """
     keys = keys or {}
     bound, axis_key = _k(keys, "bound", "at_most"), _k(keys, "axis", "axis")
+    hp = host_for_plugin(spec, layout, keys)
+    layout = _effective(spec, layout, keys)
     axes = (layout or {}).get("axes") or {}
     decided = {}        # id -> {axis: files kept}
     dropped = []
     entries = _entries(spec, keys)
-    host = host_files(layout)
+    host = host_files_for(hp["kinds"], layout) if hp["earns"] else {}
     for a in axes:
         # THE HOST'S OWN PANELS TAKE THEIR FILES FIRST: the budget is the reader's, whoever drew
         # the file, and the host's kinds are what the layout kept on purpose.
@@ -342,8 +428,16 @@ def apply(path, layout, keys=None, as_version=None):
                for fn, d in skip_lines]
         edits.append((a, a, [lines[a - 1]] + ins))
     # THE HOST'S PANELS THE PAGES CARRY, as the list the format names, on its own line inside
-    # the report block - written once, rewritten in place when it is already there.
-    hlist = _k(keys, "host_list", "") or str((layout or {}).get("host_list") or "")
+    # the report block - written once, for a plugin the host draws for that carries no list
+    # (autodev W019). A plugin the host draws nothing for is given none, and a list a plugin
+    # already carries is its own decision and is left as it is - unless it names a kind the host
+    # does not draw, which is the author's to correct.
+    hp = host_for_plugin(spec, layout, keys)
+    if hp["unknown"]:
+        raise ValueError(f"`{hp['at']}` names {', '.join(hp['unknown'])}, which the layout's host "
+                         f"table does not draw; correct it with `sch dev edit` first. Nothing "
+                         f"written")
+    hlist = hp["at"] if hp["earns"] and hp["declared"] is None else ""
     if hlist and (layout or {}).get("host"):
         field = hlist.split(".")[-1]
         rep_node = next((v for k, v in zip(plug.keys, plug.values)
@@ -418,16 +512,22 @@ def format_report(name, rep, plan=None, root="", point="", apply_hint=True):
     if rep.get("unruled"):
         L.append(f"  PART {len(rep['unruled'])} entr(ies) with no axis, counted nowhere until the "
                  f"plan stage rules on them: {', '.join(rep['unruled'])}")
+    if rep.get("pooled"):
+        L.append("  ok   this plugin runs once over the whole cohort: its cohort plates are held to "
+                 "the layout's `pooled` budget, in place of the cohort axis")
     hl = rep.get("host_list") or {}
-    if hl:
-        if hl.get("declared") == hl.get("wanted"):
-            L.append(f"  ok   the host's own panels these pages carry, as `{hl['at']}` declares: "
-                     f"{', '.join(hl['wanted']) or 'none'}")
-        else:
-            L.append(f"  OWES `{hl['at']}`: the layout keeps {', '.join(hl['wanted']) or 'none'} "
-                     f"of the host's own panels and the plugin declares "
-                     f"{', '.join(hl['declared']) if hl.get('declared') is not None else 'nothing'}"
-                     f" - without it the host draws every kind it owns")
+    if hl and not hl.get("earns", True):
+        L.append(f"  ok   the host draws none of its own panels for this plugin: {hl.get('why')}")
+    elif hl and hl.get("unknown"):
+        L.append(f"  OWES `{hl['at']}`: it names {', '.join(hl['unknown'])}, which the host does "
+                 f"not draw - a panel promised and drawn by nobody")
+    elif hl and not hl.get("owes"):
+        L.append(f"  ok   the host's own panels these pages carry, as `{hl['at']}` declares: "
+                 f"{', '.join(hl.get('declared') or []) or 'none'}")
+    elif hl:
+        L.append(f"  OWES `{hl['at']}`: the layout keeps {', '.join(hl['wanted']) or 'none'} "
+                 f"of the host's own panels and the plugin declares nothing - without it the "
+                 f"host draws every kind it owns")
     if plan:
         L.append(f"  the trim keeps {len(plan['kept'])} entr(ies) and drops "
                  f"{len({d['id'] for d in plan['dropped']})}:")
