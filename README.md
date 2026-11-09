@@ -16,9 +16,11 @@ everything downstream knows when one does.
 > implements Phase 1 (the domain-free core, proved on a toy profile), Phase 2 (the profile and the
 > 15-check validator, every rule tripped by a broken plugin), the gate-is-a-probe machinery of
 > Phase 4, and the agent surface of Phase 10 with its adversarial suite. Phase 3's first adapter,
-> `qc@scqc` (the first tool the kernel runs), and Phase 9's `pbs` executor are built (W010) and
-> not yet graded: the adapter waits on a pre-declared reproduction on the reference cohort, the
-> executor on a run against a real scheduler. Phases 5–8 and 11 are not built.
+> `qc@scqc` (the first tool the kernel runs), and Phase 9's `pbs` executor were built in W010 and
+> graded by a pre-declared reproduction of the reference cohort's stage 1 through the harness,
+> with nested jobs on a real scheduler (PBS 782922). The second adapter, `anno@scanno` (W026),
+> is built and graded on a synthetic cohort against the real scAnno; its stage-2 reproduction is
+> written and not yet run. Phases 5–8 and 11 are not built.
 >
 > `sch conform` checks a child tool against
 > [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it; all four pass with
