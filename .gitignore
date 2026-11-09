@@ -5,3 +5,7 @@ build/
 dist/
 HEAD.txt
 .mpl/
+
+# never committed: report/ carries collaborators' data (autodev housekeeping 2026-11-09)
+report/
+.DS_Store
