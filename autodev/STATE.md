@@ -45,8 +45,8 @@ A6.2 and A6.3. The records are [`audits/0001-gap-review.md`](audits/0001-gap-rev
 | INT | scIntegrate | W004: species checked, assay recorded, first-cohort sentence removed, false statements fixed (GAP-034, GAP-037) | building |
 | PROF | scProfile | W002: host-level environment lock, with no kernel edit (GAP-038) | building |
 | HARN | single-cell-harness | held until B1 merges: B1 is editing the harness, and parallel edits would conflict. Next: GAP-002 → GAP-001 (the spine), GAP-005, GAP-011, GAP-007, GAP-008 | held (rule 5: a conflict costs more) |
-| PLAT | studio, lab, service | W005: Lab's `convert` command, the design carried, byte-reproducible bundles (GAP-P09, P11, P13, P16). Next: the run record (P10 in Lab, then P19 in Studio); Service's single-cell mode in new files only | building |
-| AUDIT | — | W001's verifier | 1 running |
+| PLAT | studio, lab, service | **W005** (Lab `convert` command) built, `56fface`: 398/398 checks, the same sha256 twice, Studio's reader opens it. Verifying now; merging redeploys the live app. **W008** (Studio) building: true DESeq2 wording, docs marked shipped or planned, sentinels out of the cell types. Next: the run record (P10 in Lab, then P19 in Studio), the cross-repo contract test (P18), Service's single-cell mode in new files | W005 verifying; W008 building |
+| AUDIT | — | W005's verifier | 1 running |
 | BLOCKER | the harness (in its worktree) | B1: the inherited constraints (unreasonable designs, freezes, gates), recorded in ADR-0029 | running |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
