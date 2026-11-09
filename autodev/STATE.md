@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-09T16:01Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-09T16:08Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 **PAUSED 2026-11-09T15:57Z by the account's weekly limit (BLK-010) until 2026-11-14T01:00Z (9am SGT).** No agent can
@@ -52,7 +52,7 @@ gaps not closed are size M or larger.
 | HARN | single-cell-harness | **W010, W016 and W019 MERGED** (`main` `70c25b9`): stage 1 through the harness; one plugin format plus `sch catalogue`; the maker's six defects from the de conversion (`agree` judges every output, excusing only a tool's declared execution record). **W026**: SAMBO stage 2 through the harness AS PREDICTED at the fix-up too (job 28b, PBS 783363); the merge waits on the fix-only re-check of `f640455`. **W024**: the merge waits on the fix-only re-check of `ca4825f`. **W029** paused mid-build. All three wait on BLK-010 | merged x3; 2 waiting on a re-check; 1 held |
 | PLAT | studio, lab, service | **DEPLOYED by the PI's go:** Lab W005 (`51a00fa`), Studio W008 (`1d591f9`), and Service W009 + W015 (`997d132`). W017 (Lab) and W028 (Studio) are now stacked on deployed mains. Under the throttle, W017 gets at most one more fix-only re-check (`243783f`). The W028 verifier was paused mid-check (BLK-010) | deployed x4; 2 open |
 | AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014, W019, W021**. Pass 0004 is due and waits on BLK-010 | due |
-| BLOCKER | — | **Sweep 14:11Z:** nothing removable is waiting. The B1 register's 68 rows are all in waves (W020 building, W021 verifying, W022 and W023 queued behind their repositories), and the checkouts each follow their gating wave. New: GAP-C62 (the commit hook runs the whole suite on records-only commits). **BLK-010 (16:00Z): the weekly limit stopped every agent until 2026-11-14T01:00Z.** BLK-009 (W013's job, held by long-queue start failures) is parked. Still the PI's: BLK-002, BLK-007, decisions 2-5 | watching |
+| BLOCKER | — | **Sweep 14:11Z:** nothing removable is waiting. The B1 register's 68 rows are all in waves (W020 building, W021 verifying, W022 and W023 queued behind their repositories), and the checkouts each follow their gating wave. New: GAP-C62 (the commit hook runs the whole suite on records-only commits). **BLK-010 (16:00Z): the weekly limit stopped every agent until 2026-11-14T01:00Z.** BLK-009 (W013's job, held by long-queue start failures) is parked. Nothing waits on the PI: decisions 2-5 were decided by the pre-decider on 2026-11-10 | watching |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
 - PBS 720930 is IDENTICAL, as predicted.
@@ -72,16 +72,23 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## Decisions needed from the PI
 
-None of these blocks a running lane.
-2. **Commit `f488621` on the harness's `main` is authored `t <t@t>`.** A test's stray config did this
-   (BLK-004); the true author is Jiaen Lin, via Claude. It is pushed. Rewriting it means a force-push
-   to `main`, which is outward-facing and rewrites public history. Recommended: leave it. The
-   correction is recorded in BLK-004 and in the next commit.
-3. **A permission rule for deleting merged remote branches** (BLK-002). Merged branches are kept, which
-   is harmless.
-4. **C46's design facts.** What is C46 relative to H9, and what are `_1`/`_2`? This blocks only C46
-   stage 4. It comes from the collaborator.
-5. **Velocity on C46.** Only if you want it: it needs the vendor's BAM.
+None. The four that were listed here (2-5) were decided by the pre-decider on 2026-11-10, below.
+
+## Decided (2026-11-10, by the pre-decider; the PI: "review rules and goals and decide")
+
+- **2, commit `f488621` authored `t <t@t>`: left as it is, and attributed by `.mailmap`.** Rewriting it needs a force-push
+  to a public `main`. Declining that is the default and needs nobody (RULES tier IV, the pre-decider's step 3a). `.mailmap`
+  maps it to Jiaen Lin, so `git log` and `git shortlog` show the true author without rewriting history (BLK-004).
+- **3, deleting merged remote branches: they are kept.** The tool's permission refuses the delete, and that is not routed
+  around. No goal needs the deletion, because a merged branch costs nothing. Housekeeping stops trying (BLK-002 closed).
+- **4, C46's design: genotype, with `H9WT` as the control and `C46Mut` as the condition, n = 2 libraries per arm.** The
+  delivery's own names declare it (C46 README). The two unknowns are stated in the stage-4 report as limits, not asked:
+  whether C46 is isogenic to H9 (if not, line and genotype are confounded), and whether `_1`/`_2` are independent
+  differentiations. One of them can be measured: H9 is 46,XX, so Y-gene counts in `C46Mut` would show it is not an H9
+  derivative. Stage 4 measures that first (GAP-C68).
+- **5, velocity on C46: not run.** The delivery holds Cell Ranger outputs only, with no FASTQ or BAM, so there are no
+  spliced and unspliced counts. Asking the vendor is outward-facing, and no goal needs it: PROF.3's scVelo coverage is tested
+  on scVelo's own published example when that plugin migrates (A4.2's rule).
 
 ## Decided (2026-11-09)
 
