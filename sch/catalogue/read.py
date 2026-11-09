@@ -100,10 +100,25 @@ def module_literal(path, name: str, *, what: str = "declaration"):
                             f"a static reader sees is then not the {what} the plugin runs with")
     try:
         value = ast.literal_eval(node.value)
-    except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError) as e:
-        raise Unreadable(p, f"line {node.lineno}: `{name}` is not a literal ({e}); a {what} must be "
-                            f"readable without running the file") from None
+    except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+        kind, line = _first_computed(node.value)
+        raise Unreadable(p, f"line {node.lineno}: `{name}` is not a literal - it holds a {kind} "
+                            f"(line {line}) that only running the file could evaluate; a {what} "
+                            f"must be readable without running it") from None
     return value, node.lineno
+
+
+_LITERAL = (ast.Constant, ast.Dict, ast.List, ast.Tuple, ast.Set, ast.UnaryOp, ast.BinOp,
+            ast.Load, ast.USub, ast.UAdd, ast.Add, ast.Sub)
+
+
+def _first_computed(node):
+    """(node kind, line) of the first part of an expression that is not a literal: the thing
+    `ast.literal_eval` refused, named, rather than its message (which carries a memory address)."""
+    for n in ast.walk(node):
+        if not isinstance(n, _LITERAL):
+            return type(n).__name__, getattr(n, "lineno", getattr(node, "lineno", "?"))
+    return type(node).__name__, getattr(node, "lineno", "?")
 
 
 def plugin_literal(path):
