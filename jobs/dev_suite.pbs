@@ -226,7 +226,7 @@ cat "$RUNDIR/hazards.txt"
 # EVERY ONE, AND NO HELD-OUT ONE (autodev W019, GAP-C44). This job named `--name abundance`, a
 # held-out plugin, so the plugins migrated through the maker were never on this ladder. The
 # repository says which are held out (`rules.held_out`); every other artefact at the point is
-# maker output, read by the same function the maker's status and `sch dev rules` read.
+# maker output, read from the same declaration the maker's status and `sch dev rules` read.
 echo; echo "=== scprofile: the plugins its own rules leave as maker output"
 "$PY" - "$TOOLS/scProfile" kernel > "$RUNDIR/logs/scprofile.names.txt" \
       2> "$RUNDIR/logs/scprofile.names.err" <<'NAMES' || { cat "$RUNDIR/logs/scprofile.names.err"; exit 1; }
