@@ -48,6 +48,72 @@ VOLATILE = {"started", "finished", "seconds", "elapsed", "timings", "commit", "t
             "jobid", "job", "host", "argv", "python", "generated", "date", "out", "out_dir",
             "path", "paths", "run", "rundir", "pid", "hostname", "wrapped_versions", "version"}
 
+#: A BYTE COUNT MEASURES A FILE, NOT WHAT IS IN IT. A status contract lists each product with its
+#: size, and a size moves with the names the file holds - shape b's `library_id` is four bytes
+#: longer than shape a's `sample` in every row that spells it - and with the digits of every timing
+#: written into it: 43.26 seconds and 9.8 seconds are one byte apart. Measured twice: the first
+#: cluster run of `agree` (PBS 719917) found only `products[*].bytes`, in scAnno and scIntegrate;
+#: and de's first baseline (autodev W013) named eight `products[*].bytes` as moving between two
+#: executions - a different eight on the next pair, so a baseline that names them is one that fails
+#: on the third run for a reason that is never the tool's. Not a number about the data, so neither
+#: `agree` nor the baseline compares one; the baseline still RECORDS it, for a reader.
+SIZE_OF_A_FILE = re.compile(r"(?:^|[.\]])(?:bytes|n_bytes|size_bytes)$")
+
+#: WHAT A RUN MEASURES OF ITSELF IS A MEASUREMENT, NOT AN OUTPUT (autodev W019, GAP-C41). How long
+#: the execution took, how many cores it used, how much memory it held, and the cost and memory
+#: models a tool fits from those: they are recorded so that a scheduler and a reader can use them,
+#: and they move between two executions of the SAME input on the same machine, because the machine
+#: is shared. Judged as outputs they made a check fail for a reason that is never the change: de's
+#: two fixture shapes agreed on every number DE writes, and `agree` failed on wall time, CPU time,
+#: resident memory and the two models fitted from them - a different subset on every run.
+#:
+#: A key NAMES a resource when one of its words - split at `_` and at a lower-to-upper case change -
+#: is one of these. The words are the quantities, not any tool's spelling of them; `time` is
+#: deliberately absent, because pseudotime and latent time are RESULTS of some tools, and only
+#: `wall` and `cpu` say which clock was read. Only identifier-shaped keys are read: a population or
+#: a gene that becomes a key carries spaces or punctuation often enough, and the fixture's own names
+#: are held outside this rule by a test (tests/test_a_measurement_is_reported_and_never_judged.py).
+#: A resource field is RECORDED and REPORTED, never judged - by `agree` or by the baseline.
+RESOURCE_WORDS = frozenset({"cores", "cpu", "wall", "walltime", "rss", "memory", "cost", "runtime"})
+_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_CASE_CHANGE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+
+
+def _words(key: str) -> set:
+    return {w.lower() for w in _CASE_CHANGE.sub("_", key).split("_") if w}
+
+
+def is_resource(path: str) -> bool:
+    """Whether a numeric field - `measured.wall_s`, `cores_model.x.peak`, a CSV column - is the
+    execution's measurement of itself rather than a number about the data. See RESOURCE_WORDS."""
+    for seg in re.sub(r"\[[^\]]*\]", "", str(path)).split("."):
+        if _IDENTIFIER.match(seg) and _words(seg) & RESOURCE_WORDS:
+            return True
+    return False
+
+
+def is_size(path: str) -> bool:
+    """Whether a numeric field is a file's byte count. See SIZE_OF_A_FILE."""
+    return bool(SIZE_OF_A_FILE.search(str(path)))
+
+
+def judged(path: str) -> bool:
+    """Whether a numeric field is compared at all: not a resource and not a byte count."""
+    return not is_resource(path) and not is_size(path)
+
+
+def reported(fp: dict) -> dict:
+    """{"resources": [...], "byte_counts": [...]} - the `product::field` names a fingerprint
+    RECORDS and no comparison judges. Printed by a check, so that what is not compared is said."""
+    out = {"resources": [], "byte_counts": []}
+    for rel, item in sorted((fp.get("products") or {}).items()):
+        for k in sorted(item.get("numbers") or {}):
+            if is_resource(k):
+                out["resources"].append(f"{rel}::{k}")
+            elif is_size(k):
+                out["byte_counts"].append(f"{rel}::{k}")
+    return out
+
 
 def elsewhere(ref: dict) -> str | None:
     """A sentence to print beside a difference when the baseline came from another machine, and
@@ -203,8 +269,8 @@ def fingerprint(run_dir, skip_content=()) -> dict:
         else:
             # A FILE THE BASELINE ALREADY CALLS UNSTABLE IS NOT WORTH HASHING. Its content is
             # excluded from the comparison, so reading it buys nothing. Size is still recorded,
-            # and still compared, because a product that vanished or doubled is a finding
-            # whatever its bytes do.
+            # for a reader and for one finding: a product that vanished, or is there and empty,
+            # is a finding whatever its bytes do. A size is not compared (autodev W019).
             items[rel] = {"kind": "opaque", "bytes": p.stat().st_size,
                           "sha256": None if rel in skip_content else _opaque_digest(p)}
     return {"baseline": FORMAT, "rtol": RTOL, "atol": ATOL, "products": items,
@@ -273,12 +339,15 @@ def compare(new: dict, ref: dict) -> list:
         if a["kind"] == "rendering":
             continue                     # present in both; its bytes are not a measurement
         if a["kind"] == "opaque":
-            # SIZE AND CONTENT ARE SEPARATE FACTS. Reported together, an exclusion for one
-            # silently excludes the other, and a figure that vanished would hide behind a
-            # timestamp that moved.
-            if a.get("bytes") != b.get("bytes") and keep(rel, "size"):
-                out.append({"product": rel, "what": "size",
-                            "detail": f"{b.get('bytes')}b -> {a.get('bytes')}b"})
+            # THE CONTENT IS THE FINGERPRINT; THE SIZE IS NOT (autodev W019, GAP-C41). A size
+            # moves with every timestamp and timing written into the file, so it failed on the
+            # next execution for a reason that was never the content - and where the content
+            # agrees, the size adds nothing. The size is still recorded. What a size used to catch
+            # that the content cannot, once the content is named unstable, is a product that is
+            # there and EMPTY: that is still a finding, and so is one that vanished (`absent`).
+            if (b.get("bytes") or 0) > 0 and a.get("bytes") == 0:
+                out.append({"product": rel, "what": "emptied",
+                            "detail": f"{b.get('bytes')}b -> 0b"})
             if a.get("sha256") != b.get("sha256") and keep(rel, "content"):
                 out.append({"product": rel, "what": "content",
                             "detail": f"{b.get('sha256')} -> {a.get('sha256')} "
@@ -291,13 +360,16 @@ def compare(new: dict, ref: dict) -> list:
                 out.append({"product": rel, "what": "rows", "detail": f"{b.get('rows')} -> {a.get('rows')}"})
             an, bn = a.get("numbers", {}), b.get("numbers", {})
             for col in sorted(set(an) & set(bn)):
+                if not judged(col):
+                    continue                 # a resource or a byte count: recorded, not judged
                 for stat in ("n", "nan", "sum", "min", "max"):
                     if not _close(an[col].get(stat), bn[col].get(stat), rtol, atol) \
                             and keep(rel, f"{col}.{stat}"):
                         out.append({"product": rel, "what": f"{col}.{stat}",
                                     "detail": f"{bn[col].get(stat)} -> {an[col].get(stat)}"})
             continue
-        an, bn = a.get("numbers", {}), b.get("numbers", {})
+        an = {k: v for k, v in (a.get("numbers") or {}).items() if judged(k)}
+        bn = {k: v for k, v in (b.get("numbers") or {}).items() if judged(k)}
         for k in sorted(set(bn) - set(an)):
             if keep(rel, k):
                 out.append({"product": rel, "what": f"{k} absent", "detail": f"was {bn[k]}"})

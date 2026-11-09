@@ -51,15 +51,20 @@ TIERS = ("declaration", "rules", "contract", "unit", "fixture_a", "fixture_b", "
          "baseline")
 
 
-def _t(results, tier, ok, evidence, cannot="", skipped=False, seconds=0.0, applicable=True):
+def _t(results, tier, ok, evidence, cannot="", skipped=False, seconds=0.0, applicable=True,
+       **extra):
     """`applicable=False` marks a tier there is NOTHING HERE FOR - no test command declared, no
     products to fingerprint. That is different from a tier that could have run and could not, for
     want of a library or a word list, and only the second should make a check report itself
     incomplete. Conflating them would make every repository that legitimately has no baseline
-    exit 3 for ever, and an exit code that is always the same is not read."""
+    exit 3 for ever, and an exit code that is always the same is not read.
+
+    `extra` carries a fact a later tier reads - a fixture shape's `refused` - so that it is read
+    from the tier that established it, not re-derived from a file at a guessed path."""
     results.append({"tier": tier, "ok": bool(ok), "skipped": bool(skipped),
                     "applicable": bool(applicable),
-                    "evidence": evidence, "cannot_prove": cannot, "seconds": round(seconds, 2)})
+                    "evidence": evidence, "cannot_prove": cannot, "seconds": round(seconds, 2),
+                    **extra})
     return results[-1]
 
 
@@ -366,6 +371,12 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=
     # under the tier's output otherwise, where a tool correctly refuses "not ready".
     prefix = os.environ.get("SCH_DEV_PREFIX") or str(out / "prefix")
     cmds = _commands(spec)
+    # WHETHER THIS SHAPE ENDED IN A DECLARED REFUSAL, kept on the tier's own record (autodev
+    # W019, GAP-C41). A refusal is a result with no products; `agree` and `baseline` read this
+    # instead of guessing where a tool writes its status - `agree` looked for a STATUS.json at the
+    # top of the shape's directory, a tool that writes its run one level down was never seen to
+    # refuse, and `agree` passed having compared nothing.
+    refused = False
     for ci, raw in enumerate(cmds):
         cmd = _fill(raw, python=sys.executable, observations=obs, design=dsn, out=out,
                     name=name, shape=shape, root=doc["_root"], jobs=_jobs(), prefix=prefix,
@@ -375,6 +386,7 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=
         ev.append(f"exit {r['code']} in {r['seconds']:.1f}s: {' '.join(r['cmd'])}")
         if r["code"] != 0:
             if spec.get("accepts_refusal") and says and says in r["out"]:
+                refused = True
                 ev.append(f"refused, as this point declares it should: {says!r} is in the output")
                 # THE REFUSAL'S OWN WORDS (harness ADR-0026, the open items): a shape passed in
                 # two seconds on the cluster because the phrase was said for a reason nobody
@@ -404,6 +416,7 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=
             ev.append(f"STATUS.json: {st.get('status')} - {st.get('headline')}")
             if st.get("status") == "refused" and spec.get("accepts_refusal"):
                 ok = True
+                refused = True
                 ev.append("refusal accepted: this point declares refusal a valid outcome on the fixture")
             elif st.get("status") not in ("ok",):
                 ok = False
@@ -420,7 +433,7 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=
               cannot=("that anything here is biologically meaningful - the cohort is synthetic"
                       if shape == "a" else
                       "that names beyond the seven declared roles are resolved rather than assumed"),
-              seconds=secs)
+              seconds=secs, refused=bool(ok and refused))
 
 
 def _vocabulary():
@@ -440,29 +453,35 @@ def _in_a_words(text, vocab):
     return text
 
 
-#: A byte count measures a FILE, and a file's bytes carry the names it holds: a status contract
-#: lists each product with its size, and shape b's `library_id` is four bytes longer than shape a's
-#: `sample` in every row that spells it. Not a number about the data, so `agree` does not compare it
-#: - for the reason it does not compare an opaque product's bytes. Measured on the first cluster run
-#: of the tier (PBS 719917): its only two findings were `products[*].bytes`, in scAnno and scIntegrate.
-_SIZE_OF_A_FILE = re.compile(r"(?:^|[.\]])(?:bytes|n_bytes|size_bytes)$")
-
-
 def _collapse(numbers):
     """{path with every [i] as [*]: sorted values}. Two shapes may list the same results in a
     different order - a tool that sorts its arms by name sorts `ctrl, treated` and `treated,
-    untreated` differently, correctly - and that is not a disagreement about any number."""
+    untreated` differently, correctly - and that is not a disagreement about any number.
+
+    A FILE'S BYTE COUNT IS LEFT OUT here, as the baseline leaves it out: `bl.SIZE_OF_A_FILE`
+    says why, with the cluster run that measured it."""
     out: dict = {}
     for k, v in numbers.items():
-        if _SIZE_OF_A_FILE.search(k):
+        if bl.is_size(k):
             continue
         out.setdefault(re.sub(r"\[\d+\]", "[*]", k), []).append(v)
     return {k: sorted(v, key=lambda x: (isinstance(x, str), x)) for k, v in out.items()}
 
 
-def shape_disagreements(fa, fb, unstable=()) -> list:
-    """What shape b produced that shape a did not, after reading b in a's words. Empty means the
-    two shapes agree on every number either one wrote.
+def shape_comparison(fa, fb, unstable=()) -> dict:
+    """Shape b read in shape a's words, against shape a: what disagrees, what was compared, and
+    what was only reported.
+
+      disagree   - one line per disagreement; empty means the shapes agree on every number
+                   either one wrote that is about the data
+      compared   - `product::field` for every comparison made, so a green says what it covered
+                   (a product of no readable kind is compared for presence and kind only)
+      resources  - [(product::field, shape a's values, shape b's values)] for every field that
+                   measures the execution itself - its time, cores, memory, and the models fitted
+                   from them (`bl.RESOURCE_WORDS`). REPORTED, NEVER JUDGED (autodev W019, GAP-C41):
+                   two shapes are two executions on a shared machine, and de's agreed on every
+                   number DE writes while this tier failed on wall time, CPU time and resident
+                   memory - a different subset of them on every run.
 
     REPAIRED ONLY WHERE IT DOES NOT ALREADY MATCH. A product, key or column of shape b is
     translated into shape a's vocabulary only when it has no partner as written, so a tool's own
@@ -486,7 +505,7 @@ def shape_disagreements(fa, fb, unstable=()) -> list:
     pa, pb = fa.get("products", {}), {}
     for rel, item in fb.get("products", {}).items():
         pb[fix(rel, pa)] = item
-    out = []
+    out, compared, resources = [], [], []
     for rel in sorted(set(pa) - set(pb)):
         out.append(f"{rel}: written by shape a only")
     for rel in sorted(set(pb) - set(pa)):
@@ -497,6 +516,7 @@ def shape_disagreements(fa, fb, unstable=()) -> list:
             out.append(f"{rel}: a {a.get('kind')} in shape a, a {b.get('kind')} in shape b")
             continue
         if a["kind"] == "csv":
+            compared += [f"{rel}::<header>", f"{rel}::<rows>"]
             hb = [fix(h, a.get("header") or []) for h in b.get("header") or []]
             if hb != (a.get("header") or []):
                 out.append(f"{rel}: columns differ - a {a.get('header')}, b {b.get('header')}")
@@ -508,6 +528,12 @@ def shape_disagreements(fa, fb, unstable=()) -> list:
                 if f"{rel}::{col}" in skip:
                     continue
                 x, y = an[col], bn[col]
+                if bl.is_resource(col):
+                    resources.append((f"{rel}::{col}", [x.get("sum")], [y.get("sum")]))
+                    continue
+                if bl.is_size(col):
+                    continue
+                compared += [f"{rel}::{col}.{s}" for s in ("n", "nan", "sum", "min", "max")]
                 stats = [s for s in ("n", "nan", "sum", "min", "max")
                          if not bl._close(y.get(s), x.get(s), rtol, atol)]
                 if not stats:
@@ -526,11 +552,16 @@ def shape_disagreements(fa, fb, unstable=()) -> list:
             bn = _collapse({fix(k, a.get("numbers") or {}): v
                             for k, v in (b.get("numbers") or {}).items()})
             for k in sorted(set(an) ^ set(bn)):
-                out.append(f"{rel}::{k}: present in shape {'a' if k in an else 'b'} only")
+                if not bl.is_resource(k):
+                    out.append(f"{rel}::{k}: present in shape {'a' if k in an else 'b'} only")
             for k in sorted(set(an) & set(bn)):
                 if f"{rel}::{k}" in skip:
                     continue
                 x, y = an[k], bn[k]
+                if bl.is_resource(k):
+                    resources.append((f"{rel}::{k}", x, y))
+                    continue
+                compared.append(f"{rel}::{k}")
                 if len(x) != len(y) or not all(bl._close(p, q, rtol, atol) for p, q in zip(x, y)):
                     neg = (len(x) == len(y) and any(isinstance(p, float) and p for p in x)
                            and all(isinstance(p, float) and isinstance(q, float)
@@ -539,7 +570,17 @@ def shape_disagreements(fa, fb, unstable=()) -> list:
                     out.append(f"{rel}::{k}: SIGN FLIPPED between the shapes" if neg else
                                f"{rel}::{k}: a {x[:4]}{'...' if len(x) > 4 else ''}, "
                                f"b {y[:4]}{'...' if len(y) > 4 else ''}")
-    return out
+            continue
+        compared.append(f"{rel}::<{a['kind']}: presence only>")
+    return {"disagree": out, "compared": compared, "resources": resources,
+            "products": len(set(pa) | set(pb))}
+
+
+def shape_disagreements(fa, fb, unstable=()) -> list:
+    """What shape b produced that shape a did not, after reading b in a's words. Empty means the
+    two shapes agree on every number either one wrote. `shape_comparison` says what was compared
+    and what was only reported."""
+    return shape_comparison(fa, fb, unstable)["disagree"]
 
 
 def t_agree(doc, point_name, name, fixdir, results):
@@ -570,18 +611,15 @@ def t_agree(doc, point_name, name, fixdir, results):
                    f"needed to compare, and the shape that did not is already reported"],
                   skipped=True)
     run_a, run_b = Path(fixdir) / "run_a", Path(fixdir) / "run_b"
-    st = None
-    if spec.get("accepts_refusal"):
-        for d in (run_a, run_b):
-            try:
-                st = json.loads((d / "STATUS.json").read_text(encoding="utf-8")).get("status")
-            except (OSError, ValueError):
-                st = None
-            if st == "refused":
-                break
-    if st == "refused":
+    # A DECLARED REFUSAL WROTE NOTHING TO COMPARE, and the fixture tier says so on its own record
+    # (autodev W019, GAP-C41). This read a STATUS.json at the top of the shape's directory; a
+    # tool that writes its run one level down refused unseen, and the tier then passed having
+    # compared nothing - "every number either shape wrote agrees" over zero numbers.
+    refusing = [t for t in ("fixture_a", "fixture_b") if shapes[t].get("refused")]
+    if refusing:
         return _t(results, "agree", True,
-                  ["a declared refusal on the fixture: no numbers were written to compare"],
+                  [f"a declared refusal on the fixture ({', '.join(refusing)}): no numbers were "
+                   f"written to compare"],
                   skipped=True, applicable=False)
     unstable = []
     ref = Path(doc["_root"]) / (doc.get("baseline_dir") or "tests/baselines") / f"{name}.baseline.json"
@@ -590,13 +628,32 @@ def t_agree(doc, point_name, name, fixdir, results):
             unstable = json.loads(ref.read_text(encoding="utf-8")).get("not_execution_stable") or []
         except (OSError, ValueError):
             unstable = []
-    found = shape_disagreements(bl.fingerprint(run_a), bl.fingerprint(run_b), unstable)
-    return _t(results, "agree", not found,
-              found[:25] + ([f"... {len(found) - 25} more"] if len(found) > 25 else [])
-              or ["every number either shape wrote agrees, read in shape a's words"],
+    cmp_ = shape_comparison(bl.fingerprint(run_a), bl.fingerprint(run_b), unstable)
+    found = cmp_["disagree"]
+    # WHAT IS WRONG FIRST, then how much was looked at: a green says how much it covered, so that
+    # a green over nothing cannot read like a green over everything.
+    ev = (found[:25] + ([f"... {len(found) - 25} more"] if len(found) > 25 else [])
+          + [f"{len(found)} disagreement(s); {len(cmp_['compared'])} value(s) compared in "
+             f"{cmp_['products']} product(s)"] if found else
+          [f"{len(cmp_['compared'])} value(s) compared in {cmp_['products']} product(s), and "
+           f"every one agrees, read in shape a's words"])
+    # REPORTED, NEVER JUDGED: what the execution measured of itself, with both shapes' values
+    # where they differ, so a reader sees it and the verdict does not rest on it.
+    moved = [(k, x, y) for k, x, y in cmp_["resources"]
+             if len(x) != len(y) or not all(bl._close(p, q, bl.RTOL, bl.ATOL) for p, q in zip(x, y))]
+    if cmp_["resources"]:
+        ev.append(f"{len(cmp_['resources'])} resource field(s) of the execution reported, not "
+                  f"judged (time, cores, memory and the models fitted from them); "
+                  f"{len(moved)} differ between the shapes"
+                  + (":" if moved else ""))
+        ev += [f"  {k}: a {x[:3]}, b {y[:3]}" for k, x, y in moved[:8]]
+        if len(moved) > 8:
+            ev.append(f"  ... {len(moved) - 8} more")
+    return _t(results, "agree", not found, ev,
               cannot=("that a number is right - only that it does not depend on what a column is "
                       "called or how a value is spelled; opaque products (an .h5ad, an .rds) are "
-                      "not compared, because their bytes carry the names"),
+                      "not compared, because their bytes carry the names; and nothing about the "
+                      "resources an execution used, which are reported and never judged"),
               seconds=time.time() - t0)
 
 
@@ -687,6 +744,26 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
         return _t(results, "baseline", True,
                   ["no fixture run to fingerprint - this point's fixture writes no products"],
                   skipped=True, applicable=False)
+    # A DECLARED REFUSAL IS A RESULT WITH NO PRODUCTS (autodev W019, GAP-C41). Checked against a
+    # baseline recorded where the plugin ran, it read as every product ABSENT and failed a fixture
+    # run that had done exactly what the point declares it may; with no baseline it made the check
+    # incomplete for ever on a machine without the plugin's environment. There is nothing here for
+    # this tier. And a refusal is never RECORDED: a baseline of no products would pass a plugin
+    # that stopped running.
+    shape_a = next((r for r in results if r.get("tier") == "fixture_a"), None)
+    if shape_a is not None and shape_a.get("refused"):
+        if record:
+            return _t(results, "baseline", False,
+                      ["refusing to record a baseline from a declared refusal: shape a refused, "
+                       "as this point declares it may, so there are no products to fingerprint. "
+                       "Record where the plugin runs - its environment built, and `{prefix}` "
+                       "given by SCH_DEV_PREFIX"],
+                      cannot="anything about the numbers: nothing ran", skipped=True)
+        return _t(results, "baseline", True,
+                  ["a declared refusal on the fixture: shape a wrote no products, so there is "
+                   "nothing to hold to " + (f"the baseline at {path}" if path.is_file()
+                                            else "a baseline")],
+                  skipped=True, applicable=False)
     if record:
         # THE FIRST EXECUTION IS STILL ON DISK. Its fingerprint used to be taken at the end of
         # every fixture_a and stashed in case a recording followed - reading and hashing every
@@ -707,6 +784,11 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
                       ["the second execution did not succeed, so nothing can be shown to be "
                        "stable; refusing to record a baseline from one run"]
                       + (second[0]["evidence"][:6] if second else []))
+        if second[0].get("refused"):
+            return _t(results, "baseline", False,
+                      ["the second execution refused, as this point declares it may, so it "
+                       "wrote nothing to show stable; refusing to record a baseline from one run"]
+                      + second[0]["evidence"][:6], skipped=True)
         fp = bl.fingerprint(again)
         drift = bl.compare(fp, {"rtol": bl.RTOL, "atol": bl.ATOL, "products": first})
         # NAMED, NOT DELETED. `compare` skips these; removing them from the record would make the
@@ -722,6 +804,7 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
         ev += ([f"NOT execution-stable, excluded and named in the file: {len(unstable)}"]
                + [f"  {u}" for u in unstable[:8]] if unstable else
                ["every recorded field agreed between the two executions"])
+        ev += _reported_lines(fp)
         return _t(results, "baseline", True, ev,
                   cannot="anything about a THIRD execution, or about another machine - two runs "
                          "on one node is the weakest evidence of stability that is still evidence")
@@ -742,9 +825,20 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
     if ref.get("not_execution_stable"):
         ev.append(f"{len(ref['not_execution_stable'])} field(s) were excluded when this baseline "
                   f"was recorded, for moving between two executions; they are named in the file")
-    return _t(results, "baseline", not diffs,
-              ev or [f"{len(ref.get('products', {}))} products agree within rtol {ref.get('rtol')}"],
+    if not diffs:
+        ev.insert(0, f"{len(ref.get('products', {}))} products agree within rtol {ref.get('rtol')}")
+    return _t(results, "baseline", not diffs, ev + _reported_lines(ref),
               cannot="that a difference is wrong - a deliberate change bumps state_version and re-records")
+
+
+def _reported_lines(fp) -> list:
+    """What a baseline records and never judges, said on every record and check (autodev W019)."""
+    rep = bl.reported(fp)
+    if not (rep["resources"] or rep["byte_counts"]):
+        return []
+    return [f"recorded and not judged: {len(rep['resources'])} resource field(s) of the execution "
+            f"(time, cores, memory and the models fitted from them) and "
+            f"{len(rep['byte_counts'])} byte count(s); a file's identity is its content"]
 
 
 # ------------------------------------------------------------------------------------ driver
