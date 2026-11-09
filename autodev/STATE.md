@@ -45,7 +45,7 @@ A6.2 and A6.3. The records are [`audits/0001-gap-review.md`](audits/0001-gap-rev
 | INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** building: version 0.5.0 (C20), first-cohort wording (C21), `score` vs assess's report (C22), the LISI spread named (C14), the harmony baseline re-recorded on the cluster (C12). GAP-C11 waits on decision 0b | building |
 | PROF | scProfile | **W002** verified PASS (`f5175ea`). PBS 782609 AS PREDICTED: the environment built from the lock on a fresh prefix, 161/161 pins installed, selftest 7/7. It merges when P3 (PBS **782672**, CellChat's 90 tables against the `f7e5a0d` reference) holds. Next: migrate the held-out eight through the maker, DE and abundance first; GAP-C27 (glibc 2.28 floor) | gating (P3) |
 | HARN | single-cell-harness | **B1 MERGED** (`00bbf54`; ADR-0029). **W010** building: the harness's first stage, `qc@scqc` through a `pbs` executor (GAP-001) | building |
-| PLAT | studio, lab, service | **W005** (Lab) and **W008** (Studio) are both **verified PASS and held**: their deploys are the PI's (BLK-005; decision 0). **W009** (Service) building: single-cell delivery detection, in new files only. Next: the run record (P10, then P19), the cross-repo contract test (P18) | 2 held (PI); W009 building |
+| PLAT | studio, lab, service | **W005** (Lab), **W008** (Studio) and **W009** (Service) are all **verified PASS and held**; their deploys are the PI's (BLK-005, decision 0). Next: the run record (P10 in Lab, P20 in scIntegrate, P19 in Studio), the cross-repo contract test (P18), the Service's design table and samplesheet writer (P03/P04) | 3 held (PI) |
 | AUDIT | — | **Full pass 0002** running (trigger: W001, W003 and W004 merged since pass 0001). W009's verifier is running | 2 running |
 | BLOCKER | — | **B1 done:** 113 rows (15 removed, 69 queued, 26 kept, 3 ASK settled by the pre-decider), recorded in ADR-0029 on its branch. The 3-hourly BLOCKER SWEEP is running. Next sweep: GAP-028's data (CellMarker 3.0 human release, BLK-006 to open) | sweeping |
 
@@ -75,6 +75,10 @@ None of these blocks a running lane.
    (1,621/1,621; the live app changes only by the corrected DESeq2 wording and a violin-band fix):
    `! cd /tmp && rm -rf studio-merge && git clone -q https://github.com/JiaenLin/scrnaseq-studio studio-merge && cd studio-merge && git merge --ff-only origin/autodev/W008-studio-truth && git push origin main`.
    Studio ignores the absent field, so either app can go first.
+   **Service (W009) is verified too.** It recognises Cell Ranger and CeleScope deliveries and asks the
+   single-cell questions with no default assay. The bulk path is byte-identical, and your four
+   uncommitted files are untouched, so it cannot conflict with them:
+   `! cd /tmp && rm -rf svc-merge && git clone -q https://github.com/JiaenLin/rnaseq-service svc-merge && cd svc-merge && git merge --ff-only origin/autodev/W009-sc-delivery && git push origin main`.
 0b. **May a change that is MEANT to move a promoted run's outputs merge?** (B1-111.) Rule 1 asks
    for an IDENTICAL reproduction, so a fix that changes SAMBO's numbers on purpose can never merge.
    Examples: GAP-C11 (BBKNN scored on the wrong representation) and scProfile's DE direction.
