@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-09T11:40Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-09T11:43Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 ## Verdict
@@ -44,7 +44,7 @@ remain open.
 | INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** (`69a54b2`): verifier PASS; job 29 AS PREDICTED; **job 28 MISSED line B** (harmony's total moved 0.0279 > 0.013), so it is **not merged**. The cause predates W012: harmony's clustering metrics vary run to run (ARI 0.860 / 0.858 / 0.645) while its embedding metrics agree to 1e-6, and the method ranking flips. **W025** (queued, stacked on W012) makes them reproducible; then one re-gate. **W022** waits | held; 1 queued |
 | PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013** (`0f4ff9e`): PBS 782918 AS PREDICTED. The verifier FAILED it on D1 (a hand-edited caveat) and D2 (undeclared design columns dropped under `--factor`), and the ladder is red on resource measurements (harness GAP-C41). A fix-up is building; D1 goes through the maker's design worksheet. **W023** queued: scProfile's 24 inherited constraints | fixing; 1 queued |
 | HARN | single-cell-harness | **W010**: job 31 AS PREDICTED. The fix-up of the second verifier's D1-D3 and E2's silent re-baseline is building, and **job 33** (inputs read-only, as LAYOUT requires) follows. **W016** building: one plugin format (ADR) and `sch catalogue`. **W019** building: the maker's H1-H6, C41 first | fixing; 2 building |
-| PLAT | studio, lab, service | **W005**, **W008** and **W009** are verified PASS and **held** for the PI's deploy (BLK-005). **W015** (`418ffad`): the verifier FAILED it on D1 (a hand-typed species bypasses the species/build check), and the fix is building. **W017** (`1703e16`, on W005): crossed conditions kept, the run's record carried, real embeddings only; the verifier is running | 3 held (PI); 1 fixing; 1 verifying |
+| PLAT | studio, lab, service | **Verified PASS and held for the PI's deploy** (BLK-005): **W005** (Lab), **W008** (Studio), **W009** and **W015** (Service; W015 on W009: scQC's samplesheet, registry row and design table written from a single-cell request; the species/build check holds for typed names). **W017** (Lab, on W005): the verifier FAILED it (an int64 provenance record crashes conversion; no record budget), and its fix-up is building | 4 held (PI); 1 fixing |
 | AUDIT | — | Pass 0002 done (NOT HAPPY, 0/20). Merged since: **W011**. **Pass 0003** runs after the third merge (W012, W013, W010, W014 and W016 are close) | waiting (1 of 3) |
 | BLOCKER | — | **Sweep 2026-11-09:** 68 inherited constraints sat queued since B1. They are now waves W020-W023, one per tool, each starting when that tool's current wave merges. GAP-028's data blocker is REMOVED (the PI's `all_cell_marker.zip` holds 1,779,944 human rows). Still the PI's: BLK-002, BLK-005, BLK-007, decisions 0-5 | sweeping |
 
