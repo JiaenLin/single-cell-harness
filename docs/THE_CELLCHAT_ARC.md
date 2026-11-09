@@ -87,3 +87,9 @@ own. The first plugin to migrate should be the one most unlike cellchat - a Pyth
 R, no compare phase - because that is where the maker's assumptions are least tested. Expect the
 first migration to find defects of the mechanism at the rate cellchat's first turn did, and the
 later ones at the rate of its last.
+
+> **2026-11-09 ([ADR-0029](adr/0029-inherited-constraints-removed.md)).** The migrations are
+> GOALS.md A4.1 waves. The first runs alone, because it finds the mechanism's defects. The rest
+> may run in parallel waves within autodev's caps, since a migration spends no unseen evidence.
+> Rule 2's "until their own migration" is the reading that holds: each plugin's freeze ends when
+> its wave starts.

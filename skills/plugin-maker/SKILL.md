@@ -30,10 +30,16 @@ That prints the extension points, what each must declare, and the scaffolding co
 the repository has its own maker, `sch dev new` defers to it — use it, because it renders the
 template from the format's own knowledge and a generic skeleton does not.
 
-## One plugin at a time. This is not a style preference.
+## One plugin per conversion. This is not a style preference.
 
-**Convert ONE. Finish it. Have a person check it. Improve the maker from what that one taught.
-Then start the next — and the next one is the test.**
+**Convert ONE per wave. Finish it. Have it checked, by a fresh verifier (autodev BRIEFS §2a) or a
+person. Improve the maker from what that one taught. The next unseen tool is the test.**
+
+Conversions of different tools may run in parallel waves, because each one sees only its own
+tool's surface. That is the property this rule protects. What it forbids is one reader taking in a
+whole family's surfaces before any of them is decided. Moving an already-finished plugin into the
+maker's layout (GOALS A4.1) spends no unseen evidence, so it is not held to one at a time. Until
+2026-11-09 this rule read "Have a person check it ... Then start the next" (ADR-0029).
 
 Every action that fills a declaration shows you the wrapped tool's own surface. Run across a
 family at once, they put every answer in front of you before any has been decided, and every
@@ -117,7 +123,7 @@ surfaces a defect, its home is decided by the rules, not by convenience:
 | in the host or the maker — a path under `in_place` | fixed **in place**, there |
 | something the maker should have caught | the **maker**: fix it, re-run it, and the plugin changes as a consequence |
 | something the maker already demands — a worksheet row, a `finished_by` | the **worksheet**: answer it in the plugin, where the maker asked |
-| in an artefact named under `held_out` | **recorded, never fixed** — `status` banners these. A repair fits the maker to it and spends the family's only evidence that the maker generalises |
+| in an artefact named under `held_out` | **recorded, then fixed through the maker in that artefact's own migration wave** (GOALS A4.1). `status` banners these. Held out means held out *until its migration*, as the 2026-09-14 record says, not for ever. The family's out-of-sample evidence is now A4.2's draw of tools it has never seen (ADR-0029) |
 
 Never hand-edit a plugin the round names under `end_to_end` as maker output; if the plugin is
 wrong, the maker is wrong. Duplication is the tell — method is written once, mechanism appears
