@@ -76,7 +76,7 @@ silently retried.
 
 ## The reminders (session-only; re-create on every resume)
 
-Both prompts are verbatim as created on 2026-11-09, except that the checkout's path is written as
+The prompts are verbatim as created on 2026-11-09, except that the checkout's path is written as
 `<HARNESS>` ([BRIEFS.md](BRIEFS.md)). Background agents and Monitor watches re-invoke the
 coordinator as soon as they finish, so the tick is the fallback for state nothing else announces: PBS
 jobs and lanes that have gone idle.
@@ -84,6 +84,7 @@ jobs and lanes that have gone idle.
 | name | cron (local) | prompt |
 |---|---|---|
 | LOOP TICK | `7 * * * *` | "autodev LOOP TICK (<HARNESS>/autodev/README.md). Quick and non-blocking: (1) read every landed result (builder hand-backs, PBS jobs named in autodev/ledger/waves.tsv) by its registered prediction, then gate, verify or merge as the loop says; (2) for every idle lane with an open, unblocked gap in autodev/ledger/gaps.tsv: register the next wave and start one builder (within the RULES.md tier-IV caps; brief from BRIEFS.md §1); (3) for any wave waiting on something: run the blocker remover (BRIEFS.md §3); (4) if the audit trigger is met (≥ 3 waves merged since the last pass, or 24 h with ≥ 1 merge), start a full audit pass (BRIEFS.md §2b). Log each change in the ledgers and update autodev/STATE.md. No blocking questions. Report only what changed." |
+| BLOCKER SWEEP | `41 */3 * * *` | "autodev BLOCKER SWEEP (every 3 h; the PI 2026-11-09: "it is very important to remove unreasonalble designs, and remove blockers and constrains from previous single cell harness family. enable the blocker remover"; <HARNESS>/autodev/BRIEFS.md §3). (1) List everything waiting: waves not moving (autodev/ledger/waves.tsv), gaps whose blocked_by is not "none" (gaps.tsv), open rows of blockers.tsv, decisions pending in STATE.md. (2) For each: remove it now if an agent can (environment pins, queue routing, stale checkouts, flaky or environment-bound tests, an inherited design that protects no goal); otherwise prepare the PI's decision card. Start a blocker-remover agent (BRIEFS §3) for anything that needs more than a few minutes. (3) The inherited-constraints register (pass B1 and later): apply its next REMOVE items, and queue its tool or platform changes as waves. Log each action in blockers.tsv, update STATE.md, and report only what changed." |
 | PERIODIC CHECK | `23 */6 * * *` | "autodev PERIODIC CHECK (every 6 h; <HARNESS>/autodev/BRIEFS.md §4; the PI 2026-11-09: "a regular housekeeping to keep project lean and efficient"). One pass: (1) RULE 5: idle lanes, unread results, stalled or failed PBS jobs (one batched read-only ssh), waves waiting, trivial work; act at once. (2) LEAN: delete merged autodev/* branches, finished builders' clones and worktrees, and our own cluster scratch older than 14 days; delete superseded job scripts and stale docs only when no record cites them; never delete records. (3) DOCS: STATE.md current; commit and push the harness's main. (4) MEMORY: verify the notes against STATE.md; keep MEMORY.md lean. (5) GITHUB: every running wave's branch is pushed. Log each action in autodev/ledger/housekeeping.tsv. Report only what changed: per lane, then the fixes, then the decisions needed." |
 
 ## Records
