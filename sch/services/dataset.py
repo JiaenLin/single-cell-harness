@@ -1,12 +1,19 @@
 """The dataset service: observations, contributions, and materialisation.
 
 D2  Nothing writes to observations. The file is opened read-only and its digest is checked by
-    the A1 companion after every plugin run.
-A1  The observations are PINNED at init: their digest and, per file, (dev, inode, size,
-    mtime_ns, ctime_ns). The fingerprint is re-checked before anything is read and after every
-    plugin run, whatever its outcome, and a change is an error naming the file. Nothing
-    re-baselines a stack silently (harness W010b): a library replaced by a plugin that then died
-    used to be read as the new baseline by the next command.
+    the A1 companion after every successful mount.
+A1  The observations are PINNED at init: ONE digest over all their files (the sha256 of each
+    file's sha256, in order), and, per file, a stat fingerprint (dev, inode, size, mtime_ns,
+    ctime_ns). The fingerprint - not the digest, which reads every byte - is checked before a
+    command first reads the observations (their identities, their inventory, the view: `Stack()`
+    restoring its contributions included) and after every plugin run, whatever its outcome. So is
+    what the declared path RESOLVES to now, and the pin itself against the `observations/pinned`
+    event `init` wrote (autodev W029). A change is an error naming the file.
+    A pin is written by `init`, or - for a stack initialised before pins existed, with no pin and
+    no such event - once, on its first read, recorded as that event. Never otherwise: a pin that
+    is missing or rewritten while events.jsonl records one is an error, not a new baseline
+    (harness W010b and autodev W029: a library replaced by a plugin that then died, or deleted
+    the pin and died, was read as the new baseline by the next command).
 D4  A removal is a mask, never a delete. A mask is a whole keep-vector over every identity.
 §6  Observation-level results merge by identity, never by position. A contribution covering a
     different identity set is refused with both counts; one covering fewer is filled with the
@@ -39,12 +46,38 @@ class DatasetError(ValueError):
 FINGERPRINT = ("dev", "inode", "size", "mtime_ns", "ctime_ns")
 COMPARED = ("inode", "size", "mtime_ns", "ctime_ns")
 PIN = "observations.pin.json"
+#: The event `init` writes into events.jsonl when it pins a stack (autodev W029, GAP-C58). While
+#: one is recorded, a pin that is missing, or is not the pin it recorded, is refused: a plugin
+#: that deleted the pin, replaced a library with the same barcodes and died used to leave the
+#: next command to pin the replaced library as if it were the delivery.
+PINNED = "observations/pinned"
+
+#: WHY ONLY `ctime` MOVES, and what to do about it (autodev W029, GAP-C60). A chmod, a chown or a
+#: new hard link to a file - a `cp -al` tree is hard links - moves its ctime and no byte of it. The
+#: pin cannot tell that from a file replaced in place with its size and mtime restored, which moves
+#: exactly the same field, so it refuses both, for good; the remedy for the harmless kind is a new
+#: stack over the same files.
+CTIME_ONLY = ("only ctime moved, which a chmod, a chown or a new hard link to a file moves without "
+              "changing a byte (a `cp -al` tree is hard links); the pin cannot tell that from a "
+              "file rewritten with its size and mtime restored, so this stack stays refused. If "
+              "that is what happened, initialise a new stack over the same files, and keep them "
+              "read-only and copied, never hard-linked, while a stack is pinned on them")
+REINIT = ("initialise a new stack over the same files (`sch init`): only their ctime moved, and "
+          "the pin is never re-written")
 
 
 def fingerprint(path) -> dict:
     s = os.stat(path)
     return {"dev": s.st_dev, "inode": s.st_ino, "size": s.st_size, "mtime_ns": s.st_mtime_ns,
             "ctime_ns": s.st_ctime_ns}
+
+
+def pin_digest(path) -> str | None:
+    """The sha256 of a pin file's bytes, or None when there is no file to read."""
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError:
+        return None
 
 
 def _owner(uid: int) -> str:
@@ -55,10 +88,18 @@ def _owner(uid: int) -> str:
         return f"uid {uid}"
 
 
-def remedy(paths: list) -> str:
+#: What follows the chmod for a file of a PINNED stack (autodev W029, GAP-C60): `init` refuses a
+#: writable file, so one writable now was made writable after it, which moved its ctime - and the
+#: chmod back moves it again. Said as a shell comment, so the remedy stays one a shell can run.
+AFTER_CHMOD = ("then initialise a new stack over the same files (sch init): making them writable "
+               "after init moved their ctime, which the pin compares, so this stack stays refused")
+
+
+def remedy(paths: list, then: str | None = None) -> str:
     """How to make files read-only, as a shell can run it: `chmod a-w` for this user's own files,
     shell-quoted. A file someone else owns cannot be chmod'ed by this user (EPERM), so for it the
-    remedy is its owner, or a read-only copy."""
+    remedy is its owner, or a read-only copy. `then`, when given, is what must follow, written as
+    a shell comment so that the remedy still runs as it is."""
     me = os.geteuid()
     mine, theirs = [], []
     for f in paths:
@@ -73,7 +114,16 @@ def remedy(paths: list) -> str:
         out.append(f"{shlex.quote(f)} is owned by {who}, and chmod by anyone else fails (EPERM): "
                    f"ask {who} to chmod a-w it, or point the manifest at a read-only copy "
                    f"(cp it, then chmod a-w the copy)")
-    return "; ".join(out)
+    return "; ".join(out) + (f"  # {then}" if then else "")
+
+
+class ObservationsChanged(DatasetError):
+    """A1: what this stack would read now is not what it was pinned on. It carries the remedy that
+    applies, so a plan can give it without parsing the message."""
+
+    def __init__(self, message: str, fix: str):
+        super().__init__(message)
+        self.fix = fix
 
 
 def file_digest(path, chunk=1 << 20) -> str:
@@ -297,14 +347,26 @@ class Dataset(Service):
     identity-level (`view.csv`), and the parts are read in place, never copied.
     """
 
-    def __init__(self, observations, profile, stack_dir, design=None, parts=None, scope=None):
-        self.observations = Path(observations).resolve()
+    def __init__(self, observations, profile, stack_dir, design=None, parts=None, scope=None,
+                 prov=None, check_pin=True):
+        # THE DECLARED PATH IS KEPT AS DECLARED, and resolved again at every check (autodev W029,
+        # GAP-C57): a pin keyed to what the path resolved to at init never saw a `latest` symlink
+        # re-pointed at another delivery, and every command read the new one under the old digest.
+        self.declared = Path(observations)
+        self.observations = self.declared.resolve()
         self.profile = profile
         self.stack_dir = Path(stack_dir)
         self.design = Path(design).resolve() if design else None
         self.parts = str(parts) if parts else None
         self.scope = str(scope) if scope else None
         self.joiner = str(profile.identity.get("joiner") or "")
+        # Where a first-read pin of a stack older than pins is recorded; and whether a pin applies
+        # at all - not to the probe `init` reads a manifest through, before there is a stack.
+        self.prov = prov
+        self.check_pin = check_pin
+        self._pin = None           # the pin as this command verified it: the reference after a run
+        self._event = None         # the `observations/pinned` event, read once per command
+        self._verified = False
         if self.parts:
             if not profile.identity.get("scope"):
                 raise DatasetError(f"profile {profile.id} gives identities no scope, so observations "
@@ -375,6 +437,7 @@ class Dataset(Service):
     @property
     def ids(self) -> list:
         if self._ids is None:
+            self.verify()              # the pin before the first read of a part (GAP-C60)
             if self.parts:
                 ids, scope_of = [], {}
                 for s, path in self.part_files():
@@ -404,13 +467,22 @@ class Dataset(Service):
             h.update(b"\0")
         return h.hexdigest()
 
-    def pin(self) -> dict:
-        """Pin the observations as they are now: their digest, and each file's fingerprint. Done
-        once, at init; never again for the same stack."""
-        rec = {"sha256": self._compute_digest(),
+    def pin(self, **why) -> dict:
+        """Pin the observations as they are now - their digest, each file's fingerprint, and the
+        file the declared path resolved to - and record it as an `observations/pinned` event. Done
+        by `init`; and, for a stack initialised before pins existed, once on its first read
+        (`why` says so in the event). Never again for the same stack."""
+        rec = {"sha256": self._compute_digest(), "observations": str(self.observations),
                "files": {str(f): fingerprint(f) for f in self._files()}}
-        (self.stack_dir / PIN).write_text(json.dumps(rec, indent=1, sort_keys=True))
+        f = self.stack_dir / PIN
+        f.write_text(json.dumps(rec, indent=1, sort_keys=True))
         self._digest = rec["sha256"]
+        self._pin, self._verified = rec, True
+        if self.prov is not None:
+            seq = self.prov.append(PINNED, files=len(rec["files"]), sha256=rec["sha256"],
+                                   pin_sha256=pin_digest(f), **why)
+            self._event = {"seq": seq, "kind": PINNED, "sha256": rec["sha256"],
+                           "pin_sha256": pin_digest(f), **why}
         return rec
 
     def _load_pin(self):
@@ -423,39 +495,124 @@ class Dataset(Service):
             raise DatasetError(f"{f} is unreadable ({e}); a stack's pin is never rebuilt "
                                f"silently: initialise a new stack") from None
 
-    def changed(self, pin=None) -> list:
-        """Every pinned file whose fingerprint moved, named with what moved. Read off the pin's
-        own list, so a manifest rewritten to name other parts shows as the manifest changing."""
-        pin = pin if pin is not None else self._load_pin()
+    def _pinned_event(self):
+        """The last `observations/pinned` event in this stack's events.jsonl, or None. Read once
+        per command, so a plugin that deletes the pin AND the event log is still caught by the
+        check after it runs, in the command that ran it."""
+        if self._event is None:
+            found = None
+            try:
+                lines = (self.stack_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()
+            except OSError:
+                lines = []
+            for ln in lines:
+                if PINNED not in ln:
+                    continue
+                try:
+                    e = json.loads(ln)
+                except ValueError:
+                    continue
+                if e.get("kind") == PINNED:
+                    found = e
+            self._event = found or False
+        return self._event or None
+
+    def changes(self, pin=None) -> list:
+        """[(file, what)] - everything that makes what this stack would read now differ from what
+        it was pinned on, `what` being the list of fingerprint fields that moved, or a sentence:
+          - the pin itself: missing, rewritten, or not the one events.jsonl recorded (GAP-C58);
+          - a pinned file whose (inode, size, mtime_ns, ctime_ns) moved, or that is gone - read
+            off the pin's own list, so a manifest rewritten to name other parts shows as the
+            manifest changing;
+          - the declared path resolving NOW to a file the pin does not hold, or to another file
+            than this command reads: a `latest` symlink re-pointed (GAP-C57).
+        Empty for a stack never pinned - one initialised before pins existed, whose events.jsonl
+        records no pin; `digest()` pins it on its first read."""
+        pin = self._load_pin() if pin is None else pin
+        f = self.stack_dir / PIN
+        ev = self._pinned_event() if self.check_pin else None
         if pin is None:
+            if ev or self._pin is not None:
+                said = f" (event {ev.get('seq')})" if ev else ""
+                return [(str(f), "missing - this stack was pinned" + said + ", and a pin is never "
+                                 "re-created: a plugin, or a person, deleted it")]
             return []
         out = []
-        for f, was in sorted((pin.get("files") or {}).items()):
+        if self._pin is not None and pin != self._pin:
+            out.append((str(f), "rewritten while this command ran"))
+        elif ev and ev.get("sha256") and pin.get("sha256") != ev["sha256"]:
+            out.append((str(f), f"rewritten: its digest {str(pin.get('sha256'))[:12]} is not the "
+                                f"one events.jsonl recorded at init ({ev['sha256'][:12]})"))
+        elif ev and ev.get("pin_sha256") and pin_digest(f) != ev["pin_sha256"]:
+            out.append((str(f), "rewritten: not the file events.jsonl recorded at init"))
+        files = pin.get("files") or {}
+        for name, was in sorted(files.items()):
             try:
-                now = fingerprint(f)
+                now = fingerprint(name)
             except OSError:
-                out.append(f"{f}: gone")
+                out.append((name, "gone"))
                 continue
             moved = [k for k in COMPARED if now.get(k) != was.get(k)]
             if moved:
-                out.append(f"{f}: {', '.join(moved)} changed")
+                out.append((name, moved))
+        now = str(self.declared.resolve())
+        if now not in files:
+            held = pin.get("observations") or ", ".join(sorted(files)[:2])
+            out.append((now, f"read now, and not pinned: the declared path {self.declared} "
+                             f"resolves to it, and the pin holds {held}"))
+        elif now != str(self.observations):
+            out.append((now, f"the declared path {self.declared} resolves to it now, and this "
+                             f"command read {self.observations}"))
         return out
 
-    def digest(self) -> str:
-        """The digest pinned at init, once every pinned file is checked unchanged. D2's witness.
+    def changed(self, pin=None) -> list:
+        """`changes()`, each said as one line naming the file."""
+        return [f"{f}: {', '.join(w)} changed" if isinstance(w, list) else f"{f}: {w}"
+                for f, w in self.changes(pin)]
 
-        A stack initialised before observations were pinned is pinned on its first read, once;
+    def explain(self, changes) -> tuple:
+        """(what to add to an A1 message, the remedy) for `changes()`."""
+        if changes and all(w == ["ctime_ns"] for _, w in changes):
+            return CTIME_ONLY, REINIT
+        return ("the pin is never re-written: restore the file, or initialise a new stack over the "
+                "files as they now are",
+                "restore the file(s), or initialise a new stack over the files as they now are")
+
+    def verify(self):
+        """Raise `ObservationsChanged` unless what this stack would read now is what it was
+        pinned on. Run before a command first reads the observations - their identities, their
+        inventory, the digest a view is keyed by - so a library replaced or corrupted in place is
+        named by A1 before h5py ever opens it (autodev W029, GAP-C60). Once per command; after
+        every plugin run the kernel asks `changed()` again."""
+        if self._verified or not self.check_pin:
+            return
+        pin = self._load_pin()
+        bad = self.changes(pin)
+        if bad:
+            note, fix = self.explain(bad)
+            lines = [f"{f}: {', '.join(w)} changed" if isinstance(w, list) else f"{f}: {w}"
+                     for f, w in bad]
+            raise ObservationsChanged("A1: the observations changed after this stack was "
+                                      "initialised - " + "; ".join(lines) + ". " + note[0].upper()
+                                      + note[1:], fix)
+        self._pin, self._verified = pin, True
+
+    def pinned(self) -> bool:
+        """Whether this stack has a pin, or events.jsonl says it had one."""
+        return bool(self._pin is not None or self._load_pin() is not None or
+                    (self.check_pin and self._pinned_event()))
+
+    def digest(self) -> str:
+        """The digest pinned at init, once the pin is verified. D2's witness.
+
+        A stack initialised before observations were pinned - no pin, and no `observations/
+        pinned` event - is pinned on its first read, once, and that is recorded as the event;
         after that, as for every other stack, a change is an error and never a new baseline."""
         if self._digest is None:
-            pin = self._load_pin()
+            self.verify()
+            pin = self._pin if self._pin is not None else self._load_pin()
             if pin is None:
-                pin = self.pin()
-            bad = self.changed(pin)
-            if bad:
-                raise DatasetError(
-                    "A1: the observations changed after this stack was initialised - "
-                    + "; ".join(bad) + ". Nothing re-baselines them: restore the file, or "
-                    "initialise a new stack over the files as they now are")
+                pin = self.pin(on_first_read=True)
             self._digest = pin["sha256"]
         return self._digest
 
@@ -465,6 +622,7 @@ class Dataset(Service):
 
     def inventory(self) -> dict:
         if self._inventory is None:
+            self.verify()              # the pin before the first read of a part (GAP-C60)
             if self.parts:
                 common = None
                 for _, path in self.part_files():
@@ -491,10 +649,18 @@ class Dataset(Service):
         """The observation files a plugin is handed and this user could write: on a parts stack
         the manifest and every part. E2 holds by what a plugin is handed, so none may be writable
         (verifier W010 F3); on one file a plugin is handed only the read-only view, and this is
-        empty."""
+        empty. On a pinned stack they are the pin's own files, so asking reads no manifest the
+        pin has not checked."""
         if not self.parts:
             return []
-        return [str(f) for f in self._files() if os.access(f, os.W_OK)]
+        pin = (self._pin if self._pin is not None else self._load_pin()) if self.check_pin else None
+        files = sorted((pin or {}).get("files") or {}) or [str(f) for f in self._files()]
+        return [f for f in files if os.access(f, os.W_OK)]
+
+    def remedy_for_writable(self, w: list) -> str:
+        """`remedy(w)`, and - on a pinned stack, where `init` refused writable files, so these were
+        made writable after it - the new `init` that must follow (autodev W029, GAP-C60)."""
+        return remedy(w, then=AFTER_CHMOD if self.pinned() else None)
 
     def refuse_writable(self):
         """Raise, naming the files and the fix, while any observation file a plugin is handed is
@@ -505,7 +671,7 @@ class Dataset(Service):
                 f"{len(w)} observation file(s) are writable by this user: "
                 f"{', '.join(Path(x).name for x in w[:5])}{' ...' if len(w) > 5 else ''}. A plugin "
                 f"reads them in place, so their permissions are what keeps it from writing them "
-                f"(E2). Delivered data are immutable: {remedy(w)}")
+                f"(E2). Delivered data are immutable: {self.remedy_for_writable(w)}")
 
     def observation_capabilities(self) -> list:
         caps = ["observations/raw"]
