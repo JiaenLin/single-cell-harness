@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-09T13:37Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-09T14:11Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 ## Verdict
@@ -47,7 +47,7 @@ gaps not closed are size M or larger.
 | HARN | single-cell-harness | **W010** and **W016 MERGED** (`main` `6c81d15`): stage 1 through the harness; one plugin format plus `sch catalogue`. **W019** (the maker's H1-H6): the verifier FAILED it (a one-shape refusal passes `agree`; resource words can hide results), and the fix-up is queued first. **W024** built: the leak guard reads every file, and generated lists find **802 leaks** across the seven tools where the old guard saw 4; the verifier is judging a 30-job-script exemption. **W026** building: the `anno@scanno` adapter (stage 2 through the harness) | merged x2; 1 fixing; 1 verifying; 1 building |
 | PLAT | studio, lab, service | **Verified PASS and held for the PI's deploy** (BLK-005): **W005** (Lab), **W008** (Studio), **W009** and **W015** (Service). **W017** (Lab, on W005): fix-up 3 is building (an unbounded read through hard-linked groups; first-fit filling) | 4 held (PI); 1 fixing |
 | AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014**. The next pass starts after the third | waiting (1 of 3) |
-| BLOCKER | — | **Sweep 2026-11-09:** 68 inherited constraints sat queued since B1. They are now waves W020-W023, one per tool, each starting when that tool's current wave merges. GAP-028's data blocker is REMOVED (the PI's `all_cell_marker.zip` holds 1,779,944 human rows). Still the PI's: BLK-002, BLK-005, BLK-007, decisions 0-5 | sweeping |
+| BLOCKER | — | **Sweep 14:11Z:** nothing removable is waiting. The B1 register's 68 rows are all in waves (W020 building, W021 verifying, W022 and W023 queued behind their repositories), and the checkouts each follow their gating wave. New: GAP-C62 (the commit hook runs the whole suite on records-only commits). Still the PI's: BLK-002, BLK-005 (4 verified platform waves), BLK-007, decisions 0-6 | sweeping |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
 - PBS 720930 is IDENTICAL, as predicted.
