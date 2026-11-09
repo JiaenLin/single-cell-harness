@@ -19,7 +19,7 @@ docs/blind/       :: * :: the blind tests' records: the cohort, the runs, and wh
 docs/postmortem/  :: * :: the post-mortems: a failure is described with the run, the cohort and the machine it happened on
 
 # THE JOB RECORDS (W024 builder's extension, after measuring: 785 term hits from today's lists in
-# the first 30 files, which the five paths above do not cover; the generated lists added the 31st). Each is the script of runs submitted on the first cohort,
+# the first 29 files, which the five paths above do not cover; the generated lists added the 30th). Each is the script of runs submitted on the first cohort,
 # written once and cited by the ADR or blind test it served: its paths, hosts and samples are those
 # runs' provenance. They are named one by one, so a job script added later is still read. They
 # belong with the project that owns the cohort; moving them there lets these entries go.

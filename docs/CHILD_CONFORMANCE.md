@@ -21,9 +21,9 @@ makes a prefix. A cohort's list is generated from its records by
 **What a repository declares about itself.** `LEAK_SCOPE.txt` at its root, one entry per line,
 `<path> :: <what may appear> :: <why>`. `*` declares a record that S1 does not read (the harness's
 goals, ledgers, ADRs, blind tests, post-mortems and the job scripts of submitted runs); terms
-separated by a comma and a space (`4,321` is one name) excuse those terms at that path only, for a word the repository legitimately holds
-(a reference tree naming a cell type). Every entry needs its reason; what it excuses stays listed
-in S1f.
+separated by a comma and a space (`4,321` is one name) excuse those terms at that path only, for
+a word the repository legitimately holds (a reference tree naming a cell type). Every entry needs
+its reason; what it excuses stays listed in S1f.
 
 ## Repository checks
 
