@@ -1,51 +1,52 @@
 # STATE: where the program stands
 
-Updated 2026-11-09T11:17Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-09T13:37Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 ## Verdict
 
-**NOT HAPPY: 0 of 20 tests PASS (7 PARTIAL, 13 FAIL)** at audit pass 0002
-([`audits/0002-audit.md`](audits/0002-audit.md)). Pass 0001 had 5 PARTIAL and 15 FAIL. A1.3 and A3.3
-moved FAIL → PARTIAL. All 16 claimed closures were re-checked and hold. 47 gaps of size M or larger
-remain open.
+**NOT HAPPY: 0 of 20 tests PASS (9 PARTIAL, 11 FAIL)** at audit pass 0003
+([`audits/0003-audit.md`](audits/0003-audit.md)). Pass 0002 had 7 PARTIAL and 13 FAIL. A1.1 moved FAIL → PARTIAL (stage 1 through
+the harness) and A4.4 FAIL → PARTIAL (`sch catalogue`). All 9 closures claimed since pass 0002 were re-checked and hold, and
+GAP-033 is closed from 783148's own files. The register holds 161 gap ids: 91 open, 39 in a wave, 31 closed. 46 of the
+gaps not closed are size M or larger.
 
-## Scoreboard (GOALS.md layer 3; pass 0002)
+## Scoreboard (GOALS.md layer 3; pass 0003)
 
 | test | grade | the main reason (gap ids) |
 |---|---|---|
-| A1.1 one request, every stage | FAIL | The kernel runs none of the four tools: there is no adapter, and the `pbs` executor is refused. SAMBO ran stage by stage with glue at every boundary (GAP-001, GAP-002). |
-| A1.2 the ten steps mapped | PARTIAL | No map exists, and differential abundance has never run (GAP-058, GAP-041). |
-| A1.3 environments from main | PARTIAL | scProfile builds from its lock on a fresh prefix (PBS 782609). No fresh-prefix PBS build from main yet for scQC, scAnno or scIntegrate (GAP-107). |
-| A2.1 pre-declared reproduction | PARTIAL | Stages 1 and 3 reproduce. Stage 2's promoted run has never been reproduced (GAP-033). Stage 4 has no promoted run (GAP-055). |
-| A2.2 documentation true | FAIL | Every tool has false docs (GAP-009, -022, -031 → **W003**, -037 → **W004**, -052). |
-| A2.3 cold reproduction | FAIL | Never attempted (GAP-004). |
-| A3.1 held-out cohorts | FAIL | C46 stopped after stage 1. Fixtures reach only scIntegrate's pipeline. The leak list misses factor levels (GAP-056, -007, -023, -008). |
-| A3.2 design-aware | PARTIAL | DE contrasts levels in alphabetical order. Covariates are neither modelled nor refused (GAP-039, -040). |
-| A3.3 assay rule sets | PARTIAL | scQC, scAnno and scIntegrate have per-assay rules with no silent default. scProfile changes captions only. |
-| A3.4 scale | FAIL | No cohort of 1M cells or more. Three tools record no memory (GAP-016, -015). |
-| A4.1 existing pool in one format | FAIL | Only CellChat is in the maker's layout (GAP-044). |
-| A4.2 maker on new tools | FAIL | The maker has never converted a tool drawn from the catalogue (GAP-046). |
-| A4.3 provenance of methods | PARTIAL | Provenance is free text, and only 3 of 9 plugins have exact pins (GAP-045). |
-| A4.4 AI-native | FAIL | No catalogue that an agent can see (GAP-005). |
-| A5.1 report from evidence | PARTIAL | The report is CellChat-only, and the review loop does not remove what it withdraws (GAP-047, -048). |
-| A5.2 hypotheses | FAIL | No co-scientist (GAP-012). |
-| A6.1 Harness UI | FAIL | No UI (GAP-013). |
-| A6.2 Studio hand-off | FAIL | Lab's only automatic converter is a developer script nothing calls, and it guesses the roles. The run's provenance is dropped, and Studio shows no run (GAP-P09 → **W005**, P10, P19, GAP-014). |
-| A6.3 Service takes single-cell requests | FAIL | A Cell Ranger or CeleScope delivery yields 0 samples, because only FASTQ is scanned. The bulk path holds: 126 checks (GAP-P01–P04). |
-| A7.1 agents drive it | FAIL | No skill teaches a cold agent to run a cohort (GAP-003). |
+| A1.1 one request, every stage | PARTIAL | Stage 1 runs through `sch mount qc@scqc` with the pbs executor, AS PREDICTED (PBS 782817, 782922). No adapter for stages 2-4, and no driver (GAP-001; W026 building). |
+| A1.2 the ten steps mapped | PARTIAL | No map of the ten steps. Step 2 on nuclei runs only outside the tools (GAP-C49). Differential abundance has never run, and step 9 has nothing. |
+| A1.3 environments from main | PARTIAL | Only scProfile builds from main on a fresh prefix (782609). scQC's fresh build reproduced stage 1 in every value but missed its interpreter pin (782920); job 34 is gating (GAP-107). |
+| A2.1 pre-declared reproduction | PARTIAL | Stages 1 and 2 reproduce; stage 2's promoted run reproduces at its own commit (783148). Stage 3's harmony spread broke (782882; W025). Stage 4 and C46 have nothing promoted. |
+| A2.2 documentation true | FAIL | A seeded draw of 96 doc claims found 10 false, in 6 of 8 repositories (GAP-115..117, plus pass 0002's). |
+| A2.3 cold reproduction | FAIL | Never attempted, and the harness suite fails on any fresh clone (GAP-111, GAP-004). |
+| A3.1 held-out cohorts | FAIL | C46 is still at stage 1. Fixtures reach the pipeline in 1 of 4 tools. The leak guard was nearly blind: 802 leaks across the tools (W024). |
+| A3.2 design-aware | PARTIAL | scProfile's main kernels are unchanged; W013 fixes DE's direction on a branch only. |
+| A3.3 assay rule sets | PARTIAL | Three tools have per-assay rules. scProfile changes only captions, and the Service's main has no assay. |
+| A3.4 scale | FAIL | No cohort of 1M cells or more (W027 choosing one). Three tools record no memory (GAP-015). |
+| A4.1 existing pool in one format | FAIL | 1 of 9 plugins is in the maker's layout (W013, de, not merged). The cluster dev suite has not run since 2026-10-02. |
+| A4.2 maker on new tools | FAIL | No draw rule and no conversion (GAP-046). |
+| A4.3 provenance of methods | PARTIAL | The catalogue shows no DOI for 9 of 9 plugins and an exact pin for 3 of 9 (GAP-045). |
+| A4.4 AI-native | PARTIAL | `sch catalogue` lists 22 plugins. A scProfile plugin cannot yet be planned or mounted through `sch`. |
+| A5.1 report from evidence | PARTIAL | paper.py:799-800 still prints withdrawn claims; CellChat only (GAP-047, GAP-048). |
+| A5.2 hypotheses | FAIL | No co-scientist code (GAP-012). |
+| A6.1 Harness UI | FAIL | No UI code (GAP-013). |
+| A6.2 Studio hand-off | FAIL | Lab and Studio main are unchanged (W005, W008 and W017 are held for the PI's deploy). scIntegrate's emit.py:138 drops earlier stages' records (GAP-P20). |
+| A6.3 Service takes single-cell requests | FAIL | Service main is unchanged. It is PARTIAL once W009 and W015 are deployed; the harness intake is still missing (GAP-P06). |
+| A7.1 agents drive it | FAIL | No skill runs a cohort (GAP-003). |
 
 ## Lanes
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | **W007 MERGED** (`0a9d2ce`). **W014** built (`a2c8471`): the installer pins the denoiser and the R doublet stack, the core lock carries pyarrow, and build_reference.sh requires its reference. **PBS 782920** builds all three environments on a fresh prefix and reruns stage 1 against PBS 782673. The verifier is running. Measured: the torch pin does NOT fix CellBender's checkpoint error (GAP-C49). **W020** queued: scQC's 19 inherited constraints (B1) | gating; 1 queued |
-| ANNO | scAnno | **W003 merged** (`a126756`). **W011**: 782899 IDENTICAL as predicted. The C17 fix-up (`d0ee926`, strings only: 59 leaks to 0) gets **job 25 resubmitted unchanged as PBS 782921**, and the verifier re-checks C17. **W018** queued: the promoted stage 2 at `bd45f5d` (GAP-033). **W021** queued: scAnno's 18 inherited constraints, including `scanno build-markers` (B1-030). GAP-028 is unblocked: the human CellMarker data is in the PI's archive | gating; 2 queued |
-| INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** (`69a54b2`): verifier PASS; job 29 AS PREDICTED. Job 28 (PBS 782882, stage 3) is running, and the merge follows its grade. **W022** queued: 6 remaining inherited constraints (B1-056 was done by W012) | gating; 1 queued |
-| PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013** (`0f4ff9e`): PBS 782918 AS PREDICTED. The verifier FAILED it on D1 (a hand-edited caveat) and D2 (undeclared design columns dropped under `--factor`), and the ladder is red on resource measurements (harness GAP-C41). A fix-up is building; D1 goes through the maker's design worksheet. **W023** queued: scProfile's 24 inherited constraints | fixing; 1 queued |
-| HARN | single-cell-harness | **W010**: job 31 AS PREDICTED. The fix-up of the second verifier's D1-D3 and E2's silent re-baseline is building, and **job 33** (inputs read-only, as LAYOUT requires) follows. **W016** building: one plugin format (ADR) and `sch catalogue`. **W019** building: the maker's H1-H6, C41 first | fixing; 2 building |
-| PLAT | studio, lab, service | **W005**, **W008** and **W009** are verified PASS and **held** for the PI's deploy (BLK-005). **W015** (`418ffad`): the verifier FAILED it on D1 (a hand-typed species bypasses the species/build check), and the fix is building. **W017** (`1703e16`, on W005): crossed conditions kept, the run's record carried, real embeddings only; the verifier is running | 3 held (PI); 1 fixing; 1 verifying |
-| AUDIT | — | Pass 0002 done (NOT HAPPY, 0/20). Merges since: W007, W002 (both before 0002's grading closed) plus the coming W011, W012, W013 and W010. **Pass 0003** runs after the third of those merges | waiting |
+| QC | scQC | **W014 MERGED** (`main` `98504bd`): scQC builds its three environments on a fresh prefix from its own locks, and stage 1 on them is IDENTICAL to the reference (job 34, PBS 783151, AS PREDICTED on every line). The CellBender checkpoint error persists in both environments (GAP-C49). **W020** (19 constraints) can start | merged; 1 queued |
+| ANNO | scAnno | **W011 MERGED** (`main` `d0ee926`). **W018 DONE: the promoted stage 2 reproduces at its own commit** (PBS 783148, `bd45f5d`): IDENTICAL on 1,464 obs columns over 31 objects, the joint object, the scope record and every table, with inputs and environment measured equal first (GAP-033 closed). **W021** building: scAnno's 18 inherited constraints, including `scanno build-markers` | merged; done; 1 building |
+| INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** (`69a54b2`): verifier PASS; job 29 AS PREDICTED; **job 28 MISSED line B** (harmony's total moved 0.0279 > 0.013), so it is **not merged**. The cause predates W012: harmony's clustering metrics vary run to run (ARI 0.860 / 0.858 / 0.645) while its embedding metrics agree to 1e-6, and the method ranking flips. **W025** (queued, stacked on W012) makes them reproducible; then one re-gate. **W022** waits | held; 1 queued |
+| PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013**: `de` runs through the maker in the declared-control direction, AS PREDICTED in three runs (bit-identical to 720548). The verifier keeps finding ways round the maker's new `--answer` mechanism; fix-up 3 is building (one line model, design arguments only, the covariate regression). Its registered ladder line waits on W019. **W023** queued | fixing; 1 queued |
+| HARN | single-cell-harness | **W010** and **W016 MERGED** (`main` `6c81d15`): stage 1 through the harness; one plugin format plus `sch catalogue`. **W019** (the maker's H1-H6): the verifier FAILED it (a one-shape refusal passes `agree`; resource words can hide results), and the fix-up is queued first. **W024** built: the leak guard reads every file, and generated lists find **802 leaks** across the seven tools where the old guard saw 4; the verifier is judging a 30-job-script exemption. **W026** building: the `anno@scanno` adapter (stage 2 through the harness) | merged x2; 1 fixing; 1 verifying; 1 building |
+| PLAT | studio, lab, service | **Verified PASS and held for the PI's deploy** (BLK-005): **W005** (Lab), **W008** (Studio), **W009** and **W015** (Service). **W017** (Lab, on W005): fix-up 3 is building (an unbounded read through hard-linked groups; first-fit filling) | 4 held (PI); 1 fixing |
+| AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014**. The next pass starts after the third | waiting (1 of 3) |
 | BLOCKER | — | **Sweep 2026-11-09:** 68 inherited constraints sat queued since B1. They are now waves W020-W023, one per tool, each starting when that tool's current wave merges. GAP-028's data blocker is REMOVED (the PI's `all_cell_marker.zip` holds 1,779,944 human rows). Still the PI's: BLK-002, BLK-005, BLK-007, decisions 0-5 | sweeping |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
@@ -78,6 +79,9 @@ None of these blocks a running lane.
    single-cell questions with no default assay. The bulk path is byte-identical, and your four
    uncommitted files are untouched, so it cannot conflict with them:
    `! cd /tmp && rm -rf svc-merge && git clone -q https://github.com/JiaenLin/rnaseq-service svc-merge && cd svc-merge && git merge --ff-only origin/autodev/W009-sc-delivery && git push origin main`.
+   **Service W015 is verified too, stacked on W009.** The Service writes scQC's samplesheet, registry row and design table
+   from a single-cell request, holds back nuclei without a filtered matrix, and checks typed species against the build.
+   One fast-forward deploys both, W009 then W015: replace the branch above with `origin/autodev/W015-sc-design-sheet`.
 0b. **May a change that is MEANT to move a promoted run's outputs merge?** (B1-111.) Rule 1 asks
    for an IDENTICAL reproduction, so a fix that changes SAMBO's numbers on purpose can never merge.
    Examples: GAP-C11 (BBKNN scored on the wrong representation) and scProfile's DE direction.
@@ -98,11 +102,12 @@ None of these blocks a running lane.
    (RULES tier IV).
 0c. **SAMBO's sealed run directories are missing on the cluster** (BLK-007). The promoted stage-1 run
    (`runs/scqc/01_qc/20260824T161519Z__scqc-133a951__01_qc__ribo`) and every other stage-1 run except
-   720930's are gone, along with the promoted stage-3 run's directory and the CellChat reference
+   720930's are gone, along with the CellChat reference
    `20260906T120759Z__scprofile-de199d0`. None is in `~/_archive`. The `results/` deliverables are
    intact. No autodev session deletes cluster runs. **Was this a deliberate cleanup, or can the
    cluster's backups restore them?** Nothing waits: the reproductions use the verified copies that
-   survive.
+   survive. *(Corrected 2026-11-09 after audit pass 0003, GAP-118: the promoted stage-3 run's directory is NOT gone; it
+   exists and is sealed, PBS 671045. The promoted stage-2 run's directory is gone; its `results/` tree reproduced, PBS 783148.)*
 1. **Promote BrainOrganoid_C46 stage 1 (PBS 720932, 53,534 of 59,701 called cells)?** Recommended:
    **yes, keep D5 as it is.** W006 measured that the doublet calls follow the data, not the prior:
    9.0–11.1% with no expectation, 8.9–10.6% under scDblFinder's default, 8.3–11.7% under D5. The
@@ -118,8 +123,13 @@ None of these blocks a running lane.
 4. **C46's design facts.** What is C46 relative to H9, and what are `_1`/`_2`? This blocks only C46
    stage 4. It comes from the collaborator.
 5. **Velocity on C46.** Only if you want it: it needs the vendor's BAM.
+6. **A hand-written Seurat analysis in C46's project root** (GAP-113, audit pass 0003): `c46.R` and a 1.2 GB `.rds`,
+   dated 2026-10-26, appear in none of C46's records. Is it yours (an exploration), and may the record say so? Recommended:
+   a dated RUNLOG note that it exists and is not a family deliverable, with the files left where they are. Nothing waits on it.
 
 ## Decided (2026-11-09)
+
+- **The A3.4 scale cohort: the lupus PBMC atlas** (Perez 2022; CELLxGENE 218acb0f; 1,263,676 cells; SLE 162 vs healthy 99 donors; CC-BY 4.0). Decided by the pre-decider: a public cohort choice is a (C) design (gap review table A7). It was second-read against the curation API. See `autodev/scale/CANDIDATES.md`.
 
 | question | decided by | outcome |
 |---|---|---|

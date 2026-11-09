@@ -5,6 +5,10 @@ observation: one barcode, a cell or a nucleus
 identity:
   column: barcode
   scope: "{sample}"           # barcodes are unique only within a sample
+  # How a scoped identity is written when observations arrive as one part per sample (harness
+  # W010): `<sample>|<barcode>`, the form the QC tool's own removal ledger keys on. A sample name
+  # carrying the joiner is refused, so the first joiner always splits the two.
+  joiner: "|"
 materialiser: h5ad
 missing: NaN
 

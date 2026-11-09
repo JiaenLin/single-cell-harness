@@ -7,9 +7,24 @@ the parts that need judgement are always the same three.
 **The mechanical parts should cost minutes. The judgement should cost an afternoon**, and it is
 what makes the difference between a plugin and a subprocess call.
 
+> **Which layout, after 2026-11-09 ([ADR-0030](adr/0030-one-plugin-format.md)).**
+> - **A published method joining the family's tool pool** is written in the Universal Plugin
+>   Format, the maker's layout: one file, `kernels/<name>.py`, in scProfile. The maker builds it:
+>   `sch dev convert`, driven by the [`plugin-maker`](../skills/plugin-maker/SKILL.md) skill and
+>   scProfile's own scaffolder. That route is not this guide's.
+> - **This guide is for the harness's `plugin.yml` directory.** `sch plugin new` scaffolds that
+>   layout. It is the one to use for a plugin the harness's kernel itself mounts, such as a probe,
+>   a gate or an adapter over a tool, until the kernel can mount the UPF.
+>
+> The seven questions below are the same in both layouts, and ADR-0030's mapping says which key
+> each answer lands in. Before converting anything, run `sch catalogue --scprofile CHECKOUT`: the
+> family may already have the tool.
+
 ---
 
 ## 1. Scaffold
+
+A kernel plugin, in the directory layout (the example wraps a tool only to show every field):
 
 ```bash
 sch plugin new velocity --wraps scvelo --language python
@@ -73,6 +88,10 @@ today it pulls a major that may have removed the function the tool calls.
 
 Pin the stack the tool was released alongside. Then make the selftest run a real computation, so
 the pin is proven rather than asserted.
+
+Name the method's source as well as its version. Put the exact version in `wraps.version`, and the
+paper's DOI in `wraps.doi` (ADR-0030). `sch catalogue` reports a range as a range and a missing DOI
+as `not declared`.
 
 ## 6. Write the guard, if the tool can mislead
 

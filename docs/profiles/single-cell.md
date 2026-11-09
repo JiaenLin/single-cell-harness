@@ -20,6 +20,42 @@ every external source match is scoped by `{sample}` where one exists.
 An observation is never deleted. A removal is a **mask** (**D4**), and the masked observation keeps
 its identity, its metadata and its position in the object.
 
+### Observations that arrive as libraries
+
+A cohort is never one file. It is N libraries, each with its own barcodes. A stack may therefore
+declare its observations as a **parts manifest** (W010):
+
+```console
+$ sch init stack --profile single-cell/1.0 --observations samplesheet.tsv \
+      --parts <column naming each library's object> --key sample=<column naming the library>
+```
+
+The manifest is a table with one row per part, separated by tabs or by commas; `#` lines are
+skipped. For a QC stage it is the QC tool's own samplesheet, as delivered. Each part is the
+library's object at the stack's floor: the denoised object an ambient checkpoint delivered, or the
+aligner's call.
+
+- **Identity.** An observation is `<sample>|<barcode>`: the barcode within its `{sample}`, joined by
+  the profile's `identity.joiner`. A sample name containing the joiner is refused.
+- **Reading.** Identities are read from each part (`.h5ad`, through h5py; no matrix is loaded).
+- **Digest.** It covers the manifest and every part, so a write to any library is a write the A1
+  companion sees.
+- **The view.** It is identity-level: `view.csv`, holding the identity, `{sample}`, the contributed
+  columns, `keep` and every mask. Matrices stay in their parts and are read in place, and a
+  plugin finds them through `in.json` `observations`.
+- **Refused at `init`, before anything is written:** a manifest that names one sample twice, a
+  missing part, a part in a form no reader is written for (a 10x `.h5` or a MEX directory, for
+  now), or a missing scope key.
+- **Refused at `init` and at every plugin run:** a manifest or a part that the running user can
+  write. A plugin is handed the parts themselves. Delivered data are immutable: `chmod a-w` them
+  before `init`. The remedy is printed for a shell, and for a file someone else owns it names the
+  owner or a read-only copy.
+- **Pinned at `init`, never re-baselined:** each file's digest and (dev, inode, size, mtime_ns,
+  ctime_ns). The fingerprint is re-checked after every plugin run, whatever its outcome. It
+  catches what permissions cannot: a part renamed over through its directory, or chmod'ed and
+  written by its owner. A change is an A1 error naming the file, so a chmod after `init` is a
+  change too.
+
 ## 2. Slot bindings
 
 | abstract slot | here | on disk, from a plugin |
@@ -115,6 +151,13 @@ Beyond the generic contract, a single-cell plugin MUST:
   that gives any axis a literal default. The case that put this here: a mitochondrial step read
   `assay` with a default of the first cohort's single-nucleus value, from a task never given it, and
   bounded a whole-cell cohort as nuclei with every test green.
+- **say which assays it supports, if it knows.** The key is `assays: [scrna, snrna]`, values of
+  the `assay` axis. It is an optional key added by ADR-0030, and it means the same in a
+  `plugin.yml` and in the Universal Plugin Format's `PLUGIN` literal. Single cells are not single
+  nuclei (autodev rule 2), so the key is never defaulted. Where it is absent, `sch catalogue`
+  reads `not declared` and lists, as evidence, every line of the plugin's own code that reads the
+  run's assay. The key states the plugin's scope. It replaces neither `axes_declared` nor the
+  stack's declared assay.
 
 ## 8. The probe library
 
@@ -176,7 +219,8 @@ Composed by overlay — a site layer, a project layer, a run layer, resolved in 
 <stack>/
   stack.yml                    the declaration; this is the artifact
   events.jsonl                 append-only, replayable (P1)
-  plugins/<name>/              in.json, out.json, and the plugin's own outputs
+  plugins/<name>/              in.json, out.json, and the plugin's own outputs (the name keeps
+                               [A-Za-z0-9._-]: qc@scqc runs in plugins/qc_scqc/)
   materialised/
     cohort.h5ad                a VIEW, regenerated on demand, never authoritative
     report/                    report-visible ⟺ replayable (P2)

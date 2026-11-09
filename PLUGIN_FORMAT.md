@@ -3,6 +3,19 @@
 **Specification, v1.0-draft. Domain-free.** The contract every plugin conforms to, in any domain.
 Normative words — MUST, SHOULD, MAY — carry their usual meaning.
 
+> **2026-11-09, [ADR-0030](docs/adr/0030-one-plugin-format.md): the Universal Plugin Format (UPF)
+> is the maker's layout.** In that layout a plugin is one Python file, and the `PLUGIN` literal in
+> it is the declaration (scProfile's api 1).
+>
+> This document specifies the **directory** layout. The harness's kernel mounts that layout today.
+> A plugin the kernel itself must mount, such as a probe, a gate or an adapter, is still written in
+> it. For the tool pool the directory layout is legacy. It is read through ADR-0030's
+> field-by-field mapping.
+>
+> Every field below keeps its meaning here. The UPF carries the kernel's fields as optional keys,
+> with the meanings this document gives them. `sch catalogue` reads both layouts and reports each
+> plugin in the UPF's terms.
+
 Nothing here knows what a cell is. That is invariant **L2** of
 [`ARCHITECTURE.md`](ARCHITECTURE.md): the core and the contract must be testable against a domain
 they were not designed for. What an observation *is*, what slots exist and what may be measured are
@@ -260,12 +273,30 @@ cross every version boundary the data itself cannot.
   "params": {"mode": "stochastic"},
   "upstream": {"cellcycle": "/abs/path/to/its/out_dir"},
   "provenance": {"tools": [], "search_paths": []},
+  "observations": null,
   "profile_context": {}
 }
 ```
 
 Every path absolute. `profile_context` carries whatever the profile defines and the generic
-contract does not know about.
+contract does not know about. `observations` (added by W010; X2) is null on one observation file:
+a plugin is handed only the read-only view in `data` (E2). When the observations arrive as a parts
+manifest it is `{"path", "parts", "scope", "joiner"}`: the manifest, the column naming each part's
+file, the column scoping identities, and how an identity is written. `data` is then an
+identity-level view, and a plugin that needs the matrices reads them from the parts, in place.
+
+E2 then rests on two things. Permissions alone hold only against in-place writes.
+- **Permissions.** The kernel runs no plugin, and `init` pins no stack, while the manifest or
+  any part is writable by the running user. It names the files and a remedy a shell can run:
+  `chmod a-w`, quoted. For a file someone else owns, where chmod fails (EPERM), the remedy is the
+  owner, or a read-only copy.
+- **A fingerprint.** Every observation file, on any stack, is pinned at init by its digest and
+  its (dev, inode, size, mtime_ns, ctime_ns). The fingerprint is re-checked after every plugin
+  run, whatever its outcome. This catches what permissions cannot: a part renamed over through
+  its writable directory, or chmod'ed and written by its owner. A change is an A1 error naming the
+  file, from then on. Nothing re-baselines a stack: a changed file means restoring it or
+  initialising a new stack. `dev` is recorded but not compared on its own, because an NFS client
+  assigns it per host.
 
 **`out.json`**
 
@@ -355,6 +386,11 @@ version again at runtime**, read from the tool, in `wrapped_versions`; reproduce
 recommended settings by default and mark every deviation; and never silently repair its output.
 
 The plugin's `version` tracks the wrapper. The tool's version lives in `wraps`.
+
+`wraps.doi` (added by ADR-0030; X2) names the peer-reviewed source as a DOI. Give one string, or a
+list when the method rests on several papers. A DOI written inside the free-text `cite` is a
+citation a person can read, not a declaration: `sch catalogue` reads only the field. Where it is
+absent, the catalogue says `not declared`.
 
 ---
 

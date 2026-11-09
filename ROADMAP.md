@@ -174,6 +174,28 @@ move and being a rewrite.
 **Falsifier.** An adapter thicker than a rewrite means the contract is wrong. **Stop and fix the
 contract**, do not write three more adapters against it.
 
+> **BUILT, NOT YET GRADED, 2026-11-09 (W010, branch `autodev/W010-qc-adapter`).**
+> `plugins/single-cell/qc@scqc` runs scQC's real CLI (`describe`, then `run`) over the libraries a
+> stack declares. They are declared as **a parts manifest**: scQC's own samplesheet, one row per
+> library, scoped by `{sample}`. The kernel took one observation file, and no cohort is one. The
+> adapter contributes one whole mask per criterion, the measured columns, and scQC's tables and
+> objects referenced in place. It adopts scQC's `STATUS.json` and seal: ok is contributed, refused
+> is the mount's refusal with scQC's fix, anything else is a death. Ambient correction stays a
+> checkpoint beneath the mount, read as delivered (D1).
+>
+> Graded on a synthetic cohort, through the `sch` CLI against a stand-in scQC
+> (`tests/test_the_harness_runs_scqc.py`):
+> - **unmount** holds: every observation is restored, and the view's digest equals the pre-mount
+>   digest;
+> - **split-ready** holds: one mask per criterion, each addressable.
+>
+> Not yet graded:
+> - **numbers** waits on the pre-declared reproduction on the reference cohort (W010's job, which
+>   compares every scQC table with the promoted run);
+> - **F3** is not timed;
+> - **ADR-0004's test** has no rewrite estimate written before the adapter. The adapter is 242
+>   lines, and its companion 69.
+
 ---
 
 ## Phase 4 — Probes, and the gates that share them
@@ -221,27 +243,57 @@ for stops the phase.**
 
 ---
 
-## Phase 6 — Dissolve scProfile
+## Phase 6 — One plugin format, read and mounted by the harness
 
-**Claim.** scProfile's kernels are harness plugins, and nothing is lost in the move.
+> **Amended 2026-11-09 by [ADR-0030](docs/adr/0030-one-plugin-format.md).** Until then this phase
+> was "Dissolve scProfile". Its claim was that scProfile's kernels become harness plugins with
+> nothing lost, and it required an ADR amending 0004 that gave up "scProfile as an independently
+> installable tool". GOALS.md gives PROF.1–PROF.4 to scProfile, as the family's universal tool
+> runner, so the tool is not dissolved. The aim of the phase, one contract rather than two, is kept
+> as one *format*: the maker's layout, which ADR-0030 adopts as the Universal Plugin Format (UPF).
 
-**Requires** an ADR amending 0004, naming what is given up: scProfile as an independently
-installable tool.
+**Claim.** Every plugin in the family either is in the UPF or maps onto it. The harness lists
+every plugin, and mounts a UPF plugin with nothing lost.
 
-**Build.** `velocity` first — it is built, tested and already conforms to a contract that is nearly
-this one. Then `cellcycle`. scProfile's host becomes the reference kernel rather than a second one.
+**Build.**
+1. `sch catalogue`, which reads every layout without importing a tool.
+2. The mount: the harness runs a UPF plugin, velocity or cellcycle first, either through an
+   adapter over scProfile's CLI (ADR-0004) or by reading the `PLUGIN` literal itself. It runs both
+   of the format's execution phases: `run(ctx)` per unit, and `compare(ctx)` per arm pair where
+   the plugin defines it, as cellchat does.
+3. The maker makes ADR-0030's added keys required (`assays`, an exact `wraps.version`,
+   `wraps.doi`).
 
 **Evaluation.**
 
 | | pass |
 |---|---|
-| identical output | `velocity` mounted produces byte-identical results to `velocity` under scProfile |
-| no second contract | one manifest, one merge path, one report engine |
-| the roadmap survives | `ROADMAP.md`'s tier-1 plugins remain buildable under the harness contract |
+| one format | `sch catalogue` lists every plugin of the harness and of scProfile, with its format, and none is unreadable |
+| identical output | a UPF plugin mounted through the harness produces byte-identical results to the same plugin under scProfile |
+| AI-native (A4.4) | a cold agent picks a plugin from `sch catalogue --json` for a stated question and runs it through the agent surface |
+| no second format | the harness's `plugin.yml` directory remains only for plugins the kernel itself mounts, until the kernel mounts the UPF |
 
-**Falsifier.** If a scProfile kernel cannot be expressed as a harness plugin without loss, the
-harness contract is narrower than the one it is replacing — which is a serious finding, since that
-contract was written first and against real use.
+The old evaluation row "the roadmap survives" is dropped. It said that `ROADMAP.md`'s tier-1
+plugins remain buildable under the harness contract. The amended phase rebuilds no plugin under the
+directory contract, because the plugins stay in the UPF. The "one format" row replaces it.
+
+**Falsifier.** If a UPF plugin cannot be mounted by the harness without loss, the kernel's
+contract is narrower than the format the pool uses. That is the serious finding the original phase
+named, and it is kept.
+
+> **BUILT IN PART, 2026-11-09 (W016, branch `autodev/W016-catalogue`): the catalogue.**
+> `sch catalogue [show ID] [--scprofile CHECKOUT] [--json]` reads two sources:
+> - the harness's `plugin.yml` directories;
+> - a scProfile checkout's one-file and legacy `kernel.yml` plugins.
+>
+> It never imports a tool, and it names every file it cannot read. At scProfile `f5175ea` it
+> lists:
+> - 9 plugins, 0 of them unreadable;
+> - 3 with an exact upstream version (velocity, scenic, cellchat);
+> - 0 with a DOI;
+> - 1 in the maker's layout (cellchat).
+>
+> No plugin declares its assays. The mount is not built.
 
 ---
 
@@ -300,6 +352,31 @@ closes.
 and every digest comparison across an executor boundary is comparing against a moving file. Say so
 before Phase 10 builds on it.
 
+> **`pbs` BUILT, NOT YET GRADED ON A SCHEDULER, 2026-11-09 (W010).** `executor: pbs` reads queue,
+> select and walltime from the stack's or the site layer's `pbs:` block. The kernel holds no
+> value for any of them and refuses a missing one before qsub. For each run:
+> - the run directory exists before qsub;
+> - the job's EXIT trap seals it, with the exit, the job id and any missing product;
+> - the exit is read from that seal, then from qstat. A run that exits non-zero, is killed, or ends
+>   with nobody recording how is a death, even after writing `out.json`;
+> - a qstat outage is not an ending, and neither is a qstat call that times out
+>   (`pbs.qstat_timeout_s`; qdel has the same bound). A job that sealed meanwhile has ended, and its
+>   exit is its seal's. Otherwise the wait stops with `stopped: false`, and quiesce sends qdel. It
+>   reports the job stopped only once qstat or the job's seal confirms it. Unconfirmed, it reports
+>   `stopped: false`, and the command ends in an E5 error, never a success;
+> - a full queue is waited for;
+> - a stop is a qdel confirmed through qstat or the job's seal.
+>
+> Against a stand-in qsub/qstat/qdel (`tests/test_the_pbs_executor_submits_waits_and_seals.py`),
+> **E5** holds: an unconfirmable stop reports `stopped: false`, and the companion fails on it.
+> **Orthogonal facts** holds: a timeout reports timed-out, requested, stopped and the exit
+> independently.
+>
+> Open:
+> - identical results under `local` and `pbs` on one stack;
+> - E5 against a real job;
+> - "late writes land nowhere".
+
 ---
 
 ## Phase 10 — The agent surface
@@ -335,7 +412,8 @@ companions are not decoration.
 > `tests/test_adversarial.py` with the eight attacks above. Each fails against the world, not the
 > self-report. The gates (Phase 4) exist as far as G3 and G4 are concerned: a gate receives the
 > probe's answer and never measures, and the verdict is proved order-independent. Phases 3 and
-> 5–9 are not built; the executor refuses `pbs` rather than pretending.
+> 5–9 are not built; the executor refuses `pbs` rather than pretending. *(2026-11-09: Phase 3's
+> first adapter and Phase 9's `pbs` executor are built by W010 and not yet graded; see their notes.)*
 
 ---
 

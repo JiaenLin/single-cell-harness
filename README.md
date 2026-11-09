@@ -15,8 +15,10 @@ everything downstream knows when one does.
 > **Status: the kernel exists, and the development suite around it is in daily use.** `sch`
 > implements Phase 1 (the domain-free core, proved on a toy profile), Phase 2 (the profile and the
 > 15-check validator, every rule tripped by a broken plugin), the gate-is-a-probe machinery of
-> Phase 4, and the agent surface of Phase 10 with its adversarial suite. Phases 3, 5–9 and 11 are
-> not built.
+> Phase 4, and the agent surface of Phase 10 with its adversarial suite. Phase 3's first adapter,
+> `qc@scqc` (the first tool the kernel runs), and Phase 9's `pbs` executor are built (W010) and
+> not yet graded: the adapter waits on a pre-declared reproduction on the reference cohort, the
+> executor on a run against a real scheduler. Phases 5–8 and 11 are not built.
 >
 > `sch conform` checks a child tool against
 > [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it; all four pass with
@@ -25,7 +27,12 @@ everything downstream knows when one does.
 > recently PBS 707628, every tier green in all five.
 > [`ARCHITECTURE.md`](ARCHITECTURE.md) is normative and **locked** — the layers and the invariants
 > that may not be broken. [`VISION.md`](VISION.md) is the thesis, written to be argued with.
-> [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) is the contract every plugin conforms to.
+> [`PLUGIN_FORMAT.md`](PLUGIN_FORMAT.md) specifies the directory layout the kernel mounts.
+>
+> The family has one plugin format, the Universal Plugin Format: the maker's one-file layout,
+> adopted by [ADR-0030](docs/adr/0030-one-plugin-format.md). `sch catalogue` lists every plugin
+> of the harness and of scProfile in that format's terms, and reads each one without importing
+> it. Mounting a scProfile plugin through the harness is not built yet (ROADMAP Phase 6).
 
 ---
 
@@ -128,6 +135,26 @@ observation is, and the vocabulary of slots, keys, sentinels and probes, live in
 *harmony* — so implementations are swappable and the runtime can resolve what is runnable, what is
 invalid, and what is missing to answer a given question.
 
+**One format for the tool pool ([ADR-0030](docs/adr/0030-one-plugin-format.md)).**
+- **A published method** is written in the Universal Plugin Format: the maker's layout, one file
+  whose `PLUGIN` literal is its declaration. The maker produces it, in scProfile.
+- **The directory above** is what the kernel mounts today. It is kept for the plugins the kernel
+  itself runs: probes, gates and adapters.
+- **The catalogue** reads both layouts, plus scProfile's legacy `kernel.yml` shape, without
+  importing any of them. It reports every plugin in one vocabulary:
+  - the question the plugin answers;
+  - the assays, design and layers it needs, each as declared or `not declared` (never a default
+    assay);
+  - what it produces;
+  - its upstream, exact version and DOI;
+  - its format;
+  - whether the tool's records say it has run on a cohort.
+
+```
+sch catalogue --scprofile CHECKOUT --json      every plugin, one row each, for an agent
+sch catalogue show ID --scprofile CHECKOUT     one plugin whole: parameters, figures, limits
+```
+
 ## Building methods
 
 New methods are plugins and inherit the substrate: object reading and key detection, a pinned
@@ -209,7 +236,9 @@ stack rather than assembled by hand under deadline.
 
 Each keeps its own repository, lock, version and users, and works perfectly well on its own. They
 mount here through a thin adapter over the contract each already has — nothing was rewritten to
-join. scProfile implements a single-stage version of the model — declared
+join. scProfile's plugins are also read directly, from a checkout, by `sch catalogue`. Their
+one-file format is the family's one plugin format (ADR-0030, which amends ADR-0004 in that
+respect only). scProfile implements a single-stage version of the model — declared
 `needs`/`provides`, prerequisite resolution before compute is spent, guards with logged escapes,
 cross-environment isolation, and a required `cannot_show` on every plugin.
 
@@ -224,6 +253,7 @@ $ sch mount filter_threshold --param min=5    # materialise → gate → run →
 $ sch unmount filter_threshold --dry-run      # the cost before it is paid
 $ sch report                                  # numbers that resolve to events, or no report
 $ sch doctor --architecture                   # L1 L2 L3 C4 D2 X1 G1 G3 and every shipped plugin
+$ sch catalogue --scprofile ../scProfile      # every plugin in the family, read, never imported
 $ sch conform ../scQC --terms ~/site/forbidden_terms.txt
 $ sch conform --run runs/new --against runs/reference   # is a comparison between them meaningful?
 $ python -m unittest discover -s tests        # 144 tests, all synthetic

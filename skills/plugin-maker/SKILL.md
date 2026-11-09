@@ -16,7 +16,13 @@ as the code does it, the readers, the store, the loop and its open limits.
 This family has more than one. The harness's own plugins are directories with a `plugin.yml`
 ([`PLUGIN_FORMAT.md`](../../PLUGIN_FORMAT.md)). scProfile's kernels are ONE FILE with a `PLUGIN`
 dict and a `run(ctx)` — and that format exists because the six-file one was an assembly kit; see
-the "WHY THIS REPLACED SIX FILES" note in `scprofile/plugin.py`. A skill that names a layout up
+the "WHY THIS REPLACED SIX FILES" note in `scprofile/plugin.py`.
+
+[ADR-0030](../../docs/adr/0030-one-plugin-format.md) adopts one of them as the Universal Plugin
+Format: the maker's layout, which is the one-file shape once the maker has finished with it. The
+directory layout remains for plugins the harness's kernel itself mounts. Before converting a tool,
+run `sch catalogue --scprofile <checkout>`. It lists every plugin the family already has, in both
+layouts, and shows how far each has come: `maker` or `one-file`. A skill that names a layout up
 front teaches whichever one it was written against, which is what the previous version of this file
 did for months after the format it described stopped being the one anybody wanted.
 

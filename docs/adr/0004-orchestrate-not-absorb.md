@@ -1,6 +1,8 @@
 # 0004 — Orchestrate, do not absorb
 
-**Status** accepted
+**Status** accepted; amended 2026-11-09 by [ADR-0030](0030-one-plugin-format.md). The plugin
+format is now one, and the harness reads it directly from a tool's checkout. The tools stay
+separate, which is this record's decision.
 **Date** 2026-08-19
 **Affects** L3 C3
 
