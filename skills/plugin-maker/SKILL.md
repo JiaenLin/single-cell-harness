@@ -145,7 +145,9 @@ session made it, and a clone without it is gated by nothing.
 sch dev convert inventory --root . --point kernel --name <plugin> --python <the plugin's own interpreter>
 ```
 
-Extractors are plugins: one reads a Python package's `pl`/`plotting` submodule, one reads an R
+Extractors are plugins: one reads a Python package's `pl`/`plotting` submodule - or, where it has
+none, its top level, the methods of every class it defines and every public submodule, by name,
+by an axes or figure parameter and by a body that writes a figure file - and one reads an R
 namespace. `$SCH_EXTRACTORS` adds a site one for an in-house tool. Pass the interpreter the PLUGIN
 runs in, not yours — a tool pins versions the harness does not have, and inventorying it in the
 wrong environment reports a surface the plugin will never see.
@@ -233,8 +235,10 @@ sch dev edit ... --dry                                          # the diff, noth
 sch dev edit ... --run <a completed run>                        # what the edit unbinds, and whether the cache will hit
 ```
 
-The verb writes by source span, so every comment in the file stays; it bumps `version` once
-per call (or takes `--as-version`); it prints the plan's count per axis against the layout and
+The verb writes by source span, so every comment in the file stays, and it writes what it adds
+the way the file is written: a new key on its own line, indented like its neighbours, a long
+string as adjacent literals inside the file's own margin. It bumps `version` once per call
+(or takes `--as-version`); it prints the plan's count per axis against the layout and
 the plan's delta; and it runs the followers the tool declares under `plan.after_edit` — the
 validator first, then the companion regenerated, the plan baseline re-recorded, the vocabulary
 guard — stopping at the first that refuses and printing why. A site in hand-written code it
@@ -248,8 +252,8 @@ sites are generated from the entries, and a site edited by hand is exactly the d
 `generated_by` check refuses. A plugin still on the older form — figure ids inside prose, two
 prefix maps — is brought onto the plan with `--migrate`, which prints the paste-ready entries
 built from what it already declares; every field only a person can write - the call, the
-legend, an undeclared ceiling - is a placeholder for you to decide, and a placeholder does not
-validate.
+legend, an undeclared ceiling, an axis the plugin's own declaration does not settle - is a
+placeholder for you to decide, and a placeholder does not validate.
 
 ## The judgement stage: what no command can do
 

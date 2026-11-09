@@ -133,8 +133,9 @@ it cannot prove.
 | `unit` | the repository's own suite, run the way the repository runs it | seconds |
 | `fixture_a` | does it run end to end and leave a valid status behind? | seconds |
 | `fixture_b` | does it still, with every role renamed? | seconds |
+| `agree` | did the two shapes write the same numbers? It counts the values it compared, and reports - never judges - what the execution measured of itself (time, cores, memory, the models fitted from them). Not applicable on a declared refusal | ms |
 | `leak` | any cohort or site term anywhere in the repository? | ms |
-| `baseline` | did a number move that was not supposed to? | ms |
+| `baseline` | did a number move that was not supposed to? Not applicable on a declared refusal, from which nothing is ever recorded | ms |
 
 Every tier prints what it does **not** prove, and the run ends with the union of those plus the
 line that matters most: *a green ladder does not establish that the tool reproduces the real
@@ -167,8 +168,16 @@ check that skipped every tier used to exit `0`, and an agent reads that as proof
 missing baseline, a missing declaration and an absent dependency are all `3` — setup, not defect.
 
 A **baseline** is the numeric fingerprint of a fixture run: numeric leaves of every JSON,
-per-column statistics of every CSV, bytes of everything else, with volatile fields (times, job
-ids, paths, commits) excluded. Floats compare with a relative tolerance rather than bit-equality,
+per-column statistics of every CSV, a content hash of every other file (a rendering is checked
+for presence only), with volatile fields (times, job ids, paths, commits) excluded. Two kinds of
+number are RECORDED AND NEVER JUDGED (autodev W019): a file's byte count, which moves with the
+digits of every timing written into the file, and a resource the execution measured of itself -
+wall and CPU time, cores, memory, and the cost and memory models fitted from them - which moves
+between two executions of one input on a shared machine. `agree` reports the same resources and
+judges them no more. A key names a resource by its words (`sch/dev/baseline.py`,
+`RESOURCE_WORDS`); `time` is not one of them, because pseudotime is a result. A fixture run that
+ended in a declared refusal has no products: neither tier applies to it, and no baseline is ever
+recorded from one. Floats compare with a relative tolerance rather than bit-equality,
 because bit-equality across machines is not a property this family has — 0.214 was measured
 between two nodes of the same model on 2026-09-06.
 
@@ -264,7 +273,8 @@ nothing in `sch/` knows what a figure family or an upstream plot is.
 | `generated_by` | a command that writes the stage's mechanism, so the check can regenerate it and compare |
 | `every_requirement_declared` | no package the artefact LOADS is one only its neighbours declare |
 | `version_is_current` | the field this repository calls its reuse key moved when the artefact did |
-| `entry_keys` | the stage is the FIGURE PLAN (ADR-0016): the list it fills carries the call, and this map says what the format calls the upstream function, the items, the bound, the arguments and the expression |
+| `entry_keys` | the stage is the FIGURE PLAN (ADR-0016): the list it fills carries the call, and this map says what the format calls the upstream function, the items, the bound, the arguments and the expression; `per_unit` names the plugin's own field that says it runs once per unit (set: per unit; empty: once over the cohort) |
+| `under_layout` | the stage holds the plan to a LAYOUT (ADR-0024): `axes`, a budget in files per occurrence of each; `host`, the host's own panels by axis, of which `host_keep` are handed to a reader; `host_list`, where a plugin carries the host's kinds its pages show (any of them); `host_for`, the plugin field that earns the host's panels at all - without it every plugin is charged them; `pooled`, the budget that holds a plugin running once over the cohort in place of the cohort axis (autodev W019) |
 
 `places_every` takes one entry per declaration that names figure families, each saying how to read
 an id out of it — a key, a value at a path, or filenames inside prose — and, where the format
@@ -286,7 +296,10 @@ generates the draw sites from the entries, so adjusting a figure never touches m
 `sch dev convert plan --migrate --name <plugin>` prints the paste-ready plan for a plugin still
 on the older form — figure ids parsed out of prose, ceilings per function, two prefix maps —
 built from those fields alone. Every field only a person can write - the call, the legend, an
-undeclared ceiling - is the placeholder; nothing is decided by the maker. The legacy rules
+undeclared ceiling - is the placeholder; nothing is decided by the maker. An entry the axis map
+does not place takes its axis from the plugin: `unit` where the field the plan stage names as
+`entry_keys.per_unit` is set, `cohort` where it is empty; where the stage names no such field
+the axis is the placeholder too, never `unit` from nothing (autodev W019). The legacy rules
 (`places_every`, `axis_field`, `positions`, `axes`) stay on the stage until the last such plugin
 is migrated, because they are how the maker reads one.
 

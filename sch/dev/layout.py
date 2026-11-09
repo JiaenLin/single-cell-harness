@@ -36,23 +36,6 @@ def _entries(spec, keys=None):
             and not (side and e.get(side) is False)]
 
 
-def host_files(layout):
-    """{axis: files} the host's own kept panels take on each axis, per occurrence.
-
-    The layout names every kind the host draws with its axis (`host`), and which of them a
-    reader is handed (`host_keep`); a kind not kept is not drawn, and the plugin carries the
-    decision as the list `host_list` names. `files` is per occurrence of the axis (a kind that
-    draws two matrices per contrast says 2), one where unsaid.
-    """
-    host = (layout or {}).get("host") or {}
-    keep = [k for k in ((layout or {}).get("host_keep") or []) if k in host]
-    out = {}
-    for k in keep:
-        ax = str((host[k] or {}).get("axis") or "cohort")
-        out[ax] = out.get(ax, 0) + max(1, int((host[k] or {}).get("files") or 1))
-    return out
-
-
 def host_kept(layout):
     """The host kinds a reader is handed, in the layout's order - what the plugin will carry."""
     host = (layout or {}).get("host") or {}
@@ -77,7 +60,7 @@ def host_for_plugin(spec, layout, keys=None):
     budget by construction (three host files against a budget of three), and the trim would have
     deleted all six. Which plugins earn them is the tool's to say: `host_for` names the field of a
     plugin's own declaration whose presence earns them. Where the layout names none, every plugin
-    is charged, as before, and the report says how to say otherwise.
+    is charged, as before, and `why` says how to say otherwise.
 
     AND THE LIST IS THE PLUGIN'S. A plugin the host draws for carries the kinds its pages show
     (`host_list`), any of the host's kinds: it was demanded EQUAL to the layout's `host_keep`, so
@@ -114,7 +97,13 @@ def host_for_plugin(spec, layout, keys=None):
 
 
 def host_files_for(kinds, layout):
-    """{axis: files} the named host kinds take on each axis, per occurrence (see host_files)."""
+    """{axis: files} the named host kinds take on each axis, per occurrence.
+
+    The layout names every kind the host draws with its axis (`host`), and which of them a
+    reader is handed (`host_keep`); a plugin the host draws for carries the kinds its pages show
+    as the list `host_list` names (`host_for_plugin`). `files` is per occurrence of the axis (a
+    kind that draws two matrices per contrast says 2), one where unsaid.
+    """
     host = (layout or {}).get("host") or {}
     out = {}
     for k in kinds:
@@ -126,8 +115,9 @@ def host_files_for(kinds, layout):
 
 def pooled(spec, layout, keys=None):
     """Whether a plugin runs ONCE OVER THE WHOLE COHORT and the layout gives such a plugin its own
-    budget (autodev W019, GAP-C40). The cohort axis is a per-unit plugin's summary: three files
-    there were the host's census for every unit. A pooled plugin's whole page is drawn once for
+    budget (autodev W019, GAP-C40). The cohort axis is a per-unit plugin's summary: its three
+    files are the host's design grid, census and per-unit totals. A pooled plugin's whole page
+    is drawn once for
     the cohort, so where the layout declares `pooled` (a budget and a keep, like an axis) that is
     its budget in place of the cohort axis's. Whether a plugin runs per unit is a field of its own
     declaration, named by the plan stage (`entry_keys.per_unit`); not named, nothing is pooled."""
