@@ -206,6 +206,37 @@ def _check(checks, cid, ok, evidence, fix, level="error"):
                    "evidence": evidence, "fix": fix})
 
 
+def _git_out(repo, *args) -> str:
+    """git's stdout for one read-only query, or "" when git is absent or says no."""
+    import subprocess
+    try:
+        r = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
+                           timeout=30)
+    except Exception:                                                     # noqa: BLE001
+        return ""
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def installed_gate(repo):
+    """(the versioned hook, core.hooksPath as configured, the directory git will run hooks from).
+
+    WHAT GIT RUNS IS A DIRECTORY, NOT A STRING. A relative `core.hooksPath` is read against the
+    root of the working tree the commit is made in, so `setup/githooks` names a different copy of
+    the hook in every worktree; an absolute one names one copy for all of them. The first version
+    of G1 compared the configured string with the literal `setup/githooks`, so on 2026-11-09 an
+    absolute path to the very same directory turned G1 red, failed three tests and blocked a
+    commit that the installed gate itself had just run and passed (ADR-0029).
+    """
+    import os
+    top = Path(_git_out(repo, "rev-parse", "--show-toplevel") or repo)
+    hook = top / "setup" / "githooks" / "pre-commit"
+    path = _git_out(repo, "config", "--get", "core.hooksPath")
+    if not path:
+        return hook, "", None
+    p = Path(os.path.expanduser(path))
+    return hook, path, (p if p.is_absolute() else top / p)
+
+
 def _commit_gate(checks, repo):
     """G1: the commit gate is installed in this clone (harness ADR-0023).
 
@@ -213,20 +244,25 @@ def _commit_gate(checks, repo):
     gate since ADR-0015 - a pre-commit hook that runs the suite - and this repository had none.
     The hook is versioned at `setup/githooks/pre-commit`; git reads it only when the clone says
     so, once: `git config core.hooksPath setup/githooks`.
+
+    INSTALLED MEANS GIT WILL RUN THIS REPOSITORY'S HOOK. `core.hooksPath` may be relative to the
+    root of the working tree or absolute (ADR-0029); either is accepted when the directory it
+    resolves to holds a `pre-commit` byte-identical to the versioned one. A directory holding a
+    different hook is a gate, but not this repository's.
     """
-    import subprocess
-    repo = Path(repo)
-    hook = repo / "setup" / "githooks" / "pre-commit"
-    try:
-        r = subprocess.run(["git", "-C", str(repo), "config", "--get", "core.hooksPath"],
-                           capture_output=True, text=True, timeout=30)
-        path = r.stdout.strip()
-    except Exception:                                                     # noqa: BLE001
-        path = ""
-    ok = hook.is_file() and path == "setup/githooks"
-    _check(checks, "G1 ", ok,
+    hook, path, where = installed_gate(repo)
+    runs = (where / "pre-commit") if where is not None else None
+    same = bool(runs is not None and runs.is_file() and hook.is_file()
+                and runs.read_bytes() == hook.read_bytes())
+    if where is None:
+        state = "not set"
+    elif runs.is_file():
+        state = f"-> {where}, whose pre-commit is {'identical' if same else 'DIFFERENT'}"
+    else:
+        state = f"-> {where}, which holds no pre-commit"
+    _check(checks, "G1 ", hook.is_file() and same,
            [f"hook {'present' if hook.is_file() else 'MISSING'} at setup/githooks/pre-commit; "
-            f"core.hooksPath is {path!r}"],
+            f"core.hooksPath is {path!r} {state}"],
            "git config core.hooksPath setup/githooks   (once per clone; the hook runs the suite "
            "and conform before every commit)")
 

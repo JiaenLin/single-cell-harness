@@ -146,6 +146,66 @@ class TestConform(unittest.TestCase):
         self.assertTrue(by_id(conform_repo(ROOT), "G1 ")[0]["ok"],
                         "this clone has no commit gate installed: git config core.hooksPath setup/githooks")
 
+    # WHAT GIT RUNS IS A DIRECTORY (ADR-0029). On 2026-11-09 the main checkout's core.hooksPath
+    # was set to the ABSOLUTE path of its own setup/githooks: the gate was installed and running,
+    # and G1, which compared the string with "setup/githooks", went red, failed three tests and
+    # blocked the commit the gate had just passed. These pin the directory, not the spelling.
+    def _gated_repo(self, name="r"):
+        r = self.tmp / name
+        subprocess.run(["git", "init", "-q", str(r)], check=True)
+        (r / "setup" / "githooks").mkdir(parents=True)
+        (r / "setup" / "githooks" / "pre-commit").write_text("#!/bin/bash\nexit 0\n")
+        return r
+
+    def _g1(self, repo):
+        return by_id(conform_repo(repo), "G1 ")[0]
+
+    @unittest.skipUnless(shutil.which("git"), "no git binary here - a compute node has none")
+    def test_an_absolute_hooks_path_to_the_versioned_directory_is_the_gate(self):
+        r = self._gated_repo()
+        subprocess.run(["git", "-C", str(r), "config", "core.hooksPath",
+                        str((r / "setup" / "githooks").resolve())], check=True)
+        g = self._g1(r)
+        self.assertTrue(g["ok"], g["evidence"])
+        self.assertIn("identical", g["evidence"][0])
+
+    @unittest.skipUnless(shutil.which("git"), "no git binary here - a compute node has none")
+    def test_a_directory_holding_the_same_hook_is_the_gate_and_a_different_one_is_not(self):
+        r = self._gated_repo()
+        elsewhere = self.tmp / "hooks-elsewhere"
+        elsewhere.mkdir()
+        shutil.copy(r / "setup" / "githooks" / "pre-commit", elsewhere / "pre-commit")
+        subprocess.run(["git", "-C", str(r), "config", "core.hooksPath", str(elsewhere)], check=True)
+        self.assertTrue(self._g1(r)["ok"])
+        (elsewhere / "pre-commit").write_text("#!/bin/bash\n# some other gate\nexit 0\n")
+        g = self._g1(r)
+        self.assertFalse(g["ok"], "a hook that is not this repository's passed as its gate")
+        self.assertIn("DIFFERENT", g["evidence"][0])
+        (elsewhere / "pre-commit").unlink()
+        self.assertFalse(self._g1(r)["ok"], "a hooks directory with no pre-commit passed")
+
+    @unittest.skipUnless(shutil.which("git"), "no git binary here - a compute node has none")
+    def test_a_worktree_reads_its_hooks_path_against_its_own_root(self):
+        """core.hooksPath is shared by every worktree of a clone. Relative, it names each
+        worktree's own copy of the hook; absolute, it names the main checkout's for all of them,
+        which is the gate as long as the worktree's branch has not changed the hook."""
+        r = self._gated_repo()
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+               "-c", "commit.gpgsign=false", "-C", str(r)]
+        subprocess.run(git + ["add", "-A"], check=True)
+        subprocess.run(git + ["commit", "-q", "-m", "init"], check=True)
+        wt = self.tmp / "wt"
+        subprocess.run(git + ["worktree", "add", "-q", "-b", "side", str(wt)], check=True)
+        subprocess.run(["git", "-C", str(r), "config", "core.hooksPath", "setup/githooks"], check=True)
+        self.assertTrue(self._g1(wt)["ok"], self._g1(wt)["evidence"])
+        subprocess.run(["git", "-C", str(r), "config", "core.hooksPath",
+                        str((r / "setup" / "githooks").resolve())], check=True)
+        g = self._g1(wt)
+        self.assertTrue(g["ok"], g["evidence"])
+        (wt / "setup" / "githooks" / "pre-commit").write_text("#!/bin/bash\n# the branch's gate\nexit 0\n")
+        self.assertFalse(self._g1(wt)["ok"],
+                         "git runs the main checkout's hook, not the branch's, and G1 said installed")
+
     def test_each_cohort_brings_its_own_term_list_and_all_are_read(self):
         """A word list lives with the cohort it protects (ADR-0027). The second cohort brought a
         second list; a scan that read only the first would pass a tool carrying the second
