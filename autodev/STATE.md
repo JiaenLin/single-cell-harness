@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-09T11:17Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-09T11:33Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 ## Verdict
@@ -40,12 +40,12 @@ remain open.
 | lane | repository | wave | status |
 |---|---|---|---|
 | QC | scQC | **W007 MERGED** (`0a9d2ce`). **W014** built (`a2c8471`): the installer pins the denoiser and the R doublet stack, the core lock carries pyarrow, and build_reference.sh requires its reference. **PBS 782920** builds all three environments on a fresh prefix and reruns stage 1 against PBS 782673. The verifier is running. Measured: the torch pin does NOT fix CellBender's checkpoint error (GAP-C49). **W020** queued: scQC's 19 inherited constraints (B1) | gating; 1 queued |
-| ANNO | scAnno | **W003 merged** (`a126756`). **W011**: 782899 IDENTICAL as predicted. The C17 fix-up (`d0ee926`, strings only: 59 leaks to 0) gets **job 25 resubmitted unchanged as PBS 782921**, and the verifier re-checks C17. **W018** queued: the promoted stage 2 at `bd45f5d` (GAP-033). **W021** queued: scAnno's 18 inherited constraints, including `scanno build-markers` (B1-030). GAP-028 is unblocked: the human CellMarker data is in the PI's archive | gating; 2 queued |
+| ANNO | scAnno | **W011 MERGED** (`main` `d0ee926`): first-cohort numbers gone from the text, per-assay wording, mixed-assay refusal in scope and rescue, every `--help` works, timings in every STATUS, a repeat-run consistency test. Gate: PBS 782899 and **782921** IDENTICAL on 1,420 obs columns. **W018** building (the promoted stage 2 at `bd45f5d`, GAP-033). **W021** queued: scAnno's 18 inherited constraints, including `scanno build-markers` (B1-030) | merged; 1 building, 1 queued |
 | INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** (`69a54b2`): verifier PASS; job 29 AS PREDICTED. Job 28 (PBS 782882, stage 3) is running, and the merge follows its grade. **W022** queued: 6 remaining inherited constraints (B1-056 was done by W012) | gating; 1 queued |
 | PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013** (`0f4ff9e`): PBS 782918 AS PREDICTED. The verifier FAILED it on D1 (a hand-edited caveat) and D2 (undeclared design columns dropped under `--factor`), and the ladder is red on resource measurements (harness GAP-C41). A fix-up is building; D1 goes through the maker's design worksheet. **W023** queued: scProfile's 24 inherited constraints | fixing; 1 queued |
 | HARN | single-cell-harness | **W010**: job 31 AS PREDICTED. The fix-up of the second verifier's D1-D3 and E2's silent re-baseline is building, and **job 33** (inputs read-only, as LAYOUT requires) follows. **W016** building: one plugin format (ADR) and `sch catalogue`. **W019** building: the maker's H1-H6, C41 first | fixing; 2 building |
 | PLAT | studio, lab, service | **W005**, **W008** and **W009** are verified PASS and **held** for the PI's deploy (BLK-005). **W015** (`418ffad`): the verifier FAILED it on D1 (a hand-typed species bypasses the species/build check), and the fix is building. **W017** (`1703e16`, on W005): crossed conditions kept, the run's record carried, real embeddings only; the verifier is running | 3 held (PI); 1 fixing; 1 verifying |
-| AUDIT | — | Pass 0002 done (NOT HAPPY, 0/20). Merges since: W007, W002 (both before 0002's grading closed) plus the coming W011, W012, W013 and W010. **Pass 0003** runs after the third of those merges | waiting |
+| AUDIT | — | Pass 0002 done (NOT HAPPY, 0/20). Merged since: **W011**. **Pass 0003** runs after the third merge (W012, W013, W010, W014 and W016 are close) | waiting (1 of 3) |
 | BLOCKER | — | **Sweep 2026-11-09:** 68 inherited constraints sat queued since B1. They are now waves W020-W023, one per tool, each starting when that tool's current wave merges. GAP-028's data blocker is REMOVED (the PI's `all_cell_marker.zip` holds 1,779,944 human rows). Still the PI's: BLK-002, BLK-005, BLK-007, decisions 0-5 | sweeping |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
