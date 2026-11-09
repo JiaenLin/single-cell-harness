@@ -24,7 +24,7 @@ from .core import Context
 from .profile import load_profile, Profile
 from .registry import Manifest, MountResult, Registry, fold_key, FoldCache
 from .registry.manifest import load_manifest, parse_capability, ManifestError
-from .services.dataset import Dataset, Contribution, DatasetError
+from .services.dataset import Dataset, Contribution, DatasetError, PIN, remedy
 from .services.executor import make_executor
 from .services.gate import GateService
 from .services.invariant import InvariantService, InvariantFailure
@@ -177,6 +177,13 @@ class Stack:
                 probe.ids
             except DatasetError as e:
                 raise StackError(str(e)) from None
+            # pinned read-only, or a later chmod is itself a change A1 must name
+            writable = probe.writable()
+            if writable:
+                raise StackError(f"observation file(s) writable by this user: "
+                                 f"{', '.join(Path(x).name for x in writable[:5])}"
+                                 f"{' ...' if len(writable) > 5 else ''}; a plugin reads them in "
+                                 f"place (E2), so they are pinned read-only. {remedy(writable)}")
         # WHAT THE DATASET IS, DECLARED ONCE (harness ADR-0027): `profile_context`, which every
         # plugin receives and the kernel never reads. Its names are the profile's `axes:`; any
         # other name is refused here, because a misspelt declaration is a missing one that looks
@@ -204,6 +211,8 @@ class Stack:
         st = cls(d)
         st.prov.append("stack/init", profile=prof.id, observations=str(observations),
                        kernel=__version__)
+        pin = st.dataset.pin()
+        st.prov.append("observations/pinned", files=len(pin["files"]), sha256=pin["sha256"])
         return st
 
     # ------------------------------------------------------------- persistence
@@ -273,7 +282,19 @@ class Stack:
     def _run_argv(self, argv, cwd, log) -> dict:
         env = {"SCH_CONTRACT": CONTRACT,
                "SCH_PROTOCOL": str(Path(__file__).resolve().parent / "plugin" / "protocol.py")}
-        return self.executor.run(argv, cwd, log, env=env)
+        facts = self.executor.run(argv, cwd, log, env=env)
+        self._observations_unchanged(f"the companion of {Path(str(cwd)).name}", facts)
+        return facts
+
+    def _observations_unchanged(self, who: str, facts: dict):
+        """A1 after EVERY plugin run, whatever its outcome (harness W010b): each pinned file's
+        fingerprint, re-read. A plugin that replaced a library and then died used to leave the
+        next command to re-baseline the stack on the replaced file."""
+        bad = self.dataset.changed()
+        if bad:
+            self.inv.fail("kernel", "A1 no write reaches the dataset outside a declared contribution",
+                          "; ".join(bad) + f" - after {who} ran (exit {facts.get('exit')}); the "
+                          f"stack's pin is never re-baselined")
 
     def _run_plugin(self, manifest: Manifest, params: dict, extra: dict, run_dir: Path,
                     upstream: dict | None = None, view=None, scrub: bool = False,
@@ -284,11 +305,12 @@ class Stack:
             shutil.rmtree(run_dir)
         out_dir = run_dir / "out"
         out_dir.mkdir(parents=True)
+        # E2 BY WHAT A PLUGIN IS HANDED (verifier W010 F3): on a parts stack it is handed the
+        # libraries themselves, so none may be writable when it runs. Every plugin run comes here,
+        # and this is asked first, so a writable file is refused with the remedy that applies.
+        self.dataset.refuse_writable()
         if view is None:
             view, _ = self.materialise()
-        # E2 BY WHAT A PLUGIN IS HANDED (verifier W010 F3): on a parts stack it is handed the
-        # libraries themselves, so none may be writable when it runs. Every plugin run comes here.
-        self.dataset.refuse_writable()
         inp = {"contract": CONTRACT, "profile": self.profile.id, "plugin": name or manifest.name,
                "plugin_version": manifest.version, "state_version": manifest.state_version,
                "data": str(view.path), "out_dir": str(out_dir), "keys": self.keymap(),
@@ -314,6 +336,7 @@ class Stack:
                                   timeout=float(timeout) if timeout else None, scrub=scrub,
                                   name=name or manifest.name, expect=[out_dir / "out.json"])
         (run_dir / "facts.json").write_text(json.dumps(facts, indent=1))
+        self._observations_unchanged(name or manifest.name, facts)
         out_path = out_dir / "out.json"
         # A DEATH IS A DEATH, WHATEVER IS ON DISK (verifier W010 F1). An out.json written before the
         # run exited non-zero, was killed, or ended in a way nobody recorded (exit None) is not a
@@ -366,7 +389,7 @@ class Stack:
                                f"{', '.join(Path(x).name for x in writable[:5])}"
                                f"{' ...' if len(writable) > 5 else ''}; a plugin reads them in "
                                f"place, so only their permissions keep it from writing them (E2)",
-                        fix="chmod a-w " + " ".join(writable))
+                        fix=remedy(writable))
             return plan
         resolved, reads_from, missing = self.registry.resolve(
             m, self.keymap(), self.dataset.observation_capabilities(), self.profile.capabilities)
@@ -664,6 +687,8 @@ class Stack:
         if decl["plugin_paths"] is None:
             decl.pop("plugin_paths")
         yamlish.dump(decl, new / "stack.yml")
+        if (self.dir / PIN).exists():          # the same observations, pinned once, at the root
+            shutil.copyfile(self.dir / PIN, new / PIN)
         st = Stack(new)
         st.prov.append("stack/fork", from_stack=str(self.dir), without=sorted(without))
         return st

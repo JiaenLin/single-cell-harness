@@ -46,9 +46,15 @@ aligner's call.
 - **Refused at `init`, before anything is written:** a manifest that names one sample twice, a
   missing part, a part in a form no reader is written for (a 10x `.h5` or a MEX directory, for
   now), or a missing scope key.
-- **Refused at every plugin run:** a manifest or a part that the running user can write. A plugin
-  is handed the parts themselves, so E2 holds by their permissions. Delivered data are immutable:
-  `chmod a-w` them.
+- **Refused at `init` and at every plugin run:** a manifest or a part that the running user can
+  write. A plugin is handed the parts themselves. Delivered data are immutable: `chmod a-w` them
+  before `init`. The remedy is printed for a shell, and for a file someone else owns it names the
+  owner or a read-only copy.
+- **Pinned at `init`, never re-baselined:** each file's digest and (dev, inode, size, mtime_ns,
+  ctime_ns). The fingerprint is re-checked after every plugin run, whatever its outcome. It
+  catches what permissions cannot: a part renamed over through its directory, or chmod'ed and
+  written by its owner. A change is an A1 error naming the file, so a chmod after `init` is a
+  change too.
 
 ## 2. Slot bindings
 

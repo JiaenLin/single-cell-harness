@@ -270,10 +270,20 @@ contract does not know about. `observations` (added by W010; X2) is null on one 
 a plugin is handed only the read-only view in `data` (E2). When the observations arrive as a parts
 manifest it is `{"path", "parts", "scope", "joiner"}`: the manifest, the column naming each part's
 file, the column scoping identities, and how an identity is written. `data` is then an
-identity-level view, and a plugin that needs the matrices reads them from the parts, in place. E2
-then holds by their permissions: the kernel runs no plugin while the manifest or any part is
-writable by the running user, and names the files with the fix (`chmod a-w`). The digest over every
-part (A1) is the second witness.
+identity-level view, and a plugin that needs the matrices reads them from the parts, in place.
+
+E2 then rests on two things. Permissions alone hold only against in-place writes.
+- **Permissions.** The kernel runs no plugin, and `init` pins no stack, while the manifest or
+  any part is writable by the running user. It names the files and a remedy a shell can run:
+  `chmod a-w`, quoted. For a file someone else owns, where chmod fails (EPERM), the remedy is the
+  owner, or a read-only copy.
+- **A fingerprint.** Every observation file, on any stack, is pinned at init by its digest and
+  its (dev, inode, size, mtime_ns, ctime_ns). The fingerprint is re-checked after every plugin
+  run, whatever its outcome. This catches what permissions cannot: a part renamed over through
+  its writable directory, or chmod'ed and written by its owner. A change is an A1 error naming the
+  file, from then on. Nothing re-baselines a stack: a changed file means restoring it or
+  initialising a new stack. `dev` is recorded but not compared on its own, because an NFS client
+  assigns it per host.
 
 **`out.json`**
 

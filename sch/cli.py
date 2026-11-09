@@ -1678,7 +1678,20 @@ def main(argv=None) -> int:
         a.json = False
     if a.cmd == "conform" and not a.repo and not a.run and not a.against:
         ap.error("conform needs a repository path or --run RUNDIR")
-    return a.fn(a)
+    from .core.context import DisposeError
+    from .services.dataset import DatasetError
+    from .services.invariant import InvariantFailure
+    from .stack import StackError
+    try:
+        return a.fn(a)
+    except DisposeError as e:
+        # E5: work this command started could not be confirmed ended. Said, never a traceback,
+        # and never a success: whatever the command printed before stands beside this.
+        sys.stderr.write(f"sch: E5 - {e}; ask the scheduler about it before anything else\n")
+        return 3
+    except (DatasetError, StackError, InvariantFailure) as e:
+        _emit(a, {"status": "error", "reason": str(e)}, f"  error: {e}")
+        return 2
 
 
 if __name__ == "__main__":

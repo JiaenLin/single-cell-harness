@@ -267,6 +267,61 @@ run.finish(headline="wrote out.json, then failed")
                 self.assertTrue([c for c in jobs["calls"] if c[0] == "qdel"], "quiesce sent no qdel")
                 self.assertEqual({j["state"] for j in jobs["jobs"].values()}, {"F"})
 
+    def _qstat(self, name: str, body: str, calls: int) -> str:
+        """A qstat that does `body` for its first `calls` calls, then is the stand-in's."""
+        counter = self.tmp / f"{name}_calls"
+        w = self.tmp / "bin" / name
+        w.write_text(f'#!/bin/sh\nn=$(cat "{counter}" 2>/dev/null || echo 0); n=$((n+1)); '
+                     f'echo $n > "{counter}"\nif [ $n -le {calls} ]; then {body}; fi\n'
+                     f'exec "{sys.executable}" "{FIXTURES / "fake_pbs.py"}" qstat "$@"\n')
+        w.chmod(0o755)
+        return str(w)
+
+    def test_a_job_that_sealed_during_a_qstat_outage_mounts_from_its_seal(self):
+        """verifier W010b D1: the job ran and sealed exit=0 while qstat could not answer. Its
+        seal is its record, and a silent poll reads it: the mount stands, nothing is qdel'd after
+        it ended, and no DisposeError escapes the command."""
+        qstat = self._qstat("qstat_down", 'echo "qstat: cannot connect to server" >&2; exit 1', 60)
+        self.declare(commands={**self.commands, "qstat": qstat})
+        rc, r = self.mount("filter_threshold", "--param", "min=5")
+        self.assertEqual((rc, r["status"]), (0, "mounted"), r)
+        self.assertEqual(self.calls("qdel"), [])
+        facts = json.loads((self.stack / "plugins" / "filter_threshold" / "facts.json").read_text())
+        self.assertEqual((facts["exit"], facts["stopped"]), (0, True))
+
+    def test_a_qstat_or_qdel_that_hangs_holds_nothing_for_ever(self):
+        """verifier W010b D2: every qstat and qdel call has a timeout, and a timeout says nothing.
+        Before, one qstat that blocked held wait, stop and quiesce for as long as it blocked."""
+        import time
+        os.environ["FAKE_PBS_MODE"] = "hold"
+        hang = self.tmp / "bin" / "hangs"
+        hang.write_text("#!/bin/sh\nsleep 6\nexit 0\n")
+        hang.chmod(0o755)
+        ex = make_executor("pbs", config=self.config(
+            commands={**self.commands, "qstat": str(hang), "qdel": str(hang)},
+            qstat_timeout_s=0.3, qstat_outage_polls=2, stop_grace_s=0.5))
+        run = self.tmp / "hung"
+        run.mkdir()
+        h = ex.launch([sys.executable, "-c", "pass"], run, run / "stderr.log")
+        t0 = time.monotonic()
+        facts = h.wait()
+        self.assertLess(time.monotonic() - t0, 4.0, "wait was held by a qstat that hangs")
+        self.assertFalse(facts["stopped"])
+        t0 = time.monotonic()
+        q = ex.quiesce()
+        self.assertLess(time.monotonic() - t0, 5.0, "quiesce was held by qstat or qdel")
+        self.assertEqual((q["requested"], q["stopped"]), (True, False), q)   # E5 says so, loudly
+
+    def test_no_outage_allowance_is_still_one_poll(self):
+        """`qstat_outage_polls: 0` gave up on a job qstat could see running, on the first poll."""
+        os.environ["FAKE_PBS_MODE"] = "hold"
+        ex = make_executor("pbs", config=self.config(qstat_outage_polls=0))
+        run = self.tmp / "zero"
+        run.mkdir()
+        h = ex.launch([sys.executable, "-c", "pass"], run, run / "stderr.log", timeout=0.3)
+        facts = h.wait()
+        self.assertEqual((facts["timed_out"], facts["stopped"], facts["exit"]), (True, True, 271))
+
     # ------------------------------------------------------------------------ E5
     def test_a_stop_is_a_qdel_confirmed_and_an_unconfirmable_one_fails_e5(self):
         work = self.tmp / "work"

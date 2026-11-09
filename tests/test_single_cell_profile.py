@@ -84,7 +84,6 @@ class TestSingleCellProfile(unittest.TestCase):
         self.assertEqual(st.materialise()[0].digest(), base)
 
     def test_the_gate_refuses_an_arm_selective_removal_with_the_number(self):
-        st = self.st
         # a floor that removes only the control arm: put control samples' counts low
         a = ad.read_h5ad(self.obj)
         ctrl = a.obs["sample"].isin(["S0", "S2", "S4"]).values
@@ -93,8 +92,13 @@ class TestSingleCellProfile(unittest.TestCase):
             M[i, :] = M[i, :] * 0.05
         a.layers["counts"] = M.tocsr()
         a.write_h5ad(self.obj)
-        st.dataset._digest = None
-        (st.dir / "observations.sha256").unlink(missing_ok=True)
+        # A different object is a different stack: observations are pinned at init and never
+        # re-baselined (W010), so this one is initialised over the object as rewritten.
+        self.st.close()
+        st = self.st = Stack.init(self.tmp / "stack_arm", "single-cell/1.0", str(self.obj),
+                                  str(self.design),
+                                  keys={"label": "cell_type", "sample": "sample", "batch": "sample",
+                                        "counts": "counts"})
         r = st.mount("mask_floor", {"min": 30})
         self.assertEqual(r.status, "refused", r.reason)
         self.assertEqual(r.gates[0]["verdict"], "REFUSE")

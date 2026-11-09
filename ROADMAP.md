@@ -329,9 +329,13 @@ before Phase 10 builds on it.
 > - the job's EXIT trap seals it, with the exit, the job id and any missing product;
 > - the exit is read from that seal, then from qstat. A run that exits non-zero, is killed, or ends
 >   with nobody recording how is a death, even after writing `out.json`;
-> - a qstat outage is not an ending: the wait stops, and the job is qdel'd and confirmed;
+> - a qstat outage is not an ending, and neither is a qstat call that times out
+>   (`pbs.qstat_timeout_s`; qdel has the same bound). A job that sealed meanwhile has ended, and its
+>   exit is its seal's. Otherwise the wait stops with `stopped: false`, and quiesce sends qdel. It
+>   reports the job stopped only once qstat or the job's seal confirms it. Unconfirmed, it reports
+>   `stopped: false`, and the command ends in an E5 error, never a success;
 > - a full queue is waited for;
-> - a stop is a qdel confirmed through qstat.
+> - a stop is a qdel confirmed through qstat or the job's seal.
 >
 > Against a stand-in qsub/qstat/qdel (`tests/test_the_pbs_executor_submits_waits_and_seals.py`),
 > **E5** holds: an unconfirmable stop reports `stopped: false`, and the companion fails on it.

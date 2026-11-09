@@ -16,7 +16,9 @@ What must hold, each asserted against the files rather than the kernel's account
 """
 import io
 import json
+import os
 import shutil
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -25,6 +27,7 @@ from pathlib import Path
 from helpers import HAVE_H5PY, PROTO_HEAD, library_cohort, write_part, write_plugin
 from sch.cli import main
 from sch.kernel import Stack
+from sch.services.dataset import DatasetError
 from sch.services.invariant import InvariantFailure
 
 
@@ -86,7 +89,9 @@ class ACohortArrivesAsLibraries(unittest.TestCase):
             st.inv.a1_no_undeclared_write(st.dataset)
         st.close()
         st2 = Stack.open(self.tmp / "stack")
-        self.assertNotEqual(st2.dataset.digest(), before)
+        with self.assertRaises(DatasetError) as caught:   # never a new baseline, silently
+            st2.dataset.digest()
+        self.assertIn("L2_ambient.h5ad", str(caught.exception))
         st2.close()
 
     def test_no_plugin_runs_while_an_observation_file_is_writable(self):
@@ -120,12 +125,101 @@ sys.exit(run.finish(headline="wrote to a library"))
         self.assertFalse((st.dir / "plugins" / "scribbler").exists(), "the plugin ran")
         st.close()
         parts[1].chmod(0o444)
-        st = Stack.open(self.tmp / "stack")
+        self.assertEqual(self.init(sheet, stack="stack_ro")[0], 0)
+        st = Stack.open(self.tmp / "stack_ro")
         r = st.mount(str(self.tmp / "plugins" / "scribbler"))
         self.assertEqual(r.status, "died", r.reason)   # its write was refused by the filesystem
         self.assertEqual([p.read_bytes() for p in parts], bytes_before)
         st.inv.a1_no_undeclared_write(st.dataset)
         st.close()
+
+    def test_a_library_changed_by_a_plugin_that_then_dies_is_named_never_rebaselined(self):
+        """verifier W010b E2. Read-only files still leave two routes: rename a new file over a
+        part through its writable directory, or chmod a part as its owner and write it. A plugin
+        that does either and then DIES skipped A1 (which ran only on a completed mount), and the
+        next command re-baselined the digest and mounted on the replaced library. Each file is now
+        fingerprinted (dev, inode, size, mtime_ns, ctime_ns) at init and re-checked after every
+        plugin run, whatever its outcome; a change is an error naming the file, for good."""
+        routes = {
+            "rename over": """
+import shutil
+tmp = part + ".new"
+shutil.copyfile(part, tmp)
+with open(tmp, "ab") as fh:
+    fh.write(b"\\0")
+os.rename(tmp, part)
+sys.exit(3)
+""",
+            "chmod as owner": """
+os.chmod(part, 0o644)
+with open(part, "ab") as fh:
+    fh.write(b"\\0")
+os.chmod(part, 0o444)
+sys.exit(3)
+""",
+        }
+        for why, body in routes.items():
+            with self.subTest(why):
+                d = self.tmp / why.replace(" ", "_")
+                sheet, _, _ = library_cohort(d, libraries=2, droplets=10)
+                self.assertEqual(self.init(sheet, stack=f"{d.name}_stack")[0], 0)
+                write_plugin(d / "plugins", "replacer",
+                             {"profile": "single-cell/1.0", "needs": [], "provides": []},
+                             PROTO_HEAD + """
+import csv
+obs = run.inp["observations"]
+lines = [l for l in open(obs["path"]).read().splitlines() if not l.startswith("#")]
+part = next(csv.DictReader(lines, delimiter="\\t"))[obs["parts"]]
+""" + body)
+                st = Stack.open(self.tmp / f"{d.name}_stack")
+                r = st.mount(str(d / "plugins" / "replacer"))
+                st.close()
+                self.assertEqual(r.status, "refused", r.reason)    # not "died", and not forgotten
+                self.assertIn("A1", r.reason)
+                self.assertIn("L1_ambient.h5ad", r.reason)
+                rc, out = cli("--json", "materialise", "--stack", str(self.tmp / f"{d.name}_stack"))
+                self.assertNotEqual(rc, 0, out)
+                self.assertIn("L1_ambient.h5ad", out)
+
+    def test_the_printed_remedy_is_one_a_shell_can_run(self):
+        """verifier W010b D3: the `chmod a-w` named in a refusal is shell-quoted, so it works on a
+        path with a space - from the mount's refusal and from any other plugin run's."""
+        d = self.tmp / "my data"
+        sheet, _, _ = library_cohort(d, libraries=2, droplets=10)
+        self.assertEqual(self.init(sheet)[0], 0)
+        part = d / "objects" / "L2_ambient.h5ad"
+        part.chmod(0o644)
+        st = Stack.open(self.tmp / "stack")
+        r = st.mount("qc@scqc")
+        self.assertEqual(r.status, "refused", r.reason)
+        sh = subprocess.run(["sh", "-c", r.fix], capture_output=True, text=True)
+        self.assertEqual(sh.returncode, 0, sh.stderr)
+        self.assertFalse(os.access(part, os.W_OK))
+        part.chmod(0o644)
+        with self.assertRaises(DatasetError) as caught:
+            st.ask("differential", subject={"masks": {}})
+        fix = str(caught.exception).split("Delivered data are immutable: ", 1)[1]
+        sh = subprocess.run(["sh", "-c", fix], capture_output=True, text=True)
+        self.assertEqual(sh.returncode, 0, sh.stderr)
+        self.assertFalse(os.access(part, os.W_OK))
+        st.close()
+
+    def test_a_library_someone_else_owns_is_given_a_remedy_that_can_work(self):
+        """chmod by anyone but a file's owner fails with EPERM, so for such a file the refusal
+        names its owner, or a read-only copy, and offers no chmod that cannot run."""
+        from unittest import mock
+        sheet, _, _ = library_cohort(self.tmp, libraries=2, droplets=10)
+        self.assertEqual(self.init(sheet)[0], 0)
+        part = self.tmp / "objects" / "L2_ambient.h5ad"
+        part.chmod(0o644)
+        st = Stack.open(self.tmp / "stack")
+        with mock.patch("os.geteuid", return_value=os.geteuid() + 1):   # as another user sees it
+            r = st.mount("qc@scqc")
+        st.close()
+        self.assertEqual(r.status, "refused", r.reason)
+        self.assertIn("owned by", r.fix)
+        self.assertIn("read-only copy", r.fix)
+        self.assertNotIn(f"chmod a-w {part}", r.fix)
 
     def test_a_plugin_on_one_observation_file_is_handed_only_the_read_only_view(self):
         """The observations' own path is handed out only where a plugin must read parts in place.

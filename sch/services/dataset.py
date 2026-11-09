@@ -2,6 +2,11 @@
 
 D2  Nothing writes to observations. The file is opened read-only and its digest is checked by
     the A1 companion after every plugin run.
+A1  The observations are PINNED at init: their digest and, per file, (dev, inode, size,
+    mtime_ns, ctime_ns). The fingerprint is re-checked before anything is read and after every
+    plugin run, whatever its outcome, and a change is an error naming the file. Nothing
+    re-baselines a stack silently (harness W010b): a library replaced by a plugin that then died
+    used to be read as the new baseline by the next command.
 D4  A removal is a mask, never a delete. A mask is a whole keep-vector over every identity.
 §6  Observation-level results merge by identity, never by position. A contribution covering a
     different identity set is refused with both counts; one covering fewer is filled with the
@@ -15,6 +20,7 @@ import csv
 import hashlib
 import json
 import os
+import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -24,6 +30,50 @@ from ..core import Service
 
 class DatasetError(ValueError):
     pass
+
+
+#: What a file's identity is pinned by. `dev` is RECORDED and not compared on its own: an NFS
+#: mount's device number is assigned per host, so a stack reopened on another node would differ in
+#: it with nothing changed, and a rename cannot cross filesystems, so a replacement shows in
+#: `inode` and `ctime_ns` wherever it came from.
+FINGERPRINT = ("dev", "inode", "size", "mtime_ns", "ctime_ns")
+COMPARED = ("inode", "size", "mtime_ns", "ctime_ns")
+PIN = "observations.pin.json"
+
+
+def fingerprint(path) -> dict:
+    s = os.stat(path)
+    return {"dev": s.st_dev, "inode": s.st_ino, "size": s.st_size, "mtime_ns": s.st_mtime_ns,
+            "ctime_ns": s.st_ctime_ns}
+
+
+def _owner(uid: int) -> str:
+    try:
+        import pwd
+        return pwd.getpwuid(uid).pw_name
+    except (ImportError, KeyError):
+        return f"uid {uid}"
+
+
+def remedy(paths: list) -> str:
+    """How to make files read-only, as a shell can run it: `chmod a-w` for this user's own files,
+    shell-quoted. A file someone else owns cannot be chmod'ed by this user (EPERM), so for it the
+    remedy is its owner, or a read-only copy."""
+    me = os.geteuid()
+    mine, theirs = [], []
+    for f in paths:
+        try:
+            uid = os.stat(f).st_uid
+        except OSError:
+            uid = me
+        (mine if uid == me else theirs).append((str(f), uid))
+    out = ["chmod a-w " + " ".join(shlex.quote(f) for f, _ in mine)] if mine else []
+    for f, uid in theirs:
+        who = _owner(uid)
+        out.append(f"{shlex.quote(f)} is owned by {who}, and chmod by anyone else fails (EPERM): "
+                   f"ask {who} to chmod a-w it, or point the manifest at a read-only copy "
+                   f"(cp it, then chmod a-w the copy)")
+    return "; ".join(out)
 
 
 def file_digest(path, chunk=1 << 20) -> str:
@@ -354,29 +404,59 @@ class Dataset(Service):
             h.update(b"\0")
         return h.hexdigest()
 
+    def pin(self) -> dict:
+        """Pin the observations as they are now: their digest, and each file's fingerprint. Done
+        once, at init; never again for the same stack."""
+        rec = {"sha256": self._compute_digest(),
+               "files": {str(f): fingerprint(f) for f in self._files()}}
+        (self.stack_dir / PIN).write_text(json.dumps(rec, indent=1, sort_keys=True))
+        self._digest = rec["sha256"]
+        return rec
+
+    def _load_pin(self):
+        f = self.stack_dir / PIN
+        if not f.exists():
+            return None
+        try:
+            return json.loads(f.read_text())
+        except ValueError as e:
+            raise DatasetError(f"{f} is unreadable ({e}); a stack's pin is never rebuilt "
+                               f"silently: initialise a new stack") from None
+
+    def changed(self, pin=None) -> list:
+        """Every pinned file whose fingerprint moved, named with what moved. Read off the pin's
+        own list, so a manifest rewritten to name other parts shows as the manifest changing."""
+        pin = pin if pin is not None else self._load_pin()
+        if pin is None:
+            return []
+        out = []
+        for f, was in sorted((pin.get("files") or {}).items()):
+            try:
+                now = fingerprint(f)
+            except OSError:
+                out.append(f"{f}: gone")
+                continue
+            moved = [k for k in COMPARED if now.get(k) != was.get(k)]
+            if moved:
+                out.append(f"{f}: {', '.join(moved)} changed")
+        return out
+
     def digest(self) -> str:
-        """Content digest of the observations, cached beside the stack. D2's witness."""
+        """The digest pinned at init, once every pinned file is checked unchanged. D2's witness.
+
+        A stack initialised before observations were pinned is pinned on its first read, once;
+        after that, as for every other stack, a change is an error and never a new baseline."""
         if self._digest is None:
-            cache = self.stack_dir / "observations.sha256"
-            st = self.observations.stat()
-            stats = [[str(f), f.stat().st_size, f.stat().st_mtime] for f in self._files()]
-            if cache.exists():
-                try:
-                    rec = json.loads(cache.read_text())
-                    if self.parts and rec.get("files") == stats:
-                        self._digest = rec["sha256"]
-                    elif not self.parts and rec.get("size") == st.st_size \
-                            and rec.get("mtime") == st.st_mtime and "files" not in rec:
-                        self._digest = rec["sha256"]
-                except (ValueError, KeyError):
-                    pass
-            if self._digest is None:
-                self._digest = self._compute_digest()
-                rec = {"sha256": self._digest, "size": st.st_size, "mtime": st.st_mtime,
-                       "path": str(self.observations)}
-                if self.parts:
-                    rec["files"] = stats
-                cache.write_text(json.dumps(rec))
+            pin = self._load_pin()
+            if pin is None:
+                pin = self.pin()
+            bad = self.changed(pin)
+            if bad:
+                raise DatasetError(
+                    "A1: the observations changed after this stack was initialised - "
+                    + "; ".join(bad) + ". Nothing re-baselines them: restore the file, or "
+                    "initialise a new stack over the files as they now are")
+            self._digest = pin["sha256"]
         return self._digest
 
     def digest_now(self) -> str:
@@ -424,8 +504,8 @@ class Dataset(Service):
             raise DatasetError(
                 f"{len(w)} observation file(s) are writable by this user: "
                 f"{', '.join(Path(x).name for x in w[:5])}{' ...' if len(w) > 5 else ''}. A plugin "
-                f"reads them in place, so nothing but their permissions keeps it from writing them "
-                f"(E2). Delivered data are immutable: chmod a-w {' '.join(w)}")
+                f"reads them in place, so their permissions are what keeps it from writing them "
+                f"(E2). Delivered data are immutable: {remedy(w)}")
 
     def observation_capabilities(self) -> list:
         caps = ["observations/raw"]

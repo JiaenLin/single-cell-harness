@@ -13,14 +13,17 @@ it) submits each run as a PBS job:
   - the run directory exists before qsub (the kernel made it), and the executor's own `pbs/` inside
     it is made with a bare mkdir, so a second writer aborts instead of sharing it;
   - the JOB seals: an EXIT trap writes SEALED.txt or FAILED.txt with its exit, its job id and any
-    expected product that is missing. The executor reads the exit from that seal first, then from
-    qstat's Exit_status; with neither, the exit is unknown. The kernel treats every exit but 0,
-    unknown included, as a death, even when the run left an out.json (verifier W010 F1);
-  - a qstat that cannot say - failing, or answering 0 with nothing in it - is not the job ending.
-    After `pbs.qstat_outage_polls` such polls in a row (5) `wait` stops with `stopped: false` and
-    the handle stays live, so quiesce sends qdel and confirms it (verifier W010 F2);
-  - a stop is a qdel CONFIRMED by qstat (E5): a job that cannot be confirmed gone reports
-    `stopped: false`, and the kernel fails the unmount on it.
+    expected product that is missing. Once a job has ended - by qstat's word, or, while qstat says
+    nothing, by its seal being there - the exit is the seal's; without a seal, qstat's
+    Exit_status; with neither, unknown. The kernel treats every exit but 0, unknown included, as a
+    death, even when the run left an out.json (verifier W010 F1);
+  - a qstat that cannot say - failing, timing out (`pbs.qstat_timeout_s`, 60), or answering 0 with
+    nothing in it - is not the job ending. A job that sealed meanwhile has ended, by its seal
+    (W010b D1). Otherwise, after `pbs.qstat_outage_polls` such polls in a row (5, at least 1)
+    `wait` stops with `stopped: false` and leaves the handle live (W010 F2);
+  - a stop is a qdel (with the same timeout) CONFIRMED by qstat or by the job's seal (E5). A job
+    that cannot be confirmed ended within `pbs.stop_grace_s` reports `stopped: false`, and the
+    kernel fails the disposal on it, as an error the command reports.
 
 The kernel itself still runs inside a scheduler job (nothing computes on a login node); `pbs`
 sends each plugin run to its own job, the shape a tool's own `--executor pbs` has.
@@ -192,8 +195,12 @@ class PbsHandle:
         self.poll = float(cfg.get("poll_s", 30))
         self.grace = float(cfg.get("stop_grace_s", 120))
         self.visibility = float(cfg.get("seal_visibility_s", 120))
-        # How many polls in a row qstat may say nothing before `wait` stops waiting for an outage.
-        self.outage_polls = int(cfg.get("qstat_outage_polls", 5))
+        # How many polls in a row qstat may say nothing before `wait` stops waiting for an outage;
+        # at least one, or a job qstat could see running was given up on at its first poll.
+        self.outage_polls = max(1, int(cfg.get("qstat_outage_polls", 5)))
+        # How long one qstat or qdel may take. One that takes longer said nothing (verifier W010b
+        # D2): before, a qstat that blocked held wait, stop and quiesce for as long as it blocked.
+        self.cmd_timeout = float(cfg.get("qstat_timeout_s", 60))
         self.started = time.perf_counter()
         self.log = None
         self.done = False
@@ -207,7 +214,11 @@ class PbsHandle:
         that it no longer knows it ("Unknown Job Id"), which a finished job ends as. Anything else -
         qstat failing, or answering 0 with nothing in it - says nothing either way (verifier W010
         F2): an outage is not an ending."""
-        r = subprocess.run(self.qstat + ["-x", "-f", self.job], capture_output=True, text=True)
+        try:
+            r = subprocess.run(self.qstat + ["-x", "-f", self.job], capture_output=True, text=True,
+                               timeout=self.cmd_timeout)
+        except subprocess.TimeoutExpired:
+            return None, None, False
         st = re.search(r"job_state\s*=\s*(\w)", r.stdout or "")
         ex = re.search(r"Exit_status\s*=\s*(-?\d+)", r.stdout or "")
         if st or ex:
@@ -219,10 +230,23 @@ class PbsHandle:
     def _ended(st, ex, known) -> bool:
         return st == "F" or ex is not None or (st is None and known)
 
+    def _sealed(self) -> bool:
+        """Has the job written its seal? The seal is the job's EXIT trap's last act, so a job
+        with one has ended, whatever the scheduler can be asked (verifier W010b D1)."""
+        try:
+            names = set(os.listdir(self.jobdir))
+        except OSError:
+            return False
+        return any(n in names for n in SEALS)
+
+    def _over(self, st, ex, known) -> bool:
+        """Ended by the scheduler's word, or - when it says nothing - by the job's own seal."""
+        return self._ended(st, ex, known) or (not known and self._sealed())
+
     def running(self) -> bool:
         if self.done:
             return False
-        return not self._ended(*self.state())
+        return not self._over(*self.state())
 
     def _outcome(self, ex):
         """The exit from the job's own seal; else the scheduler's; else unknown. The seal is
@@ -252,7 +276,7 @@ class PbsHandle:
         pause, unknown = min(2.0, self.poll), 0
         while True:
             st, ex, known = self.state()
-            if self._ended(st, ex, known):
+            if self._over(st, ex, known):
                 break
             unknown = unknown + 1 if not known else 0
             if unknown >= self.outage_polls:
@@ -277,15 +301,19 @@ class PbsHandle:
         self.facts["requested"] = True
         grace = self.grace if grace is None else grace
         st, ex, known = self.state()
-        if not self._ended(st, ex, known):
-            subprocess.run(self.qdel + [self.job], capture_output=True, text=True)
+        if not self._over(st, ex, known):
+            try:
+                subprocess.run(self.qdel + [self.job], capture_output=True, text=True,
+                               timeout=self.cmd_timeout)
+            except subprocess.TimeoutExpired:
+                pass                                # confirmed below, or reported unconfirmed
             deadline = time.monotonic() + grace
             while True:
                 st, ex, known = self.state()
-                if self._ended(st, ex, known) or time.monotonic() >= deadline:
+                if self._over(st, ex, known) or time.monotonic() >= deadline:
                     break
                 time.sleep(min(1.0, max(grace / 20, 0.01)))
-        self.facts["stopped"] = self._ended(st, ex, known)
+        self.facts["stopped"] = self._over(st, ex, known)
         if self.facts["stopped"]:
             self.done = True
             self._outcome(ex)
