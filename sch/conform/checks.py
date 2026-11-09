@@ -242,8 +242,9 @@ class Term:
 #
 # `<path>` is repository-relative; a trailing `/` takes the directory and everything below it,
 # and otherwise it is a glob (fnmatch). `<what may appear>` is `*` - a RECORD: S1 does not read
-# it, and S1f says how many files that covers - or a comma list of listed terms (or shape names)
-# excused at that path and nowhere else. `<why>` is required.
+# it, and S1f says how many files that covers - or listed terms (or shape names), separated by a
+# comma and a space so that `4,321` is one name, excused at that path and nowhere else. `<why>`
+# is required.
 #
 # WHY IN THE REPOSITORY. An entry is a claim about the repository's own content - these files
 # are the project's records; this tree is the field's reference vocabulary - so it is reviewed
@@ -288,8 +289,9 @@ def load_scope(root) -> tuple:
         if path.startswith("/") or ".." in Path(path).parts:
             problems.append(f"{SCOPE_FILE}:{n} names a path outside the repository: {path}")
             continue
-        names = None if what == "*" else tuple(sorted({w.strip().lower() for w in what.split(",")
-                                                       if w.strip()}))
+        # NAMES ARE SEPARATED BY A COMMA AND A SPACE: a comma-grouped number is one name.
+        names = None if what == "*" else tuple(sorted({w.strip().lower()
+                                                       for w in re.split(r",\s+", what) if w.strip()}))
         entries.append(ScopeEntry(n, path, names, why))
     return entries, problems
 

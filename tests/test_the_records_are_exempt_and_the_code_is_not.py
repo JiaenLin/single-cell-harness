@@ -135,6 +135,17 @@ class TheScopeIsAppliedAsDeclared(unittest.TestCase):
         self.assertTrue(any("refs/tree.yml:1" in e for e in f["evidence"]),
                         "a scoped finding must stay visible: " + str(f["evidence"]))
 
+    def test_a_number_with_a_comma_is_one_name(self):
+        """Found validating the proposed entries on the eight repositories (W024): names were split
+        on every comma, so a published database's comma-grouped size became two numbers and the
+        entry excused nothing. Names are separated by a comma AND a space."""
+        self.terms.write_text("# invented\nword:4,321\nword:quuxberry\n")
+        self._put("LEAK_SCOPE.txt", "refs/ :: 4,321, quuxberry :: a published table's size and a word\n")
+        self._put("refs/table.md", "| db | 4,321 | quuxberry |\n")
+        checks = self._conform()
+        self.assertTrue(row(checks, "S1 ")["ok"], row(checks, "S1 ")["evidence"])
+        self.assertEqual(len([e for e in row(checks, "S1f")["evidence"] if "(excused)" in e]), 2)
+
     def test_the_scope_file_may_name_what_it_allows_and_nothing_else(self):
         self._put("LEAK_SCOPE.txt",
                   "# zorblax is excused below; quuxberry is not excused anywhere\n"

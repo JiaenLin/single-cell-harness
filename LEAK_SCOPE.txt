@@ -3,7 +3,7 @@
 # One entry per line:   <path> :: <what may appear> :: <why>
 #   <path>   repository-relative; a trailing / takes a directory and everything below it
 #   <what>   *  a RECORD: S1 does not read it, and S1f says how many files that covers;
-#            or a comma list of listed terms (or shape names), excused at that path only
+#            or listed terms (or shape names) separated by ", ", excused at that path only
 #   <why>    required: an entry without a reason is refused and not applied
 #
 # THE RULE THIS APPLIES. The program's tier II: "Cohort data never enters a tool" does NOT require
