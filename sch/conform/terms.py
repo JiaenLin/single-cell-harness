@@ -34,6 +34,10 @@ SHEETS = ("stages/*/design*.csv", "stages/*/samplesheet*.tsv", "stages/*/samples
 RECORDS = ("stages/*/RUNLOG.md", "stages/*/DECISIONS.md", "stages/*/PROTOCOL.md",
            "stages/*/PROMOTED*.md", "results/*/PROMOTED*.md")
 HAND = "docs/forbidden_terms.txt"
+#: The first line of every generated list says so. A hand list that says it is refused: a generated
+#: list read back as the hand list would be carried verbatim by every later build, and no term could
+#: ever leave it. The generated list is installed BESIDE the hand list, never over it.
+GENERATED = "GENERATED from this cohort's records"
 STEMS = "docs/leak_stems.txt"
 SAMPLE_COLUMNS = ("sample", "sample_id", "sample_name", "library", "library_id")
 #: Where a handed-back term is looked for, to give it a source line: the cohort's text, minus its
@@ -50,8 +54,11 @@ _DECIMAL = re.compile(_NUM_L + r"(\d+\.\d+)" + _NUM_R)
 _PERCENT = re.compile(_NUM_L + r"(\d+\.\d+)\s?%")
 _N = r"\d{1,3}(?:,\d{3})+|\d+"
 _FRACTION = re.compile(_NUM_L + rf"({_N})\s+of\s+({_N})" + _NUM_R)
-_NOUNS = (r"cells?|nuclei|nucleus|genes?|barcodes?|droplets?|reads?|umis?|features?|clusters?|"
-          r"samples?|librar(?:y|ies)|animals?|mice|markers?|doublets?|labels?|organoids?|donors?")
+# PLURAL ONLY: every count taken is ten or more, and the singular after a number is another word -
+# a live record wrote a job id before the verb "read", and "a 50 gene signature" counts no gene.
+# UMI is the exception: it is written as a unit after a count.
+_NOUNS = (r"cells|nuclei|genes|barcodes|droplets|reads|umis?|features|clusters|samples|libraries|"
+          r"animals|mice|markers|doublets|labels|organoids|donors")
 _PARTICIPLES = r"predicted|flagged|removed|kept|retained|dropped|withheld|called"
 _VERBS = r"held|kept|removed|dropped|retained|withheld|flagged|predicted"
 _COUNT_THEN_WORD = re.compile(_NUM_L + rf"(\d{{2,6}})\s+({_NOUNS}|{_PARTICIPLES})\b", re.I)
@@ -376,6 +383,10 @@ def build(cohort, out, stems=(), carry=(), profile="single-cell") -> dict:
             raise FileNotFoundError(f"named and not found: {f}")
     lst = _List()
     hand = cohort / HAND
+    if hand.is_file() and GENERATED in hand.read_text(encoding="utf-8", errors="replace")[:400]:
+        raise ValueError(f"{hand} is a generated list, not the hand list: install the generated list "
+                         f"beside the hand list (for example docs/forbidden_terms.generated.txt) and "
+                         f"keep {HAND} as a person wrote it")
     if hand.is_file():
         for n, raw in enumerate(hand.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
             s = raw.strip()
@@ -390,7 +401,7 @@ def build(cohort, out, stems=(), carry=(), profile="single-cell") -> dict:
     from .. import __version__
     stamp = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     head = [
-        f"# {cohort.name}: words and numbers no tool may contain, GENERATED from this cohort's records.",
+        f"# {cohort.name}: words and numbers no tool may contain, {GENERATED}.",
         f"# generated {stamp} by `sch conform terms build` (single-cell-harness {__version__})",
         f"# read: {len(_glob(cohort, SHEETS))} sheet(s), {len(_glob(cohort, RECORDS))} record "
         f"file(s), {HAND if hand.is_file() else 'no hand list'}, {len(stems)} stems file(s) "
@@ -408,7 +419,8 @@ def build(cohort, out, stems=(), carry=(), profile="single-cell") -> dict:
         "#",
         "# Every term sits under the line it came from: `# [class] file:line  text`.",
         "# This file holds the cohort's strings by design. It lives with the cohort, never in a",
-        "# repository. Do not edit it: change a record, the stems or a handed-back list, and build again.",
+        "# repository, installed BESIDE the hand list (docs/forbidden_terms.generated.txt), never over it.",
+        "# Do not edit it: change a record, the stems or a handed-back list, and build again.",
     ]
     body, section = [], None
     for e in lst.order:

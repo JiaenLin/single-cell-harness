@@ -48,6 +48,7 @@ observed in 13 of 77 animals, and 1 of 3 runs.
 mito share 41.7% (thresholds 5.0% and 2.5%).
 best AUC 0.7319 and gap 0.83; ratio 318.27x; python 3.12.13.
 settings, not measurements: 100.0 and 25.00; scale 1.4826 x MAD; 0.1% floor; top-20 markers; <300 reads.
+job 123457 read the matrix, and a 50 gene signature is a set, not a count.
 """
 
 
@@ -123,9 +124,10 @@ class ACohortWordListIsGeneratedFromItsRecords(unittest.TestCase):
     def test_a_setting_or_a_constant_is_not_taken_for_a_measurement(self):
         """Measured on the eight repositories (W024): a round decimal, a statistical constant, a
         one-digit percentage, a top-N and a threshold after `<` were listed and found in tools
-        that legitimately hold them - `100.0 *` in every percentage, MAD's 1.4826, top-20."""
+        that legitimately hold them - `100.0 *` in every percentage, MAD's 1.4826, top-20. And a
+        live record wrote a job id before the verb "read": a count of ten or more is plural."""
         for t in ("word:100.0", "word:25.00", "word:1.4826", "word:0.1%", "word:20 markers",
-                  "word:300 reads"):
+                  "word:300 reads", "word:123457 read", "word:50 gene"):
             self.assertNotIn(t, self.terms)
 
     def test_every_term_carries_its_source_line(self):
@@ -165,6 +167,17 @@ class ACohortWordListIsGeneratedFromItsRecords(unittest.TestCase):
                 build(self.cohort, inside)
         self.assertEqual((self.cohort / "docs" / "forbidden_terms.txt").read_text(),
                          "# the hand list\nqoxcohort\nQx_ARM\n")
+
+    def test_a_generated_list_is_never_read_back_as_the_hand_list(self):
+        """Installed over the hand list, a generated list would be carried verbatim by the next
+        build, and no term could ever leave it. It is installed beside the hand list."""
+        from sch.conform.terms import build
+        twin = self.tmp / "twin"
+        shutil.copytree(self.cohort, twin)
+        shutil.copy(self.out, twin / "docs" / "forbidden_terms.txt")
+        with self.assertRaises(ValueError) as e:
+            build(twin, self.tmp / "twin_out.txt")
+        self.assertIn("beside", str(e.exception))
 
     def test_the_same_records_give_the_same_list(self):
         from sch.conform.terms import build
