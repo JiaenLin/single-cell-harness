@@ -215,7 +215,10 @@ class Migrate(unittest.TestCase):
         e = self.by_id["F1_coverage"]
         self.assertEqual(e["drawn_by"], "plugin")
         self.assertEqual(e["question"], "did the database match?")
-        self.assertEqual(e["axis"], "unit")
+        # ASKED, NOT `unit` (autodev W019, GAP-C42): the axis map does not reach `F1_`, and this
+        # declaration names no `entry_keys.per_unit`, so the maker cannot tell whether the plugin
+        # runs per unit. It wrote `unit`, which was the one plugin it was built on.
+        self.assertTrue(e["axis"].startswith("TODO - unit or cohort"), e["axis"])
         self.assertEqual(e["position"], "appendix")
         self.assertTrue(e["legend"].startswith("TODO"))
 
