@@ -6,6 +6,12 @@ Decisions are **mounted**, not applied. A filter, a correction, an annotation or
 plugin contributing to a stack over immutable observations — so any of them can be removed, and
 everything downstream knows when one does.
 
+> **The project goal is [`GOALS.md`](GOALS.md):** the family (this harness, scQC, scAnno,
+> scIntegrate, scProfile) as an autonomous agentic workflow for single-cell analysis, set out in four
+> layers from the PI's November 2026 report. The family is still far from it.
+> [`autodev/`](autodev/) is the development program that closes the gap. Where it stands:
+> [`autodev/STATE.md`](autodev/STATE.md).
+
 > **Status: the kernel exists, and the development suite around it is in daily use.** `sch`
 > implements Phase 1 (the domain-free core, proved on a toy profile), Phase 2 (the profile and the
 > 15-check validator, every rule tripped by a broken plugin), the gate-is-a-probe machinery of

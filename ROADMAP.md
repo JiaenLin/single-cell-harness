@@ -1,5 +1,10 @@
 # Roadmap
 
+> **2026-11-09 (ADR-0028):** [`GOALS.md`](GOALS.md) is the project goal. Where this roadmap's
+> ordering conflicts with it, GOALS.md wins. The rule below, "the four tools are not touched", no
+> longer holds for development toward GOALS.md, which the program in [`autodev/`](autodev/) carries out
+> under rule 1's gate. The phases remain the runtime's internal order.
+
 The order in which this gets built, and **how each step can fail.**
 
 Two rules govern the whole plan.
