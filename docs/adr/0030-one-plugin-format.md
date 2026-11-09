@@ -92,9 +92,12 @@ DEVPOINTS.yaml, and in scProfile that declaration describes the one-file layout.
      (`_entry.py --phases`). It then runs `compare` in the plugin's own environment, once per arm
      pair of the design, in the direction the declared controls set. Where the design crosses more
      than two arms, it also runs `compare` once over all of them (`scprofile/report.py:853`).
-     - The `CompareContext` holds the finished units' output directories, a directory to write
-       into, the pair's label, the config, the core share and the figure context. It holds nothing
-       of the object (`scprofile/_entry.py:432`, `scprofile/plugin.py:1321`).
+     - Each launch's context holds the pair's label, the units' output directories, a directory to
+       write into, the core share, the figure context, and the plugin's own declaration (figure
+       positions and ceilings) and drawing protocol. The all-arms launch adds `members`,
+       `unit_values` (the host's per-unit edges, weight and cells) and `interactions` (the 2x2
+       strata). `config` exists on the context but the host passes none. It holds nothing of the
+       object (`scprofile/report.py:1037`, `:1210`; `scprofile/_entry.py:450`).
      - A refusal exits 1 and is recorded. A failure is logged and never stops the report.
      - cellchat, the one plugin in the maker's layout, implements it for CellChat's own
        between-arm figures (`kernels/cellchat.py:5337`). A host for the UPF runs both phases;
@@ -197,7 +200,7 @@ is the block that `sch catalogue show ID` adds.
 |---|---|---|---|---|---|
 | environment | `needs_env`; `lock.yml` (`==`); `selftest.py` or `.R` | `requires {python, packages, r, conda}`, as ranges; the host resolves one lock per environment group (W002). `def selftest()` | the `environment` stage: every package the code loads is declared | one-file's | — |
 | entry point | `language`, `entry` (`run.py`, `run.R`, `run`) | the file itself. `run(ctx)` goes through the host's `_entry.py`; another language goes through a bridge inside the plugin (cellchat runs `Rscript`) | `<name>.draw.R`, generated | one-file's | `details` |
-| second phase: compare | — | `def compare(ctx)`, optional. It runs after every unit's `run`, once per arm pair and once over all crossed arms when there are more than two, on the finished units' outputs, in the plugin's own environment (`_entry.py:432`, `report.py:853`) | cellchat implements it (`kernels/cellchat.py:5337`) | one-file's: a UPF host runs both phases | — |
+| second phase: compare | — | `def compare(ctx)`, optional. It runs after every unit's `run`, once per arm pair and once over all crossed arms when there are more than two, on the finished units' outputs, in the plugin's own environment (`_entry.py:432`, `report.py:853`). The all-arms launch adds `members`, `unit_values` and `interactions`; `config` is passed empty (`report.py:1037`, `:1210`) | cellchat implements it (`kernels/cellchat.py:5337`) | one-file's: a UPF host runs both phases | — |
 | scheduling | `executor: {cost, gpu}`, advisory | `cost`, `cores`, `memory_gb_per_100k`, `memory_gb_base`, `gpus` | the `measure`, `cores` and `cost` test stages | one-file's | `details.executor` |
 | parameters | — (`--param k=v`, checked by the plugin) | `config`: type, default, bounds, help | the `defaults` stage | one-file's | `details.parameters` |
 | references | `references.yml`, with checksums | `references`, inside `PLUGIN` | the `references` stage | one-file's | `details.references` |
