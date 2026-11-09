@@ -40,7 +40,7 @@ A6.2 and A6.3. The records are [`audits/0001-gap-review.md`](audits/0001-gap-rev
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | W001: merge the single-cell route (`0e6a5f6`; 720930 IDENTICAL) | verifying |
+| QC | scQC | W001: merge the single-cell route. The first verifier FAILED it on text only: a cohort's numbers in a comment and 6 false docs; the code passed. The fix `a51c38a` is text only (AST identical apart from docstrings), so 720930 IDENTICAL still covers it. Re-verifying. Also measured: `thresholds_per_sample.csv` reads `200` where it read `200.0`, with equal values (GAP-C08). New gaps C03–C07 come from the verifier | re-verifying |
 | ANNO | scAnno | W003: the assay governs the rules; the docs are true (GAP-029, GAP-031) | building |
 | INT | scIntegrate | W004: species checked, assay recorded, first-cohort sentence removed, false statements fixed (GAP-034, GAP-037) | building |
 | PROF | scProfile | W002: host-level environment lock, with no kernel edit (GAP-038) | building |
