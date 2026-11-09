@@ -40,13 +40,13 @@ A6.2 and A6.3. The records are [`audits/0001-gap-review.md`](audits/0001-gap-rev
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | **W001 MERGED** (verifier round 2 PASS): scQC `main` cf0b750 → `a51c38a`, the single-cell rule set (rule 2 holds on `main`); `~/tools/scQC` deployed on `main` (HEAD.txt matches). **W006** running: PBS **782541**, scQC's own `--dbr-sd-sweep default,dbr,1` on the second cohort. The doublet over-call (GAP-C02) traces to D5's `dbr_sd = dbr` (a [0, 2×dbr] band that every call sits inside); the sweep measures the alternative for the PI's card. **W007** building: scQC's open defects on the new `main` (C03, C04, C06, C09, C10, GAP-022/024/025) plus a reproduction that compares every table (C08) and an organoid re-run. Next: environment pins (GAP-018, C05) | W006 gating (PBS); W007 building |
+| QC | scQC | **W001 merged** (`main` `a51c38a`, deployed). **W006 done** (PBS 782541): scQC's own dbr.sd sweep. The `dbr` setting reproduces 720932 exactly, and the diagnosis made before the run is **falsified**. With no expectation the classifier calls 9.0–11.1%, and under scDblFinder's default 8.9–10.6%, so the over-call is the data's, not D5's setting. GAP-C02 closed; C15 and C16 opened. **W007** building: open defects, plus a reproduction that compares every table | W007 building |
 | ANNO | scAnno | W003: the assay governs the rules; the docs are true (GAP-029, GAP-031) | building |
-| INT | scIntegrate | W004: species checked, assay recorded, first-cohort sentence removed, false statements fixed (GAP-034, GAP-037) | building |
+| INT | scIntegrate | **W004** built (`6040641`; 297 checks green; species required and checked; assay measured to change nothing, so optional and recorded). Gating: PBS **782587** reproduces SAMBO stage 3 on the branch (`~/tools/scIntegrate` on it). The verifier is checking the code | gating + verifying |
 | PROF | scProfile | W002: host-level environment lock, with no kernel edit (GAP-038) | building |
 | HARN | single-cell-harness | held until B1 merges: B1 is editing the harness, and parallel edits would conflict. Next: GAP-002 → GAP-001 (the spine), GAP-005, GAP-011, GAP-007, GAP-008 | held (rule 5: a conflict costs more) |
 | PLAT | studio, lab, service | **W005** (Lab `convert` command) built, `56fface`: 398/398 checks, the same sha256 twice, Studio's reader opens it. Verifying now; merging redeploys the live app. **W008** (Studio) building: true DESeq2 wording, docs marked shipped or planned, sentinels out of the cell types. Next: the run record (P10 in Lab, then P19 in Studio), the cross-repo contract test (P18), Service's single-cell mode in new files | W005 verifying; W008 building |
-| AUDIT | — | W005's verifier | 1 running |
+| AUDIT | — | W005's and W004's verifiers | 2 running |
 | BLOCKER | the harness (in its worktree) | B1: the inherited constraints (unreasonable designs, freezes, gates), recorded in ADR-0029 | running |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
@@ -67,13 +67,21 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 ## Decisions needed from the PI
 
 None of these blocks a running lane.
-0. **A permission rule for deleting merged remote branches** (BLK-002). The classifier refused `git push origin --delete` on a merged branch. Merged branches are kept, which is harmless; housekeeping lists them instead.
-1. **Promotions.**
-   - C46 stage 1 (720932). The doublet over-call follows from D5's `dbr_sd = dbr`. When W006's sweep lands, you get a card: keep D5 and promote 720932 (53,534 cells), or set `dbr_sd` to scDblFinder's default and re-run apply. Both options come with their cell counts.
-   - SAMBO stage 4, once a full DE/DA run exists.
-   - "the PI promotes" (cohort records).
-2. **C46's design facts.** What is C46 relative to H9, and what are `_1`/`_2`? This comes from the collaborator, and it blocks only C46 stage 4.
-3. **Velocity on C46.** Only if you want it: it needs the vendor's BAM, because Cell Ranger outputs carry no spliced counts.
+1. **Promote BrainOrganoid_C46 stage 1 (PBS 720932, 53,534 of 59,701 called cells)?** Recommended:
+   **yes, keep D5 as it is.** W006 measured that the doublet calls follow the data, not the prior:
+   9.0–11.1% with no expectation, 8.9–10.6% under scDblFinder's default, 8.3–11.7% under D5. The
+   alternative is a re-run with a tighter `dbr_sd`, which would move the calls by about one point and
+   not to the declared 5.2–6.9%. Optional: ask the vendor how many cells were loaded, because D5's
+   rate scales by cells recovered, and correct it for the record. A promotion unblocks C46's stages 2–4.
+2. **Commit `f488621` on the harness's `main` is authored `t <t@t>`.** A test's stray config did this
+   (BLK-004); the true author is Jiaen Lin, via Claude. It is pushed. Rewriting it means a force-push
+   to `main`, which is outward-facing and rewrites public history. Recommended: leave it. The
+   correction is recorded in BLK-004 and in the next commit.
+3. **A permission rule for deleting merged remote branches** (BLK-002). Merged branches are kept, which
+   is harmless.
+4. **C46's design facts.** What is C46 relative to H9, and what are `_1`/`_2`? This blocks only C46
+   stage 4. It comes from the collaborator.
+5. **Velocity on C46.** Only if you want it: it needs the vendor's BAM.
 
 ## Decided (2026-11-09)
 

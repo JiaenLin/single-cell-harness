@@ -37,7 +37,7 @@ HEADERS = {
     "housekeeping.tsv": ["stamp", "pass", "kind", "target", "action", "reason"],
 }
 GAP_STATUS = {"open", "in_wave", "closed", "deferred", "lean"}
-WAVE_STATUS = {"registered", "building", "gating", "verifying", "merged", "held", "failed"}
+WAVE_STATUS = {"registered", "building", "gating", "verifying", "merged", "done", "held", "failed"}
 
 
 def goals_text():

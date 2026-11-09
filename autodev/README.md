@@ -71,7 +71,7 @@ verdict.
 **A wave** is the unit of development: one repository, one branch (`autodev/W###-slug`), one or more
 goal ids, one acceptance check, and one prediction. A wave with no goal id breaks rule 5. Each wave
 gets a row in `waves.tsv` with status `registered`, `building`, `gating`, `verifying`, `merged`,
-`held` or `failed`. A failed wave stays recorded as failed. Its gap is then re-planned, never
+`done` (a measurement wave that changes no code), `held` or `failed`. A failed wave stays recorded as failed. Its gap is then re-planned, never
 silently retried.
 
 ## The reminders (session-only; re-create on every resume)
