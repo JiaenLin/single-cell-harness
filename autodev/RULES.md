@@ -86,3 +86,16 @@ empty, so that "rule 3" and "rule 5" mean the same thing in both projects.
 | **Honest records** | Ledgers and RUNLOGs are append-only. A correction is a dated addition. Stamps come from `date -u`. A failure is reported as a failure. | VCC "log honestly"; ADR README "never renumbered, never deleted" | — |
 | **Worktrees** | Builders work in their own clone or worktree and push only their own branch. A linked worktree of the harness may commit again: the pre-commit hook unsets git's repository variables (`2a6f77b`, BLK-004), and a guard test fails if the suite changes the real repository's config or HEAD. Never run `git config` against the shared repository. The coordinator never `cd`s into a builder's worktree; it reads files by absolute path. | VCC repository habits | — |
 | **One cohort per question** | A wave that touches a tool reproduces SAMBO's promoted run, and exercises BrainOrganoid_C46 when the cohort reaches that stage. | ADR-0027 | — |
+
+## Added 2026-11-09 by the PI's decisions
+
+- **Tier II, decision 0b ("go", 2026-11-09), option (b):** a change MEANT to move a promoted run's outputs may merge under
+  the standing yes when its PBS run matches a difference predicted output by output BEFORE submission, graded by its
+  written criterion. Re-promoting the moved run stays the PI's. The W007 merge (GAP-102) is accepted under this rule.
+- **Tier IV, the throttle (the PI: "agree", 2026-11-09):**
+  - at most 2 builders and 1 verifier at a time;
+  - at most 2 fix rounds per change, after which the leftover issue is recorded as a gap, never looped on;
+  - re-checks look only at the fix, not the whole change;
+  - no polishing of changes that wait on the PI's deploy;
+  - the LOOP TICK fires every 3 hours.
+
