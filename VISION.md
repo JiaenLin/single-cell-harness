@@ -745,6 +745,17 @@ Not a roadmap. The sequence in which the thesis is tested, cheapest disproof fir
   same decision to a reader who cannot is a different product, and pretending otherwise makes the
   approval a rubber stamp and the recorded justification worse than nothing.
 
+> **Read against the project goal (2026-11-09; [`GOALS.md`](GOALS.md),
+> [ADR-0029](docs/adr/0029-inherited-constraints-removed.md)).** Three of these non-goals bind
+> less than their headings say.
+> - *Not a GUI first* is satisfied. The kernel came first (Phase 1, 2026-09-06), so the Harness
+>   UI (HARN.4, A6.1) is now built on the event stream, without bending the kernel.
+> - *Not an autonomous analyst* names an invariant, not a scope. The workflow is autonomous and
+>   agent-operated (layer 0; G7). What stays is A1–A3: an agent writes only by mounting what
+>   declares its change, and the decisions declared as the user's stay the user's.
+> - *Not built for a reader who cannot evaluate the evidence* governs approvals only. Results
+>   reach wet-lab users (G6). An approval is still put to someone who can judge what it rests on.
+
 ---
 
 ## 19. How this fails
