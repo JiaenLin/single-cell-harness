@@ -11,3 +11,4 @@ stamp	pass	kind	target	action	reason
 2026-11-09T10:59:02Z	periodic	github	autodev branches on all 8 remotes	asked the W014, W016 and W017 builders to push now and after every commit	their branches were not on GitHub; session scratch is not durable
 2026-11-09T10:59:02Z	periodic	docs	autodev/STATE.md	every lane row refreshed; scoreboard header names pass 0002	STATE current
 2026-11-09T11:01:07Z	periodic	memory	autodev-program-2026-11 note	3 stale facts corrected (scQC checkout, B1 hook fix and guard test landed); 6 lessons added; MEMORY.md index unchanged	memory verified against STATE.md
+2026-11-09T11:26:32Z	coord	permissions	SAMBO results/00_prealign (40 files)	chmod a-w (files only; 40 writable -> 0; contents and mtimes unchanged)	LAYOUT requires vendor data and a finished stage's files read-only; the harness refuses writable parts (E2); reversible with chmod u+w; recorded in SAMBO stages/01_qc/RUNLOG.md
