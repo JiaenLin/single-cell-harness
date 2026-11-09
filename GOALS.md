@@ -97,7 +97,7 @@ developing towards. keep developing". Each bar is (C), set by the pre-decider, a
 | **A3.2 design-aware** | The design resolver handles one factor (n = 2 per arm), a two-factor factorial with interaction, and a covariate, or refuses each by name with the reason. Contrasts are labelled in the report as SAMBO's are [15]. | G3 |
 | **A3.3 assay rule sets** | Every tool whose behaviour depends on the assay has separate, declared rules for `scrna` and `snrna`, with no silent default. | G3 |
 | **A3.4 scale** | A cohort of at least 1,000,000 cells completes A1.1 on the cluster's standard queues. Cells, wall time and peak memory are reported per stage. | G3 |
-| **A4.1 the existing pool in one format** | Every current plugin (the eight held-out plugins and CellChat) is in the maker's layout and passes `sch dev` and `sch conform`. | G4 |
+| **A4.1 the existing pool in one format** | Every current plugin (the eight held-out plugins and CellChat) is in the maker's layout and passes `sch dev` and `sch conform`, graded by the dev suite on the cluster (`jobs/dev_suite.pbs`). | G4 |
 | **A4.2 the maker on new tools (at least 4 of 5)** | Published tools the family has never seen, drawn from the scRNA-tools catalogue by a rule written before the draw, are converted by agents alone. Each passes the dev suite and reproduces the tool's own published example within a declared tolerance. Success rate and time per conversion are reported. | G4 |
 | **A4.3 provenance of methods** | Every plugin names its peer-reviewed source and pinned version. | G4 |
 | **A4.4 AI-native** | A cold agent lists the catalogue, picks a plugin for a stated question, and runs it through the harness's agent surface without reading the plugin's code. | G4, G7 |
