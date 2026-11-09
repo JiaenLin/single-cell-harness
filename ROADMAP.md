@@ -26,8 +26,8 @@ the contract**, but the fix may land in the tool, as a registered wave through r
 touched".)*
 
 **A phase is graded, not declared.** Whether a phase's claim holds is the audit's grade on its
-test, PASS or not, with evidence. A doc claim is not evidence, and nobody's declaration ends a
-phase. *(Until 2026-11-09 the rule was "a phase ends when it is declared finished".)*
+test, PASS or not, with evidence. A doc claim is not evidence, and no agent's declaration ends one;
+the PI may override a grade (RULES tier I). *(Until 2026-11-09 the rule was "a phase ends when it is declared finished".)*
 
 ---
 

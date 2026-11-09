@@ -123,13 +123,13 @@ surfaces a defect, its home is decided by the rules, not by convenience:
 
 | the defect is | it goes to |
 |---|---|
-| in the host or the maker — a path under `in_place` | fixed **in place**, there |
+| in the host or the maker — general mechanism, wherever it lives | fixed **in place**, there, and never copied into a plugin. An `in_place` list, where a repository still declares one, only names such paths; it is not an allow-list of where a change may land (ADR-0029, B1-066) |
 | something the maker should have caught | the **maker**: fix it, re-run it, and the plugin changes as a consequence |
 | something the maker already demands — a worksheet row, a `finished_by` | the **worksheet**: answer it in the plugin, where the maker asked |
-| in an artefact named under `held_out` | **recorded, then fixed through the maker in that artefact's own migration wave** (GOALS A4.1). `status` banners these. Held out means held out *until its migration*, as the 2026-09-14 record says, not for ever. The family's out-of-sample evidence is now A4.2's draw of tools it has never seen (ADR-0029) |
+| in an artefact named under `held_out` | **recorded, then fixed through the maker in that artefact's own migration wave** (GOALS A4.1). `status` banners these. Held out means held out *until its migration*, as the 2026-09-14 record says, not for ever. Until that wave a repair fits the maker to it and spends evidence that the maker generalises; its migration is itself a blind test, graded before the maker changes (RULES tier II) |
 
-Never hand-edit a plugin the round names under `end_to_end` as maker output; if the plugin is
-wrong, the maker is wrong. Duplication is the tell — method is written once, mechanism appears
+Never hand-edit any plugin. If the plugin is wrong, the maker is wrong, and `status` banners every
+artefact that is not held out as maker output. Duplication is the tell — method is written once, mechanism appears
 twice — and the `maker_output` rule measures exactly that.
 
 **Before your first commit into the repository, run its own check** (`scprofile check` in

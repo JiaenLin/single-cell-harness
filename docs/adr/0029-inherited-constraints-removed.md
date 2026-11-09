@@ -60,7 +60,7 @@ repository.
 |---|---|---|---|---|
 | R1 | G1 accepted only `core.hooksPath == "setup/githooks"` | ADR-0023; `sch/conform/checks.py` | The shared config held the ABSOLUTE path of the same directory. The gate ran, yet G1 failed, three tests failed and a commit was blocked. A spelling protects nothing. Fixed in 4afad34 on main: G1 resolves the path (relative to the working tree's root, or absolute) and requires a byte-identical `pre-commit`. | nothing |
 | R2 | G1 failed every repository that versions no gate, and every clone that had not installed one | ADR-0023 | It was the only failing conform row on fresh clones of all four tools, so it blocked A4.1 and the program's gate. Fixed in 32384bd: not applicable where no gate is versioned, and a warning where one is versioned but not installed. | Conform no longer fails a clone that would commit without its gate. The harness's own suite still fails a harness clone with none. |
-| R3 | The ladder's rules tier "could not run" where no `rules:` block is declared, so a full `sch dev check` exited 3 for ever | ADR-0015/0016; `sch/dev/ladder.py` | Having no round has been the normal state since ADR-0028, so "passes `sch dev`" was unreachable for four of five repositories. Fixed in 81a36ad: the tier is not applicable there. | nothing a repository declared |
+| R3 | The ladder's rules tier "could not run" where no `rules:` block is declared, so a full `sch dev check` exited 3 for ever | ADR-0015/0016; `sch/dev/ladder.py` | Having no round has been the normal state since ADR-0028, so "passes `sch dev`" was unreachable for four of five repositories. Fixed in 81a36ad: the tier is not applicable there. Not applicable means the `rules` key is absent; a `rules:` that is present but not a mapping fails the tier. | nothing a repository declared |
 | R4 | ROADMAP: "every phase can stop the project" | ROADMAP | It contradicts tier III ("the bars are targets ... never stop or hold development") and rule 5. A failed phase test is now a recorded gap. | A failed claim no longer halts the other lanes. Its gap still blocks HAPPY. |
 | R5 | ROADMAP: "the four tools are not touched", and Phases 3 and 5's "no tool commits" rows | ROADMAP; already split by ADR-0013 | GOALS.md requires development in all four tools. ADR-0028 lifted the rule for that work, but the text still imposed it. | The cheapest proof that a discrepancy found in Phase 5 belongs to the harness rather than a tool. ADR-0013 already gave this up for interfaces. |
 | R6 | ROADMAP: "a phase ends when it is declared finished" | ROADMAP | A single declarer is the serial reader ADR-0028 replaced. The audit grades with evidence. | A person's judgement as the closing step of a phase |
@@ -70,6 +70,7 @@ repository.
 | R10 | The plugin-maker skill: "Convert ONE. Finish it. Have a person check it ... Then start the next" | skill (2026-09-10) | It serialised every conversion, while A4.2 asks for conversion "by agents alone" and tier III runs parallel waves. What it protects (no reader sees a family's surfaces before deciding any of them) holds per wave, so never-seen tools may convert in parallel. The eight held-out plugins still migrate one at a time, each graded before the maker changes, as RULES tier II reads the maker round's top rules. | A person's read of each conversion. A fresh verifier's read stands in. |
 | R11 | `docs/blind/README.md`: a converted tool lands "never in its shipped set" | blind README | It kept every conversion out of the expandable pool that G4 is for. | The bright line between test material and the shipped set. A conversion that meets A4.2 joins the set through its wave's gate. |
 | R12 | THE_CELLCHAT_ARC's eight "held out" with no stated end, read as "stay broken" | 2026-09-14 | Not withdrawn as a serial order: RULES tier II keeps the eight migrating one at a time. Withdrawn is the reading that they stay unrepaired: each is repaired through the maker in its own migration wave, and a dated note says so. | nothing tier II keeps |
+| R13 | VISION.md §18's non-goals "Not a GUI first", "Not an autonomous analyst" and "Not built for a reader who cannot evaluate the evidence", read wider than GOALS.md | VISION.md:728-748 | Layer 0 calls the workflow autonomous and agent-operated (G7). G6 brings results to wet-lab users through a web interface (HARN.4, A6.1). A dated reading under §18 now says what each non-goal still binds. | The UI waiting behind the kernel; the non-autonomous scope; the computational-only audience. **Kept:** A1–A3 (an agent writes only through a declared mount; promotion and escapes are the user's), and approvals put to someone who can judge what they rest on. |
 
 ### The PI's rules, narrowed to their words (K-PI)
 
@@ -90,6 +91,11 @@ repository.
   words govern what that round ran on SAMBO. `sch dev rules` read them as an equality over the whole
   kernel list, so any new artefact broke the rule just by existing. **Narrowed** to disjointness
   (06cd34c): nothing held out runs end to end, and an artefact in neither list is named.
+  **Given up:** the rule no longer forces every artefact that is not held out onto the end-to-end
+  list. What that equality used to carry stays: `sch dev convert status` banners every artefact
+  not held out as MAKER OUTPUT, never hand-edited. Until the verifier's finding the banner went to
+  `end_to_end` names only, so a migrated plugin on neither list lost it. That weakened the PI's
+  top rule 1 and is fixed.
 - **In place.** "General mechanism and the agentic layer are fixed IN PLACE: scprofile/*.py,
   sch/**, jobs/, tests/" (same round). The words say where mechanism is fixed. scProfile reads them
   as an exclusive allow-list of paths, so committing a citation file or a lock breaks its rules
@@ -170,7 +176,7 @@ repository.
 
 1. **Predicted differences.** May a change that is meant to move a promoted run's deterministic
    outputs merge on a difference predicted before submission? Re-promoting the moved run would
-   stay the PI's.
+   stay the PI's. **Open.** Answering it amends tier-I rule 1, which only the PI changes.
 2. **SAMBO's DE sign convention.** scProfile's `second-cohort` branch has been open since
    2026-10-02. GOALS.md PROF.4 quotes the report's own direction ("aged vs young, HFD vs chow"), so
    the pre-decider may find it already decided.
