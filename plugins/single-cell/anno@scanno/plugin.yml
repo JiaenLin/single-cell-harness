@@ -1,0 +1,49 @@
+contract: "1.0"
+profile: single-cell/1.0
+name: anno@scanno
+version: 0.1.0
+summary: scAnno's annotation mounted as a layer of label columns the stack can take back - cluster, annotate each library at every rung, rescue
+when_to_use: >
+  the stack's observations are a cohort's libraries after QC - a parts manifest, each part one
+  library's object - and you want scAnno's labels on them as a layer that unmounts, with scAnno's
+  own record of every call it made kept beside the labels
+
+class: method
+layer: stack
+reversible: true
+state_version: 1
+# The assays scAnno has declared rule sets for (scanno/assay.py). Which one a run is, is the
+# stack's declaration (`--context assay=`), passed to annotate verbatim; there is no default.
+assays: [scrna, snrna]
+
+wraps:
+  tool: scAnno
+  version: "0.12.0"
+  homepage: https://github.com/JiaenLin/scAnno
+  license: MIT
+  cite: "Lin J. scAnno: hierarchical cell-type annotation that truncates rather than guesses. Software, version 0.12.0."
+  state_version: 1
+
+inject: [dataset]
+needs: [observations/raw]
+provides:
+  - column/*
+  - table/*
+  - object/*
+optional: []
+sourceable: []
+sees: []
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: high}
+invariant: invariant.py
+
+cannot_show:
+  - A label is the best-supported node of the declared tree for a cluster's markers; it is not evidence that the cell type is present, and a tree that lacks the right type yields the nearest wrong one.
+  - UNRESOLVED and EXCLUDED are sentinels, not cell types; a forced or rescued label is an assignment the walk did not reach, and its own columns say so per observation.
+  - The layer is what scAnno changed in the observations' annotation; a column the libraries already carried with the same values is the observation's own and is not in it, whatever scAnno recomputed.
+  - Every library is clustered on its own; a cluster id means nothing across libraries, and agreement between them is a property of the labels, not of the partitions.
+  - The scope, store, tree and corpus are references the stage declares; this mount runs no vote and builds no background, so the labels are only as portable as those references are.
+  - Labels are over the observations the stack holds; a removal upstream that was differential across the design is a differential composition here, and nothing in this mount can undo it.
