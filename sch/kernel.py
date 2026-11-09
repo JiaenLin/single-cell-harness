@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import time
 from pathlib import Path
@@ -49,10 +50,20 @@ class Stack:
         self.ctx = Context(label=f"stack:{self.dir.name}")
         self.prov = Provenance(self.dir / "events.jsonl")
         self.ctx.provide("provenance", self.prov)
-        self.dataset = Dataset(self._abs(obs), self.profile, self.dir, self._abs(design) if design else None)
+        parts = self.decl.get("observation_parts")
+        try:
+            self.dataset = Dataset(self._abs(obs), self.profile, self.dir,
+                                   self._abs(design) if design else None,
+                                   parts=parts, scope=self._scope_column() if parts else None)
+        except DatasetError as e:
+            raise StackError(str(e)) from None
         self.ctx.provide("dataset", self.dataset)
-        self.executor = make_executor(str(self.decl.get("executor", "local")),
-                                      self.decl.get("interpreters") or {})
+        # WHERE COMPUTE RUNS IS DECLARED, NEVER INVENTED (harness W010): `executor: pbs` reads its
+        # queue, select and walltime from the declaration's `pbs:` block - the site layer or the
+        # project - and the kernel holds no default for any of them.
+        kind = str(self.decl.get("executor", "local"))
+        self.executor = make_executor(kind, self.decl.get("interpreters") or {},
+                                      config=self.decl.get("pbs") if kind == "pbs" else None)
         self.ctx.provide("executor", self.executor)
         self.ctx.effect("executor:quiesce", self.executor.quiesce)
         self.inv = InvariantService(self.prov, self._run_argv)
@@ -80,7 +91,7 @@ class Stack:
         for rt in self.registry.runtimes:
             if rt.state not in ("mounted", "invalid", "rebuild"):
                 continue
-            rt.dir = self.dir / "plugins" / rt.name
+            rt.dir = self.run_dir(rt.name)
             out_path = rt.dir / "out" / "out.json"
             if not out_path.exists():
                 continue
@@ -93,6 +104,18 @@ class Stack:
     def _abs(self, p) -> Path:
         p = Path(str(p))
         return p if p.is_absolute() else (self.dir / p).resolve()
+
+    def _scope_column(self):
+        """The column scoping identities, through the key map: the profile says `{sample}`, the
+        stack says which column that is. None when the stack has not said."""
+        scope = str(self.profile.identity.get("scope") or "").strip("{}")
+        return self.keymap().get(scope) if scope else None
+
+    def run_dir(self, name: str) -> Path:
+        """Where a runtime's run lives: its name, keeping `[A-Za-z0-9._-]` only. A name such as
+        `qc@scqc` is otherwise written into every path the run hands on - a tool's own `#PBS -o`
+        lines among them - and a scheduler is not a place to find out what `@` means."""
+        return self.dir / "plugins" / re.sub(r"[^A-Za-z0-9._-]", "_", name)
 
     def _plugin_paths(self) -> list:
         paths = []
@@ -140,8 +163,20 @@ class Stack:
     @classmethod
     def init(cls, stack_dir, profile: str, observations: str, design: str | None = None,
              keys: dict | None = None, plugin_paths: list | None = None,
-             context: dict | None = None) -> "Stack":
+             context: dict | None = None, parts: str | None = None) -> "Stack":
         prof = load_profile(profile)
+        # OBSERVATIONS IN PARTS (harness W010): `observations` is then a manifest, one row per
+        # part, and `parts` the column naming each part's file. Every check a manifest must pass
+        # runs HERE, before anything is written: a stack whose observations cannot be read is not
+        # a stack that should exist.
+        if parts:
+            scope = str(prof.identity.get("scope") or "").strip("{}")
+            try:
+                probe = Dataset(Path(str(observations)).resolve(), prof, Path(stack_dir), parts=parts,
+                                scope=(keys or {}).get(scope) if scope else None)
+                probe.ids
+            except DatasetError as e:
+                raise StackError(str(e)) from None
         # WHAT THE DATASET IS, DECLARED ONCE (harness ADR-0027): `profile_context`, which every
         # plugin receives and the kernel never reads. Its names are the profile's `axes:`; any
         # other name is refused here, because a misspelt declaration is a missing one that looks
@@ -154,6 +189,8 @@ class Stack:
         d = Path(stack_dir)
         d.mkdir(parents=True, exist_ok=True)
         decl = {"profile": prof.id, "observations": str(observations)}
+        if parts:
+            decl["observation_parts"] = str(parts)
         if ctx:
             decl["profile_context"] = ctx
         if design:
@@ -257,6 +294,7 @@ class Stack:
                "params": params, "upstream": upstream or {},
                "provenance": {"tools": [], "search_paths": list(self.decl.get("search_paths") or [])},
                "sentinels": self.sentinels(), "identity": self.profile.identity,
+               "observations": self.dataset.describe_observations(),
                "profile_context": dict(self.decl.get("profile_context") or {}), **extra}
         (run_dir / "in.json").write_text(json.dumps(inp, indent=1, sort_keys=True, default=str))
         entry = manifest.entry_path()
@@ -270,7 +308,8 @@ class Stack:
         timeout = params.get("timeout") if isinstance(params, dict) else None
         timeout = timeout or self.decl.get("timeout")
         facts = self.executor.run(argv, manifest.dir, run_dir / "stderr.log", env=env,
-                                  timeout=float(timeout) if timeout else None, scrub=scrub)
+                                  timeout=float(timeout) if timeout else None, scrub=scrub,
+                                  name=name or manifest.name, expect=[out_dir / "out.json"])
         (run_dir / "facts.json").write_text(json.dumps(facts, indent=1))
         out_path = out_dir / "out.json"
         if not out_path.exists():
@@ -303,6 +342,12 @@ class Stack:
             return plan
         if self.registry.get(name):
             plan.update(admitted=False, reason=f"{name} is already mounted", fix="choose --name")
+            return plan
+        shared = [r.name for r in self.registry.runtimes if self.run_dir(r.name) == self.run_dir(name)]
+        if shared:
+            plan.update(admitted=False, reason=f"{name} would run in {shared[0]}'s directory "
+                                               f"({self.run_dir(name).name}) and overwrite it",
+                        fix="choose --name")
             return plan
         if m.layer == "checkpoint" and not m.data.get("rebuild_from"):
             plan.update(admitted=False, reason="a checkpoint must declare rebuild_from", fix="add rebuild_from")
@@ -356,12 +401,12 @@ class Stack:
         rt = self.registry.register(name, m, params, [parse_capability(n) for n in plan["needs"]],
                                     plan.get("reads_from", []))
         rt.escapes = escapes
-        rt.dir = self.dir / "plugins" / name
+        rt.dir = self.run_dir(name)
         try:
             view, _ = self.materialise()
             n_before = view.n_total
             obs_digest_before = self.dataset.digest()
-            upstream = {dep: str(self.dir / "plugins" / dep / "out") for dep in rt.reads_from}
+            upstream = {dep: str(self.run_dir(dep) / "out") for dep in rt.reads_from}
             facts, out = self._run_plugin(m, params, {}, rt.dir, upstream=upstream, view=view, name=name)
             if out is None:
                 self.registry.mark(rt, "died")

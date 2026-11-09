@@ -1,6 +1,7 @@
 """`sch` — the command line.
 
     sch init DIR --profile P --observations FILE [--design FILE] [--key k=v ...]
+             [--parts COLUMN]       observations in parts: FILE is a manifest, a row per part
     sch stack [DIR] [--dump]            the mounted stack; --dump prints the composed declaration
     sch plan PLUGIN [--param k=v]       what would run and what is missing, before any compute
     sch mount PLUGIN [--param k=v] [--escape GATE --why ... --by ...] [--name N]
@@ -67,9 +68,17 @@ def _emit(a, obj, text=None):
 # --------------------------------------------------------------------------- commands
 def cmd_init(a):
     from .kernel import Stack
-    st = Stack.init(a.dir, a.profile, a.observations, a.design, _kv(a.key),
-                    plugin_paths=a.plugin_path or None, context=_kv(a.context))
-    _emit(a, {"stack": str(st.dir), "profile": st.profile.id}, f"initialised {st.dir} ({st.profile.id})")
+    from .profile import ProfileError
+    from .stack import StackError
+    try:
+        st = Stack.init(a.dir, a.profile, a.observations, a.design, _kv(a.key),
+                        plugin_paths=a.plugin_path or None, context=_kv(a.context), parts=a.parts)
+    except (StackError, ProfileError) as e:
+        _emit(a, {"status": "refused", "reason": str(e)}, f"  init refused: {e}")
+        return 2
+    n = f", {len(st.dataset.part_files())} parts by {st.dataset.scope!r}" if st.dataset.parts else ""
+    _emit(a, {"stack": str(st.dir), "profile": st.profile.id, "parts": st.dataset.parts},
+          f"initialised {st.dir} ({st.profile.id}{n})")
     st.close()
     return 0
 
@@ -1406,6 +1415,10 @@ def build_parser():
     p.add_argument("--key", action="append", metavar="KEY=COLUMN"); p.add_argument("--plugin-path", action="append")
     p.add_argument("--context", action="append", metavar="AXIS=VALUE",
                    help="what the dataset is, declared once: one of the profile's axes (ADR-0027)")
+    p.add_argument("--parts", metavar="COLUMN",
+                   help="the observations arrive in parts: --observations is then a manifest with "
+                        "one row per part (a QC tool's samplesheet), scoped by the profile's scope "
+                        "key (--key sample=COLUMN), and COLUMN names each part's file")
     p.set_defaults(fn=cmd_init)
     p = sub.add_parser("stack"); stackable(p); p.add_argument("--dump", action="store_true"); p.set_defaults(fn=cmd_stack)
     p = sub.add_parser("plan"); stackable(p); p.add_argument("plugin"); p.add_argument("--param", action="append")
