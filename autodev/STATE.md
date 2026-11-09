@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-09T10:34Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-09T10:59Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 ## Verdict
@@ -10,7 +10,7 @@ something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP
 moved FAIL → PARTIAL. All 16 claimed closures were re-checked and hold. 47 gaps of size M or larger
 remain open.
 
-## Scoreboard (GOALS.md layer 3; pass 0001)
+## Scoreboard (GOALS.md layer 3; pass 0002)
 
 | test | grade | the main reason (gap ids) |
 |---|---|---|
@@ -39,14 +39,14 @@ remain open.
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | **W007 MERGED**: `main` `0a9d2ce`. One floor function, no fallback registry, the leak guard reads every list, scratch keyed per run, captions per assay, true docs. SAMBO: kept, criteria and names IDENTICAL. The only value difference is `main`'s own two record keys, predicted before the read (F1). Against 720930 (code = `main`), no computed value differs. The C46 run is IDENTICAL. Deployed. Next: environment pins (GAP-018, C05), C24/C25, C31, GAP-026 (derived single-cell floors) | free |
-| ANNO | scAnno | **W003 merged** (`a126756`). **W011** built (`176b5e4`): the first cohort's numbers gone from the code (C17: 46 leaks to 0 with the numbers added to the list), the last 'cells' wording in prints and docs (C19), scope and rescue refuse a mixed or unknown assay by name (C29), `--help` on every subcommand (C30), timings in every STATUS and a repeat-run consistency test (GAP-030). **Gating:** PBS 782899 compares every obs column against PBS 782626's run (C28); the verifier is running. Left open for later waves: GAP-C36 (a pinned file still quotes a measurement), GAP-C37 (record keys say cells; needs a record version) | gating |
-| INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** building: version 0.5.0 (C20), first-cohort wording (C21), `score` vs assess's report (C22), the LISI spread named (C14), the harmony baseline re-recorded on the cluster (C12). GAP-C11 waits on decision 0b | building |
-| PROF | scProfile | **W002 MERGED** (`f5175ea`; the environment builds from its lock). **W013** building: the first held-out plugin, `de`, through the maker as a blind test. The blind record is written first; then contrasts to the declared control (slide 15) and covariates. Abundance is next | building |
-| HARN | single-cell-harness | **W010**: the `qc@scqc` adapter and the `pbs` executor. **Job 31 (PBS 782817, at `9748284`) graded AS PREDICTED**: SAMBO stage 1 through the harness reproduces the promoted run (only F1's two keys, in 10 of 10 call records; 100,713 kept) and scQC alone at the same commit (IDENTICAL). The verifier's F1-F3 are fixed in `0e2109c` (645 tests); a second verifier is checking it. The merge needs a job at `0e2109c` written before it runs. **W016** building: one plugin format (an ADR) and `sch catalogue` (GAP-006, GAP-005; A4.4) | verifying; building |
-| PLAT | studio, lab, service | **W005** (Lab), **W008** (Studio) and **W009** (Service) are **verified PASS and held**; their deploys are the PI's (BLK-005, decision 0). **W015** building (Service: design sheet and samplesheet writer, on W009). **W017** building (Lab, on W005): a crossed sample/condition no longer relabels cells silently (P14), the run's provenance reaches the bundle (P10), and only real 2-D embeddings are offered (P15) | 3 held (PI); 2 building |
-| AUDIT | — | **Full pass 0002** running (trigger: W001, W003 and W004 merged since pass 0001). W009's verifier is running | 2 running |
-| BLOCKER | — | **B1 done:** 113 rows (15 removed, 69 queued, 26 kept, 3 ASK settled by the pre-decider), recorded in ADR-0029 on its branch. The 3-hourly BLOCKER SWEEP is running. Next sweep: GAP-028's data (CellMarker 3.0 human release, BLK-006 to open) | sweeping |
+| QC | scQC | **W007 MERGED** (`main` `0a9d2ce`). **W014** building: the denoiser's torch and the R doublet stack pinned, pyarrow in the core lock, the reference default no longer the first cohort's, and a fresh-prefix build from `main` under PBS (GAP-018, -C05, -C31, -107; A1.3) | building |
+| ANNO | scAnno | **W003 merged** (`a126756`). **W011** (`176b5e4`): PBS 782899 **IDENTICAL as predicted** (1,420 obs columns over 30 objects, the rescue included). The verifier passed every check but C17: first-cohort numbers remain in scope.py, force.py, DIRECTIONS.md and three tests. A strings-only fix-up is building, and job 25 will be **resubmitted unchanged** at its commit (not carried over by a code diff: tier IV). **W018** queued: reproduce the promoted stage 2 at `bd45f5d` (GAP-033) | fixing; 1 queued |
+| INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** (`69a54b2`): **verifier PASS** (no number moves; a records-only correction for the removed project-word test, GAP-C45). Job 29 (PBS 782883) **AS PREDICTED R1-R5** (the harmony baseline re-recorded on the cluster). Job 28 (PBS 782882, stage 3 against the promoted run) is running; the merge follows its grade | gating |
+| PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013** built (`0f4ff9e`): `de`, the first held-out plugin, through the maker. The blind record was committed first (build 5/9, test 0/9; GAP-039's sign flip caught by `agree`). The maker gains a `design` stage, `--control` and `--covariate`. 14 maker defects: 8 fixed, 6 in the harness (GAP-C39..C44). **PBS 782918** is running (P1 and P2, against both P1 runs); the verifier is running | gating |
+| HARN | single-cell-harness | **W010**: job 31 (PBS 782817, at `9748284`) **AS PREDICTED** (SAMBO stage 1 through the harness reproduces the promoted run and scQC alone). The second verifier FAILED `0e2109c`: an outage-seal regression (D1), a qstat hang (D2), an unquoted fix (D3), and E2's silent re-baseline. The fix-up and job 32 (inputs read-only, as LAYOUT requires) are building. **W016** building: one plugin format (ADR) and `sch catalogue` (A4.4) | fixing; building |
+| PLAT | studio, lab, service | **W005** (Lab), **W008** (Studio) and **W009** (Service) are verified PASS and **held** for the PI's deploy (BLK-005, decision 0). **W015** built (`418ffad`, on W009): the Service writes scQC's samplesheet, registry row and design table, with nuclei lacking a filtered matrix held back by name. 330 checks; the PI's four files untouched; the verifier is running. **W017** building (Lab, on W005): crossed sample/condition split instead of silently relabelled (P14), the run's record in the bundle (P10), only real 2-D embeddings (P15) | 3 held (PI); 1 verifying; 1 building |
+| AUDIT | — | Pass 0002 done (NOT HAPPY, 0/20). Merges since: W007, W002 (both before 0002's grading closed) plus the coming W011, W012, W013 and W010. **Pass 0003** runs after the third of those merges | waiting |
+| BLOCKER | — | B1 done and merged (`00bbf54`); the 3-hourly BLOCKER SWEEP runs. Open: BLK-002 (branch deletes refused), BLK-005 (platform deploys refused; the PI's), BLK-007 (SAMBO run directories missing; asked) | sweeping |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
 - PBS 720930 is IDENTICAL, as predicted.
