@@ -29,16 +29,16 @@ for interfaces. The report's goals require development inside all four tools.
    in parallel. An audit team verifies each wave and periodically re-grades every acceptance test. The
    loop runs until the audit is HAPPY. A blocker remover clears whatever waits. Housekeeping keeps the
    repositories lean on a timer.
-3. **Five core rules govern it** ([`autodev/RULES.md`](../../autodev/RULES.md), tier I):
+3. **Four core rules govern it** ([`autodev/RULES.md`](../../autodev/RULES.md), tier I):
    1. no overfit, no in-house script, with reproduction as the test;
    2. single cells are not single nuclei;
    3. the HPC rules;
-   4. real;
    5. time and efficiency, with no trivial tweaks.
 
-   Rules 3–5 are the VCC development harness's core rules, adopted on the PI's order. Rule 4 is
-   translated from "a real trained model" to "a real capability in the tools". The translation is
-   the coordinator's, and the PI may correct it.
+   Rules 3 and 5 are the VCC development harness's core rules, adopted on the PI's order. VCC's
+   rule 4 ("a real trained model") was translated for this project as "a real capability in the
+   tools". The PI skipped it the same day: "can skip this rule". The slot stays empty, so the numbers
+   keep their VCC meaning.
 4. **Audit pass 0001 is the gap review** the PI asked for. Its register seeds `autodev/ledger/gaps.tsv`.
 
 ## Consequences
@@ -54,7 +54,14 @@ for interfaces. The report's goals require development inside all four tools.
 - **ROADMAP.md's "the four tools are not touched" no longer holds** for development toward GOALS.md.
   Adapters still live in the harness where the contract allows it. The phases stay as the runtime's
   internal order.
-- Merges into a tool's `main` stay the PI's until the PI grants a standing yes. Until then, a gated wave
-  can wait on that answer. That wait is the one blocker the blocker remover cannot clear on its own.
+- Merges into a tool's `main` were going to stay the PI's until the PI granted a standing yes. **The PI
+  granted it the same day**: "yes , you have a standing yes, use predecider for decision". A wave whose
+  gate passed and whose verifier says PASS is merged without asking. A PI-owned decision carried inside a
+  branch, such as a sign convention, is still asked on its own. **What is given up** is the PI's own
+  read of each merge before it lands. The gate and the verifier are now the only readers before
+  `main`.
+- **The same day the PI widened the scope** to the platform, "yes include Studio, Lab and Service", and
+  set the layer-3 bars as targets rather than gates: "this is goals we are developing towards. keep
+  developing".
 - Rounds as ADRs end for development. ADRs return to their own purpose, which is architectural decisions.
   Waves, audits and blockers are recorded in the ledgers.

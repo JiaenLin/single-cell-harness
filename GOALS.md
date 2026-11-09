@@ -13,10 +13,12 @@ coordinator may adjust it and must say so. The PI's reading of a goal always win
 Every goal also states what it does **not** require. A goal is never read more widely than its
 words. Being too strict is a defect, and so is being too loose.
 
-**Scope of the development program.** The program covers the harness (`single-cell-harness`) and the
-four tools (`scQC`, `scAnno`, `scIntegrate`, `scProfile`). The scRNA-seq Studio products (`scrnaseq-studio`,
-`scrnaseq-lab`, `rnaseq-service`) appear in the goals as the platform the harness hands its results to.
-Building them is outside the program unless the PI widens its scope.
+**Scope of the development program.** The program covers eight repositories: the harness
+(`single-cell-harness`); the four tools (`scQC`, `scAnno`, `scIntegrate`, `scProfile`); and the
+scRNA-seq Studio platform, made of `scrnaseq-studio`, `scrnaseq-lab` and `rnaseq-service`. The PI
+added the platform on 2026-11-09: "yes include Studio, Lab and Service". The bulk RNA-seq products
+`rnaseq-studio` and `rnaseq-lab` are not part of it. `rnaseq-service` also serves bulk requests, and
+that path must keep working.
 
 ---
 
@@ -39,7 +41,7 @@ documentation, and easy reproduction.
 | **G3** | **Unlimited and design-aware.** Works on any cohort: organism, tissue, assay, platform and experimental design. | [1] "unlimited"; [2] 27 organisms, 75 tissues; [16] "Design-aware/customized analysis" | One pipeline for every assay. Single cells and single nuclei are separate rule sets (PI, 2026-10-02). |
 | **G4** | **Expandable tool pool built from published methods.** Turns the 1,856 published tools into standardised plugins that are plug-and-run and AI-native. | [8] the ultimate aim; [16] "Based on peer-reviewed published methods", "expandable plugin pools (Ongoing)"; [17] "A Scientific tool pool with standardized format for agentic use" | That all 1,856 tools are converted. The goal is a maker that can convert them, and a measured success rate. |
 | **G5** | **Interpretation and hypothesis generation.** A built-in AI co-scientist writes the report, interprets the results, generates hypotheses, validates and audits them, and feeds back into the analysis plan. | [9] "AI Scientist (Agent) (TBD)"; [16] "To be done"; [17] "Build-in AI Co-Scientist" | That the agent's conclusions are accepted unchecked. Every claim is audited against the data (G5's own "Audit"). |
-| **G6** | **A user-facing platform.** Results reach wet-lab users. A web interface like Codex or Claude Code lets a user ask for an analysis and follow it. | [4] scRNA-seq studio, "Harness UI (TBD)"; [17] "A Codex/Claude code like user-interface (web based)" | Rebuilding Studio. The harness hands its results to Studio (G6.2). |
+| **G6** | **A user-facing platform.** Results reach wet-lab users. A web interface like Codex or Claude Code lets a user ask for an analysis and follow it. | [4] scRNA-seq studio, "Harness UI (TBD)"; [17] "A Codex/Claude code like user-interface (web based)" | Uploading data. Studio and Lab work in the browser with "nothing uploaded", and that property stays. |
 | **G7** | **Agent-operated.** Working agents assemble the workflow, coordinate it, audit it and record it. | [4] "Working agents: Assemble workflow, coordinate, audit and record"; [1] "autonomous agentic workflow" | That every decision is the agent's. Decisions declared as the user's stay the user's: design, sign conventions, thresholds the data cannot decide. |
 
 ## Layer 2: capabilities (who delivers what)
@@ -71,14 +73,17 @@ documentation, and easy reproduction.
 | **HARN.2** | Working agents: assemble the workflow, coordinate, audit, record. | harness (`skills/`, `sch` agent surface) | [4] |
 | **HARN.3** | The AI co-scientist: hypothesis generation, validation and audit, closing the loop from the report back to the planner. | harness + scProfile | [9], [17] |
 | **HARN.4** | The Harness UI: a web interface like Codex or Claude Code. | harness | [4], [17] |
-| **PLAT.1** | scRNA-seq Studio: Service handles requests, Lab formats data, Studio explores it. Outside the program; integration only. | scrnaseq-studio / -lab, rnaseq-service | [4] |
+| **PLAT.1** | **Service: request handling.** A single-cell delivery and the questionnaire become a request the harness can run. | rnaseq-service | [4] |
+| **PLAT.2** | **Lab: data formatting.** The family's final objects become the file Studio opens. | scrnaseq-lab | [4] |
+| **PLAT.3** | **Studio: data explorer.** The harness's results are explored, together with what produced them. | scrnaseq-studio | [4], [10] |
 
 ## Layer 3: acceptance tests (C) — what the audit checks
 
 A capability **exists** when each of its tests passes with evidence: a commit, a sealed run, a PBS job
 id, or a file and line. A claim with no evidence is **UNKNOWN**, never PASS. The audit is **happy** when
-every in-scope test below passes, or the PI has deferred it by name. Tests marked **(set by PI)** have no
-threshold yet. They are reported, but the happy verdict does not wait for them until the PI sets one.
+every in-scope test below passes, or the PI has deferred it by name. The bars in this layer are targets
+we develop toward, not gates on development. In the PI's words (2026-11-09): "this is goals we are
+developing towards. keep developing". Each bar is (C), set by the pre-decider, and the PI may move it.
 
 | test | checks | for |
 |---|---|---|
@@ -91,15 +96,16 @@ threshold yet. They are reported, but the happy verdict does not wait for them u
 | **A3.1 held-out cohorts** | Both cohorts (mouse, snRNA, Singleron, heart, two factors; human, scRNA, 10x, organoid, one factor) run end to end through A1.1. The leak guard finds no cohort-specific string in any tool. The fixture's value axes reach each tool's pipeline, not only `describe`. | G3 |
 | **A3.2 design-aware** | The design resolver handles one factor (n = 2 per arm), a two-factor factorial with interaction, and a covariate, or refuses each by name with the reason. Contrasts are labelled in the report as SAMBO's are [15]. | G3 |
 | **A3.3 assay rule sets** | Every tool whose behaviour depends on the assay has separate, declared rules for `scrna` and `snrna`, with no silent default. | G3 |
-| **A3.4 scale (set by PI)** | Cells, wall time and peak memory are measured and reported per stage. | G3 |
+| **A3.4 scale** | A cohort of at least 1,000,000 cells completes A1.1 on the cluster's standard queues. Cells, wall time and peak memory are reported per stage. | G3 |
 | **A4.1 the existing pool in one format** | Every current plugin (the eight held-out plugins and CellChat) is in the maker's layout and passes `sch dev` and `sch conform`. | G4 |
-| **A4.2 the maker on new tools (bar set by PI; proposed: at least 4 of 5)** | Published tools the family has never seen, drawn from the scRNA-tools catalogue by a rule written before the draw, are converted by agents alone. Each passes the dev suite and reproduces the tool's own published example within a declared tolerance. Success rate and time per conversion are reported. | G4 |
+| **A4.2 the maker on new tools (at least 4 of 5)** | Published tools the family has never seen, drawn from the scRNA-tools catalogue by a rule written before the draw, are converted by agents alone. Each passes the dev suite and reproduces the tool's own published example within a declared tolerance. Success rate and time per conversion are reported. | G4 |
 | **A4.3 provenance of methods** | Every plugin names its peer-reviewed source and pinned version. | G4 |
 | **A4.4 AI-native** | A cold agent lists the catalogue, picks a plugin for a stated question, and runs it through the harness's agent surface without reading the plugin's code. | G4, G7 |
 | **A5.1 report from evidence** | The report generator writes a Results section in which every claim cites a figure or table of the run. An independent reviewer removes unsupported claims, and the section survives that review. | G5 |
 | **A5.2 hypotheses** | The co-scientist proposes hypotheses from a run. Each gives its evidence, a test that could falsify it, and a follow-up analysis the planner can run. At least one follow-up is executed through the loop. | G5, HARN.3 |
-| **A6.1 Harness UI** | A web interface where a user asks for an analysis in plain language, sees the plan, approves the user-owned decisions, follows the run, and opens the reports and the record. The design is agreed with the PI first. | G6 |
-| **A6.2 Studio hand-off** | The final object opens in scRNA-seq Studio through Lab's converter, with no manual conversion. | G6 |
+| **A6.1 Harness UI** | A web interface where a user asks for an analysis in plain language, sees the plan, approves the user-owned decisions, follows the run, and opens the reports and the record. The report's words are the specification. The PI may redirect the design at any point. | G6, HARN.4 |
+| **A6.2 Studio hand-off** | The family's final object opens in scRNA-seq Studio through Lab's converter, with no manual conversion. Studio shows the run that produced it. | G6, PLAT.2, PLAT.3 |
+| **A6.3 Service takes single-cell requests** | A single-cell delivery (Cell Ranger or CeleScope outputs) and the questionnaire become a request that the harness runs as A1.1's input, with no hand editing. The bulk path's own tests still pass. | G6, PLAT.1 |
 | **A7.1 agents drive it** | A cold agent equipped only with the harness's skills runs A1.1 on a held-out cohort: assembling, submitting, recovering from failures, auditing and recording. | G7 |
 
 ## How the goals are used

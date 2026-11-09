@@ -25,8 +25,8 @@ writing code. In short:
   the real CLI; a reproduction whose prediction is written before submission;
 - rule 2: single cells are not single nuclei;
 - rule 3: you do not touch the cluster;
-- rule 4: real, through the tool's own CLI, with no one-off scripts;
 - rule 5: no trivial tweaks, and do not wait on anything.
+(Rule 4 is skipped.)
 
 THE TASK, in order:
 1. Work in your own clone: <clone path> (repository <repo>; base <base commit>). Create the branch
@@ -70,7 +70,7 @@ Check:
 (3) Rule 1: grep the repository for cohort and site strings. Is the reproduction graded by the prediction
     as written, and was the prediction written before submission (look at the job header and its
     commit time)?
-(4) Rules 2 and 4: is there any assay default, mock, stub or one-off script?
+(4) Rules 1 and 2: is there a silent assay default, or an in-house script standing in for the tool?
 (5) Are the docs still true?
 (6) Does the acceptance check now pass, on evidence?
 Verdict: PASS or FAIL, with each reason and its evidence, in at most 30 lines.

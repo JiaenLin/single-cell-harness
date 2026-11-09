@@ -1,10 +1,11 @@
 # autodev: the autonomous development program
 
-The program that moves the family (`single-cell-harness`, `scQC`, `scAnno`, `scIntegrate`, `scProfile`)
-toward [`GOALS.md`](../GOALS.md). The PI started it on 2026-11-09. Its rules are in [RULES.md](RULES.md), and
-its state is in [STATE.md](STATE.md). [BRIEFS.md](BRIEFS.md) holds the role briefs, and
-[ledger/](ledger/) the append-only records. It borrows the VCC development harness's operating rules
-3–5 and its practices (see [RULES.md](RULES.md) tiers I and IV).
+The program that moves the family toward [`GOALS.md`](../GOALS.md): `single-cell-harness`, the four tools
+`scQC`, `scAnno`, `scIntegrate` and `scProfile`, and the platform `scrnaseq-studio`, `scrnaseq-lab` and
+`rnaseq-service`. The PI started it on 2026-11-09. Its rules are in [RULES.md](RULES.md), and its state
+is in [STATE.md](STATE.md). [BRIEFS.md](BRIEFS.md) holds the role briefs, and [ledger/](ledger/) the
+append-only records. It borrows the VCC development harness's core rules 3 and 5 (the PI skipped rule 4)
+and its practices (see [RULES.md](RULES.md) tiers I and IV).
 
 ## Start here (a new session, or after a restart)
 
@@ -32,7 +33,7 @@ until the audit says **HAPPY**. Whenever anything waits, the **blocker remover**
 | role | who | owns | brief |
 |---|---|---|---|
 | coordinator | the main session | the ledgers, STATE.md, wave planning, merges, cluster deploys and PBS submission, the PI's questions | this file |
-| development teams | one short-lived builder per wave; lanes **QC**, **ANNO**, **INT**, **PROF**, **HARN** (one per repository) | one registered wave on one branch: code, tests, the reproduction `.pbs` with its prediction, the hand-back | [BRIEFS §1](BRIEFS.md#1-development-builder) |
+| development teams | one short-lived builder per wave; lanes **QC**, **ANNO**, **INT**, **PROF**, **HARN** (one per repository) and **PLAT** (Studio, Lab and Service; one wave per repository at a time) | one registered wave on one branch: code, tests, the reproduction `.pbs` with its prediction, the hand-back | [BRIEFS §1](BRIEFS.md#1-development-builder) |
 | audit team | fresh, read-only agents: a **verifier** per wave, an **auditor** per full pass | the grades, the gap register, the HAPPY / NOT HAPPY verdict | [BRIEFS §2](BRIEFS.md#2-audit-team) |
 | blocker remover | the coordinator for quick blockers; a short-lived agent for deep ones | `blockers.tsv`: diagnosis, removal, or the PI's decision prepared | [BRIEFS §3](BRIEFS.md#3-blocker-remover) |
 | housekeeper | the coordinator, on a timer | `housekeeping.tsv`: the rule-5 check, deletions, docs and memory current | [BRIEFS §4](BRIEFS.md#4-housekeeping-pass) |

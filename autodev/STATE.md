@@ -31,7 +31,8 @@ something and by every PERIODIC CHECK.
 | INT | scIntegrate | — | waiting for pass 0001 |
 | PROF | scProfile | — | waiting for pass 0001 |
 | HARN | single-cell-harness | — | waiting for pass 0001 |
-| AUDIT | — | pass 0001 (gap review) | running |
+| PLAT | scrnaseq-studio, scrnaseq-lab, rnaseq-service | — | waiting for pass 0001b |
+| AUDIT | — | pass 0001 (the harness and four tools); pass 0001b (the platform) | both running |
 
 ## Machinery (session-only; re-create on resume, see README)
 
@@ -46,4 +47,14 @@ None recorded yet.
 
 ## Decisions needed from the PI
 
-None recorded yet.
+None open.
+
+## Decided (2026-11-09)
+
+| question | decided by | outcome |
+|---|---|---|
+| Merges into a tool's `main` | the PI: "yes , you have a standing yes, use predecider for decision" | standing yes after gate PASS and verifier PASS (RULES tier II) |
+| VCC rule 4 ("real"), as translated | the PI: "can skip this rule" | rule 4 dropped; slot 4 empty (RULES tier I) |
+| Studio, Lab and Service | the PI: "yes include Studio, Lab and Service" | in scope, lane PLAT; GOALS PLAT.1–3 and A6.3 |
+| The scale bar and the maker bar | the PI: "this is goals we are developing towards. keep developing"; the pre-decider set the numbers (C) | A3.4: ≥ 1,000,000 cells through A1.1; A4.2: ≥ 4 of 5 |
+| The Harness UI's design | the pre-decider (a (C) layer-3 clause, not a PI rule) | the report's words are the specification; the PI may redirect at any point |
