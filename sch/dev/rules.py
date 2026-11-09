@@ -31,8 +31,8 @@ WHAT EACH RULE REDUCES TO.
                function defined in two of the copies was missing from the third. A generated
                definition cannot have that defect; three hand-written ones cannot avoid it.
 
-  end_to_end - what the round runs end to end is the complement of what it holds out, and neither
-               list may quietly grow into the other.
+  end_to_end - nothing the round holds out runs end to end: the two lists may not grow into each
+               other. An artefact in neither list is named, not broken (ADR-0029).
 
 NOTHING HERE WRITES. A rule check that could repair what it found would be the one tool in the
 round permitted to break the rules it enforces.
@@ -312,14 +312,21 @@ def check(doc, point_name, specs, root=".", since=""):
                     detail.append(f"and {len(dup) - 12} more")
 
         elif rid == "end_to_end":
-            held = [str(x) for x in ((rules.get("held_out") or {}).get("names") or [])]
-            rest = sorted(set(names) - set(held))
-            verdict = HELD if sorted(want) == rest else BROKEN
-            says = (f"end to end is {', '.join(want) or 'nothing'}; the complement of the "
-                    f"held-out set is {', '.join(rest) or 'nothing'}")
-            if verdict == BROKEN:
-                detail = [f"declared: {', '.join(want) or '-'}",
-                          f"complement: {', '.join(rest) or '-'}"]
+            # NOTHING HELD OUT RUNS END TO END - the lists are disjoint. The first version
+            # demanded EQUALITY with the complement of the held-out set, so every artefact added
+            # since - a conversion of a tool the family had never seen, a held-out plugin
+            # migrated and not yet run end to end - broke the rule by existing (ADR-0029).
+            held = set(str(x) for x in ((rules.get("held_out") or {}).get("names") or []))
+            both = sorted(set(want) & held)
+            absent = sorted(set(want) - set(names))
+            neither = sorted(set(names) - held - set(want))
+            verdict = BROKEN if (both or absent) else HELD
+            says = (f"end to end is {', '.join(want) or 'nothing'}; "
+                    + (f"held out AND end to end: {', '.join(both)}; " if both else "")
+                    + (f"declared and not present: {', '.join(absent)}; " if absent else "")
+                    + f"in neither list: {', '.join(neither) or 'nothing'}")
+            if neither:
+                detail = [f"not run end to end, and not held out: {', '.join(neither)}"]
         else:
             verdict, says = CANNOT_SAY, "no check is defined for this rule id"
 

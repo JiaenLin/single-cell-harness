@@ -1,26 +1,33 @@
 # Roadmap
 
 > **2026-11-09 (ADR-0028):** [`GOALS.md`](GOALS.md) is the project goal. Where this roadmap's
-> ordering conflicts with it, GOALS.md wins. The rule below, "the four tools are not touched", no
-> longer holds for development toward GOALS.md, which the program in [`autodev/`](autodev/) carries out
-> under rule 1's gate. The phases remain the runtime's internal order.
+> ordering conflicts with it, GOALS.md wins. The three rules that governed this plan until then
+> are replaced below ([ADR-0029](docs/adr/0029-inherited-constraints-removed.md)). The tools are
+> developed by the program in [`autodev/`](autodev/), under rule 1's gate. The phases remain the
+> runtime's internal order.
 
 The order in which this gets built, and **how each step can fail.**
 
-Two rules govern the whole plan.
+How the plan is read. These rules replace the three that governed it until 2026-11-09. Each old
+rule, what it protected and what was given up are recorded in
+[ADR-0029](docs/adr/0029-inherited-constraints-removed.md).
 
-**Every phase can stop the project.** A phase is not a task list; it is a claim with a test. If the
-test fails, the honest outcome is to stop and say what was learned, not to carry the failure into
-the next phase where it becomes expensive. The phases are ordered by *cheapest disproof first* —
-the thesis is attacked before anything is built on it.
+**A phase is a claim with a test.** A phase is not a task list. The phases are ordered by
+*cheapest disproof first*, so the thesis is attacked before anything is built on it. A failed test
+is a finding. It is recorded as a gap against GOALS.md (`autodev/ledger/gaps.tsv`), with what was
+learned, and its owner works it. It never stops the project or any other lane. Where a phase below
+says "stop", read: the claim is not met, and the gap is not carried silently into the next phase.
+*(Until 2026-11-09 the rule was "every phase can stop the project".)*
 
-**The four tools are not touched.** No commit lands in `scQC`, `scAnno`, `scIntegrate` or
-`scProfile` for any phase below. Adapters live in this repository. Where a tool does not expose
-something an adapter needs, **that is a finding about the contract**, recorded and worked around —
-not a reason to reach into the tool.
+**The tools are developed under rule 1, not frozen.** Adapters live in this repository where the
+contract allows it. A tool that does not expose what an adapter needs is still **a finding about
+the contract**, but the fix may land in the tool, as a registered wave through rule 1's gate
+([`autodev/RULES.md`](autodev/RULES.md)). *(Until 2026-11-09 the rule was "the four tools are not
+touched".)*
 
-A phase ends when it is declared finished, not when its tests pass. Passing tests are evidence for
-that decision; they are not the decision.
+**A phase is graded, not declared.** Whether a phase's claim holds is the audit's grade on its
+test, PASS or not, with evidence. A doc claim is not evidence, and no agent's declaration ends one;
+the PI may override a grade (RULES tier I). *(Until 2026-11-09 the rule was "a phase ends when it is declared finished".)*
 
 ---
 
@@ -158,7 +165,7 @@ move and being a rewrite.
 | | pass |
 |---|---|
 | **ADR-0004's own test** | adapter is **< 40%** of the estimated lines of a rewrite |
-| no tool commits | `git log` in scQC is unchanged across the phase |
+| tool commits | each passed rule 1's gate; "`git log` in scQC is unchanged across the phase" was withdrawn by ADR-0029 |
 | **F3, the cost Phase 0 did not measure** | materialising to a **file** a real tool reads, timed and recorded — and a second run under an unchanged tuple pays it **once** (**D6**) |
 | unmount | restores every masked observation, by digest |
 | split-ready | each criterion's mask is separately addressable while still mounting as one plugin |
@@ -205,7 +212,7 @@ stay black boxes that get routed around.
 |---|---|
 | **reproduction** | every headline number matches the current pipeline's promoted results **exactly** |
 | provenance | the stack alone regenerates every figure and table |
-| no tool commits | still zero |
+| tool commits | each passed rule 1's gate ("still zero" withdrawn by ADR-0029) |
 | refusals | a stack missing a prerequisite refuses with the fix named, at plan time, before compute |
 
 **Falsifier.** A number that moves and cannot be explained is a defect in the harness, the adapter
@@ -346,9 +353,12 @@ stack alone, and a reviewer opens the published result without installing anythi
 ## Not in this roadmap
 
 Spatial, VDJ, ATAC, protein and perturbation profiles; multi-user and a shared registry; plugin
-signing or a marketplace; a GUI. Each is a real question and none is answered here. Adding any of
-them by stretching what exists is how a design becomes untestable — they get their own record
-first.
+signing or a marketplace. Each is a real question and none is answered here. Adding any of them by
+stretching what exists is how a design becomes untestable — they get their own record first.
+
+The web interface is no longer on this list. It is GOALS.md HARN.4 and A6.1, the Harness UI, with
+its own lane and record. It reads the event stream, and the kernel does not bend around it
+(VISION.md §18; ADR-0029).
 
 ## Where this plan is most likely to go wrong
 

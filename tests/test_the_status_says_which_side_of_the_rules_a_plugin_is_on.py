@@ -104,10 +104,16 @@ class WithRules(unittest.TestCase):
         self.assertTrue(text.lstrip().startswith("MAKER OUTPUT: alpha"), text[:200])
         self.assertIn("never by hand-editing", text)
 
-    def test_an_artefact_on_neither_list_gets_no_banner(self):
+    def test_an_artefact_on_neither_list_is_bannered_maker_output(self):
+        """Every artefact not held out is maker output, never hand-edited (the PI's top rule 1,
+        2026-09-09/10). This test used to assert NO banner for an artefact on neither list. Once
+        `end_to_end` stopped forcing every such artefact onto its list (ADR-0029), that left a
+        migrated plugin - `de`, out of held_out and not end to end - with no warning against
+        hand-editing it: a PI rule weakened by a status line."""
         text = _status(self.d, "ku")
+        self.assertTrue(text.lstrip().startswith("MAKER OUTPUT: ku"), text[:200])
+        self.assertIn("never by hand-editing", text)
         self.assertNotIn("HELD OUT", text)
-        self.assertNotIn("MAKER OUTPUT", text)
 
     def test_the_banner_names_come_from_the_rules_block_and_nowhere_else(self):
         self.assertEqual(CV._side_of_the_rules(P.load(self.d), "ko")[0].split(":")[0].strip(),

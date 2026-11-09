@@ -128,7 +128,7 @@ it cannot prove.
 | tier | question | cost |
 |---|---|---|
 | `declaration` | is the point declared, and is the thing registered in every table it names? | ms |
-| `rules` | do the rules this round declared still hold? (§10) — skipped where none are declared | ms |
+| `rules` | do the rules this round declared still hold? (§10) — not applicable where none are declared | ms |
 | `contract` | `sch conform` on the repository | ms |
 | `unit` | the repository's own suite, run the way the repository runs it | seconds |
 | `fixture_a` | does it run end to end and leave a valid status behind? | seconds |
@@ -410,7 +410,7 @@ command checks them. It reports and never writes.
 | `maker_output` | no block of `min_block`+ significant lines is repeated inside an artefact or shared between two |
 | `held_out` | the named artefacts are unchanged over the range |
 | `in_place` | every changed path is declared mechanism, or the artefact the round is converting (or a companion generated beside it) |
-| `end_to_end` | what runs end to end is exactly the complement of the held-out set |
+| `end_to_end` | nothing held out runs end to end; an artefact in neither list is named, not broken (ADR-0029) |
 
 **Duplication is the signal for hand-written mechanism.** Method is written once because it is
 about one method; mechanism appears twice because it is about all of them. Measured: one plugin
@@ -430,10 +430,15 @@ Silence is never a pass: no `rules:` block, or a range that is not a commit, rep
 and exits 3.
 
 It is also a **tier of the ladder**, because a command you have to remember to type is not
-enforcement. A repository declaring no rules is not failed by that tier and is not passed by it
-either: the tier reports that it could not run, and the ladder ends with `COULD NOT run: rules —
-so this is not a full check`. Inventing rules for a repository that has declared none would be
-this tool deciding how somebody else's round works.
+enforcement. A repository declaring no rules is neither failed nor passed by that tier: there is
+nothing here for it, as for a baseline with nothing to fingerprint, so the tier is **not
+applicable** and the check can still be complete. Not applicable means the `rules` key is
+absent. A `rules:` that is present but not a mapping of rule to block fails the tier, because a
+declaration nobody can check is not the absence of one. Until ADR-0029 it reported that it could not
+run, so every full check of a repository with no round (four of the five) exited 3 for ever.
+Since 2026-11-09 development runs in waves, not rounds, so having no round is the normal state.
+Inventing rules for a repository that has declared none would be this tool deciding how somebody
+else's round works.
 
 ---
 
@@ -500,4 +505,4 @@ will see it. Anonymous suppression is how a check stops meaning anything.
 
 ## The commit gate
 
-Install once per clone: `git config core.hooksPath setup/githooks`. The hook runs the suite and `sch conform` on the repository before every commit and refuses a red one; conform reports G1 red until the clone has it (harness ADR-0023, after two commits landed red in ADR-0022).
+Install once per clone: `git config core.hooksPath setup/githooks`. The hook runs the suite and `sch conform` on the repository before every commit and refuses a red one (harness ADR-0023, after two commits landed red in ADR-0022). Conform's G1 reads the directory git will run hooks from, with a relative `core.hooksPath` taken against the root of the working tree, or an absolute one. It passes when that directory's `pre-commit` is identical to the versioned one, warns while the clone has none installed, and fails when the directory holds a different hook. A repository that versions no gate is not failed for it (ADR-0029). The hook unsets the variables git uses to locate a repository before it runs the suite. In a linked worktree, git hands them to a hook as absolute paths, and the suite's own `git -C <tmpdir>` calls then act on the real repository (ADR-0029).

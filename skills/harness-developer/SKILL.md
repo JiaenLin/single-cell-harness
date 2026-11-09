@@ -69,7 +69,7 @@ list is `sch dev map --json`'s `tiers`, and this table describes rather than cou
 | tier | what fails here |
 |---|---|
 | `declaration` | not registered, or the point does not exist |
-| `rules` | a rule the repository declared for its round no longer holds — a held-out artefact changed, mechanism copied into a plugin, a change outside the declared paths. Skipped, not passed, where none are declared |
+| `rules` | a rule the repository declared for its round no longer holds — a held-out artefact changed, mechanism copied into a plugin, a change outside the declared paths. Not applicable, so neither passed nor incomplete, where none are declared |
 | `contract` | `sch conform` on the repository — leak guard, output defaults, status contract |
 | `unit` | the repository's own suite, run the way the repository runs it |
 | `fixture_a` | it does not run end to end on a synthetic cohort |

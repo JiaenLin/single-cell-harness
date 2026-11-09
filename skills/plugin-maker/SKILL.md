@@ -30,10 +30,19 @@ That prints the extension points, what each must declare, and the scaffolding co
 the repository has its own maker, `sch dev new` defers to it — use it, because it renders the
 template from the format's own knowledge and a generic skeleton does not.
 
-## One plugin at a time. This is not a style preference.
+## One plugin per conversion. This is not a style preference.
 
-**Convert ONE. Finish it. Have a person check it. Improve the maker from what that one taught.
-Then start the next — and the next one is the test.**
+**Convert ONE per wave. Finish it. Have it checked, by a fresh verifier (autodev BRIEFS §2a) or a
+person. Improve the maker from what that one taught. The next unseen tool is the test.**
+
+Conversions of different never-seen tools (GOALS A4.2) may run in parallel waves, because each
+sees only its own tool's surface. That is the property this rule protects. What it forbids is one
+reader taking in a whole family's surfaces before any of them is decided.
+
+The eight held-out plugins are different. They migrate one at a time, DE and abundance first.
+Each migration is a blind test of the maker, graded before the maker changes, so a maker fix found
+on one is tested on the next (autodev RULES tier II, the maker round's top rules). Until
+2026-11-09 this rule read "Have a person check it ... Then start the next" (ADR-0029).
 
 Every action that fills a declaration shows you the wrapped tool's own surface. Run across a
 family at once, they put every answer in front of you before any has been decided, and every
@@ -114,13 +123,13 @@ surfaces a defect, its home is decided by the rules, not by convenience:
 
 | the defect is | it goes to |
 |---|---|
-| in the host or the maker — a path under `in_place` | fixed **in place**, there |
+| in the host or the maker — general mechanism, wherever it lives | fixed **in place**, there, and never copied into a plugin. An `in_place` list, where a repository still declares one, only names such paths; it is not an allow-list of where a change may land (ADR-0029, B1-066) |
 | something the maker should have caught | the **maker**: fix it, re-run it, and the plugin changes as a consequence |
 | something the maker already demands — a worksheet row, a `finished_by` | the **worksheet**: answer it in the plugin, where the maker asked |
-| in an artefact named under `held_out` | **recorded, never fixed** — `status` banners these. A repair fits the maker to it and spends the family's only evidence that the maker generalises |
+| in an artefact named under `held_out` | **recorded, then fixed through the maker in that artefact's own migration wave** (GOALS A4.1). `status` banners these. Held out means held out *until its migration*, as the 2026-09-14 record says, not for ever. Until that wave a repair fits the maker to it and spends evidence that the maker generalises; its migration is itself a blind test, graded before the maker changes (RULES tier II) |
 
-Never hand-edit a plugin the round names under `end_to_end` as maker output; if the plugin is
-wrong, the maker is wrong. Duplication is the tell — method is written once, mechanism appears
+Never hand-edit any plugin. If the plugin is wrong, the maker is wrong, and `status` banners every
+artefact that is not held out as maker output. Duplication is the tell — method is written once, mechanism appears
 twice — and the `maker_output` rule measures exactly that.
 
 **Before your first commit into the repository, run its own check** (`scprofile check` in

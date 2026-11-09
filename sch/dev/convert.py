@@ -752,11 +752,16 @@ def format_status(rows, name, point_name, doc=None, root=".", python="", run="")
 
 
 def _side_of_the_rules(doc, name):
-    """Lines saying whether `name` is held out or is the round's maker output, or [] with no rules.
+    """Lines saying whether `name` is held out or is maker output, or [] with no rules.
 
     Read from the same `rules:` block `sch dev rules` checks, so the status and the check cannot
     name different artefacts. A repository declaring no rules gets no banner: inventing one would
     be this tool deciding how somebody else's round works.
+
+    EVERY ARTEFACT NOT HELD OUT IS MAKER OUTPUT (the PI's top rule 1, 2026-09-09/10: "Never
+    hand-edit kernels/*.py"). The banner used to go to `end_to_end` names only, which was every
+    other artefact while that rule demanded equality; once it became disjointness (ADR-0029), a
+    migrated plugin on neither list lost its warning against hand-editing.
     """
     if not doc or not name:
         return []
@@ -771,12 +776,12 @@ def _side_of_the_rules(doc, name):
                 f"is a RESULT to record, never a fix to make -",
                 f"  a repair fits the maker to it and spends the family's only evidence that the "
                 f"maker generalises. `sch dev rules` checks it.", ""]
-    if name in out:
-        return [f"  MAKER OUTPUT: {name} is what this round converts. A debt below is paid by "
-                f"changing the maker and regenerating, or by answering",
-                f"  the worksheet the stage names - never by hand-editing the artefact. "
-                f"Duplicated mechanism is the tell, and `sch dev rules` measures it.", ""]
-    return []
+    what = ("is what this round runs end to end" if name in out else
+            "is maker output, as every artefact not held out is")
+    return [f"  MAKER OUTPUT: {name} {what}. A debt below is paid by changing the maker and "
+            f"regenerating, or by answering",
+            f"  the worksheet the stage names - never by hand-editing the artefact. "
+            f"Duplicated mechanism is the tell, and `sch dev rules` measures it.", ""]
 
 
 def _clip(text, n):

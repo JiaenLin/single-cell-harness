@@ -248,9 +248,21 @@ def _commit_gate(checks, repo):
     INSTALLED MEANS GIT WILL RUN THIS REPOSITORY'S HOOK. `core.hooksPath` may be relative to the
     root of the working tree or absolute (ADR-0029); either is accepted when the directory it
     resolves to holds a `pre-commit` byte-identical to the versioned one. A directory holding a
-    different hook is a gate, but not this repository's.
+    different hook is a gate, but not this repository's, and fails.
+
+    WHAT IS NOT FAILED (ADR-0029). A repository that versions no gate has nothing to install:
+    this check was written for one repository's clones, and applied to every child it was the
+    ONLY failing row of `sch conform` on fresh clones of all four tools (measured 2026-11-09),
+    so "passes sch conform" could not be reached by any of them. And a clone that has not
+    installed a versioned gate is warned, not failed: a clone made to read, verify or audit
+    commits nothing, and this harness's own suite still fails a clone of it with no gate.
     """
     hook, path, where = installed_gate(repo)
+    if not hook.is_file():
+        _check(checks, "G1 ", True,
+               ["nothing to install: this repository versions no commit gate at "
+                "setup/githooks/pre-commit"], "")
+        return
     runs = (where / "pre-commit") if where is not None else None
     same = bool(runs is not None and runs.is_file() and hook.is_file()
                 and runs.read_bytes() == hook.read_bytes())
@@ -260,11 +272,11 @@ def _commit_gate(checks, repo):
         state = f"-> {where}, whose pre-commit is {'identical' if same else 'DIFFERENT'}"
     else:
         state = f"-> {where}, which holds no pre-commit"
-    _check(checks, "G1 ", hook.is_file() and same,
-           [f"hook {'present' if hook.is_file() else 'MISSING'} at setup/githooks/pre-commit; "
-            f"core.hooksPath is {path!r} {state}"],
+    _check(checks, "G1 ", same,
+           [f"hook present at setup/githooks/pre-commit; core.hooksPath is {path!r} {state}"],
            "git config core.hooksPath setup/githooks   (once per clone; the hook runs the suite "
-           "and conform before every commit)")
+           "and conform before every commit)",
+           level="warn" if where is None else "error")
 
 
 def conform_repo(repo, terms_file=None, shapes_file=None, profile="single-cell") -> list:

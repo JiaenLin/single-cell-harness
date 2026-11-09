@@ -23,6 +23,8 @@ three things a post-mortem does not:
 - **what the agent did without being told**, because the workflow is for agents and the record
   of one cold agent's path through it is the only measurement of that there is.
 
-A tool converted here is test material. It lands in the target repository only as such — beside
-its smoke plugins, never in its shipped set — and the round's rules (`rules:` in the target's
-`DEVPOINTS.yaml`) decide whether it lands at all.
+A tool converted here is test material until it meets GOALS.md A4.2: it passes the dev suite, and
+it reproduces the tool's own published example within a declared tolerance. Then it joins the
+shipped set through its wave's gate, like any plugin, and its record here stays. Until 2026-11-09
+it landed "beside its smoke plugins, never in its shipped set", which kept every conversion out of
+the expandable pool that G4 is for (ADR-0029).

@@ -259,12 +259,55 @@ class TheRulesOfARoundAreCheckedNotPromised(unittest.TestCase):
         self.assertEqual(RU.BROKEN, self.check(rules=grown)["end_to_end"]["verdict"],
                          "the two lists grew into each other and nothing said so")
 
+    def test_a_rules_key_that_is_not_a_mapping_is_not_read_as_undeclared(self):
+        """Not applicable means the `rules` key is ABSENT. A `rules:` block written as a list is
+        a declaration that cannot be checked, and reading it as no round at all would pass a
+        repository whose rules nobody can see (ADR-0029)."""
+        from sch.dev import ladder as L
+        (self.d / "DEVPOINTS.yaml").write_text(
+            HEAD + "rules:\n  - held_out\n  - maker_output\n" + POINT, encoding="utf-8")
+        rep = L.run(self.d, only={"rules", "unit"}, fixdir=str(self.d / "fx"))
+        rules = next(r for r in rep["results"] if r["tier"] == "rules")
+        self.assertTrue(rules["applicable"], "a list-shaped rules: read as no rules declared")
+        self.assertFalse(rules["ok"])
+        self.assertIn("rules", rep["failed"])
+
+    def test_an_artefact_in_neither_list_is_named_and_not_broken(self):
+        """A conversion of a tool the family has never seen, or a held-out plugin migrated and
+        not yet run end to end, is in neither list. Under the equality it broke the rule by
+        existing - the blind deseq2 conversion stayed red on exactly this (ADR-0029)."""
+        self.write("gamma", "temper(stock)")
+        r = self.check()["end_to_end"]
+        self.assertEqual(RU.HELD, r["verdict"], r["says"])
+        self.assertIn("gamma", " ".join(r["detail"]))
+
+    def test_an_end_to_end_artefact_that_does_not_exist_is_broken(self):
+        missing = RULES.replace("    names: [alpha]\n    means: one seam",
+                                "    names: [alpha, omega]\n    means: one seam")
+        r = self.check(rules=missing)["end_to_end"]
+        self.assertEqual(RU.BROKEN, r["verdict"])
+        self.assertIn("omega", r["says"])
+
     def test_a_repository_declaring_no_rules_says_so(self):
         rows = self.check(rules="")
         self.assertEqual(1, len(rows))
         r = next(iter(rows.values()))
         self.assertEqual(RU.CANNOT_SAY, r["verdict"])
         self.assertIn("declares no `rules:` block", r["says"])
+
+    def test_a_repository_with_no_round_is_not_an_incomplete_check(self):
+        """No `rules:` block is NOTHING HERE FOR the tier, not a tier that could not run.
+        Reported as could-not-run, it made every full `sch dev check` of a repository with no
+        round exit 3 for ever - measured on scQC, 2026-11-09 - so "passes sch dev" (GOALS A4.1)
+        was out of reach for four of the five repositories (ADR-0029)."""
+        from sch.dev import ladder as L
+        (self.d / "DEVPOINTS.yaml").write_text(HEAD + POINT, encoding="utf-8")
+        rep = L.run(self.d, only={"rules", "unit"}, fixdir=str(self.d / "fx"))
+        rules = next(r for r in rep["results"] if r["tier"] == "rules")
+        self.assertFalse(rules["applicable"])
+        self.assertNotIn("rules", rep["not_run"])
+        self.assertEqual(["unit"], rep["ran"])
+        self.assertTrue(rep["complete"], rep["not_run"])
 
     def test_it_reports_and_never_writes(self):
         import inspect
