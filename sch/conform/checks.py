@@ -256,6 +256,17 @@ class Term:
 # stay findings: a scope that silently does not load is an exemption nobody reviewed.
 SCOPE_FILE = "LEAK_SCOPE.txt"
 
+#: THE ONLY RECORDS (W024 fix-up, the verifier's D2). Tier II of the program's rules lets the
+#: harness's own records name cohorts - its goals, ledgers, ADRs, blind tests and post-mortems -
+#: and nothing else. A `*` entry is accepted on one of these paths, or inside one of these
+#: directories; anywhere else it fails S1f and is not applied, so no repository can declare its
+#: own code, tests or job scripts a record. A project's job scripts live in the project.
+RECORD_PATHS = ("GOALS.md", "autodev/", "docs/adr/", "docs/blind/", "docs/postmortem/")
+
+
+def _a_record_path(path: str) -> bool:
+    return path in RECORD_PATHS or any(path.startswith(d) for d in RECORD_PATHS if d.endswith("/"))
+
 
 class ScopeEntry(NamedTuple):
     n: int                     # line number in LEAK_SCOPE.txt
@@ -288,6 +299,10 @@ def load_scope(root) -> tuple:
             continue
         if path.startswith("/") or ".." in Path(path).parts:
             problems.append(f"{SCOPE_FILE}:{n} names a path outside the repository: {path}")
+            continue
+        if what == "*" and not _a_record_path(path):
+            problems.append(f"{SCOPE_FILE}:{n} declares {path} a record, and only the five "
+                            f"tier-II paths are records ({', '.join(RECORD_PATHS)}): not applied")
             continue
         # NAMES ARE SEPARATED BY A COMMA AND A SPACE: a comma-grouped number is one name.
         names = None if what == "*" else tuple(sorted({w.strip().lower()
@@ -359,11 +374,13 @@ def _leak_files(root: Path) -> list:
             for d, dirs, files in os.walk(root, followlinks=False):
                 dirs[:] = [x for x in dirs if x not in SKIP_DIRS and not x.endswith(".egg-info")]
                 names += [os.path.relpath(os.path.join(d, f), root) for f in files]
+        # EVERY FILE GIT LISTS IS READ (W024 fix-up, the verifier's D3): a tracked conf/env/x.sh
+        # was dropped by its directory's name, uncounted. SKIP_DIRS name what a tree walk finds
+        # installed beside the source - an environment, a build - and prune only the walk, where
+        # there is no git to say what is the repository's.
         out = []
         for n in sorted(set(names)):
             rel = Path(n)
-            if any(part in SKIP_DIRS or part.endswith(".egg-info") for part in rel.parts[:-1]):
-                continue
             p = root / rel
             if p.is_symlink() or not p.is_file():
                 continue

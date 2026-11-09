@@ -55,17 +55,15 @@ class TheHarnessDeclaresItsRecords(unittest.TestCase):
             self.assertEqual(got[rec][0], "*", rec)
             self.assertTrue(len(got[rec][1]) > 20, f"{rec} carries no reason")
 
-    def test_nothing_the_harness_runs_or_ships_is_declared_a_record(self):
-        """The declaration excuses records, never code: no entry may cover the package, the
-        tests, the skills, the setup or the plugins, and a job script only by its own name."""
-        f = ROOT / "LEAK_SCOPE.txt"
-        for p, what, _ in entries(f.read_text()):
-            for code in ("sch/", "tests/", "skills/", "setup/", "plugins/", "spike/"):
-                self.assertFalse(p.startswith(code) or code.startswith(p.rstrip("*")),
-                                 f"{p} covers {code}")
-            if p.startswith("jobs/"):
-                self.assertFalse(any(ch in p for ch in "*?["), f"{p}: a job record is named, not globbed")
-                self.assertTrue((ROOT / p).is_file(), f"{p} is declared and does not exist")
+    def test_the_five_record_paths_are_the_only_records(self):
+        """The coordinator's decision on the verifier's D1 (W024 fix-up): a project's jobs live in
+        the project (the HPC layout), so the job scripts of submitted runs left the harness instead
+        of being declared records. What the harness declares is the five tier-II paths and no
+        other."""
+        got = entries((ROOT / "LEAK_SCOPE.txt").read_text())
+        self.assertEqual(sorted(p for p, _, _ in got), sorted(RECORDS), got)
+        self.assertFalse(any(ROOT.joinpath("jobs").glob("rerun_*.pbs")),
+                         "an emitted rerun is the project's, not the harness's")
 
 
 class TheScopeIsAppliedAsDeclared(unittest.TestCase):
@@ -156,13 +154,34 @@ class TheScopeIsAppliedAsDeclared(unittest.TestCase):
         self.assertFalse(any("zorblax" in e for e in ev), ev)
 
     def test_an_entry_that_covers_no_file_is_said(self):
-        self._put("LEAK_SCOPE.txt", "gone/ :: * :: a directory that was deleted\n")
+        self._put("LEAK_SCOPE.txt", "docs/postmortem/ :: * :: the post-mortems, of which there are none yet\n")
         self._put("src/a.py", "X = 1\n")
         g = row(self._conform(), "S1g")
         self.assertIsNotNone(g)
         self.assertFalse(g["ok"])
         self.assertEqual(g["level"], "warn")
-        self.assertTrue(any("gone/" in e for e in g["evidence"]))
+        self.assertTrue(any("docs/postmortem/" in e for e in g["evidence"]))
+
+    def test_a_star_is_a_record_only_on_the_five_record_paths(self):
+        """D2 (the verifier, W024 fix-up): `*` excused whatever path it named, so any file could be
+        declared a record by the repository that holds it. Tier II lets the harness's records
+        name cohorts, and its records are five paths; a `*` anywhere else fails S1f and is not
+        applied."""
+        self._put("LEAK_SCOPE.txt", "jobs/run.pbs :: * :: the script of one submitted run\n"
+                                    "autodev/ :: * :: the program's ledgers\n"
+                                    "docs/adr/0001-x.md :: * :: one decision record\n")
+        self._put("jobs/run.pbs", "zorblax\n")
+        self._put("autodev/STATE.md", "zorblax\n")
+        self._put("docs/adr/0001-x.md", "zorblax\n")
+        checks = self._conform()
+        f = row(checks, "S1f")
+        self.assertFalse(f["ok"])
+        self.assertEqual(f["level"], "error")
+        bad = [e for e in f["evidence"] if "LEAK_SCOPE.txt:" in e]
+        self.assertEqual(len(bad), 1, f["evidence"])
+        self.assertIn("jobs/run.pbs", bad[0])
+        found = {e.split(":")[0] for e in row(checks, "S1 ")["evidence"] if " site term " in e}
+        self.assertEqual(found, {"jobs/run.pbs"})
 
 
 @unittest.skipUnless(shutil.which("git") and shutil.which("bash"), "needs git and bash")

@@ -2,7 +2,8 @@
 #
 # One entry per line:   <path> :: <what may appear> :: <why>
 #   <path>   repository-relative; a trailing / takes a directory and everything below it
-#   <what>   *  a RECORD: S1 does not read it, and S1f says how many files that covers;
+#   <what>   *  a RECORD: S1 does not read it, and S1f says how many files that covers. A `*`
+#               is accepted only on the five tier-II paths below (W024 fix-up);
 #            or listed terms (or shape names) separated by ", ", excused at that path only
 #   <why>    required: an entry without a reason is refused and not applied
 #
@@ -17,39 +18,3 @@ autodev/          :: * :: the program's ledgers, wave registrations, state and r
 docs/adr/         :: * :: the architecture decision records: each states the cohort and the runs its decision rests on
 docs/blind/       :: * :: the blind tests' records: the cohort, the runs, and what an agent found on them
 docs/postmortem/  :: * :: the post-mortems: a failure is described with the run, the cohort and the machine it happened on
-
-# THE JOB RECORDS (W024 builder's extension, after measuring: 785 term hits from today's lists in
-# the first 29 files, which the five paths above do not cover; the generated lists added the 30th). Each is the script of runs submitted on the first cohort,
-# written once and cited by the ADR or blind test it served: its paths, hosts and samples are those
-# runs' provenance. They are named one by one, so a job script added later is still read. They
-# belong with the project that owns the cohort; moving them there lets these entries go.
-jobs/rerun_0006.pbs :: * :: emitted by `sch dev job` for one submitted rerun of the loop (d7af719); records the reference run, its prediction and the paths it read
-jobs/rerun_0007.pbs :: * :: emitted by `sch dev job` for one submitted rerun of the loop; records the reference run, its prediction and the paths it read
-jobs/rerun_0008.pbs :: * :: emitted by `sch dev job` for one submitted rerun of the loop; records the reference run, its prediction and the paths it read
-jobs/rerun_0009.pbs :: * :: emitted by `sch dev job` for one submitted rerun of the loop; records the reference run, its prediction and the paths it read
-jobs/rerun_0010.pbs :: * :: emitted by `sch dev job` for one submitted rerun of the loop; records the reference run, its prediction and the paths it read
-jobs/rerun_0011.pbs :: * :: emitted by `sch dev job` for one submitted rerun of the loop; records the reference run, its prediction and the paths it read
-jobs/rerun_0012.pbs :: * :: emitted by `sch dev job` for one submitted rerun of the loop; records the reference run, its prediction and the paths it read
-jobs/rerun_0013.pbs :: * :: emitted by `sch dev job` for one submitted rerun of the loop; records the reference run, its prediction and the paths it read
-jobs/rerun_0014.pbs :: * :: emitted by `sch dev job` for one submitted rerun of the loop; records the reference run, its prediction and the paths it read
-jobs/rerun_0015.pbs :: * :: emitted by `sch dev job` for one submitted rerun of the loop; records the reference run, its prediction and the paths it read
-jobs/rerun_0016.pbs :: * :: emitted by `sch dev job` for one of ADR-0026's submitted reruns (403ce2f); records the reference run, its prediction and the paths it read
-jobs/rerun_0017.pbs :: * :: emitted by `sch dev job` for one of ADR-0026's submitted reruns; records the reference run, its prediction and the paths it read
-jobs/rerun_0018.pbs :: * :: emitted by `sch dev job` for one of ADR-0026's submitted reruns; records the reference run, its prediction and the paths it read
-jobs/rerun_0019.pbs :: * :: emitted by `sch dev job` for one of ADR-0026's submitted reruns; records the reference run, its prediction and the paths it read
-jobs/rerun_0020.pbs :: * :: emitted by `sch dev job` for one of ADR-0026's submitted reruns; records the reference run, its prediction and the paths it read
-jobs/rerun_0021.pbs :: * :: emitted by `sch dev job` for one of ADR-0026's submitted reruns; records the reference run, its prediction and the paths it read
-jobs/rerun_0022.pbs :: * :: emitted by `sch dev job` for one of ADR-0026's submitted reruns; records the reference run, its prediction and the paths it read
-jobs/rerun_0023.pbs :: * :: emitted by `sch dev job` for one of ADR-0026's submitted reruns; records the reference run, its prediction and the paths it read
-jobs/rerun_0024.pbs :: * :: emitted by `sch dev job` for ADR-0026's run for review (3b60227); records the reference run, its prediction and the paths it read
-jobs/submit_rerun.sh :: * :: the submitter of the emitted reruns (da0cb75): it names the project directory those runs were written under
-jobs/audit_reproduction.pbs :: * :: ADR-0018 step 5's audit reproduction on the first cohort (c8c6fc8), its predictions written in the job before it ran
-jobs/submit_audit_reproduction.sh :: * :: the submitter of ADR-0018 step 5's audit reproduction (c8c6fc8)
-jobs/plan_reproduction.pbs :: * :: the plan reproduction on the first cohort (c00e74d), its predictions written before the run
-jobs/submit_plan_reproduction.sh :: * :: the submitter of the plan reproduction (c00e74d)
-jobs/enrichment_test_phase.pbs :: * :: the enrichment blind conversion's test-phase job on the first cohort (f0148b1)
-jobs/submit_enrichment_test_phase.sh :: * :: the submitter of the enrichment test-phase job (f0148b1)
-jobs/signatures_probe.pbs :: * :: the maker's inventory verb run once on the cluster to record the wrapped tool's signatures (ADR-0026 step 4, 344dbca)
-jobs/writing_sambo.pbs :: * :: the writing run's job on the first cohort (eace4d4), its predictions embedded as a checker that tests/test_convert.py runs
-jobs/submit_writing_seal.sh :: * :: the submitter of the writing run's seal (ADR-0017 step 5, ee38d5e)
-jobs/status_on_run.pbs :: * :: ADR-0016 step 1: the status verb asked of one sealed run, its predictions about that run written before it ran

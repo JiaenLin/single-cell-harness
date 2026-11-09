@@ -112,6 +112,21 @@ class TheLeakGuardReadsEveryFile(unittest.TestCase):
         self.assertTrue(any(e.startswith("src/new.ts:") for e in got["evidence"]), got["evidence"])
         self.assertFalse(any(e.startswith("out/") for e in got["evidence"]), got["evidence"])
 
+    @unittest.skipUnless(shutil.which("git"), "no git binary here - a compute node has none")
+    def test_a_tracked_file_is_read_whatever_its_directory_is_called(self):
+        """D3 (the verifier, W024 fix-up): a tracked conf/env/x.sh was dropped because `env` is
+        a directory name the tree walk skips (an installed environment), and nothing counted it.
+        Where git lists the tree, every file it lists is the repository's and is read; the
+        skipped names prune only the walk used where there is no git."""
+        env = {k: v for k, v in os.environ.items() if k not in LOCATING}
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True, env=env)
+        for rel in ("conf/env/x.sh", "build/notes.md", "_data/table.tsv"):
+            self._put(rel, f"{TERM}\n")
+        subprocess.run(["git", "-C", str(self.repo), "add", "."], check=True, env=env)
+        got = s1(conform_repo(self.repo, terms_file=str(self.terms)))
+        found = {e.split(":")[0] for e in got["evidence"] if " site term " in e}
+        self.assertEqual(found, {"conf/env/x.sh", "build/notes.md", "_data/table.tsv"}, got["evidence"])
+
 
 class EveryKindOfTermIsFoundTheSameWayFastOrSlow(unittest.TestCase):
     """The list's four forms, each planted where it must and must not match, scanned with the

@@ -11,6 +11,8 @@
     G3  every gate names a probe that exists
     G4  every gate declares an escape, verdicts within the three
     X1  the version comparison reads the major only (registry.admit)
+    GATE whether THIS clone runs the repository's commit gate, and the command that installs it:
+         a note about the clone, never a failure of the architecture (GAP-111)
 
 `sch doctor --runtime <stack>` runs the kernel companions over an existing stack's stream.
 """
@@ -139,7 +141,34 @@ def check_architecture() -> list:
     missing = sorted(g for g in required if g not in {x.name for x in gates})
     findings.append({"rule": "G1", "ok": not missing,
                      "message": "every profile-required gate resolves to a plugin" if not missing else f"missing gate plugins: {missing}"})
+    findings.append(commit_gate(REPO))
     return findings
+
+
+def commit_gate(repo) -> dict:
+    """GATE: does THIS clone run the repository's commit gate, and how is it installed?
+
+    A FACT ABOUT THE CLONE, NOT THE REPOSITORY (GAP-111). The suite used to assert it, so every
+    fresh clone failed its own suite: a clone made to read, verify or audit commits nothing. The
+    repository's part - the versioned hook and what it runs - is a test; whether a clone has it
+    installed is reported here, and by conform's G1 as a warning, with the command that installs
+    it. A note, so a fresh clone's architecture still holds."""
+    from .conform.checks import installed_gate
+    hook, path, where = installed_gate(repo)
+    install = ("git config core.hooksPath setup/githooks  (once per clone; the hook runs the "
+               "suite and `sch conform .` before every commit and refuses a red one)")
+    if not hook.is_file():
+        message = "this repository versions no commit gate (setup/githooks/pre-commit)"
+    elif where is None:
+        message = f"NOT installed in this clone: {install}"
+    else:
+        runs = where / "pre-commit"
+        if runs.is_file() and runs.read_bytes() == hook.read_bytes():
+            message = f"installed in this clone: core.hooksPath -> {where}"
+        else:
+            message = (f"NOT installed in this clone: core.hooksPath -> {where}, which holds "
+                       f"{'a different' if runs.is_file() else 'no'} pre-commit; {install}")
+    return {"rule": "GATE", "ok": True, "note": True, "message": message}
 
 
 def check_runtime(stack_dir) -> list:
@@ -166,7 +195,8 @@ def check_runtime(stack_dir) -> list:
 def format_findings(findings: list) -> str:
     lines = []
     for f in findings:
-        lines.append(f"  {'ok  ' if f['ok'] else 'FAIL'} {f['rule']:<9} {f['message']}" +
+        mark = "note" if f.get("note") else ("ok  " if f["ok"] else "FAIL")
+        lines.append(f"  {mark} {f['rule']:<9} {f['message']}" +
                      (f"  ({f['where']})" if f.get("where") else ""))
     n = sum(1 for f in findings if not f["ok"])
     return "\n".join(lines) + f"\n{'architecture holds' if not n else f'{n} finding(s)'}"

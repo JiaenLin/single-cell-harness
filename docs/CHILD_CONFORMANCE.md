@@ -16,11 +16,15 @@ it does not ignore - or the whole tree where there is no git, decided text or bi
 it always was, unless it says otherwise: `word:T` is T as a whole word in any case, and a number
 never inside a longer number; `exact:T` is the same in T's own case; a trailing `*` after either
 makes a prefix. A cohort's list is generated from its records by
-`sch conform terms build COHORT --out FILE`, outside the cohort and outside any repository.
+`sch conform terms build COHORT --out FILE`, outside the cohort and outside any repository; with
+`--shapes-out FILE` it also writes the site's shapes - the queues the cohort's jobs name and a job
+id written bare - for `--shapes`. A level of two characters keeps its case (`exact:`); from three
+it matches in any case (`word:`), because a recased copy of a longer level is the leak's shape.
 
 **What a repository declares about itself.** `LEAK_SCOPE.txt` at its root, one entry per line,
-`<path> :: <what may appear> :: <why>`. `*` declares a record that S1 does not read (the harness's
-goals, ledgers, ADRs, blind tests, post-mortems and the job scripts of submitted runs); terms
+`<path> :: <what may appear> :: <why>`. `*` declares a record that S1 does not read, and is
+accepted only on the five tier-II record paths (`GOALS.md`, `autodev/`, `docs/adr/`, `docs/blind/`,
+`docs/postmortem/`) or inside them; anywhere else it fails S1f and is not applied. Terms
 separated by a comma and a space (`4,321` is one name) excuse those terms at that path only, for
 a word the repository legitimately holds (a reference tree naming a cell type). Every entry needs
 its reason; what it excuses stays listed in S1f.

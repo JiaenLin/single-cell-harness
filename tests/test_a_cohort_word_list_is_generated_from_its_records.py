@@ -36,11 +36,11 @@ QxB1,sprigling,A,KIT-V3,kibbleon,1.5
 QxB2,sprigling,B,KIT-V3,kibbleon,2.0
 """
 SHEET = ("# a comment line the reader skips\n"
-         "sample\tspecies\tassay\tmatrix\tgenotype\tdbr\n"
-         "QxA1\tmus_zz\tsnrna\t/data/x/QxA1/raw\tQz\t0.051\n"
-         "QxA2\tmus_zz\tsnrna\t/data/x/QxA2/raw\tQz\t0.063\n"
-         "QxB1\tmus_zz\tsnrna\t/data/x/QxB1/raw\tQy\t0.058\n"
-         "QxB2\tmus_zz\tsnrna\t/data/x/QxB2/raw\tQy\t0.071\n")
+         "sample\tspecies\tassay\tmatrix\tgenotype\tstrain\tdbr\n"
+         "QxA1\tmus_zz\tsnrna\t/data/x/QxA1/raw\tQz\tVxa\t0.051\n"
+         "QxA2\tmus_zz\tsnrna\t/data/x/QxA2/raw\tQz\tVxa\t0.063\n"
+         "QxB1\tmus_zz\tsnrna\t/data/x/QxB1/raw\tQy\tVxb\t0.058\n"
+         "QxB2\tmus_zz\tsnrna\t/data/x/QxB2/raw\tQy\tVxb\t0.071\n")
 RUNLOG = """# Stage 01 run log
 kept 7,481 of 58,213 nuclei after QC; 2,000 HVGs were chosen.
 29 nuclei carried the flag; held 637 for review.
@@ -49,6 +49,8 @@ mito share 41.7% (thresholds 5.0% and 2.5%).
 best AUC 0.7319 and gap 0.83; ratio 318.27x; python 3.12.13.
 settings, not measurements: 100.0 and 25.00; scale 1.4826 x MAD; 0.1% floor; top-20 markers; <300 reads.
 job 123457 read the matrix, and a 50 gene signature is a set, not a count.
+Removed 2026-08-06: the stale run. kept 2025-01-31 as the cut.
+PBS 4567890 sealed the rerun; queue `blipq` held it for an hour.
 """
 
 
@@ -73,6 +75,10 @@ class ACohortWordListIsGeneratedFromItsRecords(unittest.TestCase):
             "stages/02_x/PROTOCOL.md": "expected 4,417 cells per library.\n",
             "stages/02_x/NOTES.md": "8,888 is in a file that is not a record.\n",
             "results/02_x/PROMOTED.md": "promoted with 6,029 labels.\n",
+            "README.md": "# the cohort\nthe doublet share reached 66.9% in one library.\n",
+            "docs/PORTABILITY.md": "a ceiling of 71.45% on the worst library.\n",
+            "docs/site_shapes.txt": "\\bzz-\\d{2}\\b :: a zz login node :: zz-\n",
+            "stages/01_qc/jobs/qc.pbs": "#!/bin/bash\n#PBS -q zappq\n#PBS -l walltime=01:00:00\n",
         }.items():
             p = c / rel
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -87,7 +93,8 @@ class ACohortWordListIsGeneratedFromItsRecords(unittest.TestCase):
                              "zz unseen phrase\nqoxcohort\na phrase about shapes\n")
         from sch.conform.terms import build
         cls.out = cls.tmp / "out" / "terms.txt"
-        cls.summary = build(c, cls.out, stems=[cls.stems], carry=[cls.carry])
+        cls.shapes = cls.tmp / "out" / "shapes.txt"
+        cls.summary = build(c, cls.out, stems=[cls.stems], carry=[cls.carry], shapes_out=cls.shapes)
         cls.text = cls.out.read_text()
         cls.terms = [t for t, _ in term_lines(cls.text)]
         cls.above = dict(term_lines(cls.text))
@@ -102,7 +109,8 @@ class ACohortWordListIsGeneratedFromItsRecords(unittest.TestCase):
 
     def test_samples_and_levels_come_from_the_sheets_and_axes_do_not(self):
         for t in ("word:QxA1", "word:QxA2", "word:QxB1", "word:QxB2", "word:elderfold",
-                  "word:sprigling", "word:lardmash", "word:kibbleon", "exact:Qz", "exact:Qy"):
+                  "word:sprigling", "word:lardmash", "word:kibbleon", "exact:Qz", "exact:Qy",
+                  "word:Vxa", "word:Vxb"):
             self.assertIn(t, self.terms)
         for absent in ("KIT-V2", "KIT-V3", "mus_zz", "snrna", "/data/x", "1.5", "0.051"):
             self.assertFalse(any(absent in t for t in self.terms), absent)
@@ -120,6 +128,59 @@ class ACohortWordListIsGeneratedFromItsRecords(unittest.TestCase):
         for t in ("word:2,000", "word:2000", "word:7481", "word:1 of 3", "word:5.0%", "word:2.5%",
                   "word:3.12", "word:12.13", "word:8,888", "word:213 nuclei", "word:0.83"):
             self.assertNotIn(t, self.terms)
+
+    def test_a_level_of_three_characters_or_more_matches_in_any_case(self):
+        """The verifier found a three-letter diet level in lowercase in two tools' fixtures, unmatched by a level
+        written in capitals (W024 fix-up). From three characters a recased copy is the leak's
+        shape, so the level matches in any case; a two-character level keeps its own case,
+        because in another case it is overwhelmingly an identifier (`wt`, gzip's "wt" mode)."""
+        self.assertIn("word:Vxa", self.terms)
+        self.assertIn("exact:Qz", self.terms)
+        saved = {k: os.environ.pop(k, None) for k in ENV}
+        tool = self.tmp / "tool_case"
+        try:
+            (tool / "tests").mkdir(parents=True)
+            (tool / "tests" / "test_rows.py").write_text("ROWS = [{'strain': 'vxa'}]\nqz = 1\n")
+            s1 = [c for c in conform_repo(tool, terms_file=str(self.out)) if c["id"].startswith("S1 ")][0]
+            found = [e for e in s1["evidence"] if " site term " in e]
+            self.assertEqual([e.split(" site term ")[0] for e in found], ["tests/test_rows.py:1"], found)
+        finally:
+            for k, v in saved.items():
+                if v is not None:
+                    os.environ[k] = v
+
+    def test_the_cohorts_readme_and_docs_are_read(self):
+        """The first cohort's README and a portability note in its docs carried measured percentages the
+        records did not, and the list missed them (W024 fix-up)."""
+        self.assertIn("word:66.9%", self.terms)
+        self.assertIn("word:71.45%", self.terms)
+        self.assertIn("README.md:2", self.above["word:66.9%"])
+
+    def test_a_date_is_not_a_count(self):
+        """`Removed 2026` was listed from `Removed 2026-08-06` (W024 fix-up)."""
+        self.assertFalse(any("2026" in t or "2025" in t for t in self.terms), self.terms)
+
+    def test_queues_and_bare_job_ids_are_generated_as_site_shapes(self):
+        """A queue the cohort's jobs name, and a job id written bare as its records write it,
+        are the site's shapes rather than words; they go to a shapes list, beside the site's own
+        shapes carried verbatim (W024 fix-up)."""
+        text = self.shapes.read_text()
+        self.assertIn(r"\bzz-\d{2}\b :: a zz login node :: zz-", text)
+        self.assertIn(r"\bPBS \d{7}\b", text)
+        self.assertRegex(text, r"(?m)^\S*blipq\S* :: ")
+        self.assertRegex(text, r"(?m)^\S*zappq\S* :: ")
+        saved = {k: os.environ.pop(k, None) for k in ENV}
+        tool = self.tmp / "tool_shapes"
+        try:
+            (tool / "jobs").mkdir(parents=True)
+            (tool / "jobs" / "run.pbs").write_text("#PBS -q zappq\n# rerun of PBS 1234567\nqsub -q other\n")
+            s1 = [c for c in conform_repo(tool, shapes_file=str(self.shapes)) if c["id"].startswith("S1 ")][0]
+            lines = sorted({e.split(" ")[0] for e in s1["evidence"] if e.startswith("jobs/")})
+            self.assertEqual(lines, ["jobs/run.pbs:1", "jobs/run.pbs:2"], s1["evidence"])
+        finally:
+            for k, v in saved.items():
+                if v is not None:
+                    os.environ[k] = v
 
     def test_a_setting_or_a_constant_is_not_taken_for_a_measurement(self):
         """Measured on the eight repositories (W024): a round decimal, a statistical constant, a

@@ -32,7 +32,13 @@ from .checks import Term, _TOKEN, _is_binary
 
 SHEETS = ("stages/*/design*.csv", "stages/*/samplesheet*.tsv", "stages/*/samplesheet*.csv")
 RECORDS = ("stages/*/RUNLOG.md", "stages/*/DECISIONS.md", "stages/*/PROTOCOL.md",
-           "stages/*/PROMOTED*.md", "results/*/PROMOTED*.md")
+           "stages/*/PROMOTED*.md", "results/*/PROMOTED*.md",
+           # The cohort's README and docs state measured numbers the stage records do not
+           # (W024 fix-up: a share in the README, a ceiling in a portability note).
+           "README.md", "docs/**/*.md")
+#: Where a cohort's job scripts are, for the queues they name.
+JOBS = ("stages/*/jobs/*.pbs", "stages/*/*.pbs", "jobs/*.pbs")
+SITE_SHAPES = "docs/site_shapes.txt"
 HAND = "docs/forbidden_terms.txt"
 #: The first line of every generated list says so. A hand list that says it is refused: a generated
 #: list read back as the hand list would be carried verbatim by every later build, and no term could
@@ -82,6 +88,14 @@ _THRESHOLD = re.compile(r"(?:[<>≤≥]|top[- ])\s*$", re.I)
 
 def _setting(line: str, start: int) -> bool:
     return bool(_THRESHOLD.search(line[max(0, start - 6):start]))
+
+
+# A DATE IS NOT A COUNT (W024 fix-up): `Removed 2026-08-06` gave `Removed 2026`.
+_DATE = re.compile(r"(?<![0-9])(?:19|20)\d{2}-\d{2}(?:-\d{2})?(?![0-9])")
+
+
+def _in_a_date(line: str, start: int, end: int) -> bool:
+    return any(d.start() < end and start < d.end() for d in _DATE.finditer(line))
 
 
 def _in_a_path(line: str, start: int, end: int) -> bool:
@@ -212,7 +226,12 @@ def _from_sheets(cohort: Path, axes: set, out: _List):
                     out.drop(f"level {v!r} ({rel} column {col}): one character cannot be told "
                              f"from ordinary text")
                     continue
-                mode = "exact" if len(v) <= 3 else "word"
+                # TWO CHARACTERS KEEP THEIR CASE; THREE OR MORE MATCH IN ANY CASE (W024 fix-up). A
+                # two-character token in another case is overwhelmingly an identifier - `wt` the
+                # variable, gzip's "wt" mode - so a two-letter level is exact. From three characters a recased
+                # copy is the leak's own shape: the verifier found a three-letter diet level in
+                # lowercase in two tools' fixtures, which an exact match let through.
+                mode = "exact" if len(v) <= 2 else "word"
                 out.add(cls, f"{mode}:{v}", f"{rel}:{n}", f"column {col}")
 
 
@@ -224,7 +243,9 @@ def _from_records(cohort: Path, out: _List):
             src, ex = f"{rel}:{n}", _excerpt(line)
 
             def take(cls, term, m):
-                if _setting(line, m.start()):
+                if _in_a_date(line, m.start(), m.end()):
+                    stats["date"] = stats.get("date", 0) + 1
+                elif _setting(line, m.start()):
                     stats["setting"] = stats.get("setting", 0) + 1
                 elif not _in_a_path(line, m.start(), m.end()):
                     out.add(cls, f"word:{term}", src, ex)
@@ -259,6 +280,8 @@ def _from_records(cohort: Path, out: _List):
     if stats["round"]:
         out.drop(f"{stats['round']} round comma-grouped number(s) (a multiple of 100 reads as a "
                  f"setting, and listing it would flag every tool with the same default)")
+    if stats.get("date"):
+        out.drop(f"{stats['date']} number(s) inside a date (a year is not a count)")
     if stats.get("setting"):
         out.drop(f"{stats['setting']} number(s) written as a setting - after <, >, ≤ or ≥, a "
                  f"top-N, or a percentage of one significant digit or ending .0 or .5")
@@ -371,12 +394,15 @@ def _refuse_where(out: Path, cohort: Path):
                              f"repository is the leak it exists to prevent")
 
 
-def build(cohort, out, stems=(), carry=(), profile="single-cell") -> dict:
-    """Write the cohort's generated list to `out`; return what was written, by class."""
+def build(cohort, out, stems=(), carry=(), profile="single-cell", shapes_out=None) -> dict:
+    """Write the cohort's generated list to `out` (and its site shapes to `shapes_out`, when
+    named); return what was written, by class."""
     cohort, out = Path(cohort), Path(out)
     if not cohort.is_dir():
         raise FileNotFoundError(f"no cohort directory at {cohort}")
     _refuse_where(out, cohort)
+    if shapes_out:
+        _refuse_where(Path(shapes_out), cohort)
     stems = [Path(s) for s in stems] or ([cohort / STEMS] if (cohort / STEMS).is_file() else [])
     for f in [*stems, *map(Path, carry)]:
         if not f.is_file():
@@ -433,13 +459,70 @@ def build(cohort, out, stems=(), carry=(), profile="single-cell") -> dict:
         body += ["", "# == not listed, and why =="] + [f"# not listed: {d}" for d in lst.dropped]
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(head + body) + "\n", encoding="utf-8")
+    shapes = _shapes(cohort, Path(shapes_out), stamp, __version__) if shapes_out else None
     return {"out": str(out), "total": len(lst.order), "by_class": {c: v for c, v in by.items() if v},
-            "not_listed": len(lst.dropped)}
+            "not_listed": len(lst.dropped), "shapes_out": str(shapes_out) if shapes_out else None,
+            "shapes": shapes}
+
+
+# QUEUES AND BARE JOB IDS ARE THE SITE'S SHAPES, NOT A COHORT'S WORDS (W024 fix-up). `short` and
+# `long` are English; `-q short` is this site. And a job id written bare, `PBS` and six digits,
+# passed every list, because a list names ids one at a time and the next run has a new one.
+_QUEUE_DIRECTIVE = re.compile(r"^#PBS\s+-q\s+([A-Za-z][\w.-]*)", re.M)
+_QUEUE_COMMAND = re.compile(r"\bqsub\b[^\n`]*?\s-q\s+([A-Za-z][\w.-]*)")
+_QUEUE_PROSE = re.compile(r"\bqueue\s+`([A-Za-z][\w.-]*)`")
+_JOB_ID = re.compile(r"\bPBS\s+(\d{5,8})\b")
+
+
+def _shapes(cohort: Path, out: Path, stamp: str, version: str) -> int:
+    """Write the site's shapes for this cohort: its own `docs/site_shapes.txt` carried verbatim,
+    then a queue shape over every queue its jobs and records name, and a bare job id of the
+    lengths its records write. Returns how many shapes were written."""
+    lines, n = [], 0
+    own = cohort / SITE_SHAPES
+    if own.is_file():
+        lines += ["", f"# == carried: {SITE_SHAPES}, verbatim =="]
+        for i, raw in enumerate(own.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            s = raw.strip()
+            if s and not s.startswith("#"):
+                lines += [f"# [carried] {SITE_SHAPES}:{i}", s]
+                n += 1
+    queues, ids = {}, {}
+    for p in _glob(cohort, JOBS):
+        for m in _QUEUE_DIRECTIVE.finditer(p.read_text(encoding="utf-8", errors="replace")):
+            queues.setdefault(m.group(1), _rel(p, cohort))
+    for p in _glob(cohort, RECORDS):
+        for i, line in enumerate(p.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            for rx in (_QUEUE_COMMAND, _QUEUE_PROSE):
+                for m in rx.finditer(line):
+                    queues.setdefault(m.group(1), f"{_rel(p, cohort)}:{i}")
+            for m in _JOB_ID.finditer(line):
+                ids.setdefault(len(m.group(1)), f"{_rel(p, cohort)}:{i}")
+    if queues:
+        names = sorted(queues)
+        lines += ["", "# == generated: the queues this cohort's jobs and records name =="]
+        lines += [f"# [queue] {q}: {queues[q]}" for q in names]
+        lines.append(rf"(?<![\w-])-q\s+(?:{'|'.join(re.escape(q) for q in names)})\b :: "
+                     f"a queue of this site (-q <queue>) :: -q")
+        n += 1
+    for k in sorted(ids):
+        lines += ["", "# == generated: a job id written bare, as this cohort's records write it ==",
+                  f"# [job id] {ids[k]}", rf"\bPBS \d{{{k}}}\b :: a scheduler job id written bare "
+                  f"(PBS <{k} digits>) :: PBS"]
+        n += 1
+    head = [f"# {cohort.name}: the site's shapes for `sch conform REPO --shapes FILE`, {GENERATED}.",
+            f"# generated {stamp} by `sch conform terms build` (single-cell-harness {version})",
+            "# One per line: <regex> :: <what it is> :: <literal>. Installed beside the site's own",
+            f"# {SITE_SHAPES} by a person, after review; never in a repository."]
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(head + lines) + "\n", encoding="utf-8")
+    return n
 
 
 def run_cli(a) -> int:
-    """`sch conform terms build COHORT --out FILE --stems FILE --carry FILE` (the last two
-    optional and repeatable), as the conform parser read it. Anything else that reached here is refused by name."""
+    """`sch conform terms build COHORT --out FILE --stems FILE --carry FILE --shapes-out FILE`
+    (all but --out optional; stems and carry repeatable), as the conform parser read it.
+    Anything else that reached here is refused by name."""
     if a.repo != "terms" or a.verb != "build" or not a.cohort:
         print("refused: the generator is `sch conform terms build COHORT --out FILE`, and "
               "--out, --stems and --carry belong to it alone (a repository named terms is "
@@ -450,11 +533,14 @@ def run_cli(a) -> int:
               "the cohort and outside any repository, and installed by a person", file=sys.stderr)
         return 2
     try:
-        s = build(a.cohort, a.out, a.stems or [], a.carry or [])
+        s = build(a.cohort, a.out, a.stems or [], a.carry or [],
+                  shapes_out=getattr(a, "shapes_out", None))
     except (ValueError, FileNotFoundError) as e:
         print(f"refused: {e}", file=sys.stderr)
         return 2
     print(f"wrote {s['out']}: {s['total']} term(s) - "
           + ", ".join(f"{c} {v}" for c, v in s["by_class"].items())
           + (f"; {s['not_listed']} line(s) say what was not listed and why" if s["not_listed"] else ""))
+    if s["shapes_out"]:
+        print(f"wrote {s['shapes_out']}: {s['shapes']} shape(s)")
     return 0

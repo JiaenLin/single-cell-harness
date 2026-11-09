@@ -304,7 +304,7 @@ class _RepoOrTerms:
 
 def cmd_conform(a):
     from .conform import conform_against, conform_repo, conform_run, format_checks
-    if a.repo == "terms" or a.verb or a.cohort or a.out or a.stems or a.carry:
+    if a.repo == "terms" or a.verb or a.cohort or a.out or a.stems or a.carry or a.shapes_out:
         from .conform.terms import run_cli
         return run_cli(a)
     if a.against:
@@ -1678,8 +1678,11 @@ def build_parser():
     for flag, more in (("--out", "with `terms build`: where the list is written, outside the "
                                  "cohort and outside any repository"),
                        ("--stems", "with `terms build`: a hand-kept stems file (repeatable)"),
-                       ("--carry", "with `terms build`: a handed-back list to carry (repeatable)")):
-        p.add_argument(flag, help=more, **({} if flag == "--out" else {"action": "append"}))
+                       ("--carry", "with `terms build`: a handed-back list to carry (repeatable)"),
+                       ("--shapes-out", "with `terms build`: also write the site's shapes - its "
+                                        "queues and bare job ids - for --shapes")):
+        p.add_argument(flag, help=more,
+                       **({} if flag in ("--out", "--shapes-out") else {"action": "append"}))
     p.add_argument("--shapes", metavar="FILE",
                    help="site shapes (hostnames, job ids, filesystem roots) - the file belongs to "
                         "the site, not to the tool; $SCH_SITE_SHAPES is the fallback")
