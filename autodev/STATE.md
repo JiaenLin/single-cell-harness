@@ -40,7 +40,7 @@ A6.2 and A6.3. The records are [`audits/0001-gap-review.md`](audits/0001-gap-rev
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | **W001 MERGED** (verifier round 2 PASS): scQC `main` cf0b750 → `a51c38a`, the single-cell rule set (rule 2 holds on `main`); `~/tools/scQC` deployed on `main` (HEAD.txt matches). **W006** running: PBS **782541**, scQC's own `--dbr-sd-sweep default,dbr,1` on the second cohort. The doublet over-call (GAP-C02) traces to D5's `dbr_sd = dbr` (a [0, 2×dbr] band that every call sits inside); the sweep measures the alternative for the PI's card. Next: hygiene (GAP-C03–C10, GAP-018, GAP-025) | W006 gating (PBS) |
+| QC | scQC | **W001 MERGED** (verifier round 2 PASS): scQC `main` cf0b750 → `a51c38a`, the single-cell rule set (rule 2 holds on `main`); `~/tools/scQC` deployed on `main` (HEAD.txt matches). **W006** running: PBS **782541**, scQC's own `--dbr-sd-sweep default,dbr,1` on the second cohort. The doublet over-call (GAP-C02) traces to D5's `dbr_sd = dbr` (a [0, 2×dbr] band that every call sits inside); the sweep measures the alternative for the PI's card. **W007** building: scQC's open defects on the new `main` (C03, C04, C06, C09, C10, GAP-022/024/025) plus a reproduction that compares every table (C08) and an organoid re-run. Next: environment pins (GAP-018, C05) | W006 gating (PBS); W007 building |
 | ANNO | scAnno | W003: the assay governs the rules; the docs are true (GAP-029, GAP-031) | building |
 | INT | scIntegrate | W004: species checked, assay recorded, first-cohort sentence removed, false statements fixed (GAP-034, GAP-037) | building |
 | PROF | scProfile | W002: host-level environment lock, with no kernel edit (GAP-038) | building |
