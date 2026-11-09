@@ -46,6 +46,9 @@ aligner's call.
 - **Refused at `init`, before anything is written:** a manifest that names one sample twice, a
   missing part, a part in a form no reader is written for (a 10x `.h5` or a MEX directory, for
   now), or a missing scope key.
+- **Refused at every plugin run:** a manifest or a part that the running user can write. A plugin
+  is handed the parts themselves, so E2 holds by their permissions. Delivered data are immutable:
+  `chmod a-w` them.
 
 ## 2. Slot bindings
 

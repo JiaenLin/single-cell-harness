@@ -98,6 +98,10 @@ def library_cohort(dest: Path, libraries: int = 4, droplets: int = 120, assay: s
                                      str(part), "control" if i % 2 == 0 else "treated"]))
     sheet = dest / "samplesheet.tsv"
     sheet.write_text("# a samplesheet as a QC tool reads it\n" + "\n".join(lines) + "\n")
+    # DELIVERED DATA ARE IMMUTABLE (LAYOUT: data/ is never written): read-only, as a mount demands
+    # of every observation file a plugin is handed (ARCHITECTURE E2; harness W010).
+    for f in [sheet] + sorted((dest / "objects").glob("*.h5ad")):
+        f.chmod(0o444)
     registry = dest / "registry.tsv"
     registry.write_text("species\tbuild\tpath\nspecies_x\tref_1\treferences/species_x/ref_1\n")
     design = dest / "design.csv"

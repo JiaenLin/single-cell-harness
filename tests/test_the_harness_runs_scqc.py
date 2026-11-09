@@ -168,13 +168,26 @@ class TheHarnessRunsScqc(unittest.TestCase):
             with self.subTest(why):
                 fields = lines[3].split("\t")              # L2
                 edit(fields)
+                self.sheet.chmod(0o644)
                 self.sheet.write_text("\n".join(lines[:3] + ["\t".join(fields)] + lines[4:]) + "\n")
+                self.sheet.chmod(0o444)
                 shutil.rmtree(self.stack, ignore_errors=True)
                 self.init("--context", "assay=snrna")
                 rc, r = self.mount()
                 self.assertEqual(rc, 2, r)
                 self.assertIn("L2", r["reason"])
                 self.assertEqual(self.scqc_runs(), [])
+
+    def test_a_library_this_user_can_write_is_refused_before_scqc_runs(self):
+        """scQC reads the libraries in place, so the mount demands they are read-only (E2)."""
+        self.init("--context", "assay=snrna")
+        part = self.tmp / "objects" / "L3_ambient.h5ad"
+        part.chmod(0o644)
+        rc, r = self.mount()
+        self.assertEqual((rc, r["status"]), (2, "refused"), r)
+        self.assertIn("L3_ambient.h5ad", r["reason"])
+        self.assertIn("chmod a-w", r["fix"])
+        self.assertEqual(self.scqc_runs(), [])
 
     # ----------------------------------------------------------------------- the stage record
     def test_scqcs_refusal_is_the_mounts_refusal_with_its_fix(self):

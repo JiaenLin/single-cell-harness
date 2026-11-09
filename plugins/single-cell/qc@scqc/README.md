@@ -26,6 +26,8 @@ default. A name scQC does not have is refused. `--project` and `--samplesheet` a
 parameters: the adapter sets them to the run's `out_dir/scqc` and to the stack's manifest.
 
 These are refused before any compute:
+- a samplesheet or library the running user can write. scQC reads them in place, and only their
+  permissions keep a run from writing them (E2): `chmod a-w` them, as delivered data are;
 - an assay the stack did not declare (`--context assay=`);
 - a library whose own `assay` disagrees with the stack, or any other declared axis the samplesheet
   also carries;

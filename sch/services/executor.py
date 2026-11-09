@@ -14,7 +14,11 @@ it) submits each run as a PBS job:
     it is made with a bare mkdir, so a second writer aborts instead of sharing it;
   - the JOB seals: an EXIT trap writes SEALED.txt or FAILED.txt with its exit, its job id and any
     expected product that is missing. The executor reads the exit from that seal first, then from
-    qstat's Exit_status; with neither, the exit is unknown - which is a death, never a zero;
+    qstat's Exit_status; with neither, the exit is unknown. The kernel treats every exit but 0,
+    unknown included, as a death, even when the run left an out.json (verifier W010 F1);
+  - a qstat that cannot say - failing, or answering 0 with nothing in it - is not the job ending.
+    After `pbs.qstat_outage_polls` such polls in a row (5) `wait` stops with `stopped: false` and
+    the handle stays live, so quiesce sends qdel and confirms it (verifier W010 F2);
   - a stop is a qdel CONFIRMED by qstat (E5): a job that cannot be confirmed gone reports
     `stopped: false`, and the kernel fails the unmount on it.
 
@@ -188,6 +192,8 @@ class PbsHandle:
         self.poll = float(cfg.get("poll_s", 30))
         self.grace = float(cfg.get("stop_grace_s", 120))
         self.visibility = float(cfg.get("seal_visibility_s", 120))
+        # How many polls in a row qstat may say nothing before `wait` stops waiting for an outage.
+        self.outage_polls = int(cfg.get("qstat_outage_polls", 5))
         self.started = time.perf_counter()
         self.log = None
         self.done = False
@@ -195,14 +201,19 @@ class PbsHandle:
                       "seconds": None, "executor": "pbs", "job": job, "seal": None}
 
     def state(self) -> tuple:
-        """(job_state or None, Exit_status or None, known). `known` is False when qstat failed
-        for a reason other than not knowing the job, which confirms nothing either way."""
+        """(job_state or None, Exit_status or None, known).
+
+        `known` is True when the scheduler said something about the job: its state, its exit, or
+        that it no longer knows it ("Unknown Job Id"), which a finished job ends as. Anything else -
+        qstat failing, or answering 0 with nothing in it - says nothing either way (verifier W010
+        F2): an outage is not an ending."""
         r = subprocess.run(self.qstat + ["-x", "-f", self.job], capture_output=True, text=True)
         st = re.search(r"job_state\s*=\s*(\w)", r.stdout or "")
         ex = re.search(r"Exit_status\s*=\s*(-?\d+)", r.stdout or "")
-        if r.returncode != 0 and not st:
-            return None, None, "unknown job" in ((r.stderr or "") + (r.stdout or "")).lower()
-        return (st.group(1) if st else None), (int(ex.group(1)) if ex else None), True
+        if st or ex:
+            return (st.group(1) if st else None), (int(ex.group(1)) if ex else None), True
+        said = ((r.stderr or "") + (r.stdout or "")).lower()
+        return None, None, r.returncode != 0 and "unknown job" in said
 
     @staticmethod
     def _ended(st, ex, known) -> bool:
@@ -241,9 +252,15 @@ class PbsHandle:
         pause, unknown = min(2.0, self.poll), 0
         while True:
             st, ex, known = self.state()
-            unknown = 0 if (st is not None or known) else unknown + 1
-            if self._ended(st, ex, known) or unknown >= 5:
+            if self._ended(st, ex, known):
                 break
+            unknown = unknown + 1 if not known else 0
+            if unknown >= self.outage_polls:
+                # THE SCHEDULER CANNOT SAY, which is not the job ending (verifier W010 F2). Give up
+                # waiting with stopped=false and leave the handle live: the exit stays unknown (a
+                # death to the kernel), and quiesce sends qdel and confirms it, or fails E5.
+                self.facts["seconds"] = round(time.perf_counter() - self.started, 3)
+                return dict(self.facts)
             if self.timeout is not None and time.perf_counter() - self.started > self.timeout:
                 self.facts["timed_out"] = True
                 return self.stop()

@@ -260,17 +260,20 @@ cross every version boundary the data itself cannot.
   "params": {"mode": "stochastic"},
   "upstream": {"cellcycle": "/abs/path/to/its/out_dir"},
   "provenance": {"tools": [], "search_paths": []},
-  "observations": {"path": "/abs/path/to/observations", "parts": null, "scope": null, "joiner": null},
+  "observations": null,
   "profile_context": {}
 }
 ```
 
 Every path absolute. `profile_context` carries whatever the profile defines and the generic
-contract does not know about. `observations` names the observations themselves (added by W010;
-X2). When they arrive as a parts manifest, `parts` is the column naming each part's file, `scope`
-is the column scoping identities, and `joiner` is how an identity is written. `data` is then an
-identity-level view, and a plugin that needs the matrices reads them from the parts, in place.
-Reads are open (A1). The digest over every part is what shows that a plugin wrote none of them.
+contract does not know about. `observations` (added by W010; X2) is null on one observation file:
+a plugin is handed only the read-only view in `data` (E2). When the observations arrive as a parts
+manifest it is `{"path", "parts", "scope", "joiner"}`: the manifest, the column naming each part's
+file, the column scoping identities, and how an identity is written. `data` is then an
+identity-level view, and a plugin that needs the matrices reads them from the parts, in place. E2
+then holds by their permissions: the kernel runs no plugin while the manifest or any part is
+writable by the running user, and names the files with the fix (`chmod a-w`). The digest over every
+part (A1) is the second witness.
 
 **`out.json`**
 

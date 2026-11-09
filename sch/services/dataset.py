@@ -398,12 +398,34 @@ class Dataset(Service):
                 self._inventory = self.reader.inventory(self.observations)
         return self._inventory
 
-    def describe_observations(self) -> dict:
-        """What a plugin is told about the observations themselves (in.json `observations`).
-        Reads are open (A1): a plugin that reads parts in place reads them from here, and the
-        digest over every part is what proves it wrote none of them."""
+    def describe_observations(self):
+        """What a plugin is told about the observations themselves (in.json `observations`): null
+        on one observation file, where a plugin is handed only the read-only view (E2), and the
+        manifest on a parts stack, whose libraries a plugin must read in place."""
+        if not self.parts:
+            return None
         return {"path": str(self.observations), "parts": self.parts, "scope": self.scope,
-                "joiner": self.joiner if self.parts else None}
+                "joiner": self.joiner}
+
+    def writable(self) -> list:
+        """The observation files a plugin is handed and this user could write: on a parts stack
+        the manifest and every part. E2 holds by what a plugin is handed, so none may be writable
+        (verifier W010 F3); on one file a plugin is handed only the read-only view, and this is
+        empty."""
+        if not self.parts:
+            return []
+        return [str(f) for f in self._files() if os.access(f, os.W_OK)]
+
+    def refuse_writable(self):
+        """Raise, naming the files and the fix, while any observation file a plugin is handed is
+        writable by the running user."""
+        w = self.writable()
+        if w:
+            raise DatasetError(
+                f"{len(w)} observation file(s) are writable by this user: "
+                f"{', '.join(Path(x).name for x in w[:5])}{' ...' if len(w) > 5 else ''}. A plugin "
+                f"reads them in place, so nothing but their permissions keeps it from writing them "
+                f"(E2). Delivered data are immutable: chmod a-w {' '.join(w)}")
 
     def observation_capabilities(self) -> list:
         caps = ["observations/raw"]

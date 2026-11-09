@@ -327,7 +327,9 @@ before Phase 10 builds on it.
 > value for any of them and refuses a missing one before qsub. For each run:
 > - the run directory exists before qsub;
 > - the job's EXIT trap seals it, with the exit, the job id and any missing product;
-> - the exit is read from that seal, then from qstat, and an outcome nobody recorded is a death;
+> - the exit is read from that seal, then from qstat. A run that exits non-zero, is killed, or ends
+>   with nobody recording how is a death, even after writing `out.json`;
+> - a qstat outage is not an ending: the wait stops, and the job is qdel'd and confirmed;
 > - a full queue is waited for;
 > - a stop is a qdel confirmed through qstat.
 >

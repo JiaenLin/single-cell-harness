@@ -171,16 +171,28 @@ def cmd_materialise(a):
 
 
 def cmd_ask(a):
+    from .services.dataset import DatasetError
     st = _stack(a)
-    r = st.ask(a.probe, _kv(a.param), {"out_dir": a.subject} if a.subject else None)
+    try:
+        r = st.ask(a.probe, _kv(a.param), {"out_dir": a.subject} if a.subject else None)
+    except DatasetError as e:
+        _emit(a, {"status": "refused", "reason": str(e)}, f"  refused: {e}")
+        st.close()
+        return 2
     _emit(a, r)
     st.close()
     return 0 if not r["died"] else 2
 
 
 def cmd_scratch(a):
+    from .services.dataset import DatasetError
     st = _stack(a)
-    r = st.scratch(a.script, a.label, _kv(a.param))
+    try:
+        r = st.scratch(a.script, a.label, _kv(a.param))
+    except DatasetError as e:
+        _emit(a, {"status": "refused", "reason": str(e)}, f"  refused: {e}")
+        st.close()
+        return 2
     _emit(a, r, f"  scratch {r['id']}: {'died' if r['died'] else (r['out'] or {}).get('headline', 'ran')}\n"
                 f"  {r['dir']}\n  nothing here is quotable (A2)")
     st.close()

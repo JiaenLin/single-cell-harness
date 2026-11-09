@@ -286,6 +286,9 @@ class Stack:
         out_dir.mkdir(parents=True)
         if view is None:
             view, _ = self.materialise()
+        # E2 BY WHAT A PLUGIN IS HANDED (verifier W010 F3): on a parts stack it is handed the
+        # libraries themselves, so none may be writable when it runs. Every plugin run comes here.
+        self.dataset.refuse_writable()
         inp = {"contract": CONTRACT, "profile": self.profile.id, "plugin": name or manifest.name,
                "plugin_version": manifest.version, "state_version": manifest.state_version,
                "data": str(view.path), "out_dir": str(out_dir), "keys": self.keymap(),
@@ -312,9 +315,13 @@ class Stack:
                                   name=name or manifest.name, expect=[out_dir / "out.json"])
         (run_dir / "facts.json").write_text(json.dumps(facts, indent=1))
         out_path = out_dir / "out.json"
-        if not out_path.exists():
+        # A DEATH IS A DEATH, WHATEVER IS ON DISK (verifier W010 F1). An out.json written before the
+        # run exited non-zero, was killed, or ended in a way nobody recorded (exit None) is not a
+        # result: it was mounted before, and a killed job's mask reached the view. `run.refuse()`
+        # exits 0, so a refusal is still a refusal.
+        if not out_path.exists() or facts.get("exit") != 0:
             self.prov.append("plugin/died", plugin=manifest.name, facts=facts,
-                             stderr=str(run_dir / "stderr.log"))
+                             out_json=out_path.exists(), stderr=str(run_dir / "stderr.log"))
             return facts, None
         try:
             out = json.loads(out_path.read_text())
@@ -351,6 +358,15 @@ class Stack:
             return plan
         if m.layer == "checkpoint" and not m.data.get("rebuild_from"):
             plan.update(admitted=False, reason="a checkpoint must declare rebuild_from", fix="add rebuild_from")
+            return plan
+        writable = self.dataset.writable()
+        if writable:
+            plan.update(admitted=False,
+                        reason=f"observation file(s) writable by this user: "
+                               f"{', '.join(Path(x).name for x in writable[:5])}"
+                               f"{' ...' if len(writable) > 5 else ''}; a plugin reads them in "
+                               f"place, so only their permissions keep it from writing them (E2)",
+                        fix="chmod a-w " + " ".join(writable))
             return plan
         resolved, reads_from, missing = self.registry.resolve(
             m, self.keymap(), self.dataset.observation_capabilities(), self.profile.capabilities)

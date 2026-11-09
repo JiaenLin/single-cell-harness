@@ -25,6 +25,7 @@ from pathlib import Path
 from helpers import HAVE_H5PY, PROTO_HEAD, library_cohort, write_part, write_plugin
 from sch.cli import main
 from sch.kernel import Stack
+from sch.services.invariant import InvariantFailure
 
 
 def cli(*argv):
@@ -71,13 +72,32 @@ class ACohortArrivesAsLibraries(unittest.TestCase):
                 self.assertEqual(rows[1].split(",")[:2], ["L1|BC00000-1", "L1"])
                 st.close()
 
-    def test_the_digest_covers_every_part_and_a_write_to_one_fails_a1(self):
+    def test_the_digest_covers_every_part_and_a1_sees_a_write_to_one(self):
         sheet, _, _ = library_cohort(self.tmp, libraries=3, droplets=20)
         self.assertEqual(self.init(sheet)[0], 0)
         st = Stack.open(self.tmp / "stack")
         before = st.dataset.digest()
-        # A plugin that writes to a library: it can find the parts (reads are open, A1), and the
-        # write is caught by the digest over every part, not only over the manifest.
+        part = self.tmp / "objects" / "L2_ambient.h5ad"
+        part.chmod(0o644)
+        with open(part, "ab") as fh:              # a write that came from outside any plugin
+            fh.write(b"\0")
+        part.chmod(0o444)
+        with self.assertRaises(InvariantFailure):
+            st.inv.a1_no_undeclared_write(st.dataset)
+        st.close()
+        st2 = Stack.open(self.tmp / "stack")
+        self.assertNotEqual(st2.dataset.digest(), before)
+        st2.close()
+
+    def test_no_plugin_runs_while_an_observation_file_is_writable(self):
+        """ARCHITECTURE E2: a plugin cannot mutate the dataset except through a declared
+        contribution, enforced by what it is HANDED, not by inspection. A parts stack hands a
+        plugin the libraries themselves (they are read in place), so a mount refuses while any of
+        them - or the manifest - is writable by the running user, naming the files and the fix.
+        Read-only, a plugin that tries to write one fails and the observations are untouched.
+        verifier W010 F3: before this, only the after-the-fact digest (A1) stood in the way."""
+        sheet, _, _ = library_cohort(self.tmp, libraries=3, droplets=20)
+        self.assertEqual(self.init(sheet)[0], 0)
         write_plugin(self.tmp / "plugins", "scribbler",
                      {"profile": "single-cell/1.0", "needs": [], "provides": []},
                      PROTO_HEAD + """
@@ -89,13 +109,37 @@ with open(first[obs["parts"]], "ab") as fh:
     fh.write(b"\\0")
 sys.exit(run.finish(headline="wrote to a library"))
 """)
+        parts = sorted((self.tmp / "objects").glob("*.h5ad"))
+        bytes_before = [p.read_bytes() for p in parts]
+        parts[1].chmod(0o644)                     # one library left writable
+        st = Stack.open(self.tmp / "stack")
         r = st.mount(str(self.tmp / "plugins" / "scribbler"))
         self.assertEqual(r.status, "refused", r.reason)
-        self.assertIn("A1", r.reason)
+        self.assertIn(parts[1].name, r.reason)
+        self.assertIn("chmod a-w", r.fix)
+        self.assertFalse((st.dir / "plugins" / "scribbler").exists(), "the plugin ran")
         st.close()
-        st2 = Stack.open(self.tmp / "stack")
-        self.assertNotEqual(st2.dataset.digest(), before)
-        st2.close()
+        parts[1].chmod(0o444)
+        st = Stack.open(self.tmp / "stack")
+        r = st.mount(str(self.tmp / "plugins" / "scribbler"))
+        self.assertEqual(r.status, "died", r.reason)   # its write was refused by the filesystem
+        self.assertEqual([p.read_bytes() for p in parts], bytes_before)
+        st.inv.a1_no_undeclared_write(st.dataset)
+        st.close()
+
+    def test_a_plugin_on_one_observation_file_is_handed_only_the_read_only_view(self):
+        """The observations' own path is handed out only where a plugin must read parts in place.
+        On one file, a plugin gets the read-only view, as before W010."""
+        rows = self.tmp / "rows.csv"
+        rows.write_text("id,score\nR1,1\nR2,2\n")
+        st = Stack.init(self.tmp / "table", "table/1.0", str(rows), keys={"value": "score"})
+        write_plugin(self.tmp / "plugins", "looks", {}, PROTO_HEAD + "sys.exit(run.finish())\n")
+        r = st.mount(str(self.tmp / "plugins" / "looks"))
+        self.assertEqual(r.status, "mounted", r.reason)
+        inp = json.loads((st.dir / "plugins" / "looks" / "in.json").read_text())
+        self.assertIsNone(inp["observations"])
+        self.assertNotIn(str(rows.resolve()), json.dumps(inp))
+        st.close()
 
     def test_a_manifest_that_cannot_define_observations_is_refused_at_init(self):
         sheet, _, _ = library_cohort(self.tmp / "good", libraries=2, droplets=10)

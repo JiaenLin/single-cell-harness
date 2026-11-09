@@ -193,6 +193,80 @@ class ThePbsExecutor(unittest.TestCase):
         self.assertIn("exit=143\n", seal)
         self.assertFalse((run / "pbs" / "SEALED.txt").exists())
 
+    # ------------------------------------------------------------------------ a death is a death
+    def _dies_after_out(self, tail: str):
+        """A plugin that writes a whole out.json, with a mask, and THEN fails."""
+        write_plugin(self.tmp / "plugins", "dies_after_out", {"provides": ["mask/half"]}, PROTO_HEAD + """
+import csv
+rows = list(csv.DictReader(open(run.data)))
+idc = run.inp["identity"]["column"]
+run.mask("half", {r[idc]: i % 2 == 0 for i, r in enumerate(rows)}, reason="every other row",
+         id_field=idc)
+run.finish(headline="wrote out.json, then failed")
+""" + tail)
+        return str(self.tmp / "plugins" / "dies_after_out")
+
+    def test_a_job_that_fails_after_writing_out_json_is_a_death(self):
+        """verifier W010 F1: out.json on disk is not a result when the job exited non-zero, was
+        killed, or nobody recorded how it ended - each mounted before (rc 0, the view masked)."""
+        cases = (("exit 3", "sys.exit(3)\n", None),
+                 ("TERM", "import signal; os.kill(os.getpid(), signal.SIGTERM)\n", None),
+                 ("SIGKILL, forgotten by qstat",
+                  "import signal; os.kill(os.getppid(), signal.SIGKILL)\n", "forgotten"))
+        for why, tail, qstat in cases:
+            with self.subTest(why):
+                shutil.rmtree(self.stack / "plugins", ignore_errors=True)
+                if qstat == "forgotten":      # PBS's history no longer holds the job
+                    w = self.tmp / "bin" / "qstat_forgets"
+                    w.write_text('#!/bin/sh\necho "qstat: Unknown Job Id $3" >&2\nexit 153\n')
+                    w.chmod(0o755)
+                    self.declare(commands={**self.commands, "qstat": str(w)})
+                else:
+                    self.declare()
+                rc, r = self.mount(self._dies_after_out(tail))
+                self.assertEqual((rc, r["status"]), (2, "died"), r)
+                rc, out = cli("--json", "materialise", "--stack", str(self.stack))
+                view = json.loads(out)
+                self.assertEqual(view["kept"], view["total"], "a dead plugin's mask reached the view")
+        # and without a scheduler: the rule is the kernel's, not the executor's
+        decl = yamlish.load(self.stack / "stack.yml")
+        decl.pop("executor")
+        decl.pop("pbs")
+        yamlish.dump(decl, self.stack / "stack.yml")
+        shutil.rmtree(self.stack / "plugins", ignore_errors=True)
+        rc, r = self.mount(self._dies_after_out("sys.exit(3)\n"))
+        self.assertEqual((rc, r["status"]), (2, "died"), r)
+
+    def test_a_qstat_outage_is_not_the_end_of_a_job(self):
+        """verifier W010 F2: qstat failing for a few polls - or answering 0 with nothing in it -
+        while the job runs is not the job ending. `wait` gives up with stopped=false, and the
+        handle stays live, so quiesce sends qdel and confirms it (E5)."""
+        for flavour, body in (("cannot connect", 'echo "qstat: cannot connect to server" >&2\nexit 1'),
+                              ("exit 0, nothing said", "exit 0")):
+            with self.subTest(flavour):
+                state = self.tmp / f"state_{len(flavour)}.json"
+                os.environ["FAKE_PBS_STATE"] = str(state)
+                os.environ["FAKE_PBS_MODE"] = "hold"
+                counter = self.tmp / f"qstat_calls_{len(flavour)}"
+                w = self.tmp / "bin" / f"qstat_outage_{len(flavour)}"
+                w.write_text(f'#!/bin/sh\nn=$(cat "{counter}" 2>/dev/null || echo 0); n=$((n+1)); '
+                             f'echo $n > "{counter}"\nif [ $n -le 6 ]; then {body}; fi\n'
+                             f'exec "{sys.executable}" "{FIXTURES / "fake_pbs.py"}" qstat "$@"\n')
+                w.chmod(0o755)
+                ex = make_executor("pbs", config=self.config(commands={**self.commands,
+                                                                       "qstat": str(w)}))
+                run = self.tmp / f"outage_{len(flavour)}"
+                run.mkdir()
+                h = ex.launch([sys.executable, "-c", "pass"], run, run / "stderr.log")
+                facts = h.wait()
+                self.assertFalse(facts["stopped"], facts)
+                self.assertIsNone(facts["exit"])
+                q = ex.quiesce()
+                self.assertEqual((q["requested"], q["stopped"]), (True, True), q)
+                jobs = json.loads(state.read_text())
+                self.assertTrue([c for c in jobs["calls"] if c[0] == "qdel"], "quiesce sent no qdel")
+                self.assertEqual({j["state"] for j in jobs["jobs"].values()}, {"F"})
+
     # ------------------------------------------------------------------------ E5
     def test_a_stop_is_a_qdel_confirmed_and_an_unconfirmable_one_fails_e5(self):
         work = self.tmp / "work"
