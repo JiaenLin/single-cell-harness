@@ -260,12 +260,17 @@ cross every version boundary the data itself cannot.
   "params": {"mode": "stochastic"},
   "upstream": {"cellcycle": "/abs/path/to/its/out_dir"},
   "provenance": {"tools": [], "search_paths": []},
+  "observations": {"path": "/abs/path/to/observations", "parts": null, "scope": null, "joiner": null},
   "profile_context": {}
 }
 ```
 
 Every path absolute. `profile_context` carries whatever the profile defines and the generic
-contract does not know about.
+contract does not know about. `observations` names the observations themselves (added by W010;
+X2). When they arrive as a parts manifest, `parts` is the column naming each part's file, `scope`
+is the column scoping identities, and `joiner` is how an identity is written. `data` is then an
+identity-level view, and a plugin that needs the matrices reads them from the parts, in place.
+Reads are open (A1). The digest over every part is what shows that a plugin wrote none of them.
 
 **`out.json`**
 

@@ -15,8 +15,10 @@ everything downstream knows when one does.
 > **Status: the kernel exists, and the development suite around it is in daily use.** `sch`
 > implements Phase 1 (the domain-free core, proved on a toy profile), Phase 2 (the profile and the
 > 15-check validator, every rule tripped by a broken plugin), the gate-is-a-probe machinery of
-> Phase 4, and the agent surface of Phase 10 with its adversarial suite. Phases 3, 5–9 and 11 are
-> not built.
+> Phase 4, and the agent surface of Phase 10 with its adversarial suite. Phase 3's first adapter,
+> `qc@scqc` (the first tool the kernel runs), and Phase 9's `pbs` executor are built (W010) and
+> not yet graded: the adapter waits on a pre-declared reproduction on the reference cohort, the
+> executor on a run against a real scheduler. Phases 5–8 and 11 are not built.
 >
 > `sch conform` checks a child tool against
 > [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it; all four pass with

@@ -86,10 +86,12 @@ changed no number.
 
 ## Where compute runs and where files land
 
-Not decided here. The site skill decides it — whichever one is installed for the cluster in use — and the
-kernel refuses `executor: pbs` until Phase 9 rather than pretending. Inside a scheduler job the
-kernel runs with `executor: local`, which is the compliant form there. Never author code on the
-cluster; never let a tool choose its own output location; never run a matrix on a login node.
+Not decided here. The site skill decides it — whichever one is installed for the cluster in use. The
+kernel itself runs inside a scheduler job, where `executor: local` is the compliant form. With
+`executor: pbs` (W010), each plugin run is a job of its own. Its queue, `select` and walltime come
+from the `pbs:` block of the stack or of the site layer (`$SCH_SITE/stack.yml`); the kernel holds
+none and refuses a missing one. The job seals its run. Never author code on the cluster; never let
+a tool choose its own output location; never run a matrix on a login node.
 
 ## Before you say a phase, a run or a change is done
 
