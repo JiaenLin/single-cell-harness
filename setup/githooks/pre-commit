@@ -1,6 +1,6 @@
 #!/bin/bash
 # THE COMMIT GATE (harness ADR-0023). Installed once per clone by `git config core.hooksPath
-# setup/githooks`; `sch conform .` is red until it is. ADR-0022 closed with two commits landed
+# setup/githooks`; `sch conform .` warns until it is. ADR-0022 closed with two commits landed
 # while the suite was red, which the tool's own gate (ADR-0015) would have refused.
 set -euo pipefail
 # THE SUITE MUST NOT INHERIT THE REPOSITORY GIT IS COMMITTING TO (ADR-0029). In a linked

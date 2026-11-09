@@ -141,6 +141,9 @@ class TestConform(unittest.TestCase):
             g = by_id(conform_repo(r), "G1 ")[0]
             self.assertFalse(g["ok"], "a clone with no hooksPath passes the gate check")
             self.assertIn("core.hooksPath setup/githooks", g["fix"])
+            # A WARNING, NOT A FAILURE (ADR-0029): a fresh clone made to read or verify commits
+            # nothing, and failing it made `sch conform` red on every fresh clone by construction.
+            self.assertEqual("warn", g["level"])
             subprocess.run(["git", "-C", str(r), "config", "core.hooksPath", "setup/githooks"], check=True)
             self.assertTrue(by_id(conform_repo(r), "G1 ")[0]["ok"])
         self.assertTrue(by_id(conform_repo(ROOT), "G1 ")[0]["ok"],
@@ -159,6 +162,17 @@ class TestConform(unittest.TestCase):
 
     def _g1(self, repo):
         return by_id(conform_repo(repo), "G1 ")[0]
+
+    @unittest.skipUnless(shutil.which("git"), "no git binary here - a compute node has none")
+    def test_a_repository_that_versions_no_gate_is_not_failed_for_it(self):
+        """Measured 2026-11-09: G1 was the ONLY failing row of `sch conform` on fresh clones of
+        scQC, scAnno, scIntegrate and scProfile - three version no gate at all - so GOALS A4.1's
+        "passes sch conform" was out of reach by construction (ADR-0029)."""
+        r = self.tmp / "gateless"
+        subprocess.run(["git", "init", "-q", str(r)], check=True)
+        g = self._g1(r)
+        self.assertTrue(g["ok"], g["evidence"])
+        self.assertIn("versions no commit gate", g["evidence"][0])
 
     @unittest.skipUnless(shutil.which("git"), "no git binary here - a compute node has none")
     def test_an_absolute_hooks_path_to_the_versioned_directory_is_the_gate(self):
