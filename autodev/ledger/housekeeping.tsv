@@ -10,3 +10,4 @@ stamp	pass	kind	target	action	reason
 2026-11-09T10:56:53Z	periodic	check	cluster, read-only	qstat: 782882 (W012 job 28) and 782918 (W013) running, 782883 sealed; 9 curation_* jobs waiting are not this program's; no scratch older than 14 days	rule 5
 2026-11-09T10:59:02Z	periodic	github	autodev branches on all 8 remotes	asked the W014, W016 and W017 builders to push now and after every commit	their branches were not on GitHub; session scratch is not durable
 2026-11-09T10:59:02Z	periodic	docs	autodev/STATE.md	every lane row refreshed; scoreboard header names pass 0002	STATE current
+2026-11-09T11:01:07Z	periodic	memory	autodev-program-2026-11 note	3 stale facts corrected (scQC checkout, B1 hook fix and guard test landed); 6 lessons added; MEMORY.md index unchanged	memory verified against STATE.md
