@@ -259,6 +259,22 @@ class TheRulesOfARoundAreCheckedNotPromised(unittest.TestCase):
         self.assertEqual(RU.BROKEN, self.check(rules=grown)["end_to_end"]["verdict"],
                          "the two lists grew into each other and nothing said so")
 
+    def test_an_artefact_in_neither_list_is_named_and_not_broken(self):
+        """A conversion of a tool the family has never seen, or a held-out plugin migrated and
+        not yet run end to end, is in neither list. Under the equality it broke the rule by
+        existing - the blind deseq2 conversion stayed red on exactly this (ADR-0029)."""
+        self.write("gamma", "temper(stock)")
+        r = self.check()["end_to_end"]
+        self.assertEqual(RU.HELD, r["verdict"], r["says"])
+        self.assertIn("gamma", " ".join(r["detail"]))
+
+    def test_an_end_to_end_artefact_that_does_not_exist_is_broken(self):
+        missing = RULES.replace("    names: [alpha]\n    means: one seam",
+                                "    names: [alpha, omega]\n    means: one seam")
+        r = self.check(rules=missing)["end_to_end"]
+        self.assertEqual(RU.BROKEN, r["verdict"])
+        self.assertIn("omega", r["says"])
+
     def test_a_repository_declaring_no_rules_says_so(self):
         rows = self.check(rules="")
         self.assertEqual(1, len(rows))

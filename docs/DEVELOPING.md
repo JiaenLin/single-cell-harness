@@ -410,7 +410,7 @@ command checks them. It reports and never writes.
 | `maker_output` | no block of `min_block`+ significant lines is repeated inside an artefact or shared between two |
 | `held_out` | the named artefacts are unchanged over the range |
 | `in_place` | every changed path is declared mechanism, or the artefact the round is converting (or a companion generated beside it) |
-| `end_to_end` | what runs end to end is exactly the complement of the held-out set |
+| `end_to_end` | nothing held out runs end to end; an artefact in neither list is named, not broken (ADR-0029) |
 
 **Duplication is the signal for hand-written mechanism.** Method is written once because it is
 about one method; mechanism appears twice because it is about all of them. Measured: one plugin
