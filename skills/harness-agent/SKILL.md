@@ -36,6 +36,9 @@ harness's own plugins, and scProfile's as well when you pass `--scprofile CHECKO
 - A field shown as `not declared` is just that. Do not fill it in. In particular, a plugin that
   does not declare its assays has not said whether it is right for nuclei.
 - `sch catalogue show <id>` gives one plugin in full, with its parameters.
+- **A `scprofile:` row cannot be planned or mounted through `sch` yet.** The harness lists it but
+  does not run it (ROADMAP Phase 6, the mount). Run it with scProfile's own CLI, from the checkout
+  you named.
 
 ```
 sch catalogue [--scprofile CHECKOUT] --json   which plugins exist, what each answers and needs

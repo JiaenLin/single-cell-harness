@@ -3,9 +3,15 @@
     sch catalogue --scprofile CHECKOUT --json      every plugin, one row each, for an agent
     sch catalogue show ID --scprofile CHECKOUT     one plugin whole: parameters, figures, limits
 
-EXIT CODES, as every `sch` command (sch/cli.py): 0, every candidate file was read; 2, something is
-wrong and it is named - a plugin that could not be read, a checkout that is not one, or a `show`
-whose id names nothing or more than one plugin.
+EXIT CODES, as every `sch` command (sch/cli.py). 2 always means something is wrong, and the
+output names it.
+- The listing exits 0 when every candidate file was read. It exits 2 when one could not be, and
+  names each such file.
+- `show` exits 0 when its id names exactly one plugin that was read, even if other files could not
+  be: one broken plugin must not stop an agent reading another. The JSON names those files under
+  `errors`, and the text gives their count. It exits 2 when the id names nothing, listing the
+  unreadable files as possible matches, or when it names more than one plugin.
+- Either exits 2 for a checkout that is not one.
 """
 from __future__ import annotations
 

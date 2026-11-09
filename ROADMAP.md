@@ -236,7 +236,9 @@ every plugin, and mounts a UPF plugin with nothing lost.
 **Build.**
 1. `sch catalogue`, which reads every layout without importing a tool.
 2. The mount: the harness runs a UPF plugin, velocity or cellcycle first, either through an
-   adapter over scProfile's CLI (ADR-0004) or by reading the `PLUGIN` literal itself.
+   adapter over scProfile's CLI (ADR-0004) or by reading the `PLUGIN` literal itself. It runs both
+   of the format's execution phases: `run(ctx)` per unit, and `compare(ctx)` per arm pair where
+   the plugin defines it, as cellchat does.
 3. The maker makes ADR-0030's added keys required (`assays`, an exact `wraps.version`,
    `wraps.doi`).
 
@@ -248,6 +250,10 @@ every plugin, and mounts a UPF plugin with nothing lost.
 | identical output | a UPF plugin mounted through the harness produces byte-identical results to the same plugin under scProfile |
 | AI-native (A4.4) | a cold agent picks a plugin from `sch catalogue --json` for a stated question and runs it through the agent surface |
 | no second format | the harness's `plugin.yml` directory remains only for plugins the kernel itself mounts, until the kernel mounts the UPF |
+
+The old evaluation row "the roadmap survives" is dropped. It said that `ROADMAP.md`'s tier-1
+plugins remain buildable under the harness contract. The amended phase rebuilds no plugin under the
+directory contract, because the plugins stay in the UPF. The "one format" row replaces it.
 
 **Falsifier.** If a UPF plugin cannot be mounted by the harness without loss, the kernel's
 contract is narrower than the format the pool uses. That is the serious finding the original phase

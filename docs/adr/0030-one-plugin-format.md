@@ -82,11 +82,22 @@ DEVPOINTS.yaml, and in scProfile that declaration describes the one-file layout.
 ## Decision
 
 1. **The Universal Plugin Format (UPF) is the maker's layout.** A plugin is one Python file,
-   `<name>.py`, made of four parts:
+   `<name>.py`, made of five parts:
    - **`PLUGIN = {...}`** at module level: a literal read with `ast.literal_eval`, never imported
      by a host or a catalogue;
-   - **`run(ctx)`**, which the host's shared entry point runs as a subprocess in the plugin's own
-     environment;
+   - **`run(ctx)`**, the first execution phase. The host's shared entry point runs it as a
+     subprocess, once per unit, in the plugin's own environment;
+   - **`compare(ctx)`**, the second execution phase, optional. A plugin that defines it is called
+     after every unit's `run` has finished. The host asks which phases the plugin implements
+     (`_entry.py --phases`). It then runs `compare` in the plugin's own environment, once per arm
+     pair of the design, in the direction the declared controls set. Where the design crosses more
+     than two arms, it also runs `compare` once over all of them (`scprofile/report.py:853`).
+     - The `CompareContext` holds the finished units' output directories, a directory to write
+       into, the pair's label, the config, the core share and the figure context. It holds nothing
+       of the object (`scprofile/_entry.py:432`, `scprofile/plugin.py:1321`).
+     - A refusal exits 1 and is recorded. A failure is logged and never stops the report.
+     - cellchat, the one plugin in the maker's layout, implements it for CellChat's own
+       between-arm figures (`kernels/cellchat.py:5337`). A host for the UPF runs both phases;
    - **`guard(g)` and `selftest()`**, both optional;
    - **the maker's generated companions** beside it, each named `<name>.<what>`.
 
@@ -186,6 +197,7 @@ is the block that `sch catalogue show ID` adds.
 |---|---|---|---|---|---|
 | environment | `needs_env`; `lock.yml` (`==`); `selftest.py` or `.R` | `requires {python, packages, r, conda}`, as ranges; the host resolves one lock per environment group (W002). `def selftest()` | the `environment` stage: every package the code loads is declared | one-file's | — |
 | entry point | `language`, `entry` (`run.py`, `run.R`, `run`) | the file itself. `run(ctx)` goes through the host's `_entry.py`; another language goes through a bridge inside the plugin (cellchat runs `Rscript`) | `<name>.draw.R`, generated | one-file's | `details` |
+| second phase: compare | — | `def compare(ctx)`, optional. It runs after every unit's `run`, once per arm pair and once over all crossed arms when there are more than two, on the finished units' outputs, in the plugin's own environment (`_entry.py:432`, `report.py:853`) | cellchat implements it (`kernels/cellchat.py:5337`) | one-file's: a UPF host runs both phases | — |
 | scheduling | `executor: {cost, gpu}`, advisory | `cost`, `cores`, `memory_gb_per_100k`, `memory_gb_base`, `gpus` | the `measure`, `cores` and `cost` test stages | one-file's | `details.executor` |
 | parameters | — (`--param k=v`, checked by the plugin) | `config`: type, default, bounds, help | the `defaults` stage | one-file's | `details.parameters` |
 | references | `references.yml`, with checksums | `references`, inside `PLUGIN` | the `references` stage | one-file's | `details.references` |
@@ -207,9 +219,19 @@ is the block that `sch catalogue show ID` adds.
 | finished by the maker | — (`sch dev check`'s ladder) | — | no `outstanding_if` field is set, and `<name>.signatures.json` is present | the same | `format`, `format_evidence`, `companions` |
 | ran on a cohort | — | — (the tool's `DEVPOINTS.yaml` `rules.end_to_end` names the round's end-to-end plugin) | — | — (open: a run register) | `ran_on_cohort`: `recorded` or `unknown`, never `no` |
 
+**Every other api-1 key carries over unchanged, with scProfile's meaning.** These are the keys the
+shipped plugins declare, or that scProfile's api-1 validation (`scprofile/declare.py`) reads,
+without a row above:
+- `cache` (cellchat): the source span and the config keys of the saved object that a rerun may
+  reuse (`declare.py:843`).
+- `native_plots` (liana and velocity): the accounting of upstream plots written before the figure
+  plan carried the call. `scprofile/native.py:109` still reads it as the fallback.
+- `env`: the older, fully pinned environment shape (`declare.py:1044`).
+- A nested `executor` mapping, the older spelling of the scheduling keys (`declare.py:796`).
+
 **Read for the invariants.** The adopted layout keeps every ARCHITECTURE invariant in force.
-- **L3.** A host reads the declaration as a literal, imports nothing, and runs `run(ctx)` as a
-  subprocess.
+- **L3.** A host reads the declaration as a literal and imports nothing. It runs `run(ctx)`, and
+  `compare(ctx)` where the plugin defines it, as subprocesses.
 - **C4.** The boundary is `in.json` and `out.json` (`scprofile/_entry.py`).
 - **E1.** The declaration can be the disposer: `produces` names every output, a trailing `?`
   marks one that only some runs make, and the maker's `declared` stage reads a run back against
@@ -295,10 +317,13 @@ harness".
 - **Evaluation.** Three checks:
   - `sch catalogue` lists every plugin, with none unreadable. Built in W016.
   - A UPF plugin mounted through the harness gives byte-identical results to the same plugin under
-    scProfile.
+    scProfile, from both of its phases: `run`, and `compare` where it defines one.
   - A cold agent picks a plugin and runs it through the agent surface (A4.4).
 - **Falsifier.** If a UPF plugin cannot be mounted without loss, the kernel's contract is narrower
   than the format the pool uses. That is the finding the original phase named, and it is kept.
+- **Dropped:** the old evaluation row "the roadmap survives" (`ROADMAP.md`'s tier-1 plugins remain
+  buildable under the harness contract). The amended phase rebuilds no plugin under the directory
+  contract, because the plugins stay in the UPF. The "one format" row replaces it.
 
 ROADMAP.md is edited in this wave to say so.
 
@@ -320,7 +345,8 @@ ROADMAP.md is edited in this wave to say so.
   `unknown`, never to a guess.
 
 **The next waves this record creates.**
-- **The mount.** The harness runs a UPF plugin, velocity or cellcycle first.
+- **The mount.** The harness runs a UPF plugin, velocity or cellcycle first, through both
+  phases: `run` per unit, and `compare` per arm pair where the plugin defines it, as cellchat does.
 - **Required keys.** The maker makes `assays`, an exact `wraps.version` and `wraps.doi` required,
   so every plugin shows as owing (GAP-045).
 - **No silent empty plugins.** scProfile refuses an unreadable plugin instead of listing it empty.
