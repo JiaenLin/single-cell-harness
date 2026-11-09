@@ -170,22 +170,22 @@ check that skipped every tier used to exit `0`, and an agent reads that as proof
 missing baseline, a missing declaration and an absent dependency are all `3` — setup, not defect.
 
 A **baseline** is the numeric fingerprint of a fixture run: numeric leaves of every JSON,
-per-column statistics of every CSV, a content hash of every other file (a rendering is checked
-for presence only; an `.h5ad` also by its shape and keys, read with h5py where it is installed, so
-an object whose content is recorded unstable still shows that it doubled or lost a layer), with
-volatile fields (times, job ids, paths, commits) excluded. Two kinds of
-number are RECORDED AND NEVER JUDGED (autodev W019): a byte count in a JSON product, which moves
-with the digits of every timing written into the file, and a field the TOOL DECLARES as its run's
-record of its own execution - `fixture.execution_record`, globs of `product::key` (`*` is the only
-wildcard; a CSV column is a key) - for its wall and CPU time, cores, memory, and the models fitted
-from them, which move between two executions of one input on a shared machine. `agree` reports the
-declared record and judges it no more. Nothing undeclared is excused, whatever it is called: a key's
-words decide nothing, and a result named `memory_score` is judged like any other. A fixture run that
-ended in a declared refusal on BOTH shapes has no products: neither tier applies to it, and no
-baseline is ever recorded from one; a refusal on one shape only fails `agree`, because one cohort
-written twice cannot be refused under one set of names and analysed under the other. Floats compare with a relative tolerance rather than bit-equality,
-because bit-equality across machines is not a property this family has — 0.214 was measured
-between two nodes of the same model on 2026-09-06.
+per-column statistics of every CSV, a content hash of every other file (a rendering is checked for
+presence only; an `.h5ad` also by its shape and keys, read with h5py where it is installed, so an
+object whose content is recorded unstable still shows that it doubled or lost a layer), with
+volatile fields (times, job ids, paths, commits) excluded. Two kinds of number are RECORDED AND
+NEVER JUDGED (autodev W019): a byte count in a JSON product, which moves with the digits of every
+timing written into the file, and a field the TOOL DECLARES as its run's record of its own
+execution - `fixture.execution_record`, globs of `product::key` (`*` is the only wildcard; a CSV
+column is a key) - for its wall and CPU time, cores, memory, and the models fitted from them, which
+move between two executions of one input on a shared machine. `agree` reports the declared record
+and judges it no more. Nothing undeclared is excused, whatever it is called: a key's words decide
+nothing, and a result named `memory_score` is judged like any other. A fixture run that ended in a
+declared refusal on BOTH shapes has no products: neither tier applies to it, and no baseline is
+ever recorded from one; a refusal on one shape only fails `agree`, because one cohort written twice
+cannot be refused under one set of names and analysed under the other. Floats compare with a
+relative tolerance rather than bit-equality, because bit-equality across machines is not a property
+this family has — 0.214 was measured between two nodes of the same model on 2026-09-06.
 
 **Recording runs the fixture twice, and keeps only what the two executions agreed on.** Anything
 that moved is excluded and *named* in the file under `not_execution_stable`. The second execution
