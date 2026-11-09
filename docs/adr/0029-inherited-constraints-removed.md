@@ -59,17 +59,17 @@ repository.
 | # | what it was | from | why it is unreasonable now | what is given up |
 |---|---|---|---|---|
 | R1 | G1 accepted only `core.hooksPath == "setup/githooks"` | ADR-0023; `sch/conform/checks.py` | The shared config held the ABSOLUTE path of the same directory. The gate ran, yet G1 failed, three tests failed and a commit was blocked. A spelling protects nothing. Fixed in 4afad34 on main: G1 resolves the path (relative to the working tree's root, or absolute) and requires a byte-identical `pre-commit`. | nothing |
-| R2 | G1 failed every repository that versions no gate, and every clone that had not installed one | ADR-0023 | It was the only failing conform row on fresh clones of all four tools, so it blocked A4.1 and the program's gate. Fixed in 18f3b88: not applicable where no gate is versioned, and a warning where one is versioned but not installed. | Conform no longer fails a clone that would commit without its gate. The harness's own suite still fails a harness clone with none. |
-| R3 | The ladder's rules tier "could not run" where no `rules:` block is declared, so a full `sch dev check` exited 3 for ever | ADR-0015/0016; `sch/dev/ladder.py` | Having no round has been the normal state since ADR-0028, so "passes `sch dev`" was unreachable for four of five repositories. Fixed in 97bb58a: the tier is not applicable there. | nothing a repository declared |
+| R2 | G1 failed every repository that versions no gate, and every clone that had not installed one | ADR-0023 | It was the only failing conform row on fresh clones of all four tools, so it blocked A4.1 and the program's gate. Fixed in 32384bd: not applicable where no gate is versioned, and a warning where one is versioned but not installed. | Conform no longer fails a clone that would commit without its gate. The harness's own suite still fails a harness clone with none. |
+| R3 | The ladder's rules tier "could not run" where no `rules:` block is declared, so a full `sch dev check` exited 3 for ever | ADR-0015/0016; `sch/dev/ladder.py` | Having no round has been the normal state since ADR-0028, so "passes `sch dev`" was unreachable for four of five repositories. Fixed in 81a36ad: the tier is not applicable there. | nothing a repository declared |
 | R4 | ROADMAP: "every phase can stop the project" | ROADMAP | It contradicts tier III ("the bars are targets ... never stop or hold development") and rule 5. A failed phase test is now a recorded gap. | A failed claim no longer halts the other lanes. Its gap still blocks HAPPY. |
 | R5 | ROADMAP: "the four tools are not touched", and Phases 3 and 5's "no tool commits" rows | ROADMAP; already split by ADR-0013 | GOALS.md requires development in all four tools. ADR-0028 lifted the rule for that work, but the text still imposed it. | The cheapest proof that a discrepancy found in Phase 5 belongs to the harness rather than a tool. ADR-0013 already gave this up for interfaces. |
 | R6 | ROADMAP: "a phase ends when it is declared finished" | ROADMAP | A single declarer is the serial reader ADR-0028 replaced. The audit grades with evidence. | A person's judgement as the closing step of a phase |
 | R7 | ROADMAP's "not in this roadmap: ... a GUI" | ROADMAP | GOALS.md G6, HARN.4 and A6.1 | none |
 | R8 | ADR-0013: "Numbers are not touched. No commit to a child changes what any run computes" | ADR-0013 (2026-09-06) | It is wider than rule 1, which requires only that the PROMOTED runs a change touches reproduce, and which admits new capabilities. As written it forbids every capability that QC.1, ANNO.1, INT.1 and PROF.1–4 need. ADR-0027's merges already departed from it. | The guarantee that no tool output ever changes. What stays is rule 1(c). |
 | R9 | ADR-0016's "Standing rules — these do not relax ... must read 4 held after every commit" and its step ceremony ("not done until ... pushed. Update the status table ... in the same commit"), repeated as "Rules in force" in ADR-0017 to ADR-0026 | ADR-0016 to ADR-0026 | This is round ceremony, and ADR-0028 ended rounds as ADRs. The rules themselves are narrowed below. The ADR texts stand as records. | The per-commit "4 held" reading as a standing rule. The rules tier still checks whatever a repository declares. |
-| R10 | The plugin-maker skill: "Convert ONE. Finish it. Have a person check it ... Then start the next" | skill (2026-09-10) | It serialises every conversion, while A4.2 asks for conversion "by agents alone" and tier III runs parallel waves. What it protects (no reader sees a family's surfaces before deciding any of them) holds per wave. | A person's read of each conversion. A fresh verifier's read stands in. |
+| R10 | The plugin-maker skill: "Convert ONE. Finish it. Have a person check it ... Then start the next" | skill (2026-09-10) | It serialised every conversion, while A4.2 asks for conversion "by agents alone" and tier III runs parallel waves. What it protects (no reader sees a family's surfaces before deciding any of them) holds per wave, so never-seen tools may convert in parallel. The eight held-out plugins still migrate one at a time, each graded before the maker changes, as RULES tier II reads the maker round's top rules. | A person's read of each conversion. A fresh verifier's read stands in. |
 | R11 | `docs/blind/README.md`: a converted tool lands "never in its shipped set" | blind README | It kept every conversion out of the expandable pool that G4 is for. | The bright line between test material and the shipped set. A conversion that meets A4.2 joins the set through its wave's gate. |
-| R12 | THE_CELLCHAT_ARC: "Each of the eight migrates one at a time" | 2026-09-14 | The first migration finds the mechanism's defects, so it goes alone. The rest spend no unseen evidence and may run in parallel waves. | the strictly serial order |
+| R12 | THE_CELLCHAT_ARC's eight "held out" with no stated end, read as "stay broken" | 2026-09-14 | Not withdrawn as a serial order: RULES tier II keeps the eight migrating one at a time. Withdrawn is the reading that they stay unrepaired: each is repaired through the maker in its own migration wave, and a dated note says so. | nothing tier II keeps |
 
 ### The PI's rules, narrowed to their words (K-PI)
 
@@ -81,13 +81,15 @@ repository.
 
   scProfile's reading has no end: "From this commit forward the eight are untouched", with the range
   pinned at f127a2b (DEVPOINTS.yaml:99-113, 131-139). That is wider than the words. **Narrowed:** a
-  plugin's freeze ends when its migration wave starts, and the plugin is then edited through the
-  maker (tier II). The harness's skill says so now, and scProfile's declaration change is queued.
-  If the PI reads the rule otherwise, the PI's reading wins.
+  plugin's freeze ends when its migration wave starts, and the plugin is then repaired through the
+  maker, not kept broken. The coordinator's tier-II reading of the same day agrees, and keeps the
+  order: one at a time, DE and abundance first, each migration a blind test of the maker graded
+  before the maker changes. The harness's skill says so now, and scProfile's declaration change is
+  queued. If the PI reads the rule otherwise, the PI's reading wins.
 - **End to end.** "End-to-end SAMBO is CELLCHAT-ONLY, the other eight UNPLUGGED" (same round). The
   words govern what that round ran on SAMBO. `sch dev rules` read them as an equality over the whole
   kernel list, so any new artefact broke the rule just by existing. **Narrowed** to disjointness
-  (255acb5): nothing held out runs end to end, and an artefact in neither list is named.
+  (06cd34c): nothing held out runs end to end, and an artefact in neither list is named.
 - **In place.** "General mechanism and the agentic layer are fixed IN PLACE: scprofile/*.py,
   sch/**, jobs/, tests/" (same round). The words say where mechanism is fixed. scProfile reads them
   as an exclusive allow-list of paths, so committing a citation file or a lock breaks its rules

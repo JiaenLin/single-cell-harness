@@ -89,7 +89,7 @@ first migration to find defects of the mechanism at the rate cellchat's first tu
 later ones at the rate of its last.
 
 > **2026-11-09 ([ADR-0029](adr/0029-inherited-constraints-removed.md)).** The migrations are
-> GOALS.md A4.1 waves. The first runs alone, because it finds the mechanism's defects. The rest
-> may run in parallel waves within autodev's caps, since a migration spends no unseen evidence.
-> Rule 2's "until their own migration" is the reading that holds: each plugin's freeze ends when
-> its wave starts.
+> GOALS.md A4.1 waves, still one at a time, DE and abundance first. Each is a blind test of the
+> maker, graded before the maker changes (autodev RULES tier II). Rule 2's "until their own
+> migration" is the reading that holds: each plugin's freeze ends when its wave starts, and it
+> is repaired through the maker, not kept broken.

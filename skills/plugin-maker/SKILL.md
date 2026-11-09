@@ -35,10 +35,13 @@ template from the format's own knowledge and a generic skeleton does not.
 **Convert ONE per wave. Finish it. Have it checked, by a fresh verifier (autodev BRIEFS §2a) or a
 person. Improve the maker from what that one taught. The next unseen tool is the test.**
 
-Conversions of different tools may run in parallel waves, because each one sees only its own
-tool's surface. That is the property this rule protects. What it forbids is one reader taking in a
-whole family's surfaces before any of them is decided. Moving an already-finished plugin into the
-maker's layout (GOALS A4.1) spends no unseen evidence, so it is not held to one at a time. Until
+Conversions of different never-seen tools (GOALS A4.2) may run in parallel waves, because each
+sees only its own tool's surface. That is the property this rule protects. What it forbids is one
+reader taking in a whole family's surfaces before any of them is decided.
+
+The eight held-out plugins are different. They migrate one at a time, DE and abundance first.
+Each migration is a blind test of the maker, graded before the maker changes, so a maker fix found
+on one is tested on the next (autodev RULES tier II, the maker round's top rules). Until
 2026-11-09 this rule read "Have a person check it ... Then start the next" (ADR-0029).
 
 Every action that fills a declaration shows you the wrapped tool's own surface. Run across a
