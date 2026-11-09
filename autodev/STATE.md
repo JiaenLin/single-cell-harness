@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-09T12:19Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-09T12:44Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 ## Verdict
@@ -40,7 +40,7 @@ remain open.
 | lane | repository | wave | status |
 |---|---|---|---|
 | QC | scQC | **W007 MERGED** (`0a9d2ce`). **W014** (`a2c8471`): the verifier FAILED it. conda's r-xgboost 1.7.6 reports itself to R as 1.7.6.1, so the installer refuses every correct R doublet environment (a regression). PBS 782920's P1 therefore misses by construction; it keeps running for P2, P3 and its measurements. The fix-up is queued, and a new job follows. Measured: the torch pin does NOT fix CellBender's checkpoint error (GAP-C49). **W020** queued (19 constraints) | fixing (queued); 1 queued |
-| ANNO | scAnno | **W011 MERGED** (`main` `d0ee926`): first-cohort numbers gone from the text, per-assay wording, mixed-assay refusal in scope and rescue, every `--help` works, timings in every STATUS, a repeat-run consistency test. Gate: PBS 782899 and **782921** IDENTICAL on 1,420 obs columns. **W018** building (the promoted stage 2 at `bd45f5d`, GAP-033). **W021** queued: scAnno's 18 inherited constraints, including `scanno build-markers` (B1-030) | merged; 1 building, 1 queued |
+| ANNO | scAnno | **W011 MERGED** (`main` `d0ee926`). **W018 DONE: the promoted stage 2 reproduces at its own commit** (PBS 783148, `bd45f5d`): IDENTICAL on 1,464 obs columns over 31 objects, the joint object, the scope record and every table, with inputs and environment measured equal first (GAP-033 closed). **W021** building: scAnno's 18 inherited constraints, including `scanno build-markers` | merged; done; 1 building |
 | INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** (`69a54b2`): verifier PASS; job 29 AS PREDICTED; **job 28 MISSED line B** (harmony's total moved 0.0279 > 0.013), so it is **not merged**. The cause predates W012: harmony's clustering metrics vary run to run (ARI 0.860 / 0.858 / 0.645) while its embedding metrics agree to 1e-6, and the method ranking flips. **W025** (queued, stacked on W012) makes them reproducible; then one re-gate. **W022** waits | held; 1 queued |
 | PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013** (`0f4ff9e`): PBS 782918 AS PREDICTED. The verifier FAILED it on D1 (a hand-edited caveat) and D2 (undeclared design columns dropped under `--factor`), and the ladder is red on resource measurements (harness GAP-C41). A fix-up is building; D1 goes through the maker's design worksheet. **W023** queued: scProfile's 24 inherited constraints | fixing; 1 queued |
 | HARN | single-cell-harness | **W010 MERGED** (stage 1 through the harness; nested qsub proven) and **W016 MERGED** (`main` `6c81d15`): ADR-0030 makes the maker's one-file layout the single plugin format, and `sch catalogue` lists every plugin of the family statically. **W019** (the maker's H1-H6) and **W024** (the leak guard) are building. Next: the scAnno, scIntegrate and scProfile adapters (GAP-001; A4.4's second half) | merged x2; 2 building |
