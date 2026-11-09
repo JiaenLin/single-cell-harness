@@ -845,8 +845,13 @@ class BaselineRecordsOnlyWhatTwoRunsAgreedOn(unittest.TestCase):
             fp = B.fingerprint(run, skip_content={"big.bin"})
             self.assertIsNone(fp["products"]["big.bin"]["sha256"])
             self.assertEqual(fp["products"]["big.bin"]["bytes"], 4096)
-            (run / "big.bin").write_bytes(b"y" * 8192)      # size still compared
-            self.assertEqual([x["what"] for x in B.check(run, path)[0]], ["size"])
+            # A SIZE IS NOT COMPARED (autodev W019, GAP-C41): it moves with every timing written
+            # into the file, and where the content agrees it adds nothing. A product that is
+            # there and empty is still a finding.
+            (run / "big.bin").write_bytes(b"y" * 8192)
+            self.assertEqual(B.check(run, path)[0], [])
+            (run / "big.bin").write_bytes(b"")
+            self.assertEqual([x["what"] for x in B.check(run, path)[0]], ["emptied"])
         finally:
             shutil.rmtree(d, ignore_errors=True)
 

@@ -48,6 +48,73 @@ VOLATILE = {"started", "finished", "seconds", "elapsed", "timings", "commit", "t
             "jobid", "job", "host", "argv", "python", "generated", "date", "out", "out_dir",
             "path", "paths", "run", "rundir", "pid", "hostname", "wrapped_versions", "version"}
 
+#: A BYTE COUNT MEASURES A FILE, NOT WHAT IS IN IT. A status contract lists each product with its
+#: size, and a size moves with the names the file holds - shape b's `library_id` is four bytes
+#: longer than shape a's `sample` in every row that spells it - and with the digits of every timing
+#: written into it: 43.26 seconds and 9.8 seconds are one byte apart. Measured twice: the first
+#: cluster run of `agree` (PBS 719917) found only `products[*].bytes`, in scAnno and scIntegrate;
+#: and de's first baseline (autodev W013) named eight `products[*].bytes` as moving between two
+#: executions - a different eight on the next pair, so a baseline that names them is one that fails
+#: on the third run for a reason that is never the tool's. Not a number about the data, so neither
+#: `agree` nor the baseline compares one; the baseline still RECORDS it, for a reader.
+SIZE_OF_A_FILE = re.compile(r"(?:^|[.\]])(?:bytes|n_bytes|size_bytes)$")
+
+#: WHAT A RUN RECORDS OF ITS OWN EXECUTION IS A MEASUREMENT, NOT AN OUTPUT (autodev W019,
+#: GAP-C41). How long the execution took, how many cores it used and was given, how much memory it
+#: held, and the cost and memory models a tool fits from those: they are recorded so that a
+#: scheduler and a reader can use them, and they move between two executions of the SAME input on
+#: the same machine, because the machine is shared. Judged as outputs they made a check fail for a
+#: reason that is never the change: de's two fixture shapes agreed on every number DE writes, and
+#: `agree` failed on wall time, CPU time, resident memory and the models fitted from them - a
+#: different subset on every run.
+#:
+#: WHICH FIELDS THOSE ARE IS THE TOOL'S TO DECLARE, NOT THIS MODULE'S TO GUESS. The fixture block of
+#: the tool's DEVPOINTS.yaml may name them, `execution_record: ["<product>::<key>", ...]`, and a
+#: declared field is RECORDED and REPORTED, never judged - by `agree` or by the baseline. Nothing
+#: else is excused, and with no declaration every field is judged. The first version read the
+#: quantities off the key's words (cores, cpu, wall, rss, memory, cost); its verifier showed a
+#: result named `memory_score` or `transport_cost`, a population `Memory_B` or `CD8_memory`, an
+#: optimal-transport `ot.cost`, going unjudged - the rule decided by spelling, which is the same
+#: guess this suite exists to catch in a tool. A documented default namespace (`measured.*`,
+#: `resources.*`, `schedule.*`) was the other way offered and is not taken either: in de's own
+#: record it would have excused `measured.n_cells`, a count of the data, and
+#: `schedule[*][*].declared`, while still judging the fitted models - a name is not a declaration.
+#:
+#: A GLOB IS LITERAL BUT FOR `*`, which matches any run of characters, so `[*]` in a declaration
+#: matches an element index as it is written (`[0]`) and as `agree` collapses it (`[*]`). The
+#: product is the path in the run, the key the JSON path or the CSV column.
+
+
+def _glob(pattern: str):
+    return re.compile("^" + ".*".join(re.escape(p) for p in str(pattern).split("*")) + "$")
+
+
+def execution_record(globs=()):
+    """A predicate over `product::key`: True for a field the tool DECLARES as its run's record of
+    its own execution (`fixture.execution_record`), and for nothing else."""
+    pats = [_glob(g) for g in (globs or ())]
+    return lambda name: any(p.match(str(name)) for p in pats)
+
+
+def is_size(path: str) -> bool:
+    """Whether a numeric field is a file's byte count. See SIZE_OF_A_FILE."""
+    return bool(SIZE_OF_A_FILE.search(str(path)))
+
+
+def reported(fp: dict, record=()) -> dict:
+    """{"resources": [...], "byte_counts": [...]} - the `product::field` names a fingerprint
+    RECORDS and no comparison judges: the fields the tool declares as its execution record, and
+    every byte count. Printed by a check, so that what is not compared is said."""
+    declared = execution_record(record)
+    out = {"resources": [], "byte_counts": []}
+    for rel, item in sorted((fp.get("products") or {}).items()):
+        for k in sorted(item.get("numbers") or {}):
+            if declared(f"{rel}::{k}"):
+                out["resources"].append(f"{rel}::{k}")
+            elif item.get("kind") == "json" and is_size(k):
+                out["byte_counts"].append(f"{rel}::{k}")
+    return out
+
 
 def elsewhere(ref: dict) -> str | None:
     """A sentence to print beside a difference when the baseline came from another machine, and
@@ -96,6 +163,37 @@ _TEXTISH = {".yml", ".yaml", ".cfg", ".ini", ".toml"}
 # keeping. Real data artefacts (.h5ad, .npy, anything unrecognised) keep size and content.
 _RENDERING = {".md", ".html", ".htm", ".rst", ".txt", ".log",
               ".pdf", ".png", ".svg", ".jpg", ".jpeg"}
+
+
+def _h5ad_structure(p: Path):
+    """{n_obs, n_vars, X, obs, var, layers, obsm, varm, obsp, uns} of an AnnData file: its shape
+    and the names of what it holds, read from the HDF5 tree without reading a value. None where
+    it cannot be read - h5py is not installed in this interpreter, or the file is not HDF5 - and a
+    fingerprint without it compares as before."""
+    try:
+        import h5py
+    except ImportError:
+        return None
+    try:
+        with h5py.File(p, "r") as f:
+            def members(name):
+                g = f.get(name)
+                return sorted(g.keys()) if isinstance(g, h5py.Group) else []
+
+            def rows(name):
+                g = f.get(name)
+                idx = g.attrs.get("_index") if isinstance(g, h5py.Group) else None
+                idx = idx.decode() if isinstance(idx, bytes) else idx
+                return int(g[idx].shape[0]) if idx and idx in g else None
+            x = f.get("X")
+            shape = ([int(v) for v in x.shape] if isinstance(x, h5py.Dataset) else
+                     [int(v) for v in x.attrs.get("shape", [])] if isinstance(x, h5py.Group)
+                     else None)
+            return {"n_obs": rows("obs"), "n_vars": rows("var"), "X": shape,
+                    **{k: members(k) for k in ("obs", "var", "layers", "obsm", "varm", "obsp",
+                                               "uns")}}
+    except Exception:                                                     # noqa: BLE001
+        return None
 
 
 def _opaque_digest(p: Path) -> str:
@@ -203,10 +301,17 @@ def fingerprint(run_dir, skip_content=()) -> dict:
         else:
             # A FILE THE BASELINE ALREADY CALLS UNSTABLE IS NOT WORTH HASHING. Its content is
             # excluded from the comparison, so reading it buys nothing. Size is still recorded,
-            # and still compared, because a product that vanished or doubled is a finding
-            # whatever its bytes do.
+            # for a reader and for one finding: a product that vanished, or is there and empty,
+            # is a finding whatever its bytes do. A size is not compared (autodev W019).
             items[rel] = {"kind": "opaque", "bytes": p.stat().st_size,
                           "sha256": None if rel in skip_content else _opaque_digest(p)}
+            # AN OBJECT'S SHAPE AND KEYS, read without its values, where it is an AnnData file and
+            # h5py is at hand - so an object whose content the baseline calls unstable still shows
+            # it doubled, lost a layer or gained a column (the verifier of autodev W019).
+            if p.suffix.lower() == ".h5ad":
+                shape = _h5ad_structure(p)
+                if shape is not None:
+                    items[rel]["structure"] = shape
     return {"baseline": FORMAT, "rtol": RTOL, "atol": ATOL, "products": items,
             # WHERE IT WAS RECORDED, because two runs on one machine cannot rule out the machine.
             # This family measured 0.214 between two nodes of the same model on 2026-09-06; a
@@ -244,8 +349,9 @@ def _close(a, b, rtol, atol) -> bool:
     return abs(a - b) <= atol + rtol * abs(b)
 
 
-def compare(new: dict, ref: dict) -> list:
-    """Differences, most structural first. Empty means the fingerprints agree.
+def compare(new: dict, ref: dict, record=()) -> list:
+    """Differences, most structural first. Empty means the fingerprints agree. `record` is the
+    tool's declared execution record (`fixture.execution_record`): recorded, never judged.
 
     FIELDS THE BASELINE MEASURED AS NOT EXECUTION-STABLE ARE SKIPPED HERE, not deleted at
     recording time. Deleting was the first implementation and it was wrong twice: an opaque
@@ -257,6 +363,7 @@ def compare(new: dict, ref: dict) -> list:
     """
     rtol, atol = float(ref.get("rtol", RTOL)), float(ref.get("atol", ATOL))
     unstable = set(ref.get("not_execution_stable") or [])
+    declared = execution_record(record)
     out, np_, rp = [], new.get("products", {}), ref.get("products", {})
 
     def keep(product, what):
@@ -273,16 +380,24 @@ def compare(new: dict, ref: dict) -> list:
         if a["kind"] == "rendering":
             continue                     # present in both; its bytes are not a measurement
         if a["kind"] == "opaque":
-            # SIZE AND CONTENT ARE SEPARATE FACTS. Reported together, an exclusion for one
-            # silently excludes the other, and a figure that vanished would hide behind a
-            # timestamp that moved.
-            if a.get("bytes") != b.get("bytes") and keep(rel, "size"):
-                out.append({"product": rel, "what": "size",
-                            "detail": f"{b.get('bytes')}b -> {a.get('bytes')}b"})
+            # THE CONTENT IS THE FINGERPRINT; THE SIZE IS NOT (autodev W019, GAP-C41). A size
+            # moves with every timestamp and timing written into the file, so it failed on the
+            # next execution for a reason that was never the content - and where the content
+            # agrees, the size adds nothing. The size is still recorded. What a size used to catch
+            # that the content cannot, once the content is named unstable, is a product that is
+            # there and EMPTY: that is still a finding, and so is one that vanished (`absent`).
+            if (b.get("bytes") or 0) > 0 and a.get("bytes") == 0:
+                out.append({"product": rel, "what": "emptied",
+                            "detail": f"{b.get('bytes')}b -> 0b"})
             if a.get("sha256") != b.get("sha256") and keep(rel, "content"):
                 out.append({"product": rel, "what": "content",
                             "detail": f"{b.get('sha256')} -> {a.get('sha256')} "
                                       f"(timestamps and paths already redacted)"})
+            sa, sb = a.get("structure"), b.get("structure")
+            if sa and sb and sa != sb and keep(rel, "structure"):
+                moved = [k for k in sorted(set(sa) | set(sb)) if sa.get(k) != sb.get(k)]
+                out.append({"product": rel, "what": "structure",
+                            "detail": "; ".join(f"{k} {sb.get(k)} -> {sa.get(k)}" for k in moved)})
             continue
         if a["kind"] == "csv":
             if a.get("header") != b.get("header") and keep(rel, "header"):
@@ -291,13 +406,18 @@ def compare(new: dict, ref: dict) -> list:
                 out.append({"product": rel, "what": "rows", "detail": f"{b.get('rows')} -> {a.get('rows')}"})
             an, bn = a.get("numbers", {}), b.get("numbers", {})
             for col in sorted(set(an) & set(bn)):
+                if declared(f"{rel}::{col}"):
+                    continue                 # the declared execution record: recorded, not judged
                 for stat in ("n", "nan", "sum", "min", "max"):
                     if not _close(an[col].get(stat), bn[col].get(stat), rtol, atol) \
                             and keep(rel, f"{col}.{stat}"):
                         out.append({"product": rel, "what": f"{col}.{stat}",
                                     "detail": f"{bn[col].get(stat)} -> {an[col].get(stat)}"})
             continue
-        an, bn = a.get("numbers", {}), b.get("numbers", {})
+        an = {k: v for k, v in (a.get("numbers") or {}).items()
+              if not is_size(k) and not declared(f"{rel}::{k}")}
+        bn = {k: v for k, v in (b.get("numbers") or {}).items()
+              if not is_size(k) and not declared(f"{rel}::{k}")}
         for k in sorted(set(bn) - set(an)):
             if keep(rel, k):
                 out.append({"product": rel, "what": f"{k} absent", "detail": f"was {bn[k]}"})
@@ -310,7 +430,7 @@ def compare(new: dict, ref: dict) -> list:
     return out
 
 
-def check(run_dir, path) -> tuple:
+def check(run_dir, path, record=()) -> tuple:
     """(differences, reference). Raises if there is no baseline to check against - "no baseline"
     is not "no difference", and returning the second for the first is how a check stops meaning
     anything."""
@@ -328,4 +448,4 @@ def check(run_dir, path) -> tuple:
             f"that the format moved, not the numbers.")
     skip = {k.split("::", 1)[0] for k in (ref.get("not_execution_stable") or [])
             if k.endswith("::content")}
-    return compare(fingerprint(run_dir, skip_content=skip), ref), ref
+    return compare(fingerprint(run_dir, skip_content=skip), ref, record), ref
