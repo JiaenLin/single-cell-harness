@@ -465,9 +465,10 @@ def build(cohort, out, stems=(), carry=(), profile="single-cell", shapes_out=Non
             "shapes": shapes}
 
 
-# QUEUES AND BARE JOB IDS ARE THE SITE'S SHAPES, NOT A COHORT'S WORDS (W024 fix-up). `short` and
-# `long` are English; `-q short` is this site. And a job id written bare, `PBS` and six digits,
-# passed every list, because a list names ids one at a time and the next run has a new one.
+# QUEUES AND BARE JOB IDS ARE THE SITE'S SHAPES, NOT A COHORT'S WORDS (W024 fix-up). A queue's
+# name is often an ordinary word; `-q <queue>` names a site. And a job id written bare, `PBS` and
+# six digits, passed every list, because a list names ids one at a time and the next run has a
+# new one.
 _QUEUE_DIRECTIVE = re.compile(r"^#PBS\s+-q\s+([A-Za-z][\w.-]*)", re.M)
 _QUEUE_COMMAND = re.compile(r"\bqsub\b[^\n`]*?\s-q\s+([A-Za-z][\w.-]*)")
 _QUEUE_PROSE = re.compile(r"\bqueue\s+`([A-Za-z][\w.-]*)`")
