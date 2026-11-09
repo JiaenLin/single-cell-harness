@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-09T14:11Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-09T14:14Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 ## Verdict
@@ -44,9 +44,9 @@ gaps not closed are size M or larger.
 | ANNO | scAnno | **W011 MERGED** (`main` `d0ee926`). **W018 DONE: the promoted stage 2 reproduces at its own commit** (PBS 783148, `bd45f5d`): IDENTICAL on 1,464 obs columns over 31 objects, the joint object, the scope record and every table, with inputs and environment measured equal first (GAP-033 closed). **W021** building: scAnno's 18 inherited constraints, including `scanno build-markers` | merged; done; 1 building |
 | INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** (`69a54b2`): verifier PASS; job 29 AS PREDICTED; **job 28 MISSED line B** (harmony's total moved 0.0279 > 0.013), so it is **not merged**. The cause predates W012: harmony's clustering metrics vary run to run (ARI 0.860 / 0.858 / 0.645) while its embedding metrics agree to 1e-6, and the method ranking flips. **W025** (queued, stacked on W012) makes them reproducible; then one re-gate. **W022** waits | held; 1 queued |
 | PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013**: `de` runs through the maker in the declared-control direction, AS PREDICTED in three runs (bit-identical to 720548). The verifier keeps finding ways round the maker's new `--answer` mechanism; fix-up 3 is building (one line model, design arguments only, the covariate regression). Its registered ladder line waits on W019. **W023** queued | fixing; 1 queued |
-| HARN | single-cell-harness | **W010** and **W016 MERGED** (`main` `6c81d15`): stage 1 through the harness; one plugin format plus `sch catalogue`. **W019** (the maker's H1-H6): the verifier FAILED it (a one-shape refusal passes `agree`; resource words can hide results), and the fix-up is queued first. **W024** built: the leak guard reads every file, and generated lists find **802 leaks** across the seven tools where the old guard saw 4; the verifier is judging a 30-job-script exemption. **W026** building: the `anno@scanno` adapter (stage 2 through the harness) | merged x2; 1 fixing; 1 verifying; 1 building |
+| HARN | single-cell-harness | **W010, W016 and W019 MERGED** (`main` `70c25b9`): stage 1 through the harness; one plugin format plus `sch catalogue`; the maker's six defects from the de conversion (`agree` judges every output, excusing only a tool's declared execution record). **W026**: SAMBO stage 2 through the harness AS PREDICTED (PBS 783280); the verifier is running. **W024** fix-up building (moving the cohort job scripts out, the scope loophole, GAP-111) | merged x3; 1 verifying; 1 fixing |
 | PLAT | studio, lab, service | **Verified PASS and held for the PI's deploy** (BLK-005): **W005** (Lab), **W008** (Studio), **W009** and **W015** (Service). **W017** (Lab, on W005): fix-up 3 is building (an unbounded read through hard-linked groups; first-fit filling) | 4 held (PI); 1 fixing |
-| AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014**. The next pass starts after the third | waiting (1 of 3) |
+| AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014, W019**. Pass 0004 starts at the next merge | waiting (2 of 3) |
 | BLOCKER | — | **Sweep 14:11Z:** nothing removable is waiting. The B1 register's 68 rows are all in waves (W020 building, W021 verifying, W022 and W023 queued behind their repositories), and the checkouts each follow their gating wave. New: GAP-C62 (the commit hook runs the whole suite on records-only commits). Still the PI's: BLK-002, BLK-005 (4 verified platform waves), BLK-007, decisions 0-6 | sweeping |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
