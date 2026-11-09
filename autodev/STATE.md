@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-09T11:33Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-09T11:40Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 ## Verdict
@@ -39,9 +39,9 @@ remain open.
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | **W007 MERGED** (`0a9d2ce`). **W014** built (`a2c8471`): the installer pins the denoiser and the R doublet stack, the core lock carries pyarrow, and build_reference.sh requires its reference. **PBS 782920** builds all three environments on a fresh prefix and reruns stage 1 against PBS 782673. The verifier is running. Measured: the torch pin does NOT fix CellBender's checkpoint error (GAP-C49). **W020** queued: scQC's 19 inherited constraints (B1) | gating; 1 queued |
+| QC | scQC | **W007 MERGED** (`0a9d2ce`). **W014** (`a2c8471`): the verifier FAILED it. conda's r-xgboost 1.7.6 reports itself to R as 1.7.6.1, so the installer refuses every correct R doublet environment (a regression). PBS 782920's P1 therefore misses by construction; it keeps running for P2, P3 and its measurements. The fix-up is queued, and a new job follows. Measured: the torch pin does NOT fix CellBender's checkpoint error (GAP-C49). **W020** queued (19 constraints) | fixing (queued); 1 queued |
 | ANNO | scAnno | **W011 MERGED** (`main` `d0ee926`): first-cohort numbers gone from the text, per-assay wording, mixed-assay refusal in scope and rescue, every `--help` works, timings in every STATUS, a repeat-run consistency test. Gate: PBS 782899 and **782921** IDENTICAL on 1,420 obs columns. **W018** building (the promoted stage 2 at `bd45f5d`, GAP-033). **W021** queued: scAnno's 18 inherited constraints, including `scanno build-markers` (B1-030) | merged; 1 building, 1 queued |
-| INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** (`69a54b2`): verifier PASS; job 29 AS PREDICTED. Job 28 (PBS 782882, stage 3) is running, and the merge follows its grade. **W022** queued: 6 remaining inherited constraints (B1-056 was done by W012) | gating; 1 queued |
+| INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** (`69a54b2`): verifier PASS; job 29 AS PREDICTED; **job 28 MISSED line B** (harmony's total moved 0.0279 > 0.013), so it is **not merged**. The cause predates W012: harmony's clustering metrics vary run to run (ARI 0.860 / 0.858 / 0.645) while its embedding metrics agree to 1e-6, and the method ranking flips. **W025** (queued, stacked on W012) makes them reproducible; then one re-gate. **W022** waits | held; 1 queued |
 | PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013** (`0f4ff9e`): PBS 782918 AS PREDICTED. The verifier FAILED it on D1 (a hand-edited caveat) and D2 (undeclared design columns dropped under `--factor`), and the ladder is red on resource measurements (harness GAP-C41). A fix-up is building; D1 goes through the maker's design worksheet. **W023** queued: scProfile's 24 inherited constraints | fixing; 1 queued |
 | HARN | single-cell-harness | **W010**: job 31 AS PREDICTED. The fix-up of the second verifier's D1-D3 and E2's silent re-baseline is building, and **job 33** (inputs read-only, as LAYOUT requires) follows. **W016** building: one plugin format (ADR) and `sch catalogue`. **W019** building: the maker's H1-H6, C41 first | fixing; 2 building |
 | PLAT | studio, lab, service | **W005**, **W008** and **W009** are verified PASS and **held** for the PI's deploy (BLK-005). **W015** (`418ffad`): the verifier FAILED it on D1 (a hand-typed species bypasses the species/build check), and the fix is building. **W017** (`1703e16`, on W005): crossed conditions kept, the run's record carried, real embeddings only; the verifier is running | 3 held (PI); 1 fixing; 1 verifying |
