@@ -44,6 +44,33 @@
 #     Documents of record - flagged here, not exempted, and decided in the ADR.
 #   so the seal is FAILED by design, and each failure must be one of those named above.
 #
+# THE PREDICTION FOR AUTODEV W019 (GAP-C44), WRITTEN BEFORE THE RUN, 2026-11-09, by its builder.
+# This job checked scProfile by one name written into it - `--name abundance`, a held-out plugin -
+# so no plugin migrated through the maker was ever on this ladder, and no baseline was recorded
+# where the plugins run. It now asks the repository which plugins its own rules leave as maker
+# output (`sch.dev.rules.maker_output`, from `rules.held_out` in the deployed DEVPOINTS.yaml):
+#   step 3 checks EVERY such plugin and NO held-out one. The list is logs/scprofile.names.txt;
+#     with de still held out in the deployed checkout it is `cellchat`, and at autodev
+#     W013-de-through-maker it is `cellchat de`. Each has checks/scprofile.<name>.txt; the
+#     repository's own tiers (rules, contract, unit, leak) run once, with the first name.
+#   with SCPROFILE_PREFIX given (the site's prefix holding the plugins' built environments), each
+#     plugin RUNS on both shapes, and `agree` judges no resource measurement - it reports them.
+#     de: agree green (W019 measured 329 comparisons agreeing on the workstation, on de's locked
+#     interpreter). cellchat on agree: NOT PREDICTED. It has never been compared across the shapes
+#     with its environment, and its net embedding's UMAP is not seeded (measured 2026-09-10), so a
+#     disagreement there is a finding about the plugin, recorded, and not a failure of this job's
+#     purpose.
+#   without SCPROFILE_PREFIX each plugin refuses as declared, and its `agree` and `baseline` are not
+#     applicable (GAP-C41): no scprofile check is INCOMPLETE for want of a baseline.
+#   with RECORD=1 (step 4) baselines are recorded the way job 29 of W012 recorded harmony's: into
+#     $RUNDIR/record/<tool>/tests/baselines/, never under $TOOLS, for scintegrate/harmony,
+#     scanno/rescue and each scprofile name, each followed by a recheck that exits 0. A name whose
+#     fixture refused records nothing, and its record step exits 3. The tools' committed baseline
+#     files are md5-identical before and after (a mismatch seals FAILED as `baselines-touched`).
+#     The coordinator commits a recorded file into its tool from the workstation; the cluster
+#     originates no code.
+#   nothing outside this run directory is written.
+#
 # NOT A REPRODUCTION and nothing here is about the biology. No result from this run may be
 # quoted: the cohort is synthetic and says so in its own manifest.
 #
@@ -51,6 +78,8 @@
 # Authored on the workstation and pushed (rule H1). No `git` runs below.
 #
 #   qsub -o "$RUNDIR/logs/" -v RUNDIR=...,TOOLS=...,REPO=...,PY=... jobs/dev_suite.pbs
+#   optional: SCPROFILE_PREFIX=<where scProfile's plugin environments are built>, RECORD=1,
+#             TERMS=<word list>, SHAPES=<site shapes>
 
 set -euo pipefail
 cd "$PBS_O_WORKDIR"
@@ -72,6 +101,9 @@ exec >> "$RUNDIR/logs/driver.log" 2>&1
 
 finish() { s=$?
   set +e
+  # THE RECORDING ROOTS LINK INTO THE TOOLS (step 4); a sealed run must not point at an install
+  # that will move on, so the links go. The baselines recorded beside them stay.
+  [ -d "$RUNDIR/record" ] && find "$RUNDIR/record" -maxdepth 3 -type l -delete
   missing=""
   for p in fixture/FIXTURE_a.json fixture/FIXTURE_b.json hazards.json; do
     [ -s "$RUNDIR/$p" ] || missing="$missing $p"
@@ -91,6 +123,8 @@ finish() { s=$?
     # statement than one that did, and the seal is where that has to be written down - otherwise
     # the only two readings are "fine" and "broken" and the third one goes missing.
     [ -n "${INCOMPLETE_CHECKS:-}" ] && echo "incomplete_checks=$INCOMPLETE_CHECKS"
+    [ -s "$RUNDIR/logs/scprofile.names.txt" ] && \
+      echo "scprofile_checked=$(tr '\n' ' ' < "$RUNDIR/logs/scprofile.names.txt")"
     ls "$RUNDIR/checks"/*.txt 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' '
   } > "$seal"
   rm -f "$RUNDIR/RUNNING.txt"
@@ -101,7 +135,8 @@ trap finish EXIT
 
 FAILED_CHECKS=""
 INCOMPLETE_CHECKS=""
-export PYTHONNOUSERSITE=1 PYTHONPATH="$REPO"
+# No bytecode: the checks run code from the five checkouts, and nothing may be written there.
+export PYTHONNOUSERSITE=1 PYTHONPATH="$REPO" PYTHONDONTWRITEBYTECODE=1
 # The leak tier's word list. It lives in the PROJECT, never in a tool - $SCH_FORBIDDEN_TERMS is
 # the fallback every tool's variable falls back to, so one export covers all five.
 [ -n "${TERMS:-}" ] && export SCH_FORBIDDEN_TERMS="$TERMS"
@@ -187,6 +222,27 @@ sys.exit(0 if rec["all_pass"] else 1)
 PYCODE
 cat "$RUNDIR/hazards.txt"
 
+# ------------------------------- 3a. which of scProfile's plugins are the maker's output
+# EVERY ONE, AND NO HELD-OUT ONE (autodev W019, GAP-C44). This job named `--name abundance`, a
+# held-out plugin, so the plugins migrated through the maker were never on this ladder. The
+# repository says which are held out (`rules.held_out`); every other artefact at the point is
+# maker output, read by the same function the maker's status and `sch dev rules` read.
+echo; echo "=== scprofile: the plugins its own rules leave as maker output"
+"$PY" - "$TOOLS/scProfile" kernel > "$RUNDIR/logs/scprofile.names.txt" \
+      2> "$RUNDIR/logs/scprofile.names.err" <<'NAMES' || { cat "$RUNDIR/logs/scprofile.names.err"; exit 1; }
+import sys
+from sch.dev import points, rules
+names = rules.maker_output(points.load(sys.argv[1]), sys.argv[2])
+if not names:
+    sys.exit("no artefact at point %r is maker output, so there is nothing to check" % sys.argv[2])
+print("\n".join(names))
+NAMES
+SCPROFILE_NAMES=()
+while IFS= read -r n; do
+  if [ -n "$n" ]; then SCPROFILE_NAMES+=("$n"); fi
+done < "$RUNDIR/logs/scprofile.names.txt"
+echo "  ${SCPROFILE_NAMES[*]}"
+
 # ------------------------------------------------------- 3. the ladder, on all five checkouts
 echo; echo "=== sch dev check"
 for spec in "sch:$REPO:" \
@@ -195,59 +251,128 @@ for spec in "sch:$REPO:" \
             "scintegrate:$TOOLS/scIntegrate:method" \
             "scprofile:$TOOLS/scProfile:kernel"; do
   name="${spec%%:*}"; rest="${spec#*:}"; root="${rest%%:*}"; point="${rest#*:}"
-  echo; echo "--- $name  ($root)"
-  args=(dev check --root "$root" --keep-going --fixture-dir "$RUNDIR/fixture")
   case "$name" in
-    scintegrate) args+=(--point method --name harmony) ;;
-    scprofile)   args+=(--point kernel --name abundance) ;;
-    scqc)        args+=(--point criterion --name fail_umi_floor) ;;
-    scanno)      args+=(--point mechanism --name rescue) ;;
+    scintegrate) names=(harmony) ;;
+    scprofile)   names=("${SCPROFILE_NAMES[@]}") ;;
+    scqc)        names=(fail_umi_floor) ;;
+    scanno)      names=(rescue) ;;
+    *)           names=("") ;;
   esac
-  # Only the two whose fixture writes numbers; for the others there is nothing to fingerprint and
-  # the tier says so, which is the honest outcome rather than an empty baseline.
-  if [ -n "${RECORD:-}" ] && { [ "$name" = "scintegrate" ] || [ "$name" = "scanno" ]; }; then
-    args+=(--record-baseline)
-  fi
-  set +e
-  "$PY" -m sch "${args[@]}" > "$RUNDIR/checks/$name.txt" 2>&1
-  rc=$?
-  echo "  exit $rc"
-  # AND THE EXIT CODE IS KEPT. It was captured into an echo and discarded, so a failing tier was
-  # printed into the log and the job sealed SEALED anyway. PBS 708048 did exactly that: the
-  # harness's own unit tier failed, every summary line said so, and the seal said exit=0. A
-  # validation job that can report success while a check failed is not a validation job.
-  #
-  # This was deliberate ONCE, and the header above still says so: the first run existed to find
-  # out whether these fixture commands worked at all, and a crash was the only interesting
-  # failure. They work now, and a failing tier is a regression.
-  # TWO AND THREE ARE NOT THE SAME ANSWER, and the first version of this treated them as one.
-  # `sch dev check` exits 2 when a tier FAILED and 3 when one COULD NOT RUN - a distinction built
-  # into the ladder deliberately, because "an exit code that is always the same is not read". scQC
-  # has no baseline and never will, so folding 3 into failure would seal this job FAILED for ever
-  # and teach everyone to ignore it: the same defect, pointing the other way.
-  case "$rc" in
-    0) ;;
-    3) INCOMPLETE_CHECKS="$INCOMPLETE_CHECKS $name" ;;
-    *) FAILED_CHECKS="$FAILED_CHECKS $name" ;;
-  esac
-  # RECORD THEN CHECK, IN ONE JOB. Recording and checking kept disagreeing - three times, each
-  # found a run later than the change that caused it. The round trip is the thing that has to
-  # work, so it is exercised here rather than inferred from two jobs an hour apart.
-  if [ -n "${RECORD:-}" ] && { [ "$name" = "scintegrate" ] || [ "$name" = "scanno" ]; }; then
-    verify=()
-    for a in "${args[@]}"; do [ "$a" = "--record-baseline" ] || verify+=("$a"); done
-    "$PY" -m sch "${verify[@]}" > "$RUNDIR/checks/$name.recheck.txt" 2>&1
+  first=1
+  for nm in "${names[@]}"; do
+    label="$name${nm:+.$nm}"
+    echo; echo "--- $label  ($root)"
+    args=(dev check --root "$root" --keep-going --fixture-dir "$RUNDIR/fixture")
+    [ -n "$point" ] && args+=(--point "$point")
+    [ -n "$nm" ] && args+=(--name "$nm")
+    # THE REPOSITORY'S OWN TIERS ONCE PER REPOSITORY: rules, contract, unit and leak say the same
+    # thing whichever plugin is named, and unit is the slowest tier. The other names run what is
+    # theirs.
+    [ "$first" -eq 1 ] || args+=(--only declaration --only fixture_a --only fixture_b
+                                 --only agree --only baseline)
+    first=0
+    set +e
+    # WHERE scProfile'S PLUGIN ENVIRONMENTS ARE BUILT is the site's fact (harness ADR-0026, the
+    # open items): given, the plugins run on the fixture; not given, they refuse as declared.
+    if [ "$name" = "scprofile" ] && [ -n "${SCPROFILE_PREFIX:-}" ]; then
+      SCH_DEV_PREFIX="$SCPROFILE_PREFIX" "$PY" -m sch "${args[@]}" > "$RUNDIR/checks/$label.txt" 2>&1
+    else
+      "$PY" -m sch "${args[@]}" > "$RUNDIR/checks/$label.txt" 2>&1
+    fi
     rc=$?
-    echo "  recheck exit $rc"
+    set -e
+    echo "  exit $rc"
+    # AND THE EXIT CODE IS KEPT. It was captured into an echo and discarded, so a failing tier was
+    # printed into the log and the job sealed SEALED anyway. PBS 708048 did exactly that: the
+    # harness's own unit tier failed, every summary line said so, and the seal said exit=0. A
+    # validation job that can report success while a check failed is not a validation job.
+    #
+    # This was deliberate ONCE, and the header above still says so: the first run existed to find
+    # out whether these fixture commands worked at all, and a crash was the only interesting
+    # failure. They work now, and a failing tier is a regression.
+    # TWO AND THREE ARE NOT THE SAME ANSWER, and the first version of this treated them as one.
+    # `sch dev check` exits 2 when a tier FAILED and 3 when one COULD NOT RUN - a distinction built
+    # into the ladder deliberately, because "an exit code that is always the same is not read".
+    # scQC has no baseline and never will, so folding 3 into failure would seal this job FAILED
+    # for ever and teach everyone to ignore it: the same defect, pointing the other way.
     case "$rc" in
       0) ;;
-      3) INCOMPLETE_CHECKS="$INCOMPLETE_CHECKS $name(recheck)" ;;
-      *) FAILED_CHECKS="$FAILED_CHECKS $name(recheck)" ;;
+      3) INCOMPLETE_CHECKS="$INCOMPLETE_CHECKS $label" ;;
+      *) FAILED_CHECKS="$FAILED_CHECKS $label" ;;
     esac
-    grep -E "^  (ok|FAIL) baseline|tier\(s\) ran" "$RUNDIR/checks/$name.recheck.txt" || true
-  fi
-  set -e
-  tail -n 40 "$RUNDIR/checks/$name.txt"
+    tail -n 40 "$RUNDIR/checks/$label.txt"
+  done
 done
+
+# ----------------------------- 4. baselines, recorded where the plugins run (RECORD=1)
+# THE WAY JOB 29 OF AUTODEV W012 RECORDED harmony's (GAP-C12, GAP-C44). `--record-baseline` writes
+# <root>/tests/baselines/, and the root used to be the tool's own checkout - an install under
+# ~/tools that is never edited (LAYOUT). So the root is a directory INSIDE this run: the tool's
+# DEVPOINTS.yaml copied and cmp-checked, every other entry linked (tests/ entry by entry, with
+# tests/baselines a real directory), and the links removed when the job ends. The code runs from
+# the tools; the record lands here. Then a RECHECK against what was just recorded: recording and
+# checking kept disagreeing - three times, each found a run later than the change that caused it -
+# so the round trip is exercised in one job rather than inferred from two.
+if [ -n "${RECORD:-}" ]; then
+  echo; echo "=== baselines, recorded into $RUNDIR/record"
+  shopt -s nullglob
+  mkdir -p "$RUNDIR/record"
+  REC=("scintegrate|$TOOLS/scIntegrate|method|harmony" "scanno|$TOOLS/scAnno|mechanism|rescue")
+  for n in "${SCPROFILE_NAMES[@]}"; do REC+=("scprofile|$TOOLS/scProfile|kernel|$n"); done
+  for spec in "${REC[@]}"; do
+    IFS='|' read -r tool src point nm <<< "$spec"
+    rroot="$RUNDIR/record/$tool"
+    if [ ! -d "$rroot" ]; then
+      mkdir -p "$rroot/tests/baselines"
+      cp "$src/DEVPOINTS.yaml" "$rroot/DEVPOINTS.yaml"
+      cmp "$src/DEVPOINTS.yaml" "$rroot/DEVPOINTS.yaml"
+      for e in "$src"/*; do
+        b="${e##*/}"
+        case "$b" in tests|DEVPOINTS.yaml) continue ;; esac
+        ln -s "$e" "$rroot/$b"
+      done
+      for e in "$src"/tests/*; do
+        [ "${e##*/}" = "baselines" ] || ln -s "$e" "$rroot/tests/${e##*/}"
+      done
+      committed=("$src"/tests/baselines/*)
+      if [ "${#committed[@]}" -gt 0 ]; then
+        md5sum "${committed[@]}" > "$RUNDIR/record/$tool.committed.md5"
+      fi
+    fi
+    # THE FIXTURE BUILT IN STEP 1, reused: the cohort is a pure function of its arguments, and the
+    # ladder's second execution of a recording already writes somewhere else (run_a2), which is
+    # what shows a value that embeds its own path to be not execution-stable.
+    tiers=(--point "$point" --name "$nm" --only fixture_a --only fixture_b --only agree
+           --only baseline --keep-going)
+    for step in record recheck; do
+      extra=()
+      [ "$step" = "record" ] && extra=(--record-baseline)
+      set +e
+      if [ "$tool" = "scprofile" ] && [ -n "${SCPROFILE_PREFIX:-}" ]; then
+        SCH_DEV_PREFIX="$SCPROFILE_PREFIX" "$PY" -m sch dev check --root "$rroot" "${tiers[@]}" \
+          ${extra[@]+"${extra[@]}"} --fixture-dir "$RUNDIR/fixture" \
+          > "$RUNDIR/checks/$step.$tool.$nm.txt" 2>&1
+      else
+        "$PY" -m sch dev check --root "$rroot" "${tiers[@]}" ${extra[@]+"${extra[@]}"} \
+          --fixture-dir "$RUNDIR/fixture" \
+          > "$RUNDIR/checks/$step.$tool.$nm.txt" 2>&1
+      fi
+      rc=$?
+      set -e
+      echo "  $step $tool.$nm exit $rc"
+      case "$rc" in
+        0) ;;
+        3) INCOMPLETE_CHECKS="$INCOMPLETE_CHECKS $step:$tool.$nm" ;;
+        *) FAILED_CHECKS="$FAILED_CHECKS $step:$tool.$nm" ;;
+      esac
+      grep -E "^  (ok  |FAIL|skip) baseline" "$RUNDIR/checks/$step.$tool.$nm.txt" || true
+    done
+  done
+  # THE TOOLS' OWN BASELINES ARE UNTOUCHED: the record went into this run, or it went nowhere.
+  for f in "$RUNDIR"/record/*.committed.md5; do
+    md5sum -c --quiet "$f" || FAILED_CHECKS="$FAILED_CHECKS baselines-touched"
+  done
+  shopt -u nullglob
+fi
 
 echo; echo "finished $(date -u)"

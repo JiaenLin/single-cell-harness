@@ -740,7 +740,12 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
     bdir = Path(doc["_root"]) / (doc.get("baseline_dir") or "tests/baselines")
     path = bdir / f"{name}.baseline.json"
     run = Path(fixdir) / "run_a"
-    if not run.is_dir():
+    # ONLY A RUN THIS CHECK'S OWN SHAPE A WROTE (autodev W019). A fixture directory is shared by
+    # every check that names it - the dev suite's checks one tool after another - and a point that
+    # declares no fixture command leaves `run_a` as the previous check wrote it: measured on the
+    # suite's own job, a tool with no fixture recorded a baseline of another tool's products.
+    shape_a = next((r for r in results if r.get("tier") == "fixture_a"), None)
+    if not run.is_dir() or (shape_a is not None and not shape_a.get("applicable", True)):
         return _t(results, "baseline", True,
                   ["no fixture run to fingerprint - this point's fixture writes no products"],
                   skipped=True, applicable=False)
@@ -750,7 +755,6 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
     # incomplete for ever on a machine without the plugin's environment. There is nothing here for
     # this tier. And a refusal is never RECORDED: a baseline of no products would pass a plugin
     # that stopped running.
-    shape_a = next((r for r in results if r.get("tier") == "fixture_a"), None)
     if shape_a is not None and shape_a.get("refused"):
         if record:
             return _t(results, "baseline", False,
