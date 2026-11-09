@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-09T12:04Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-09T12:19Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 ## Verdict
@@ -43,9 +43,9 @@ remain open.
 | ANNO | scAnno | **W011 MERGED** (`main` `d0ee926`): first-cohort numbers gone from the text, per-assay wording, mixed-assay refusal in scope and rescue, every `--help` works, timings in every STATUS, a repeat-run consistency test. Gate: PBS 782899 and **782921** IDENTICAL on 1,420 obs columns. **W018** building (the promoted stage 2 at `bd45f5d`, GAP-033). **W021** queued: scAnno's 18 inherited constraints, including `scanno build-markers` (B1-030) | merged; 1 building, 1 queued |
 | INT | scIntegrate | **W004 merged** (`9a2d7d1`). **W012** (`69a54b2`): verifier PASS; job 29 AS PREDICTED; **job 28 MISSED line B** (harmony's total moved 0.0279 > 0.013), so it is **not merged**. The cause predates W012: harmony's clustering metrics vary run to run (ARI 0.860 / 0.858 / 0.645) while its embedding metrics agree to 1e-6, and the method ranking flips. **W025** (queued, stacked on W012) makes them reproducible; then one re-gate. **W022** waits | held; 1 queued |
 | PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013** (`0f4ff9e`): PBS 782918 AS PREDICTED. The verifier FAILED it on D1 (a hand-edited caveat) and D2 (undeclared design columns dropped under `--factor`), and the ladder is red on resource measurements (harness GAP-C41). A fix-up is building; D1 goes through the maker's design worksheet. **W023** queued: scProfile's 24 inherited constraints | fixing; 1 queued |
-| HARN | single-cell-harness | **W010 MERGED** (`main` `26f7d01`): the `qc@scqc` adapter and the `pbs` executor. SAMBO stage 1 runs through the harness and reproduces the promoted run; the inputs are pinned and read-only; nested qsub is proven (job 33, PBS 782922, AS PREDICTED on every line). **W016**: the ADR-0030 fix is building. **W019** (the maker's H1-H6) and **W024** (the leak guard) are building. Next: the scAnno, scIntegrate and scProfile adapters (GAP-001) | merged; 3 building |
+| HARN | single-cell-harness | **W010 MERGED** (stage 1 through the harness; nested qsub proven) and **W016 MERGED** (`main` `6c81d15`): ADR-0030 makes the maker's one-file layout the single plugin format, and `sch catalogue` lists every plugin of the family statically. **W019** (the maker's H1-H6) and **W024** (the leak guard) are building. Next: the scAnno, scIntegrate and scProfile adapters (GAP-001; A4.4's second half) | merged x2; 2 building |
 | PLAT | studio, lab, service | **Verified PASS and held for the PI's deploy** (BLK-005): **W005** (Lab), **W008** (Studio), **W009** and **W015** (Service; W015 on W009: scQC's samplesheet, registry row and design table written from a single-cell request; the species/build check holds for typed names). **W017** (Lab, on W005): the verifier FAILED it (an int64 provenance record crashes conversion; no record budget), and its fix-up is building | 4 held (PI); 1 fixing |
-| AUDIT | — | Pass 0002 done (NOT HAPPY, 0/20). Merged since: **W011, W010**. **Pass 0003** starts at the third merge | waiting (2 of 3) |
+| AUDIT | — | Pass 0002 done (NOT HAPPY, 0/20). Merged since: **W011, W010, W016**, so the trigger is met. **Pass 0003 is running** | running |
 | BLOCKER | — | **Sweep 2026-11-09:** 68 inherited constraints sat queued since B1. They are now waves W020-W023, one per tool, each starting when that tool's current wave merges. GAP-028's data blocker is REMOVED (the PI's `all_cell_marker.zip` holds 1,779,944 human rows). Still the PI's: BLK-002, BLK-005, BLK-007, decisions 0-5 | sweeping |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
