@@ -59,6 +59,8 @@ fixture:                     # may also be given per point, overriding this
             "--methods", "none,{name}"]
   products: ["report.json"]              # relative to {out}; checked for existence and size
   accepts_refusal: false                 # true where a refusal on the fixture is correct
+  execution_record: ["report.json::timings.*"]   # optional: the run's record of its own
+                                         # execution, reported by agree and the baseline, never judged
   timeout: 1800
 
 points:
@@ -133,9 +135,9 @@ it cannot prove.
 | `unit` | the repository's own suite, run the way the repository runs it | seconds |
 | `fixture_a` | does it run end to end and leave a valid status behind? | seconds |
 | `fixture_b` | does it still, with every role renamed? | seconds |
-| `agree` | did the two shapes write the same numbers? It counts the values it compared, and reports - never judges - what the execution measured of itself (time, cores, memory, the models fitted from them). Not applicable on a declared refusal | ms |
+| `agree` | did the two shapes write the same numbers? It counts the values it compared, and reports - never judges - the fields the tool declares as its run's record of its own execution (`fixture.execution_record`). Not applicable when both shapes refused; one shape refusing fails it | ms |
 | `leak` | any cohort or site term anywhere in the repository? | ms |
-| `baseline` | did a number move that was not supposed to? Not applicable on a declared refusal, from which nothing is ever recorded | ms |
+| `baseline` | did a number move that was not supposed to? Not applicable on a declared refusal, from which nothing is ever recorded; could not run when shape a did not run in this check | ms |
 
 Every tier prints what it does **not** prove, and the run ends with the union of those plus the
 line that matters most: *a green ladder does not establish that the tool reproduces the real
@@ -169,15 +171,19 @@ missing baseline, a missing declaration and an absent dependency are all `3` —
 
 A **baseline** is the numeric fingerprint of a fixture run: numeric leaves of every JSON,
 per-column statistics of every CSV, a content hash of every other file (a rendering is checked
-for presence only), with volatile fields (times, job ids, paths, commits) excluded. Two kinds of
-number are RECORDED AND NEVER JUDGED (autodev W019): a file's byte count, which moves with the
-digits of every timing written into the file, and a resource the execution measured of itself -
-wall and CPU time, cores, memory, and the cost and memory models fitted from them - which moves
-between two executions of one input on a shared machine. `agree` reports the same resources and
-judges them no more. A key names a resource by its words (`sch/dev/baseline.py`,
-`RESOURCE_WORDS`); `time` is not one of them, because pseudotime is a result. A fixture run that
-ended in a declared refusal has no products: neither tier applies to it, and no baseline is ever
-recorded from one. Floats compare with a relative tolerance rather than bit-equality,
+for presence only; an `.h5ad` also by its shape and keys, read with h5py where it is installed, so
+an object whose content is recorded unstable still shows that it doubled or lost a layer), with
+volatile fields (times, job ids, paths, commits) excluded. Two kinds of
+number are RECORDED AND NEVER JUDGED (autodev W019): a byte count in a JSON product, which moves
+with the digits of every timing written into the file, and a field the TOOL DECLARES as its run's
+record of its own execution - `fixture.execution_record`, globs of `product::key` (`*` is the only
+wildcard; a CSV column is a key) - for its wall and CPU time, cores, memory, and the models fitted
+from them, which move between two executions of one input on a shared machine. `agree` reports the
+declared record and judges it no more. Nothing undeclared is excused, whatever it is called: a key's
+words decide nothing, and a result named `memory_score` is judged like any other. A fixture run that
+ended in a declared refusal on BOTH shapes has no products: neither tier applies to it, and no
+baseline is ever recorded from one; a refusal on one shape only fails `agree`, because one cohort
+written twice cannot be refused under one set of names and analysed under the other. Floats compare with a relative tolerance rather than bit-equality,
 because bit-equality across machines is not a property this family has — 0.214 was measured
 between two nodes of the same model on 2026-09-06.
 

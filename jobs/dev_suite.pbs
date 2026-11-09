@@ -54,14 +54,18 @@
 #     W013-de-through-maker it is `cellchat de`. Each has checks/scprofile.<name>.txt; the
 #     repository's own tiers (rules, contract, unit, leak) run once, with the first name.
 #   with SCPROFILE_PREFIX given (the site's prefix holding the plugins' built environments), each
-#     plugin RUNS on both shapes, and `agree` judges no resource measurement - it reports them.
-#     de: agree green (W019 measured 329 comparisons agreeing on the workstation, on de's locked
-#     interpreter). cellchat on agree: NOT PREDICTED. It has never been compared across the shapes
-#     with its environment, and its net embedding's UMAP is not seeded (measured 2026-09-10), so a
+#     plugin RUNS on both shapes, and `agree` reports - never judges - the fields the deployed
+#     DEVPOINTS.yaml declares as the run's execution record (`fixture.execution_record`).
+#     de: agree green WHERE THAT DECLARATION IS DEPLOYED (W019 measured 329 comparisons agreeing and
+#     24 fields reported, on the workstation, on de's locked interpreter, with it); where it is not,
+#     agree FAILS on the run's own times, cores and memory, as before W019 - expected, and named.
+#     cellchat on agree: NOT PREDICTED. It has never been compared across the shapes with its
+#     environment, and its net embedding's UMAP is not seeded (measured 2026-09-10), so a
 #     disagreement there is a finding about the plugin, recorded, and not a failure of this job's
 #     purpose.
-#   without SCPROFILE_PREFIX each plugin refuses as declared, and its `agree` and `baseline` are not
-#     applicable (GAP-C41): no scprofile check is INCOMPLETE for want of a baseline.
+#   without SCPROFILE_PREFIX each plugin refuses as declared on both shapes, and its `agree` and
+#     `baseline` are not applicable (GAP-C41): no scprofile check is INCOMPLETE for want of a
+#     baseline. A refusal on ONE shape fails `agree`, naming the shape.
 #   with RECORD=1 (step 4) baselines are recorded the way job 29 of W012 recorded harmony's: into
 #     $RUNDIR/record/<tool>/tests/baselines/, never under $TOOLS, for scintegrate/harmony,
 #     scanno/rescue and each scprofile name, each followed by a recheck that exits 0. A name whose

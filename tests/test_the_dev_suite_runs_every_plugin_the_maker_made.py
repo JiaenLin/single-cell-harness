@@ -166,6 +166,7 @@ class TheJobRunsHere(unittest.TestCase):
             fixture:
               command: ["{{python}}", "-c", {json.dumps(body)}, "{{out}}", "{{name}}"]
               products: ["out.json"]
+              execution_record: ["out.json::measured.*"]
             """)
         for tool, point in (("scQC", "criterion"), ("scAnno", "mechanism"),
                             ("scIntegrate", "method")):
@@ -187,6 +188,7 @@ class TheJobRunsHere(unittest.TestCase):
             fixture:
               command: ["{{python}}", "-c", {json.dumps(body)}, "{{out}}", "{{name}}"]
               products: ["out.json"]
+              execution_record: ["out.json::measured.*"]
             rules:
               held_out:
                 names: [gamma]
