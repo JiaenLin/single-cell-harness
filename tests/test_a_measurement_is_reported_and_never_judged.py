@@ -63,11 +63,13 @@ DECL = textwrap.dedent("""\
     """)
 
 # What this tool would declare as its run's record of its own execution - spelled as de's host
-# writes it, with a CSV column and a camelCase key, so the declaration is shown to reach both.
+# writes it, with a camelCase key. A CSV column is never part of it: W019 declared one here
+# (`timings.csv::wall_s`), and autodev W029 (GAP-C63) made a glob that matches a CSV column a
+# declaration error - a CSV is a table the tool computed (test_the_execution_record_is_bounded).
 RECORD = ["kernels/*/out.json::measured.wall_s", "kernels/*/out.json::measured.cpu_s",
           "kernels/*/out.json::measured.peak_rss_gb", "kernels/*/out.json::measured.cores_*",
           "report.json::cores_model.*", "report.json::cost_model.*",
-          "report.json::memory_model.*", "report.json::timing.*", "timings.csv::wall_s"]
+          "report.json::memory_model.*", "report.json::timing.*"]
 
 
 # One run of a plugin on the fixture: the RESULT it computed, and its record of its own execution.
@@ -85,7 +87,7 @@ def _write_run(d: Path, *, wall, cpu, rss, peak, rate_s, rate_gb, log2fc=1.5, h5
         "describe": {"n_obs": 2000, "n_vars": 520},
         "timing": {"wallTime": wall},
         "products": [{"path": "report.json", "bytes": int(wall * 100)}]}))
-    (d / "timings.csv").write_text(f"step,wall_s,n_genes\nfit,{wall},520\n")
+    (d / "steps.csv").write_text("step,n_genes\nfit,520\n")
     (d / "obj.h5ad").write_bytes(h5ad)
 
 
@@ -119,14 +121,14 @@ class AgreeReportsTheDeclaredExecutionRecord(unittest.TestCase):
         reported = {k for k, _x, _y in c["resources"]}
         for k in ("kernels/x/out.json::measured.wall_s", "kernels/x/out.json::measured.cores_mean",
                   "report.json::cores_model.x.peak", "report.json::cost_model.x.s_per_100k",
-                  "report.json::memory_model.x.gb_per_100k", "report.json::timing.wallTime",
-                  "timings.csv::wall_s"):
+                  "report.json::memory_model.x.gb_per_100k", "report.json::timing.wallTime"):
             self.assertIn(k, reported)
         for k in ("kernels/x/out.json::result.log2fc", "kernels/x/out.json::measured.n_cells",
                   "kernels/x/out.json::config.alpha", "report.json::describe.n_obs",
-                  "timings.csv::n_genes.sum"):
+                  "steps.csv::n_genes.sum"):
             self.assertIn(k, c["compared"], k)
         self.assertFalse(reported & set(c["compared"]))
+        self.assertFalse([k for k in reported if ".csv::" in k], reported)
 
     def test_a_result_that_moved_beside_the_record_still_fails(self):
         _write_run(self.b, wall=42.86, cpu=80.30, rss=0.676, peak=1.91, rate_s=2143.0,
