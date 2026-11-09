@@ -259,6 +259,19 @@ class TheRulesOfARoundAreCheckedNotPromised(unittest.TestCase):
         self.assertEqual(RU.BROKEN, self.check(rules=grown)["end_to_end"]["verdict"],
                          "the two lists grew into each other and nothing said so")
 
+    def test_a_rules_key_that_is_not_a_mapping_is_not_read_as_undeclared(self):
+        """Not applicable means the `rules` key is ABSENT. A `rules:` block written as a list is
+        a declaration that cannot be checked, and reading it as no round at all would pass a
+        repository whose rules nobody can see (ADR-0029)."""
+        from sch.dev import ladder as L
+        (self.d / "DEVPOINTS.yaml").write_text(
+            HEAD + "rules:\n  - held_out\n  - maker_output\n" + POINT, encoding="utf-8")
+        rep = L.run(self.d, only={"rules", "unit"}, fixdir=str(self.d / "fx"))
+        rules = next(r for r in rep["results"] if r["tier"] == "rules")
+        self.assertTrue(rules["applicable"], "a list-shaped rules: read as no rules declared")
+        self.assertFalse(rules["ok"])
+        self.assertIn("rules", rep["failed"])
+
     def test_an_artefact_in_neither_list_is_named_and_not_broken(self):
         """A conversion of a tool the family has never seen, or a held-out plugin migrated and
         not yet run end to end, is in neither list. Under the equality it broke the rule by

@@ -280,10 +280,19 @@ def t_rules(doc, point_name, results):
     from . import rules as RU
     from .convert import _convert_specs_for_ladder as _specs
     t0 = time.time()
-    if not RU.declared(doc):
+    # NOT APPLICABLE MEANS THE KEY IS ABSENT. A `rules:` that is present but not a mapping of
+    # rule to block - a list, an empty block - is a declaration nobody can check, and reading it
+    # as "no round" would pass a repository whose rules cannot be seen.
+    if "rules" not in doc:
         return _t(results, "rules", True, [], skipped=True, applicable=False,
                   cannot=f"anything: {doc['_root']} declares no `rules:` block, so no round has "
                          f"stated rules here")
+    if not RU.declared(doc):
+        got = type(doc.get("rules")).__name__
+        return _t(results, "rules", False,
+                  [f"`rules:` is declared but is not a non-empty mapping of rule to block (got "
+                   f"{got}), so none of its rules can be checked"],
+                  cannot="anything, until the block is a mapping", seconds=time.time() - t0)
     try:
         specs = _specs(doc, point_name)
     except Exception as e:                                                # noqa: BLE001

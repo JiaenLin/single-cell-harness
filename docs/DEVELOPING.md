@@ -432,7 +432,9 @@ and exits 3.
 It is also a **tier of the ladder**, because a command you have to remember to type is not
 enforcement. A repository declaring no rules is neither failed nor passed by that tier: there is
 nothing here for it, as for a baseline with nothing to fingerprint, so the tier is **not
-applicable** and the check can still be complete. Until ADR-0029 it reported that it could not
+applicable** and the check can still be complete. Not applicable means the `rules` key is
+absent. A `rules:` that is present but not a mapping of rule to block fails the tier, because a
+declaration nobody can check is not the absence of one. Until ADR-0029 it reported that it could not
 run, so every full check of a repository with no round (four of the five) exited 3 for ever.
 Since 2026-11-09 development runs in waves, not rounds, so having no round is the normal state.
 Inventing rules for a repository that has declared none would be this tool deciding how somebody
