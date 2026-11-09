@@ -45,7 +45,7 @@ A6.2 and A6.3. The records are [`audits/0001-gap-review.md`](audits/0001-gap-rev
 | INT | scIntegrate | **W004** verified (PASS on code and docs, `9a2d7d1`). It merges when PBS **782587** (the SAMBO stage-3 reproduction) holds its prediction | gating (PBS) |
 | PROF | scProfile | **W002** built (`27e254f`; a 161-pin lock; 3 measured constraints; no kernel edit). Gating: PBS **782609** builds the environment on a fresh prefix; **782610** (afterok) reproduces CellChat's 90 tables on it. Its verifier is queued | gating |
 | HARN | single-cell-harness | **B1 done** (8 commits rebased; 615 tests; `sch conform` exits 0 on all four tools' fresh clones), now **verifying**. The lane opens when B1 merges, in this order: GAP-002 → GAP-001 (the spine: one design sheet through all stages, then the `qc@scqc` adapter), GAP-005 (catalogue), GAP-011, GAP-007/008, GAP-C13 | held for B1's verifier |
-| PLAT | studio, lab, service | **W005** (Lab) verified PASS and **held**: the deploy is the PI's (BLK-005). **W008** (Studio) built: 1,621 checks, Methods no longer claims a DESeq2 test, sentinels are not cell types. Now verifying. **W009** (Service) building: single-cell delivery detection and a request model, in new files only | W005 held; W008 verifying; W009 building |
+| PLAT | studio, lab, service | **W005** (Lab) and **W008** (Studio) are both **verified PASS and held**: their deploys are the PI's (BLK-005; decision 0). **W009** (Service) building: single-cell delivery detection, in new files only. Next: the run record (P10, then P19), the cross-repo contract test (P18) | 2 held (PI); W009 building |
 | AUDIT | — | Verifiers for W003, W002, B1 and W008 | 4 running (cap raised to 4) |
 | BLOCKER | — | **B1 done:** 113 rows (15 removed, 69 queued, 26 kept, 3 ASK settled by the pre-decider), recorded in ADR-0029 on its branch. The 3-hourly BLOCKER SWEEP is running. Next sweep: GAP-028's data (CellMarker 3.0 human release, BLK-006 to open) | sweeping |
 
@@ -71,8 +71,10 @@ None of these blocks a running lane.
    deploys the live app, so the classifier treats a push to it, and even opening a PR, as a
    production deploy. Your standing yes doesn't reach the permission system. Either run it yourself:
    `! cd /tmp && rm -rf lab-merge && git clone -q https://github.com/JiaenLin/scrnaseq-lab lab-merge && cd lab-merge && git merge --ff-only origin/autodev/W005-lab-cli && git push origin main`,
-   or add a permission rule for pushes to the platform repos' `main`. Studio and Service will need
-   the same.
+   or add a permission rule for pushes to the platform repos' `main`. **Studio (W008) is verified too**
+   (1,621/1,621; the live app changes only by the corrected DESeq2 wording and a violin-band fix):
+   `! cd /tmp && rm -rf studio-merge && git clone -q https://github.com/JiaenLin/scrnaseq-studio studio-merge && cd studio-merge && git merge --ff-only origin/autodev/W008-studio-truth && git push origin main`.
+   Studio ignores the absent field, so either app can go first.
 1. **Promote BrainOrganoid_C46 stage 1 (PBS 720932, 53,534 of 59,701 called cells)?** Recommended:
    **yes, keep D5 as it is.** W006 measured that the doublet calls follow the data, not the prior:
    9.0–11.1% with no expectation, 8.9–10.6% under scDblFinder's default, 8.3–11.7% under D5. The
