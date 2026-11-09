@@ -60,7 +60,7 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 | job | id | cron | created | expires |
 |---|---|---|---|---|
-| LOOP TICK | `3892e3da` | `7 * * * *` | 2026-11-09 | 2026-11-16 |
+| LOOP TICK | `2dac581d` | `7 */3 * * *` (the PI's throttle) | 2026-11-09 | 2026-11-16 |
 | PERIODIC CHECK | `c5bc935a` | `23 */6 * * *` | 2026-11-09 | 2026-11-16 |
 | BLOCKER SWEEP | `94a2c268` | `41 */3 * * *` | 2026-11-09 | 2026-11-16 |
 
