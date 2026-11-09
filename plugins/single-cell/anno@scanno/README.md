@@ -41,8 +41,9 @@ $ sch unmount anno@scanno --stack stack --dry-run
 - `cluster`, `annotate` and `rescue` are objects of the command's own flags. They are written in
   scAnno's parser order:
   - a list on `cluster_key` repeats the flag;
-  - `true` is a bare flag;
-  - an absent flag keeps scAnno's default.
+  - `true` writes a flag that takes no argument, and nothing else does. At 0.12.0 these are
+    annotate's `resolve`, `background_from_clusters`, `no_exclude` and `use_raw`;
+  - `false` or `null` leaves the flag out, so it keeps scAnno's default.
 - A name the command does not have is refused.
 
 ### What the adapter sets itself
@@ -53,9 +54,16 @@ $ sch unmount anno@scanno --stack stack --dry-run
   - `rescue/rescue.json`, `rescue/impact.csv` and `rescue/rescue.html`.
 - **`annotate --assay`**: the stack's declared assay, verbatim.
 
-A parameter naming any of these is refused.
+A parameter naming any of these is refused. Nor can a parameter set one through another flag's
+value (verifier W026 D1):
+- a flag that takes no argument takes only `true`, `false` or `null`. Any other value would be
+  written after it, and scanno's parser would read it as an option of its own;
+- a flag that takes a value is never written bare;
+- no value begins with `-`. That includes every element of a list, scAnno's path and the stack's
+  assay.
 
 ### Refused before any compute
+- any parameter above that breaks those rules, by name, before any scAnno process;
 - a stack that declares no assay (rule 2);
 - a view with anything masked beneath this mount;
 - two libraries whose objects share a file stem, because `cluster` names its outputs by stem;

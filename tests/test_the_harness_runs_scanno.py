@@ -326,6 +326,51 @@ class TheHarnessRunsScanno(_Base):
         self.assertIn("scanno", r["reason"])
         self.assertEqual(self.calls_of(), [])
 
+    def test_a_value_scanno_would_read_as_an_option_is_refused_before_any_call(self):
+        """Verifier W026 D1. A zero-argument flag given a value had that value written after it,
+        and scanno's parser read it as an option: through the real scAnno, `resolve` carried a
+        `--report=` that wrote beside the libraries (E2), and `background_from_clusters` carried an
+        `--assay=` that overrode the stack's (rule 2). What a parameter cannot set by its own name
+        it cannot set through another's: each is refused by name, before any scAnno process, and
+        nothing is written beside the observations."""
+        self.init(self.manifest, "--context", "assay=scrna")
+        objects = self.tmp / "objects"
+        delivered = sorted(p.name for p in objects.iterdir())
+        b = blocks(self.refs)
+        ann = b["annotate"]
+        cases = {
+            "(a) a report through resolve": ("resolve", dict(b, annotate=dict(
+                ann, resolve=f"--report={objects}/x.html"))),
+            "(b) a table through resolve": ("resolve", dict(b, annotate=dict(
+                ann, resolve=f"--out={objects}/x.tsv"))),
+            "(c) an assay through background_from_clusters": ("background_from_clusters", dict(
+                b, annotate=dict(ann, background_from_clusters="--assay=snrna"))),
+            "a zero-argument flag given a word": ("use_raw", dict(b, annotate=dict(ann, use_raw="yes"))),
+            "a value that is an option": ("tree", dict(b, annotate=dict(ann, tree=f"--report={objects}/y.html"))),
+            "one of a repeated flag's values": ("cluster_key", dict(b, annotate=dict(
+                ann, cluster_key=KEYS + [f"--out={objects}/z.tsv"]))),
+            "a negative number": ("gap_min", dict(b, annotate=dict(ann, gap_min=-0.5))),
+            "a flag that takes a value, written bare": ("tree", dict(b, annotate=dict(ann, tree=True))),
+            "cluster's values too": ("resolutions", dict(b, cluster=dict(b["cluster"], resolutions="-1.0,2.0"))),
+            "rescue's values too": ("out_key", dict(b, rescue=dict(b["rescue"], out_key=f"--out={objects}/w"))),
+        }
+        for why, (flag, params) in cases.items():
+            with self.subTest(why):
+                rc, r = self.mount(params)
+                self.assertEqual((rc, r["status"]), (2, "refused"), r)
+                self.assertIn(flag, r["reason"])
+        rc, r = self.mount(b, f"--{self.tmp}")
+        self.assertEqual((rc, r["status"]), (2, "refused"), r)
+        self.assertIn("scanno", r["reason"])
+        shutil.rmtree(self.stack)
+        self.init(self.manifest, "--context", "assay=--report=x.html")
+        rc, r = self.mount(b)
+        self.assertEqual((rc, r["status"]), (2, "refused"), r)
+        self.assertIn("assay", r["reason"])
+        self.assertEqual(self.calls_of(), [], "a scAnno process was started")
+        self.assertEqual(sorted(p.name for p in objects.iterdir()), delivered,
+                         "something was written beside the observations")
+
     def test_two_libraries_whose_objects_share_a_file_stem_are_refused(self):
         """`cluster --out-dir` names each output `<stem>_clustered.h5ad`, so two parts with one stem
         would be written to one file and one library's labels would be another's."""

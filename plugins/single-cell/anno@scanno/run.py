@@ -82,6 +82,14 @@ OWNED = {
 }
 #: A flag scAnno's parser takes again for each value (`action="append"`).
 APPEND = ("cluster_key",)
+#: scAnno's flags that take NO argument (`action="store_true"`, d0ee926's parser): written bare, or
+#: not at all, so each takes only true, false or null. Any other value would be written after the
+#: flag and argparse would read it as an option of its own. Verifier W026 D1, through the real
+#: scAnno: `resolve: "--report=<the libraries' directory>/x.html"` wrote a report beside the
+#: observations (E2), and `background_from_clusters: "--assay=snrna"` overrode the stack's assay
+#: (rule 2). For the same reason no value at all may begin with "-".
+BARE = {"cluster": (), "annotate": ("resolve", "background_from_clusters", "no_exclude", "use_raw"),
+        "rescue": ()}
 #: Read by the kernel, not by scAnno.
 KERNEL_PARAMS = ("timeout",)
 #: scAnno's status contract (scanno/status.py): the record and its seals, beside the output.
@@ -136,7 +144,28 @@ for cmd, block in ((c, params[c]) for c in FLAGS if c in params):
     if owned:
         refuse(f"{cmd}: {', '.join(owned)} {'is' if len(owned) == 1 else 'are'} set by the adapter - "
                + "; ".join(f"{k}: {OWNED[cmd][k]}" for k in owned), f"remove {', '.join(owned)}")
+    # Each flag takes the kind of value scAnno's parser gives it, and no value can be read as an
+    # option: what a parameter cannot set through its own name, it cannot set through another's.
+    for k, v in sorted(block.items()):
+        if v is None or v is False:
+            continue
+        if k in BARE[cmd] and v is not True:
+            refuse(f"{cmd}: {k}={v!r}; scanno {cmd} --{k.replace('_', '-')} takes no argument, so a "
+                   f"value written after it would be read as an option of its own",
+                   f"declare {k} true (the flag), false or null (absent)")
+        if k not in BARE[cmd] and v is True:
+            refuse(f"{cmd}: {k}=true; scanno {cmd} --{k.replace('_', '-')} takes a value",
+                   f"declare {k} with its value, or null to keep scAnno's default")
+        dashed = [x for x in (v if isinstance(v, list) else [v])
+                  if x is not True and x is not False and x is not None and str(x).startswith("-")]
+        if dashed:
+            refuse(f"{cmd}: {k}={dashed[0]!r} begins with '-', which scanno would read as an option, "
+                   f"not as the value of --{k.replace('_', '-')}",
+                   f"no value begins with '-'; declare {k} as scAnno documents it")
 scanno = str(params["scanno"])           # verbatim: it is the path scAnno records as its argv[0]
+if scanno.startswith("-"):
+    refuse(f"scanno={scanno!r} begins with '-', which the interpreter would read as an option",
+           "--param scanno=<scAnno checkout>/bin/scanno")
 if not Path(scanno).is_file():
     refuse(f"scanno={scanno} is not a file", "--param scanno=<scAnno checkout>/bin/scanno")
 if not obs.get("parts"):
@@ -184,6 +213,9 @@ assay = str(context.get("assay") or "").strip()
 if not assay:
     refuse("the stack declares no assay; scAnno's gene background and its words differ between single "
            "cells and single nuclei, and neither is a default", "sch init ... --context assay=<scrna|snrna>")
+if assay.startswith("-"):
+    refuse(f"the stack declares assay {assay!r}, which begins with '-' and would be read as an option",
+           "sch init ... --context assay=<scrna|snrna>")
 
 # ---------------------------------------------------------------------------- scAnno's numbers' version
 d = subprocess.run([sys.executable, scanno, "describe"], capture_output=True, text=True,
