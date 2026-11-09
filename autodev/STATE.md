@@ -5,9 +5,10 @@ something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP
 
 ## Verdict
 
-**NOT HAPPY.** Audit pass 0001 (the gap review, 2026-11-09) passed **0 of 20 tests**: 6 PARTIAL, 13
-FAIL, and 1 UNKNOWN (A6.3, left to pass 0001b, which is running). The record is
-[`audits/0001-gap-review.md`](audits/0001-gap-review.md), and its 59 gaps are in
+**NOT HAPPY: 0 of 20 tests PASS (5 PARTIAL, 15 FAIL).** These are the grades of audit pass 0001, the
+gap review of the harness and the four tools, and of pass 0001b, which reviewed the platform and graded
+A6.2 and A6.3. The records are [`audits/0001-gap-review.md`](audits/0001-gap-review.md) and
+[`audits/0001b-platform-review.md`](audits/0001b-platform-review.md). Their 59 + 24 gaps are in
 [`ledger/gaps.tsv`](ledger/gaps.tsv).
 
 ## Scoreboard (GOALS.md layer 3; pass 0001)
@@ -31,8 +32,8 @@ FAIL, and 1 UNKNOWN (A6.3, left to pass 0001b, which is running). The record is
 | A5.1 report from evidence | PARTIAL | The report is CellChat-only, and the review loop does not remove what it withdraws (GAP-047, -048). |
 | A5.2 hypotheses | FAIL | No co-scientist (GAP-012). |
 | A6.1 Harness UI | FAIL | No UI (GAP-013). |
-| A6.2 Studio hand-off | PARTIAL | The final object has never been opened in Studio (GAP-014; pass 0001b). |
-| A6.3 Service takes single-cell requests | UNKNOWN | Pass 0001b. |
+| A6.2 Studio hand-off | FAIL | Lab's only automatic converter is a developer script nothing calls, and it guesses the roles. The run's provenance is dropped, and Studio shows no run (GAP-P09 → **W005**, P10, P19, GAP-014). |
+| A6.3 Service takes single-cell requests | FAIL | A Cell Ranger or CeleScope delivery yields 0 samples, because only FASTQ is scanned. The bulk path holds: 126 checks (GAP-P01–P04). |
 | A7.1 agents drive it | FAIL | No skill teaches a cold agent to run a cohort (GAP-003). |
 
 ## Lanes
@@ -44,8 +45,8 @@ FAIL, and 1 UNKNOWN (A6.3, left to pass 0001b, which is running). The record is
 | INT | scIntegrate | W004: species checked, assay recorded, first-cohort sentence removed, false statements fixed (GAP-034, GAP-037) | building |
 | PROF | scProfile | W002: host-level environment lock, with no kernel edit (GAP-038) | building |
 | HARN | single-cell-harness | held until B1 merges: B1 is editing the harness, and parallel edits would conflict. Next: GAP-002 → GAP-001 (the spine), GAP-005, GAP-011, GAP-007, GAP-008 | held (rule 5: a conflict costs more) |
-| PLAT | studio, lab, service | waiting for pass 0001b | waiting |
-| AUDIT | — | pass 0001b (the platform); W001's verifier | 2 running |
+| PLAT | studio, lab, service | W005: Lab's `convert` command, the design carried, byte-reproducible bundles (GAP-P09, P11, P13, P16). Next: the run record (P10 in Lab, then P19 in Studio); Service's single-cell mode in new files only | building |
+| AUDIT | — | W001's verifier | 1 running |
 | BLOCKER | the harness (in its worktree) | B1: the inherited constraints (unreasonable designs, freezes, gates), recorded in ADR-0029 | running |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
@@ -88,4 +89,7 @@ None of these blocks a running lane.
 | Which plugin format is the standard (decision 5) | the pre-decider: a design decision, not a PI-owned one (RULES tier II) | A design wave compares the two formats and adopts one in an ADR. |
 | Single-cell QC thresholds (decision 6) | the pre-decider; QC.1 ("count floors derived from the data"); cohort decisions D8/D9 | The tool develops data-derived floors for cells. The PI's declared values remain the cohort's decision, and the report shows both and who decided. |
 | SAMBO stage 2 (decision 3, in part) | the pre-decider | Reproduce `bd45f5d` at its own commit first; that is a measurement. Promotion is asked only if it fails. |
-| The audit-agent cap; the builder cap | the pre-decider (tier IV, rule 5) | 1 → 3 audit agents; 3 → 4 editing agents (36 GB). |
+| The audit-agent cap; the builder cap | the pre-decider (tier IV, rule 5) | 1 → 3 audit agents. The editing cap went 3 → 4 → 5, the last step for W005, a light Node project, on a 36 GB machine. |
+| Service waves vs your uncommitted `rnaseq-service` work (82 lines in `scan.ts`, `request.ts`, `types.ts`, `test-scan.mjs`) | the pre-decider (protect the owner's work; the reviewer's own first move) | The single-cell mode is built in new files only and never touches those four files. |
+| Where the run record lives (0001b, blocker B2) | the pre-decider (design) | Each stage appends to the object's `uns`; it never replaces (P20). Lab copies the record verbatim into an additive `meta.run`, and Studio shows it in a Run card. |
+| Where Lab conversion runs (0001b, blocker B3) | the pre-decider (rule 3 covers cluster compute only) | On the workstation, as Lab was designed. |
