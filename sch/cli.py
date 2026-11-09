@@ -17,6 +17,7 @@
     sch plugin validate|test|new
     sch doctor --architecture | --runtime DIR
     sch conform REPO [--terms FILE] | --run RUNDIR [--against REFRUN]
+    sch catalogue [show ID] [--scprofile CHECKOUT]   every plugin the family has, never imported
 
     sch dev map [--json]                what can be added to this repository, and how
     sch dev new POINT NAME              a conformant skeleton, its SPEC and its test
@@ -311,6 +312,11 @@ def cmd_conform(a):
     if a.json:
         print(json.dumps(checks, indent=1, default=str))
     return 0 if all(c["ok"] or c["level"] == "warn" for c in checks) else 2
+
+
+def cmd_catalogue(a):
+    from .catalogue.command import run
+    return run(a)
 
 
 # WHAT AN AGENT BRANCHES ON. Three outcomes, and the third is the one that was missing:
@@ -1645,6 +1651,13 @@ def build_parser():
     p.add_argument("--run", action="append")
     p.add_argument("--against", metavar="REFRUN", help="a reference run: is a comparison with --run meaningful?")
     p.set_defaults(fn=cmd_conform)
+    p = sub.add_parser("catalogue", help="every plugin the family has, read without importing any "
+                                         "(ADR-0030): list, or show ID")
+    p.add_argument("action", nargs="?", default="list", choices=["list", "show"])
+    p.add_argument("id", nargs="?", help="with show: a plugin's id, or a tail of it naming one plugin")
+    p.add_argument("--scprofile", metavar="CHECKOUT",
+                   help="a scProfile checkout: its kernels/ are read, never imported")
+    p.set_defaults(fn=cmd_catalogue)
 
     # `--json` IS GLOBAL, SO IT IS ACCEPTED IN BOTH PLACES. It was declared only on the top-level
     # parser, which made `sch dev map --json` - the form the skill, the README and DEVELOPING all

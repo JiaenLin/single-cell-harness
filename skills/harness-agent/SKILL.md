@@ -23,7 +23,25 @@ name** — `--by` with an agent's name is refused, and the refusal is in the str
 
 ## The loop
 
+**Choose before you plan.** `sch catalogue` lists every plugin the family has. It covers the
+harness's own plugins, and scProfile's as well when you pass `--scprofile CHECKOUT`.
+- Each row gives:
+  - the question the plugin answers;
+  - what it needs: the assays, design and layers;
+  - what it produces;
+  - its upstream, its exact version and its DOI;
+  - its format;
+  - whether a cohort run is recorded.
+- Everything is read from the plugins' declarations, so you never read a plugin's code.
+- A field shown as `not declared` is just that. Do not fill it in. In particular, a plugin that
+  does not declare its assays has not said whether it is right for nuclei.
+- `sch catalogue show <id>` gives one plugin in full, with its parameters.
+- **A `scprofile:` row cannot be planned or mounted through `sch` yet.** The harness lists it but
+  does not run it (ROADMAP Phase 6, the mount). Run it with scProfile's own CLI, from the checkout
+  you named.
+
 ```
+sch catalogue [--scprofile CHECKOUT] --json   which plugins exist, what each answers and needs
 sch plan PLUGIN [--param k=v]           what would run; every missing prerequisite with its fix
 sch mount PLUGIN [--param k=v]          materialise → gates → run → merge → companions
 sch stack                               what is mounted, what is invalid, what each contributed

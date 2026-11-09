@@ -151,6 +151,13 @@ Beyond the generic contract, a single-cell plugin MUST:
   that gives any axis a literal default. The case that put this here: a mitochondrial step read
   `assay` with a default of the first cohort's single-nucleus value, from a task never given it, and
   bounded a whole-cell cohort as nuclei with every test green.
+- **say which assays it supports, if it knows.** The key is `assays: [scrna, snrna]`, values of
+  the `assay` axis. It is an optional key added by ADR-0030, and it means the same in a
+  `plugin.yml` and in the Universal Plugin Format's `PLUGIN` literal. Single cells are not single
+  nuclei (autodev rule 2), so the key is never defaulted. Where it is absent, `sch catalogue`
+  reads `not declared` and lists, as evidence, every line of the plugin's own code that reads the
+  run's assay. The key states the plugin's scope. It replaces neither `axes_declared` nor the
+  stack's declared assay.
 
 ## 8. The probe library
 

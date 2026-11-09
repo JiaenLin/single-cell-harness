@@ -3,6 +3,19 @@
 **Specification, v1.0-draft. Domain-free.** The contract every plugin conforms to, in any domain.
 Normative words — MUST, SHOULD, MAY — carry their usual meaning.
 
+> **2026-11-09, [ADR-0030](docs/adr/0030-one-plugin-format.md): the Universal Plugin Format (UPF)
+> is the maker's layout.** In that layout a plugin is one Python file, and the `PLUGIN` literal in
+> it is the declaration (scProfile's api 1).
+>
+> This document specifies the **directory** layout. The harness's kernel mounts that layout today.
+> A plugin the kernel itself must mount, such as a probe, a gate or an adapter, is still written in
+> it. For the tool pool the directory layout is legacy. It is read through ADR-0030's
+> field-by-field mapping.
+>
+> Every field below keeps its meaning here. The UPF carries the kernel's fields as optional keys,
+> with the meanings this document gives them. `sch catalogue` reads both layouts and reports each
+> plugin in the UPF's terms.
+
 Nothing here knows what a cell is. That is invariant **L2** of
 [`ARCHITECTURE.md`](ARCHITECTURE.md): the core and the contract must be testable against a domain
 they were not designed for. What an observation *is*, what slots exist and what may be measured are
@@ -373,6 +386,11 @@ version again at runtime**, read from the tool, in `wrapped_versions`; reproduce
 recommended settings by default and mark every deviation; and never silently repair its output.
 
 The plugin's `version` tracks the wrapper. The tool's version lives in `wraps`.
+
+`wraps.doi` (added by ADR-0030; X2) names the peer-reviewed source as a DOI. Give one string, or a
+list when the method rests on several papers. A DOI written inside the free-text `cite` is a
+citation a person can read, not a declaration: `sch catalogue` reads only the field. Where it is
+absent, the catalogue says `not declared`.
 
 ---
 
