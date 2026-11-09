@@ -26,13 +26,20 @@ something and by every PERIODIC CHECK.
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | — | waiting for pass 0001 |
+| QC | scQC | W001: merge the single-cell route (`0e6a5f6`; SAMBO reproduction 720930 IDENTICAL, read 2026-11-09) | verifying |
 | ANNO | scAnno | — | waiting for pass 0001 |
 | INT | scIntegrate | — | waiting for pass 0001 |
 | PROF | scProfile | — | waiting for pass 0001 |
 | HARN | single-cell-harness | — | waiting for pass 0001 |
 | PLAT | scrnaseq-studio, scrnaseq-lab, rnaseq-service | — | waiting for pass 0001b |
-| AUDIT | — | pass 0001 (the harness and four tools); pass 0001b (the platform) | both running |
+| AUDIT | — | pass 0001 (the harness and four tools); pass 0001b (the platform); W001's verifier | 3 running |
+
+**Read 2026-11-09 (rule 5: results landed 2026-10-02 and were never read):**
+- PBS 720930 is IDENTICAL, as predicted.
+- PBS 720932 (BrainOrganoid_C46 through scQC apply): 53,534 of 59,701 called cells kept. The gene floor and mito ceiling counts are exact to the prediction. The removal percentage and kept count are missed, through the doublet over-call (GAP-C02).
+- PBS 720931 (selftest): its output was never located.
+
+The graded rows are in both cohorts' `stages/01_qc/RUNLOG.md`.
 
 ## Machinery (session-only; re-create on resume, see README)
 
@@ -58,3 +65,4 @@ None open.
 | Studio, Lab and Service | the PI: "yes include Studio, Lab and Service" | in scope, lane PLAT; GOALS PLAT.1–3 and A6.3 |
 | The scale bar and the maker bar | the PI: "this is goals we are developing towards. keep developing"; the pre-decider set the numbers (C) | A3.4: ≥ 1,000,000 cells through A1.1; A4.2: ≥ 4 of 5 |
 | The Harness UI's design | the pre-decider (a (C) layer-3 clause, not a PI rule) | the report's words are the specification; the PI may redirect at any point |
+| The audit-agent cap | the pre-decider (tier IV, adjusted at once; rule 5: a verifier was waiting) | raised from 1 to 3 |
