@@ -1,7 +1,12 @@
 # STATE: where the program stands
 
-Updated 2026-11-09T15:40Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-09T16:01Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
+
+**PAUSED 2026-11-09T15:57Z by the account's weekly limit (BLK-010) until 2026-11-14T01:00Z (9am SGT).** No agent can
+run before then. The W020 and W029 builders and the W028 verifier stopped mid-task, with their work saved. They resume
+from their transcripts at the reset. Until then the coordinator only records and grades PBS jobs, and the loop's crons
+are suspended (Machinery).
 
 ## Verdict
 
@@ -15,7 +20,7 @@ gaps not closed are size M or larger.
 
 | test | grade | the main reason (gap ids) |
 |---|---|---|
-| A1.1 one request, every stage | PARTIAL | Stage 1 runs through `sch mount qc@scqc` with the pbs executor, AS PREDICTED (PBS 782817, 782922). No adapter for stages 2-4, and no driver (GAP-001; W026 building). |
+| A1.1 one request, every stage | PARTIAL | Stage 1 runs through `sch mount qc@scqc` with the pbs executor, AS PREDICTED (PBS 782817, 782922). Stage 2 runs through `sch mount anno@scanno` AS PREDICTED twice (W026: PBS 783280, and 783363 at the fix-up); its merge waits on a fix-only re-check. No adapter for stages 3-4, and no driver (GAP-001). |
 | A1.2 the ten steps mapped | PARTIAL | No map of the ten steps. Step 2 on nuclei runs only outside the tools (GAP-C49). Differential abundance has never run, and step 9 has nothing. |
 | A1.3 environments from main | PARTIAL | Only scProfile builds from main on a fresh prefix (782609). scQC's fresh build reproduced stage 1 in every value but missed its interpreter pin (782920); job 34 is gating (GAP-107). |
 | A2.1 pre-declared reproduction | PARTIAL | Stages 1 and 2 reproduce; stage 2's promoted run reproduces at its own commit (783148). Stage 3's harmony spread broke (782882; W025). Stage 4 and C46 have nothing promoted. |
@@ -40,14 +45,14 @@ gaps not closed are size M or larger.
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | **W014 MERGED** (`main` `98504bd`): scQC builds its three environments on a fresh prefix from its own locks, and stage 1 on them is IDENTICAL to the reference (job 34, PBS 783151, AS PREDICTED on every line). The CellBender checkpoint error persists in both environments (GAP-C49). **W020** (19 constraints) can start | merged; 1 queued |
-| ANNO | scAnno | **W011 MERGED** (`main` `d0ee926`). **W018 DONE: the promoted stage 2 reproduces at its own commit** (PBS 783148, `bd45f5d`): IDENTICAL on 1,464 obs columns over 31 objects, the joint object, the scope record and every table, with inputs and environment measured equal first (GAP-033 closed). **W021** building: scAnno's 18 inherited constraints, including `scanno build-markers` | merged; done; 1 building |
+| QC | scQC | **W014 MERGED** (`main` `98504bd`): scQC builds its three environments on a fresh prefix from its own locks, and stage 1 on them is IDENTICAL to the reference (job 34, PBS 783151, AS PREDICTED on every line). The CellBender checkpoint error persists in both environments (GAP-C49). **W020** (19 constraints) paused mid-build (BLK-010) | merged; 1 held |
+| ANNO | scAnno | **W011 MERGED** (`main` `d0ee926`). **W018 DONE: the promoted stage 2 reproduces at its own commit** (PBS 783148, `bd45f5d`): IDENTICAL on 1,464 obs columns over 31 objects, the joint object, the scope record and every table, with inputs and environment measured equal first (GAP-033 closed). **W021 MERGED** (`main` `68233f0`): scAnno's 18 inherited constraints removed or trimmed; `scanno build-markers` rebuilds SAMBO's corpus row for row and `scanno tree propose` drafts a tree (GAP-028 closed); stage 2 IDENTICAL on SAMBO's path (PBS 783253, 783345) | merged x2; done |
 | INT | scIntegrate | **W012 + W025 held:** job 30 (PBS 783282) MISSED on LISI's unseeded subsample for `none` (0.0019 > 1e-3). Harmony's own lines held, and the cause is fixed (threaded KMeans). Next, round 2: make LISI reproducible (GAP-C67), then one re-gate. GAP-C65 and GAP-C12 (harmony on the fixture) follow | held |
 | PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013**: `de` runs through the maker in the declared-control direction, AS PREDICTED in three runs (bit-identical to 720548). The verifier keeps finding ways round the maker's new `--answer` mechanism; fix-up 3 is building (one line model, design arguments only, the covariate regression). Its registered ladder line waits on W019. **W023** queued | fixing; 1 queued |
-| HARN | single-cell-harness | **W010, W016 and W019 MERGED** (`main` `70c25b9`): stage 1 through the harness; one plugin format plus `sch catalogue`; the maker's six defects from the de conversion (`agree` judges every output, excusing only a tool's declared execution record). **W026**: SAMBO stage 2 through the harness AS PREDICTED (PBS 783280); the verifier is running. **W024** fix-up building (moving the cohort job scripts out, the scope loophole, GAP-111) | merged x3; 1 verifying; 1 fixing |
-| PLAT | studio, lab, service | **DEPLOYED by the PI's go:** Lab W005 (`51a00fa`), Studio W008 (`1d591f9`), and Service W009 + W015 (`997d132`). W017 (Lab) and W028 (Studio) are now stacked on deployed mains. Under the throttle, W017 gets at most one more fix-only re-check | deployed x4; 2 open |
-| AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014, W019**. Pass 0004 starts at the next merge | waiting (2 of 3) |
-| BLOCKER | — | **Sweep 14:11Z:** nothing removable is waiting. The B1 register's 68 rows are all in waves (W020 building, W021 verifying, W022 and W023 queued behind their repositories), and the checkouts each follow their gating wave. New: GAP-C62 (the commit hook runs the whole suite on records-only commits). Still the PI's: BLK-002, BLK-005 (4 verified platform waves), BLK-007, decisions 0-6 | sweeping |
+| HARN | single-cell-harness | **W010, W016 and W019 MERGED** (`main` `70c25b9`): stage 1 through the harness; one plugin format plus `sch catalogue`; the maker's six defects from the de conversion (`agree` judges every output, excusing only a tool's declared execution record). **W026**: SAMBO stage 2 through the harness AS PREDICTED at the fix-up too (job 28b, PBS 783363); the merge waits on the fix-only re-check of `f640455`. **W024**: the merge waits on the fix-only re-check of `ca4825f`. **W029** paused mid-build. All three wait on BLK-010 | merged x3; 2 waiting on a re-check; 1 held |
+| PLAT | studio, lab, service | **DEPLOYED by the PI's go:** Lab W005 (`51a00fa`), Studio W008 (`1d591f9`), and Service W009 + W015 (`997d132`). W017 (Lab) and W028 (Studio) are now stacked on deployed mains. Under the throttle, W017 gets at most one more fix-only re-check (`243783f`). The W028 verifier was paused mid-check (BLK-010) | deployed x4; 2 open |
+| AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014, W019, W021**. Pass 0004 is due and waits on BLK-010 | due |
+| BLOCKER | — | **Sweep 14:11Z:** nothing removable is waiting. The B1 register's 68 rows are all in waves (W020 building, W021 verifying, W022 and W023 queued behind their repositories), and the checkouts each follow their gating wave. New: GAP-C62 (the commit hook runs the whole suite on records-only commits). **BLK-010 (16:00Z): the weekly limit stopped every agent until 2026-11-14T01:00Z.** BLK-009 (W013's job, held by long-queue start failures) is parked. Still the PI's: BLK-002, BLK-007, decisions 2-5 | watching |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
 - PBS 720930 is IDENTICAL, as predicted.
@@ -60,9 +65,10 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 | job | id | cron | created | expires |
 |---|---|---|---|---|
-| LOOP TICK | `2dac581d` | `7 */3 * * *` (the PI's throttle) | 2026-11-09 | 2026-11-16 |
-| PERIODIC CHECK | `c5bc935a` | `23 */6 * * *` | 2026-11-09 | 2026-11-16 |
-| BLOCKER SWEEP | `94a2c268` | `41 */3 * * *` | 2026-11-09 | 2026-11-16 |
+| LOOP TICK | suspended 2026-11-09T16:02Z (was `2dac581d`) | `7 */3 * * *` (the PI's throttle) | 2026-11-09 | - |
+| PERIODIC CHECK | suspended 2026-11-09T16:02Z (was `c5bc935a`) | `23 */6 * * *` | 2026-11-09 | - |
+| BLOCKER SWEEP | suspended 2026-11-09T16:02Z (was `94a2c268`) | `41 */3 * * *` | 2026-11-09 | - |
+| RESUME (one-shot) | `46b90b26` | `17 9 14 11 *` local = 2026-11-14T01:17Z: resumes W020, W029 and W028 and re-creates the three | 2026-11-09 | fires once |
 
 ## Decisions needed from the PI
 
