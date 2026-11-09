@@ -95,6 +95,21 @@ class Run:
         self._out["tables"].append(rel)
         return rel
 
+    def _inside(self, rel: str) -> str:
+        p = (self.out_dir / rel).resolve()
+        if self.out_dir.resolve() not in p.parents or not p.is_file():
+            raise ValueError(f"{rel!r} is not a file under out_dir; paths are relative to out_dir")
+        return rel
+
+    def table_at(self, rel: str):
+        """A table the wrapped tool already wrote under out_dir, referenced where it lies: an
+        adapter never copies or reshapes a tool's own output."""
+        self._out["tables"].append(self._inside(rel))
+
+    def object_at(self, name: str, rel: str):
+        """An object the wrapped tool already wrote under out_dir, referenced where it lies."""
+        self._out["objects"][name] = self._inside(rel)
+
     def figure(self, path_rel: str, caption: str, source_rel: str = None, vector_rel: str = None):
         self._out["figures"].append({"path": path_rel, "caption": caption,
                                      "source": source_rel, "vector": vector_rel})
