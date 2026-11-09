@@ -1329,7 +1329,7 @@ class EveryActionLoadsTheDeclarationsItReads(unittest.TestCase):
 class TheJobsCheckerRunsBeforeItIsSubmitted(unittest.TestCase):
     """A prediction is only as good as the thing grading it, and nothing was grading that.
 
-    THREE TIMES IN ONE JOB. The SAMBO writing job carries its predictions as an embedded Python
+    THREE TIMES IN ONE JOB. The cohort's writing job carries its predictions as an embedded Python
     checker, and three separate defects in that checker reached the cluster: it counted only one
     of the two places a legend can live and reported 558 undescribed panels against 378 saying
     so; it searched for one module's phrasing of the aliasing caveat and called two pages that
@@ -1343,7 +1343,9 @@ class TheJobsCheckerRunsBeforeItIsSubmitted(unittest.TestCase):
     it checks that asking them does not raise.
     """
 
-    JOB = ROOT / "jobs" / "writing_sambo.pbs"
+    #: The job that carries an embedded checker, found by what it carries and not by the cohort
+    #: it was written for: a test of the harness may not spell a cohort (W024).
+    JOB = next(p for p in sorted((ROOT / "jobs").glob("*.pbs")) if "<<'PYCHK'" in p.read_text())
 
     def _checker(self):
         lines = self.JOB.read_text().split("\n")

@@ -77,7 +77,7 @@ list is `sch dev map --json`'s `tiers`, and this table describes rather than cou
 | `leak` | a cohort or site term reached the repository — source, tests, docs, jobs |
 | `baseline` | a number moved that was not supposed to move |
 
-The word list and the shape list both live **outside** the repository being checked — `$<TOOL>_FORBIDDEN_TERMS` for names, `$SCH_SITE_SHAPES` for hostname and job-id patterns. A tool that ships the cohort's vocabulary in order to prove it does not ship the cohort's vocabulary has shipped it, and a tool that knows one cluster's hostnames is blind to every other cluster's. Both checks say plainly when they were given nothing.
+The word list and the shape list both live **outside** the repository being checked — `$<TOOL>_FORBIDDEN_TERMS` for names, `$SCH_SITE_SHAPES` for hostname and job-id patterns. A cohort's list is generated from its own records by `sch conform terms build COHORT --out FILE`; a list that is named and missing, or empty, fails instead of passing quietly; and a repository's records, or a word it legitimately holds, are declared in its `LEAK_SCOPE.txt` with a reason (W024). A tool that ships the cohort's vocabulary in order to prove it does not ship the cohort's vocabulary has shipped it, and a tool that knows one cluster's hostnames is blind to every other cluster's. Both checks say plainly when they were given nothing.
 
 **What the exit code means.** Three outcomes, and the third is the one worth branching on:
 

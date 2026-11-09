@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import re
 from pathlib import Path
+from typing import NamedTuple
 
+#: The suffixes the OTHER rules (S2-S5, the package listing) read. S1 does not use it: S1 reads
+#: every file git lists, by content (W024, GAP-C46). This set once decided S1 too, and Studio, Lab
+#: and the Service - TypeScript, JavaScript, HTML - passed on their READMEs alone.
 TEXT_EXT = {".py", ".R", ".r", ".sh", ".pbs", ".md", ".yml", ".yaml", ".toml", ".cfg", ".txt",
             ".json", ".csv", ".tsv", ".cff", ".ipynb"}
 SKIP_DIRS = {".git", "__pycache__", "node_modules", ".venv", "venv", "env", "dist", "build",
@@ -93,30 +98,381 @@ _SNIFF_CAND = re.compile(r"CANDIDATES\s*=\s*[\[(]")
 RUNKEY = re.compile(r"^[0-9]{8}T[0-9]{4,6}Z__[a-z][a-z0-9]*-[0-9a-f]{7,40}__[0-9]{2}_[a-z0-9_]+(__[a-z0-9-]+)?$")
 
 
+class TermListError(ValueError):
+    """A word list that was named and holds no term (W024, GAP-101): every line a comment, or a
+    line whose prefix names nothing. The guard would look for nothing and report that it looked."""
+
+
 def term_files(spec) -> list:
     """The files a terms argument names: ONE PER PROJECT, joined by `os.pathsep` (harness ADR-0027).
 
     A word list lives with the cohort it protects, never in a tool, so a second cohort brings a
     second list - and a scan that reads only the first would pass a tool carrying the second
-    cohort's library names. A list that is named and missing raises: a typo in the path must not
-    quietly shrink what the guard looks for."""
-    files = [Path(x) for x in str(spec).split(os.pathsep) if x.strip()]
-    missing = [str(f) for f in files if not f.exists()]
-    if missing and len(files) > 1:
+    cohort's library names. A list that is named and missing raises, WHETHER ONE LIST OR SEVERAL
+    IS NAMED: a typo in the path must not quietly shrink what the guard looks for. Until W024 a
+    single misspelt list was dropped without a word and S1 passed (GAP-101)."""
+    files = [Path(x.strip()) for x in str(spec).split(os.pathsep) if x.strip()]
+    missing = [str(f) for f in files if not f.is_file()]
+    if missing:
         raise FileNotFoundError(f"term list(s) named and not found: {', '.join(missing)}")
-    return [f for f in files if f.exists()]
+    return files
+
+
+def _read_lists(files) -> list:
+    """Every term line of every list, in order, once. A named list that yields no term raises."""
+    words = []
+    for f in files:
+        got = []
+        for n, raw in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if not Term(line).text:
+                raise TermListError(f"{f}:{n} names no term: {line!r}")
+            got.append(line)
+        if not got:
+            raise TermListError(f"term list {f} is named and holds no term (only comments or "
+                                f"blank lines): the scan would look for nothing")
+        words += got
+    return list(dict.fromkeys(words))
 
 
 def _load_terms(terms_file) -> list:
-    cands = [terms_file, os.environ.get("SCH_SITE_TERMS"),
-             (Path(os.environ["SCH_SITE"]) / "forbidden_terms.txt") if os.environ.get("SCH_SITE") else None]
-    for c in cands:
-        files = term_files(c) if c else []
-        if files:
-            words = [l.strip() for f in files for l in f.read_text().splitlines()
-                     if l.strip() and not l.startswith("#")]
-            return list(dict.fromkeys(words))
+    """The term lines S1 reads: the lists named by the caller, else by $SCH_SITE_TERMS, else the
+    site directory's own `forbidden_terms.txt` when $SCH_SITE has one. A list that is NAMED -
+    by the caller or by $SCH_SITE_TERMS - is read or refused; nothing named is no terms, and S1c
+    says so."""
+    if terms_file:
+        return _read_lists(term_files(terms_file))
+    if os.environ.get("SCH_SITE_TERMS"):
+        return _read_lists(term_files(os.environ["SCH_SITE_TERMS"]))
+    site = os.environ.get("SCH_SITE")
+    if site and (Path(site) / "forbidden_terms.txt").is_file():
+        return _read_lists([Path(site) / "forbidden_terms.txt"])
     return []
+
+
+# ---------------------------------------------------------------------------------------------
+# WHAT A LINE OF A WORD LIST MEANS (W024, GAP-008).
+#
+# A line with no prefix is what it always was: the text anywhere, in any case. That form cannot
+# carry a factor level - `old` is inside "bold", `Ko` inside "Kobe" - or a count - `4,321`
+# is inside "14,321". So a list may now say how a term is matched:
+#
+#     word:T     T as a whole word, in any case: not inside a longer run of letters and digits,
+#                and a number not inside a longer number (`4,321` is not in `14,321`, `4,3210`
+#                or `4,321.5`). Spaces in T match any run of whitespace.
+#     exact:T    the same, in T's own case only (`KO`, and not the `ko` of a variable).
+#     ...T*      after either prefix, a word that BEGINS with T (`word:hepato*`).
+#
+# THE PREFIXES ARE INVISIBLE TO THE OLD READERS, ON PURPOSE. Each child's own guard reads every
+# line as a case-insensitive substring. To them `word:old` is a literal that occurs nowhere, so
+# installing a generated list can make no child's suite fail on "bold"; the children gain the
+# new forms only when their guards learn them. A line with no prefix keeps the old meaning for
+# every reader.
+_MARKERS = (("word:", "word"), ("exact:", "exact"))
+_TOKEN = re.compile(r"[a-z0-9]+")
+
+
+def _term_regex(text: str, mode: str, prefix: bool):
+    if mode == "substring":
+        return re.compile(re.escape(text), re.I)
+    body = r"\s+".join(re.escape(w) for w in text.split())
+    left = right = ""
+    if text[:1].isalnum():
+        left = r"(?<![A-Za-z0-9])"
+    if text[:1].isdigit():
+        left += r"(?<![0-9][.,])"
+    if not prefix and text[-1:].isalnum():
+        right = r"(?![A-Za-z0-9])"
+    if not prefix and text[-1:].isdigit():
+        right += r"(?![.,][0-9])"
+    return re.compile(left + body + right, re.A | (re.I if mode == "word" else 0))
+
+
+class Term:
+    """One line of a word list, parsed: what it matches, and the cheapest question that can rule
+    a file out without ever ruling out a file that holds a match."""
+
+    __slots__ = ("line", "text", "mode", "prefix", "rx", "tokens", "pieces", "low")
+
+    def __init__(self, line: str):
+        self.line = line = line.strip()
+        mode, text = "substring", line
+        for mark, m in _MARKERS:
+            if line.startswith(mark):
+                mode, text = m, line[len(mark):].strip()
+                break
+        prefix = mode != "substring" and len(text) > 1 and text.endswith("*")
+        if prefix:
+            text = text[:-1].rstrip()
+        if mode != "substring" and text == "*":
+            text = ""
+        self.text, self.mode, self.prefix = text, mode, prefix
+        self.low = text.lower()
+        self.rx = _term_regex(text, mode, prefix) if text else None
+        self.pieces = tuple(self.low.split()) or (self.low,)
+        # A WHOLE WORD IS A WORD OF THE FILE. Where T matches as a whole word, each run of
+        # letters and digits in T is a whole run of letters and digits in the file, so a file
+        # whose runs do not include all of them cannot hold a match. A prefix's last run can be
+        # the start of a longer one, so a prefix is asked as text instead.
+        whole = mode != "substring" and not prefix
+        self.tokens = tuple(_TOKEN.findall(self.low)) if whole else ()
+
+    def admits(self, low: str, tokens) -> bool:
+        if self.mode == "substring":
+            return self.low in low
+        if self.tokens and tokens is not None:
+            return all(t in tokens for t in self.tokens)
+        return all(p in low for p in self.pieces)
+
+    @property
+    def label(self) -> str:
+        if self.mode == "substring":
+            return f"site term {self.text!r}"
+        return f"site term {self.text!r} ({self.mode}{', prefix' if self.prefix else ''})"
+
+
+# ---------------------------------------------------------------------------------------------
+# WHAT A REPOSITORY DECLARES ABOUT ITSELF (W024, GAP-110 and GAP-008).
+#
+# `LEAK_SCOPE.txt` at the root, one entry per line, `#` comments:
+#
+#     <path> :: <what may appear> :: <why>
+#
+# `<path>` is repository-relative; a trailing `/` takes the directory and everything below it,
+# and otherwise it is a glob (fnmatch). `<what may appear>` is `*` - a RECORD: S1 does not read
+# it, and S1f says how many files that covers - or a comma list of listed terms (or shape names)
+# excused at that path and nowhere else. `<why>` is required.
+#
+# WHY IN THE REPOSITORY. An entry is a claim about the repository's own content - these files
+# are the project's records; this tree is the field's reference vocabulary - so it is reviewed
+# where that content is, in that repository's history. It never has to spell a cohort: an entry
+# is only ever needed for a word the repository legitimately holds already. A sample name in a
+# tool is a leak, and no entry can make it anything else.
+#
+# AN ENTRY THAT DOES NOT LOAD IS NOT APPLIED. It fails S1f and the findings it meant to excuse
+# stay findings: a scope that silently does not load is an exemption nobody reviewed.
+SCOPE_FILE = "LEAK_SCOPE.txt"
+
+
+class ScopeEntry(NamedTuple):
+    n: int                     # line number in LEAK_SCOPE.txt
+    path: str
+    names: tuple | None        # None: every finding (a record); else the lower-cased names excused
+    why: str
+
+
+def load_scope(root) -> tuple:
+    """(entries, problems) of a repository's LEAK_SCOPE.txt; ([], []) when it has none."""
+    f = Path(root) / SCOPE_FILE
+    if not f.is_file():
+        return [], []
+    entries, problems = [], []
+    for n, raw in enumerate(_read(f).splitlines(), 1):
+        s = raw.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = [x.strip() for x in s.split("::", 2)]
+        if len(parts) < 3:
+            problems.append(f"{SCOPE_FILE}:{n} is not `<path> :: <what may appear> :: <why>`: "
+                            f"{s[:90]}")
+            continue
+        path, what, why = parts
+        if not why:
+            problems.append(f"{SCOPE_FILE}:{n} gives no reason, so it is not applied: {s[:90]}")
+            continue
+        if not path or not what:
+            problems.append(f"{SCOPE_FILE}:{n} names no path or nothing that may appear: {s[:90]}")
+            continue
+        if path.startswith("/") or ".." in Path(path).parts:
+            problems.append(f"{SCOPE_FILE}:{n} names a path outside the repository: {path}")
+            continue
+        names = None if what == "*" else tuple(sorted({w.strip().lower() for w in what.split(",")
+                                                       if w.strip()}))
+        entries.append(ScopeEntry(n, path, names, why))
+    return entries, problems
+
+
+def _covers(entry: ScopeEntry, rel: str) -> bool:
+    p = entry.path
+    if p.endswith("/"):
+        return rel.startswith(p)
+    return fnmatch.fnmatchcase(rel, p)
+
+
+# ---------------------------------------------------------------------------------------------
+# WHAT S1 READS: EVERY FILE, BY ITS CONTENT (W024, GAP-C46).
+#
+# The file set is git's own: tracked files, and new files git does not ignore, so a build product
+# or an installed environment is not read and a file not yet added is. Where there is no git - a
+# compute node has none - it is the whole tree outside SKIP_DIRS. A symbolic link is not followed:
+# its target is not the repository's text.
+#
+# A FILE IS TEXT WHEN ITS FIRST 8 KiB ARE. A NUL byte, or bytes that are not UTF-8, make it binary
+# (a character cut at the 8 KiB boundary does not); binary files are skipped and COUNTED, so a
+# scan that skipped everything cannot look like a scan that found nothing.
+_SNIFF = 8192
+
+
+def _is_binary(p: Path) -> bool:
+    try:
+        with open(p, "rb") as fh:
+            head = fh.read(_SNIFF)
+    except OSError:
+        return True
+    if b"\0" in head:
+        return True
+    try:
+        head.decode("utf-8")
+    except UnicodeDecodeError as e:
+        return not (len(head) == _SNIFF and e.start >= _SNIFF - 3)
+    return False
+
+
+def _git_files(root: Path):
+    """git's file list for `root`, or None where git cannot give one. The repository-locating
+    variables are dropped: inside a hook git exports them, and they would name another tree."""
+    import subprocess
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    try:
+        r = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "--cached", "--others",
+                            "--exclude-standard"], capture_output=True, timeout=60, env=env)
+    except Exception:                                                     # noqa: BLE001
+        return None                      # no git binary, or it hung: the walk below decides
+    if r.returncode != 0:
+        return None
+    names = sorted({n for n in r.stdout.decode("utf-8", "surrogateescape").split("\0") if n})
+    # A directory git ignores entirely lists nothing; reading nothing would pass it.
+    return names or None
+
+
+def _leak_files(root: Path) -> list:
+    """Every regular file S1 considers, sorted, before the scope and the sniff decide."""
+    key = ("leak", str(root))
+    if key not in _LISTING:
+        names = _git_files(root)
+        if names is None:
+            names = []
+            for d, dirs, files in os.walk(root, followlinks=False):
+                dirs[:] = [x for x in dirs if x not in SKIP_DIRS and not x.endswith(".egg-info")]
+                names += [os.path.relpath(os.path.join(d, f), root) for f in files]
+        out = []
+        for n in sorted(set(names)):
+            rel = Path(n)
+            if any(part in SKIP_DIRS or part.endswith(".egg-info") for part in rel.parts[:-1]):
+                continue
+            p = root / rel
+            if p.is_symlink() or not p.is_file():
+                continue
+            out.append(p)
+        _LISTING[key] = out
+    return _LISTING[key]
+
+
+class Hit(NamedTuple):
+    rel: str
+    line: int
+    label: str                 # what S1 prints: "site term 'x'" or the shape's name
+    name: str                  # what a scope entry names: the term's text, or the shape's name
+    guard: bool                # in a leak-guard test, which S1 reports apart (S1b)
+
+
+def leak_scan(root, terms=(), shapes=(), scope=True) -> dict:
+    """The question S1 asks, and the dev ladder's leak tier with it: which lines of this
+    repository hold a listed term or a site shape?
+
+    `terms` are word-list lines (or parsed Terms); `shapes` are `(regex, what it is, literals)`.
+    Returns the findings, the findings the repository's LEAK_SCOPE.txt excuses (kept, so they stay
+    visible), and what was read: files read by content, binary files skipped, files in declared
+    record paths, the scope's entries, its problems, and the entries that cover no file."""
+    root = Path(root).resolve()
+    specs = [t if isinstance(t, Term) else Term(t) for t in terms]
+    specs = [t for t in specs if t.rx is not None]
+    entries, problems = load_scope(root) if scope else ([], [])
+    records = [e for e in entries if e.names is None]
+    excusing = [e for e in entries if e.names is not None]
+    named_by_scope = {w for e in excusing for w in e.names}
+    compiled = [(re.compile(p), why, lits or ("",)) for p, why, lits in shapes]
+    want_tokens = any(t.tokens for t in specs)
+    rank = {t: i for i, t in enumerate(specs)}
+    covered = {e.n: 0 for e in entries}
+    hits, scoped = [], []
+    n_read = n_binary = n_record = 0
+    for p in _leak_files(root):
+        rel = p.relative_to(root).as_posix()
+        here = []
+        record = False
+        for e in entries:
+            if _covers(e, rel):
+                covered[e.n] += 1
+                if e.names is None:
+                    record = True
+                else:
+                    here.append(e)
+        if record:
+            n_record += 1
+            continue
+        if _is_binary(p):
+            n_binary += 1
+            continue
+        n_read += 1
+        text = _read(p)
+        if _PREFILTER:
+            low = text.lower()
+            toks = set(_TOKEN.findall(low)) if want_tokens else None
+            present = [t for t in specs if t.admits(low, toks)]
+            gated = [(rx, why) for rx, why, lits in compiled
+                     if any(l in text for l in lits) and rx.search(text)]
+            if not present and not gated:
+                continue
+            # THE SAME QUESTION, ASKED OF EACH LINE. A long file admits hundreds of a generated
+            # list's numbers - `6 of 31` needs only "6", "of" and "31" somewhere - and searching
+            # each on every line cost 18s on the largest repository. A whole-word term is looked
+            # up by its longest word among the line's own words, so a line costs what it holds,
+            # not what the list holds; the rest are asked as text. Neither can say no to a match.
+            by_word, as_text = {}, []
+            for t in present:
+                if t.tokens:
+                    by_word.setdefault(max(t.tokens, key=len), []).append(t)
+                else:
+                    as_text.append(t)
+        else:
+            present, gated = specs, [(rx, why) for rx, why, _ in compiled]
+        guard = _is_guard(p)
+        attribution = p.name in ("CITATION.cff", "pyproject.toml")
+        own = rel == SCOPE_FILE
+        # THE SCOPE FILE IS READ LIKE ANY OTHER, EXCEPT WHAT AN ENTRY MUST SPELL. Its path repeats
+        # a file name the tree already has - S1 reads contents, not names - and its list names
+        # what it excuses. Its reason, its comments and any line that did not load are read.
+        reasons = {e.n: e.why for e in entries} if own else {}
+        for i, line in enumerate(text.splitlines(), 1):
+            if i in reasons:
+                line = reasons[i]
+            for rx, why in gated:
+                if attribution and why == "an e-mail address":
+                    continue                     # attribution, not leakage
+                if rx.search(line):
+                    h = Hit(rel, i, why, why, guard)
+                    (scoped if any(why.lower() in e.names for e in here) else hits).append(h)
+            if _PREFILTER:
+                lowline = line.lower()
+                words = set(_TOKEN.findall(lowline)) if by_word else ()
+                here_now = [t for w in words for t in by_word.get(w, ())
+                            if all(x in words for x in t.tokens)]
+                here_now += [t for t in as_text if t.admits(lowline, None)]
+                here_now.sort(key=rank.__getitem__)          # the order the slow path reports in
+            else:
+                here_now = present
+            for t in here_now:
+                if t.rx.search(line):
+                    h = Hit(rel, i, t.label, t.text, guard)
+                    excused = (any(t.low in e.names for e in here)
+                               or (own and t.low in named_by_scope))
+                    (scoped if excused else hits).append(h)
+    return {"hits": hits, "scoped": scoped, "read": n_read, "binary": n_binary,
+            "records": n_record, "entries": entries, "problems": problems,
+            "stale": [e for e in entries if not covered[e.n]], "terms": len(specs)}
 
 
 # THE TREE IS WALKED ONCE PER CALL. `_text_files` was a generator and every rule that wanted the
@@ -287,58 +643,45 @@ def conform_repo(repo, terms_file=None, shapes_file=None, profile="single-cell")
     site_shapes = _load_shapes(shapes_file)
     broken = [why for pat, why, _ in site_shapes if pat is None]
     site_shapes = [x for x in site_shapes if x[0] is not None]
-    # S1 leak guard, generic shapes + site terms
-    hits, guard_hits = [], []
-    # ONE LIST, BUILT ONCE. It used to be `pats + tpats` evaluated inside the per-line loop, so a
-    # 29-element list was rebuilt for every line of every file.
-    shapes = GENERIC_PATTERNS + site_shapes
-    all_pats = ([(re.compile(p), why) for p, why, _ in shapes]
-                + [(re.compile(re.escape(t), re.I), f"site term {t!r}") for t in terms])
-    gate = [(lits or ("",), re.compile(pat)) for pat, _, lits in shapes]
-    low_terms = [t.lower() for t in terms]
-
-    def interesting(text: str) -> bool:
-        """Does this file contain a hit at all? EXACT, not approximate: a shape is only tested
-        when its required literal is present, and a term is a literal already. An earlier draft
-        used one 29-branch alternation, which asks the same question and costs the same as asking
-        all 29 separately - 0.89s of a 0.99s scan on the largest repository."""
-        if not _PREFILTER:
-            return True
-        for lits, rx in gate:
-            if any(l in text for l in lits) and rx.search(text):
-                return True
-        if low_terms:
-            low = text.lower()
-            if any(w in low for w in low_terms):
-                return True
-        return False
-    for p in _text_files(root):
-        text = _read(p)
-        # ONE PASS DECIDES WHETHER THIS FILE IS INTERESTING. Searching 29 patterns against every
-        # line of every file was 720,000 regex calls for one repository, and virtually all of them
-        # were against text containing nothing at all. `combined` is those 29 patterns as a single
-        # alternation, so the common case - a clean file - costs one pass over its bytes instead
-        # of twenty-nine.
-        #
-        # A HIT FALLS THROUGH TO THE ORIGINAL, EXACT SCAN. The alternation cannot be used to
-        # report, because at one position it yields only the first alternative that matches, while
-        # the per-pattern scan reports every reason a line is a leak - and two different reasons on
-        # one line is exactly the case a reader needs to see whole. So the fast path decides
-        # *whether*, and the slow path, run only on files that already failed, decides *what*.
-        if not interesting(text):
-            continue
-        sink = guard_hits if _is_guard(p) else hits
-        rel = p.relative_to(root)
-        exempt = p.name in ("CITATION.cff", "pyproject.toml")
-        for i, line in enumerate(text.splitlines(), 1):
-            for rx, why in all_pats:
-                if exempt and why == "an e-mail address":
-                    continue                     # attribution, not leakage
-                if rx.search(line):
-                    sink.append(f"{rel}:{i} {why}")
+    # S1 leak guard, generic shapes + site terms, over EVERY file by its content (W024).
+    #
+    # A FILE IS ASKED ONE CHEAP QUESTION FIRST, AND ONLY A YES IS READ LINE BY LINE. A shape is
+    # tested against the whole text only when its required literal is present; a term only when
+    # the file holds every word of it (`Term.admits`). Both can over-admit and never under-admit,
+    # and SCH_CONFORM_NO_PREFILTER turns them off so a test can compare the two. The per-line scan
+    # then reports every reason a line is a leak - two reasons on one line is exactly the case a
+    # reader needs to see whole.
+    scan = leak_scan(root, terms, GENERIC_PATTERNS + site_shapes)
+    hits = [f"{h.rel}:{h.line} {h.label}" for h in scan["hits"] if not h.guard]
+    guard_hits = [f"{h.rel}:{h.line} {h.label}" for h in scan["hits"] if h.guard]
+    read = (f"{scan['read']} file(s) read by content ({scan['binary']} binary skipped"
+            + (f"; {scan['records']} in declared record paths, not read" if scan["records"] else "")
+            + ")")
     _check(checks, "S1 no site or cohort identifiers anywhere in the repository", not hits,
-           hits[:25] + ([f"... {len(hits) - 25} more"] if len(hits) > 25 else []),
-           "remove or generalise; keep site strings in a file outside the repo and point --terms at it")
+           [read] + hits[:25] + ([f"... {len(hits) - 25} more"] if len(hits) > 25 else []),
+           "remove or generalise; keep site strings in a file outside the repo and point --terms "
+           "at it. A record, or a word the repository legitimately holds, is declared in "
+           f"{SCOPE_FILE} with its reason")
+    if scan["entries"] or scan["problems"]:
+        recs = [e for e in scan["entries"] if e.names is None]
+        info = (f"{len(scan['entries'])} entr{'y' if len(scan['entries']) == 1 else 'ies'}: "
+                f"{len(recs)} record path(s) covering {scan['records']} file(s), not read; "
+                f"{len(scan['scoped'])} finding(s) excused by "
+                f"{len(scan['entries']) - len(recs)} term entr"
+                f"{'y' if len(scan['entries']) - len(recs) == 1 else 'ies'}")
+        excused = [f"{h.rel}:{h.line} {h.label} (excused)" for h in scan["scoped"]]
+        _check(checks, f"S1f the repository's declared leak scope ({SCOPE_FILE}) loads; what it "
+                       f"excuses is listed",
+               not scan["problems"],
+               scan["problems"] + [info] + excused[:25]
+               + ([f"... {len(excused) - 25} more"] if len(excused) > 25 else []),
+               "each line is `<path> :: <what may appear> :: <why>`, with a reason; an entry that "
+               "does not load is not applied, so what it meant to excuse is still a finding")
+    if scan["stale"]:
+        _check(checks, f"S1g every {SCOPE_FILE} entry still covers a file", False,
+               [f"{SCOPE_FILE}:{e.n} {e.path} covers no file" for e in scan["stale"]],
+               "remove the entry, or correct its path: an exemption for nothing is a reviewed "
+               "claim that is no longer true", level="warn")
     if guard_hits:
         _check(checks, "S1b the leak guard does not spell the site", False, guard_hits[:10],
                "load forbidden terms from an untracked file or environment variable", level="warn")

@@ -46,7 +46,7 @@ It has a second effect worth naming. Because the suite can only check what the d
 ```yaml
 tool: scintegrate            # the name a run record will carry
 devpoints: 1                 # schema version
-terms: docs/forbidden_terms.txt          # optional: the leak tier's word list
+terms: ../project/docs/forbidden_terms.txt   # optional; usually $<TOOL>_FORBIDDEN_TERMS instead
 baseline_dir: tests/baselines            # optional: default tests/baselines
 
 tests:
@@ -161,6 +161,13 @@ say where it ran. Scanning run output reported three of five repositories as lea
 their runs recorded the machine they ran on. Paths and job ids are provenance in an output and
 defects in a repository, and no word list tells them apart; the tier therefore asks where the
 answer is unambiguous, and says so in its `cannot_prove`.
+
+The `leak` tier and `sch conform`'s S1 ask the same question the same way (W024): every file by
+its content, the list's `word:` and `exact:` forms, and the repository's `LEAK_SCOPE.txt`. A list
+that is named - by `--terms`, `$<TOOL>_FORBIDDEN_TERMS`, `$SCH_FORBIDDEN_TERMS` or the
+declaration's `terms:` - and is missing or holds no term fails the tier instead of skipping it;
+the `contract` tier reads every list of an `A:B` pair. The fixture tiers read `STATUS.json` and
+every `STATUS.<cmd>.json` a command writes, and one that is not `ok` fails the tier.
 
 Exit codes are `0` passed, `2` failed, `3` could not run. The separation matters because a
 check that skipped every tier used to exit `0`, and an agent reads that as proof. It also means a
@@ -505,4 +512,4 @@ will see it. Anonymous suppression is how a check stops meaning anything.
 
 ## The commit gate
 
-Install once per clone: `git config core.hooksPath setup/githooks`. The hook runs the suite and `sch conform` on the repository before every commit and refuses a red one (harness ADR-0023, after two commits landed red in ADR-0022). Conform's G1 reads the directory git will run hooks from, with a relative `core.hooksPath` taken against the root of the working tree, or an absolute one. It passes when that directory's `pre-commit` is identical to the versioned one, warns while the clone has none installed, and fails when the directory holds a different hook. A repository that versions no gate is not failed for it (ADR-0029). The hook unsets the variables git uses to locate a repository before it runs the suite. In a linked worktree, git hands them to a hook as absolute paths, and the suite's own `git -C <tmpdir>` calls then act on the real repository (ADR-0029).
+Install once per clone: `git config core.hooksPath setup/githooks`. The hook runs the suite and `sch conform` on the repository before every commit and refuses a red one (harness ADR-0023, after two commits landed red in ADR-0022). Conform's G1 reads the directory git will run hooks from, with a relative `core.hooksPath` taken against the root of the working tree, or an absolute one. It passes when that directory's `pre-commit` is identical to the versioned one, warns while the clone has none installed, and fails when the directory holds a different hook. A repository that versions no gate is not failed for it (ADR-0029). The hook unsets the variables git uses to locate a repository before it runs the suite. In a linked worktree, git hands them to a hook as absolute paths, and the suite's own `git -C <tmpdir>` calls then act on the real repository (ADR-0029). A clone that has the cohorts' word lists names them in `setup/githooks/conform.local`, which git ignores: a `terms=` line (lists joined by `:`) and a `shapes=` line. The hook reads it as data and passes both to `sch conform`, so a cohort string in `sch/` or `tests/` blocks the commit (W024).

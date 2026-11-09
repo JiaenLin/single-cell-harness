@@ -7,7 +7,23 @@ harness having to reach into the tool** (ADR-0004, ADR-0013).
 
 Nothing here is specific to a project, a cohort or a site. Site strings a scan should refuse live
 in a file **outside** the repository (`--terms FILE`, `$SCH_SITE_TERMS`, or
-`$SCH_SITE/forbidden_terms.txt`), so the guard never spells what it guards against.
+`$SCH_SITE/forbidden_terms.txt`), so the guard never spells what it guards against. A list that
+is named and missing, or that holds no term, is refused (exit 2), one list or several (W024).
+
+**What S1 reads, and how a term matches (W024).** Every file git lists - tracked, and new files
+it does not ignore - or the whole tree where there is no git, decided text or binary by its first
+8 KiB; binary files are skipped and counted. A line of a word list is a substring in any case, as
+it always was, unless it says otherwise: `word:T` is T as a whole word in any case, and a number
+never inside a longer number; `exact:T` is the same in T's own case; a trailing `*` after either
+makes a prefix. A cohort's list is generated from its records by
+`sch conform terms build COHORT --out FILE`, outside the cohort and outside any repository.
+
+**What a repository declares about itself.** `LEAK_SCOPE.txt` at its root, one entry per line,
+`<path> :: <what may appear> :: <why>`. `*` declares a record that S1 does not read (the harness's
+goals, ledgers, ADRs, blind tests, post-mortems and the job scripts of submitted runs); a comma
+list of terms excuses those terms at that path only, for a word the repository legitimately holds
+(a reference tree naming a cell type). Every entry needs its reason; what it excuses stays listed
+in S1f.
 
 ## Repository checks
 
@@ -15,6 +31,8 @@ in a file **outside** the repository (`--terms FILE`, `$SCH_SITE_TERMS`, or
 |---|---|---|---|
 | **S1** | carries no site or cohort identifier anywhere — not in tests, setup, jobs or docs | a tool validated on one cohort is separated in custody, not validated elsewhere; a leaked name is how a default gets fitted to one dataset | remove or generalise; keep the forbidden list outside the repo |
 | S1b | has a leak guard that does not itself spell the site | the guard is in the repo | load terms from an untracked file or an environment variable |
+| **S1f** | declares its scope in a `LEAK_SCOPE.txt` that loads, if it has one | an entry with no reason, or that does not parse, is an exemption nobody reviewed | `<path> :: <what may appear> :: <why>`, every entry with its reason |
+| S1g | has no scope entry that covers no file | an exemption for nothing is a reviewed claim that is no longer true | remove the entry or correct its path |
 | **S2** | ships a leak-guard test that scans the whole tree | `tests/`, `setup/` and `jobs/` are exactly where cohort names land | a regex ratchet over `git ls-files`, exempting only itself |
 | **S3** | requires `--out`; never defaults it; never writes relative to `cwd` or `$HOME` | a tool's default output once put 28 GB inside its own install | refuse rather than default |
 | **S4** | runs no compute outside the scheduler in any script it ships | a login-node run is a policy breach and ten times slower | no `nohup`, no trailing `&`, no `--executor local` in scripts; refuse on a login node without `--allow-local` |
@@ -123,7 +141,7 @@ header and a `COMPARISON.txt` verdict in the run.
 |---|---|---|---|---|
 | scQC | `9b3793b`, merged | 33 passed, 1 skip (needs a cohort dir) | 0 failing, 2 warnings | PBS 706147 **IDENTICAL**: every kept barcode and every criterion column, vs the promoted run |
 | scAnno | `deb48ad`, merged | 29 suites green, 0 skips | 0 failing, 2 warnings | PBS 706249 **IDENTICAL**: every label at every rung and the rescue, vs the sealed run at the branch's base |
-| scProfile | `b8a4488`, merged | 65 suites green | 0 failing, 6 warnings | PBS 706253 **IDENTICAL**: 90 of 90 numeric per-unit tables on the same cells, nothing adopted; the unseeded network layout reported, not judged |
+| scProfile | `b8a4488`, merged | 65 suites green | 0 failing, 6 warnings | PBS 706253 **IDENTICAL**: every numeric per-unit table on the same cells, nothing adopted; the unseeded network layout reported, not judged |
 | scIntegrate | `14ad5e2`, merged | 7 passed incl. the CLI fixture | 0 failing, 2 warnings | PBS 706190 **DIFFERENT on one method**, merged on four measurements attributing it to harmony's own arithmetic — below |
 
 **A reproduction may report a difference and the change still be sound — but only when the

@@ -9,3 +9,6 @@ HEAD.txt
 # never committed: report/ carries collaborators' data (autodev housekeeping 2026-11-09)
 report/
 .DS_Store
+
+# never committed: the cohorts' word lists this clone's commit gate reads (W024)
+setup/githooks/conform.local
