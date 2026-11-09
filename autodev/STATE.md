@@ -75,6 +75,15 @@ None of these blocks a running lane.
    (1,621/1,621; the live app changes only by the corrected DESeq2 wording and a violin-band fix):
    `! cd /tmp && rm -rf studio-merge && git clone -q https://github.com/JiaenLin/scrnaseq-studio studio-merge && cd studio-merge && git merge --ff-only origin/autodev/W008-studio-truth && git push origin main`.
    Studio ignores the absent field, so either app can go first.
+0b. **May a change that is MEANT to move a promoted run's outputs merge?** (B1-111.) Rule 1 asks
+   for an IDENTICAL reproduction, so a fix that changes SAMBO's numbers on purpose can never merge.
+   Examples: GAP-C11 (BBKNN scored on the wrong representation) and scProfile's DE direction.
+   - **(a)** Identical only. Such fixes ship default-off or scoped away from the promoted run.
+   - **(b) Recommended.** Such a change merges under the standing yes when its PBS run matches a
+     difference predicted output by output before submission, graded by its written criterion.
+     Re-promoting the moved run stays yours.
+   - **(c)** As (b), but each such merge comes to you.
+   Meanwhile these fixes go default-off or scoped, with SAMBO IDENTICAL, so no lane waits.
 1. **Promote BrainOrganoid_C46 stage 1 (PBS 720932, 53,534 of 59,701 called cells)?** Recommended:
    **yes, keep D5 as it is.** W006 measured that the doublet calls follow the data, not the prior:
    9.0–11.1% with no expectation, 8.9–10.6% under scDblFinder's default, 8.3–11.7% under D5. The
@@ -106,7 +115,7 @@ None of these blocks a running lane.
 | Which plugin format is the standard (decision 5) | the pre-decider: a design decision, not a PI-owned one (RULES tier II) | A design wave compares the two formats and adopts one in an ADR. |
 | Single-cell QC thresholds (decision 6) | the pre-decider; QC.1 ("count floors derived from the data"); cohort decisions D8/D9 | The tool develops data-derived floors for cells. The PI's declared values remain the cohort's decision, and the report shows both and who decided. |
 | SAMBO stage 2 (decision 3, in part) | the pre-decider | Reproduce `bd45f5d` at its own commit first; that is a measurement. Promotion is asked only if it fails. |
-| B1's ASK-1: may a change meant to move promoted outputs merge on a predicted difference? | the pre-decider: ADR-0027's P1 precedent, which the PI accepted, and rule 1's words | Yes: graded by a difference predicted output by output before submission. Re-promotion stays the PI's (RULES rule 1). |
+| ~~B1's ASK-1~~ | **withdrawn 2026-11-09T08:40:57Z**: B1's verifier showed the settlement amended tier-I rule 1, which only the PI changes, and that the precedent does not fit (ADR-0027's P1 had no promoted run, and its merge was reserved to the PI). The question is now **decision 0b** below | the RULES amendment is reverted |
 | B1's ASK-2: SAMBO DE direction | already decided (slide 15) | Each contrast is the treatment against its declared control (aged vs young, HFD vs chow). The stage-4 RUNLOG names each earlier run's direction. |
 | B1's ASK-3: single-cell count floors | already decided (QC.1; D8/D9) | Derive them on cells within D8's bounds, falling back to the lower bound where there is no valley. A cohort's declared floors apply and are reported beside the derived ones. |
 | The audit-agent cap; the builder cap | the pre-decider (tier IV, rule 5) | 1 → 3 audit agents. The editing cap went 3 → 4 → 5, the last step for W005, a light Node project, on a 36 GB machine. |
