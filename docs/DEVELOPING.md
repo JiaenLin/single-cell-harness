@@ -128,7 +128,7 @@ it cannot prove.
 | tier | question | cost |
 |---|---|---|
 | `declaration` | is the point declared, and is the thing registered in every table it names? | ms |
-| `rules` | do the rules this round declared still hold? (§10) — skipped where none are declared | ms |
+| `rules` | do the rules this round declared still hold? (§10) — not applicable where none are declared | ms |
 | `contract` | `sch conform` on the repository | ms |
 | `unit` | the repository's own suite, run the way the repository runs it | seconds |
 | `fixture_a` | does it run end to end and leave a valid status behind? | seconds |
@@ -430,10 +430,13 @@ Silence is never a pass: no `rules:` block, or a range that is not a commit, rep
 and exits 3.
 
 It is also a **tier of the ladder**, because a command you have to remember to type is not
-enforcement. A repository declaring no rules is not failed by that tier and is not passed by it
-either: the tier reports that it could not run, and the ladder ends with `COULD NOT run: rules —
-so this is not a full check`. Inventing rules for a repository that has declared none would be
-this tool deciding how somebody else's round works.
+enforcement. A repository declaring no rules is neither failed nor passed by that tier: there is
+nothing here for it, as for a baseline with nothing to fingerprint, so the tier is **not
+applicable** and the check can still be complete. Until ADR-0029 it reported that it could not
+run, so every full check of a repository with no round (four of the five) exited 3 for ever.
+Since 2026-11-09 development runs in waves, not rounds, so having no round is the normal state.
+Inventing rules for a repository that has declared none would be this tool deciding how somebody
+else's round works.
 
 ---
 

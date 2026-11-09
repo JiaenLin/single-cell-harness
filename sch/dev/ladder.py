@@ -267,10 +267,13 @@ def t_rules(doc, point_name, results):
     artefact is generated and never copied - are worth what checks them on the way past, not what
     checks them when somebody asks. So they are a tier.
 
-    A REPOSITORY THAT DECLARES NONE IS NOT FAILED BY THIS, and is not passed by it either: the
-    tier reports that it could not run, which is the same answer the ladder already gives for a
-    fixture nobody declared. Four of the five repositories this suite serves are in that state,
-    and inventing rules for them here would be this tool deciding how somebody else's round works.
+    A REPOSITORY THAT DECLARES NONE IS NOT FAILED BY THIS, and is not passed by it either: there
+    is NOTHING HERE FOR the tier, as for a baseline where nothing is fingerprinted, so it is not
+    applicable. It used to report that it could not run, and that made every full check of four
+    of the five repositories this suite serves INCOMPLETE and exit 3 for ever (measured on scQC,
+    2026-11-09) - the "always the same exit code" `_t` warns against, and since 2026-11-09 a
+    repository with no round is the normal state, not a gap (ADR-0029). Inventing rules for them
+    here would still be this tool deciding how somebody else's round works.
 
     THE RANGE COMES FROM THE DECLARATION. Passing one here would let the tier choose the answer.
     """
@@ -278,9 +281,9 @@ def t_rules(doc, point_name, results):
     from .convert import _convert_specs_for_ladder as _specs
     t0 = time.time()
     if not RU.declared(doc):
-        return _t(results, "rules", True, [], skipped=True,
-                  cannot=f"anything: {doc['_root']} declares no `rules:` block, so this round has "
-                         f"stated no rules")
+        return _t(results, "rules", True, [], skipped=True, applicable=False,
+                  cannot=f"anything: {doc['_root']} declares no `rules:` block, so no round has "
+                         f"stated rules here")
     try:
         specs = _specs(doc, point_name)
     except Exception as e:                                                # noqa: BLE001

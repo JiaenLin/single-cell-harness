@@ -266,6 +266,20 @@ class TheRulesOfARoundAreCheckedNotPromised(unittest.TestCase):
         self.assertEqual(RU.CANNOT_SAY, r["verdict"])
         self.assertIn("declares no `rules:` block", r["says"])
 
+    def test_a_repository_with_no_round_is_not_an_incomplete_check(self):
+        """No `rules:` block is NOTHING HERE FOR the tier, not a tier that could not run.
+        Reported as could-not-run, it made every full `sch dev check` of a repository with no
+        round exit 3 for ever - measured on scQC, 2026-11-09 - so "passes sch dev" (GOALS A4.1)
+        was out of reach for four of the five repositories (ADR-0029)."""
+        from sch.dev import ladder as L
+        (self.d / "DEVPOINTS.yaml").write_text(HEAD + POINT, encoding="utf-8")
+        rep = L.run(self.d, only={"rules", "unit"}, fixdir=str(self.d / "fx"))
+        rules = next(r for r in rep["results"] if r["tier"] == "rules")
+        self.assertFalse(rules["applicable"])
+        self.assertNotIn("rules", rep["not_run"])
+        self.assertEqual(["unit"], rep["ran"])
+        self.assertTrue(rep["complete"], rep["not_run"])
+
     def test_it_reports_and_never_writes(self):
         import inspect
         src = inspect.getsource(RU)
