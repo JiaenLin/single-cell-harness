@@ -329,7 +329,8 @@ class PbsExecutor(LocalExecutor):
             "  exit \"$s\"",
             "}",
             "trap finish EXIT",
-            "trap 'exit 143' TERM",
+            "# killed is not clean: the scheduler's TERM at walltime, an INT or a HUP seal FAILED",
+            "trap 'exit 143' TERM; trap 'exit 130' INT; trap 'exit 129' HUP",
             f"exec >> {q(str(log_path))} 2>&1",
             f"cd {q(str(cwd))}",
         ]

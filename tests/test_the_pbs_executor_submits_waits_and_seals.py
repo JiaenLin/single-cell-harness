@@ -167,6 +167,32 @@ class ThePbsExecutor(unittest.TestCase):
         facts = json.loads((self.stack / "plugins" / "filter_threshold" / "facts.json").read_text())
         self.assertIsNone(facts["exit"])
 
+    def test_a_job_killed_by_the_scheduler_seals_failed_not_sealed(self):
+        """The job's own script, under real bash and a real signal: the scheduler's TERM at
+        walltime must leave FAILED.txt with a nonzero exit, never a green seal."""
+        import signal
+        import subprocess
+        import time
+        from sch.services.executor import PbsExecutor
+        run = self.tmp / "killed"
+        (run / "pbs").mkdir(parents=True)
+        started = run / "started"
+        ex = PbsExecutor(config=self.config())
+        script = run / "pbs" / "job.pbs"
+        script.write_text(ex._script(
+            [sys.executable, "-c", f"open({str(started)!r}, 'w').close(); import time; time.sleep(30)"],
+            run, run / "stderr.log", {}, False, "killed", [run / "out" / "out.json"],
+            ex.settings("killed"), run / "pbs"))
+        proc = subprocess.Popen(["bash", str(script)], start_new_session=True)
+        deadline = time.monotonic() + 20
+        while not started.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        os.killpg(proc.pid, signal.SIGTERM)          # PBS signals the job's whole session
+        proc.wait(timeout=20)
+        seal = (run / "pbs" / "FAILED.txt").read_text()
+        self.assertIn("exit=143\n", seal)
+        self.assertFalse((run / "pbs" / "SEALED.txt").exists())
+
     # ------------------------------------------------------------------------ E5
     def test_a_stop_is_a_qdel_confirmed_and_an_unconfirmable_one_fails_e5(self):
         work = self.tmp / "work"
