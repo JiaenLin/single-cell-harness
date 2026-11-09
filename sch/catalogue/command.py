@@ -140,6 +140,8 @@ def _whole(r, cat) -> list:
           f"  reads assay   {_join(i['assay_read_at'], 'nowhere in its Python')}",
           f"  requires      {_join(i['requires'])}",
           f"  optional      {_join(i['optional'])}",
+          f"  fetchable     {_join(i['sourceable'])}",
+          f"  services      {_join(i['services'])}",
           f"  design        required: {_join(des['required'])}; optional: {_join(des['optional'])}; "
           f"per arm: {_join(des['per_arm'])}; shown the design: {_join(des['shown'])}",
           f"  layers        {_join(i['layers'])}",

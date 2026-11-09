@@ -64,6 +64,12 @@ class ACatalogueRowSaysOnlyWhatIsDeclared(unittest.TestCase):
             "designed": plugin_source(spec(inject={"required": ["counts", "design"],
                                                    "optional": ["contrast", "ordering", "mystery"]},
                                            design_aware=True)),
+            # the directory contract's kernel fields, as ADR-0030 adds them to the one-file layout
+            "kernelish": plugin_source(spec(**{"class": "probe", "layer": "stack", "reversible": True,
+                                               "gates": {"a_gate": "required"},
+                                               "no_runtime_invariant": "a pure read of its input",
+                                               "services": ["dataset"], "sourceable": ["spliced"]})),
+            "fetches": plugin_source(spec(needs={"layers": ["spliced"]}, can_source_layers=True)),
         })
         cls.site = cls.tmp / "site"
         harness_plugin(cls.site, "dirassay", profile="single-cell/1.0", needs='["matrix/{counts}"]')
@@ -162,6 +168,18 @@ class ACatalogueRowSaysOnlyWhatIsDeclared(unittest.TestCase):
                          ("unknown", "unknown", "unknown"))
         src = [s for s in doc["sources"] if s["name"] == "scprofile"][0]
         self.assertTrue(any("scprofile/declare.py" in w for w in src["warnings"]), src["warnings"])
+
+    def test_the_kernel_fields_the_format_adds_are_read_from_one_file_too(self):
+        rc, doc = catalogue_json("show", "scprofile:kernelish", "--scprofile", str(self.co))
+        self.assertEqual(rc, 0, doc)
+        d, i = doc["plugin"]["details"], doc["plugin"]["inputs"]
+        self.assertEqual((d["class"], d["layer"], d["reversible"]), ("probe", "stack", True))
+        self.assertEqual(d["gates"], {"a_gate": "required"})
+        self.assertEqual(d["invariant"], {"none": "a pure read of its input"})
+        self.assertEqual((i["services"], i["sourceable"]), (["dataset"], ["spliced"]))
+        self.assertEqual(self.rows["scprofile:alpha"]["inputs"]["services"], "not declared")
+        self.assertEqual(self.rows["scprofile:fetches"]["inputs"]["sourceable"], ["spliced"])
+        self.assertEqual(self.rows["scprofile:alpha"]["inputs"]["sourceable"], [])
 
     def test_a_cohort_run_is_recorded_or_unknown_never_no(self):
         alpha = self.rows["scprofile:alpha"]

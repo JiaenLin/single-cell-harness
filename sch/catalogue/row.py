@@ -271,11 +271,21 @@ def onefile_inputs(spec, vocab, assay_lines):
     # SHOWN THE DESIGN = HANDED IT. A one-file plugin is given the design table exactly when it
     # asks the host for a design capability; its `sees` lists object slots, never the design.
     shown = UNKNOWN if vocab is None else bool(d_req or d_opt or "design" in (sees or []))
+    # FETCHED FROM BESIDE THE DATA: the UPF's `sourceable` (ADR-0030), or the one-file host's
+    # `can_source_layers`, which says the required layers may be fetched rather than present.
+    if "sourceable" in spec:
+        sourceable = _strings(spec.get("sourceable"), "sourceable")
+    elif spec.get("can_source_layers"):
+        sourceable = [x["layer"] for x in layers if x["from"] == "needs.layers"] if layers != NOT_DECLARED else []
+    else:
+        sourceable = []
     return {
         "assays": assays_of(spec),
         "assay_read_at": assay_lines,
         "requires": req,
         "optional": opt,
+        "sourceable": sourceable,
+        "services": _strings(spec.get("services"), "services") if "services" in spec else NOT_DECLARED,
         "design": {"required": d_req, "optional": d_opt,
                    "per_arm": bool(aware) if aware is not None else NOT_DECLARED,
                    "shown": shown},
@@ -319,7 +329,16 @@ def onefile_details(spec):
     return {
         "api": spec.get("api", NOT_DECLARED),
         "state_version": spec.get("state_version", NOT_DECLARED),
-        "class": "method (the one-file host runs methods only)",
+        # THE DIRECTORY CONTRACT'S KERNEL FIELDS, as ADR-0030 adds them to the UPF: read where a
+        # plugin declares them. The one-file host runs methods only, which is what an absent
+        # `class` means there.
+        "class": spec.get("class") or "method (the one-file host runs methods only)",
+        "profile": spec.get("profile", NOT_DECLARED),
+        "layer": spec.get("layer", NOT_DECLARED),
+        "reversible": spec.get("reversible", NOT_DECLARED),
+        "gates": spec.get("gates", NOT_DECLARED),
+        "invariant": spec.get("invariant") or (
+            {"none": spec["no_runtime_invariant"]} if spec.get("no_runtime_invariant") else NOT_DECLARED),
         "parameters": {k: {"type": (v or {}).get("type", NOT_DECLARED),
                            "default": (v or {}).get("default", NOT_DECLARED),
                            "help": (v or {}).get("help", "")}
@@ -359,7 +378,8 @@ def directory_inputs(data, layer_slots, assay_lines):
         "assays": assays_of(data),
         "assay_read_at": assay_lines,
         "requires": needs,
-        "optional": opt + [s for s in src if s not in opt],
+        "optional": opt,
+        "sourceable": src,
         # THE DIRECTORY CONTRACT HAS NO "REQUIRES A DESIGN TABLE". `sees: [design]` says the
         # plugin is SHOWN the design (§8, information asymmetry), which is not the same claim.
         "design": {"required": NOT_DECLARED, "optional": NOT_DECLARED,
@@ -367,7 +387,9 @@ def directory_inputs(data, layer_slots, assay_lines):
                    "shown": ("design" in sees) if sees is not None else NOT_DECLARED},
         "layers": layers,
         "from_plugins": [v for v in needs + opt if v.startswith("checkpoint:")],
-        "services": _strings(data.get("inject"), "inject"),
+        # `inject` IS SERVICES HERE and capabilities in the UPF (ADR-0030); a directory plugin may
+        # already spell it `services`.
+        "services": _strings(data.get("services") if "services" in data else data.get("inject"), "inject"),
         "not_in_vocabulary": [],
     }
 
