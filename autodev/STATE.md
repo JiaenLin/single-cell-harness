@@ -42,11 +42,11 @@ A6.2 and A6.3. The records are [`audits/0001-gap-review.md`](audits/0001-gap-rev
 |---|---|---|---|
 | QC | scQC | **W001 merged** (`main` `a51c38a`, deployed). **W006 done** (PBS 782541): scQC's own dbr.sd sweep. The `dbr` setting reproduces 720932 exactly, and the diagnosis made before the run is **falsified**. With no expectation the classifier calls 9.0–11.1%, and under scDblFinder's default 8.9–10.6%, so the over-call is the data's, not D5's setting. GAP-C02 closed; C15 and C16 opened. **W007** building: open defects, plus a reproduction that compares every table | W007 building |
 | ANNO | scAnno | **W003** built (`2f65db1`; 33 suites green; a store with a mismatched assay is refused; reports say cells or nuclei; README and QUICKSTART run). Gating: PBS **782608** reproduces SAMBO stage 2 on the branch. Its verifier is queued behind the running ones (Mac load 28) | gating |
-| INT | scIntegrate | **W004** built (`6040641`; 297 checks green; species required and checked; assay measured to change nothing, so optional and recorded). Gating: PBS **782587** reproduces SAMBO stage 3 on the branch (`~/tools/scIntegrate` on it). The verifier is checking the code | gating + verifying |
+| INT | scIntegrate | **W004** verified (PASS on code and docs, `9a2d7d1`). It merges when PBS **782587** (the SAMBO stage-3 reproduction) holds its prediction | gating (PBS) |
 | PROF | scProfile | **W002** built (`27e254f`; a 161-pin lock; 3 measured constraints; no kernel edit). Gating: PBS **782609** builds the environment on a fresh prefix; **782610** (afterok) reproduces CellChat's 90 tables on it. Its verifier is queued | gating |
 | HARN | single-cell-harness | held until B1 merges: B1 is editing the harness, and parallel edits would conflict. Next: GAP-002 → GAP-001 (the spine), GAP-005, GAP-011, GAP-007, GAP-008 | held (rule 5: a conflict costs more) |
-| PLAT | studio, lab, service | **W005** (Lab `convert` command) built, `56fface`: 398/398 checks, the same sha256 twice, Studio's reader opens it. Verifying now; merging redeploys the live app. **W008** (Studio) building: true DESeq2 wording, docs marked shipped or planned, sentinels out of the cell types. Next: the run record (P10 in Lab, then P19 in Studio), the cross-repo contract test (P18), Service's single-cell mode in new files | W005 verifying; W008 building |
-| AUDIT | — | W005's verifier (round 2) and W004's verifier are running. W003's and W002's verifiers are queued while the Mac is loaded (load ~28; 63% memory free) | 2 running, 2 queued |
+| PLAT | studio, lab, service | **W005** (Lab `convert` command) is **verified PASS** (406/406; the live app's CSS byte-identical; three defects fixed). It is **HELD: the merge is a production deploy that the permission classifier refuses** (BLK-005); see decision 0. **W008** (Studio) building. Next: the run record (P10, then P19), the cross-repo contract test (P18), Service's single-cell mode in new files | W005 held (PI); W008 building |
+| AUDIT | — | W003's and W002's verifiers | 2 running |
 | BLOCKER | the harness (in its worktree) | B1: the inherited constraints (unreasonable designs, freezes, gates), recorded in ADR-0029 | running |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
@@ -67,6 +67,12 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 ## Decisions needed from the PI
 
 None of these blocks a running lane.
+0. **Deploy Lab (W005): it is verified, but the classifier refuses the merge** (BLK-005). Lab's `main`
+   deploys the live app, so the classifier treats a push to it, and even opening a PR, as a
+   production deploy. Your standing yes doesn't reach the permission system. Either run it yourself:
+   `! cd /tmp && rm -rf lab-merge && git clone -q https://github.com/JiaenLin/scrnaseq-lab lab-merge && cd lab-merge && git merge --ff-only origin/autodev/W005-lab-cli && git push origin main`,
+   or add a permission rule for pushes to the platform repos' `main`. Studio and Service will need
+   the same.
 1. **Promote BrainOrganoid_C46 stage 1 (PBS 720932, 53,534 of 59,701 called cells)?** Recommended:
    **yes, keep D5 as it is.** W006 measured that the doublet calls follow the data, not the prior:
    9.0–11.1% with no expectation, 8.9–10.6% under scDblFinder's default, 8.3–11.7% under D5. The
