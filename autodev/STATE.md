@@ -40,7 +40,7 @@ A6.2 and A6.3. The records are [`audits/0001-gap-review.md`](audits/0001-gap-rev
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | W001: merge the single-cell route. The first verifier FAILED it on text only: a cohort's numbers in a comment and 6 false docs; the code passed. The fix `a51c38a` is text only (AST identical apart from docstrings), so 720930 IDENTICAL still covers it. Re-verifying. Also measured: `thresholds_per_sample.csv` reads `200` where it read `200.0`, with equal values (GAP-C08). New gaps C03–C07 come from the verifier | re-verifying |
+| QC | scQC | **W001 MERGED** (verifier round 2 PASS): scQC `main` cf0b750 → `a51c38a`, the single-cell rule set (rule 2 holds on `main`); `~/tools/scQC` deployed on `main` (HEAD.txt matches). **W006** running: PBS **782541**, scQC's own `--dbr-sd-sweep default,dbr,1` on the second cohort. The doublet over-call (GAP-C02) traces to D5's `dbr_sd = dbr` (a [0, 2×dbr] band that every call sits inside); the sweep measures the alternative for the PI's card. Next: hygiene (GAP-C03–C10, GAP-018, GAP-025) | W006 gating (PBS) |
 | ANNO | scAnno | W003: the assay governs the rules; the docs are true (GAP-029, GAP-031) | building |
 | INT | scIntegrate | W004: species checked, assay recorded, first-cohort sentence removed, false statements fixed (GAP-034, GAP-037) | building |
 | PROF | scProfile | W002: host-level environment lock, with no kernel edit (GAP-038) | building |
@@ -67,8 +67,9 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 ## Decisions needed from the PI
 
 None of these blocks a running lane.
+0. **A permission rule for deleting merged remote branches** (BLK-002). The classifier refused `git push origin --delete` on a merged branch. Merged branches are kept, which is harmless; housekeeping lists them instead.
 1. **Promotions.**
-   - C46 stage 1 (720932), once GAP-C02 (the doublet over-call) is understood.
+   - C46 stage 1 (720932). The doublet over-call follows from D5's `dbr_sd = dbr`. When W006's sweep lands, you get a card: keep D5 and promote 720932 (53,534 cells), or set `dbr_sd` to scDblFinder's default and re-run apply. Both options come with their cell counts.
    - SAMBO stage 4, once a full DE/DA run exists.
    - "the PI promotes" (cohort records).
 2. **C46's design facts.** What is C46 relative to H9, and what are `_1`/`_2`? This comes from the collaborator, and it blocks only C46 stage 4.
