@@ -84,6 +84,13 @@ None of these blocks a running lane.
      Re-promoting the moved run stays yours.
    - **(c)** As (b), but each such merge comes to you.
    Meanwhile these fixes go default-off or scoped, with SAMBO IDENTICAL, so no lane waits.
+0c. **SAMBO's sealed run directories are missing on the cluster** (BLK-007). The promoted stage-1 run
+   (`runs/scqc/01_qc/20260824T161519Z__scqc-133a951__01_qc__ribo`) and every other stage-1 run except
+   720930's are gone, along with the promoted stage-3 run's directory and the CellChat reference
+   `20260906T120759Z__scprofile-de199d0`. None is in `~/_archive`. The `results/` deliverables are
+   intact. No autodev session deletes cluster runs. **Was this a deliberate cleanup, or can the
+   cluster's backups restore them?** Nothing waits: the reproductions use the verified copies that
+   survive.
 1. **Promote BrainOrganoid_C46 stage 1 (PBS 720932, 53,534 of 59,701 called cells)?** Recommended:
    **yes, keep D5 as it is.** W006 measured that the doublet calls follow the data, not the prior:
    9.0–11.1% with no expectation, 8.9–10.6% under scDblFinder's default, 8.3–11.7% under D5. The
