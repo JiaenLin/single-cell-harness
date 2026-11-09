@@ -1,6 +1,7 @@
 """`sch` — the command line.
 
     sch init DIR --profile P --observations FILE [--design FILE] [--key k=v ...]
+             [--parts COLUMN]       observations in parts: FILE is a manifest, a row per part
     sch stack [DIR] [--dump]            the mounted stack; --dump prints the composed declaration
     sch plan PLUGIN [--param k=v]       what would run and what is missing, before any compute
     sch mount PLUGIN [--param k=v] [--escape GATE --why ... --by ...] [--name N]
@@ -67,9 +68,17 @@ def _emit(a, obj, text=None):
 # --------------------------------------------------------------------------- commands
 def cmd_init(a):
     from .kernel import Stack
-    st = Stack.init(a.dir, a.profile, a.observations, a.design, _kv(a.key),
-                    plugin_paths=a.plugin_path or None, context=_kv(a.context))
-    _emit(a, {"stack": str(st.dir), "profile": st.profile.id}, f"initialised {st.dir} ({st.profile.id})")
+    from .profile import ProfileError
+    from .stack import StackError
+    try:
+        st = Stack.init(a.dir, a.profile, a.observations, a.design, _kv(a.key),
+                        plugin_paths=a.plugin_path or None, context=_kv(a.context), parts=a.parts)
+    except (StackError, ProfileError) as e:
+        _emit(a, {"status": "refused", "reason": str(e)}, f"  init refused: {e}")
+        return 2
+    n = f", {len(st.dataset.part_files())} parts by {st.dataset.scope!r}" if st.dataset.parts else ""
+    _emit(a, {"stack": str(st.dir), "profile": st.profile.id, "parts": st.dataset.parts},
+          f"initialised {st.dir} ({st.profile.id}{n})")
     st.close()
     return 0
 
@@ -162,16 +171,28 @@ def cmd_materialise(a):
 
 
 def cmd_ask(a):
+    from .services.dataset import DatasetError
     st = _stack(a)
-    r = st.ask(a.probe, _kv(a.param), {"out_dir": a.subject} if a.subject else None)
+    try:
+        r = st.ask(a.probe, _kv(a.param), {"out_dir": a.subject} if a.subject else None)
+    except DatasetError as e:
+        _emit(a, {"status": "refused", "reason": str(e)}, f"  refused: {e}")
+        st.close()
+        return 2
     _emit(a, r)
     st.close()
     return 0 if not r["died"] else 2
 
 
 def cmd_scratch(a):
+    from .services.dataset import DatasetError
     st = _stack(a)
-    r = st.scratch(a.script, a.label, _kv(a.param))
+    try:
+        r = st.scratch(a.script, a.label, _kv(a.param))
+    except DatasetError as e:
+        _emit(a, {"status": "refused", "reason": str(e)}, f"  refused: {e}")
+        st.close()
+        return 2
     _emit(a, r, f"  scratch {r['id']}: {'died' if r['died'] else (r['out'] or {}).get('headline', 'ran')}\n"
                 f"  {r['dir']}\n  nothing here is quotable (A2)")
     st.close()
@@ -1406,6 +1427,10 @@ def build_parser():
     p.add_argument("--key", action="append", metavar="KEY=COLUMN"); p.add_argument("--plugin-path", action="append")
     p.add_argument("--context", action="append", metavar="AXIS=VALUE",
                    help="what the dataset is, declared once: one of the profile's axes (ADR-0027)")
+    p.add_argument("--parts", metavar="COLUMN",
+                   help="the observations arrive in parts: --observations is then a manifest with "
+                        "one row per part (a QC tool's samplesheet), scoped by the profile's scope "
+                        "key (--key sample=COLUMN), and COLUMN names each part's file")
     p.set_defaults(fn=cmd_init)
     p = sub.add_parser("stack"); stackable(p); p.add_argument("--dump", action="store_true"); p.set_defaults(fn=cmd_stack)
     p = sub.add_parser("plan"); stackable(p); p.add_argument("plugin"); p.add_argument("--param", action="append")
@@ -1653,7 +1678,20 @@ def main(argv=None) -> int:
         a.json = False
     if a.cmd == "conform" and not a.repo and not a.run and not a.against:
         ap.error("conform needs a repository path or --run RUNDIR")
-    return a.fn(a)
+    from .core.context import DisposeError
+    from .services.dataset import DatasetError
+    from .services.invariant import InvariantFailure
+    from .stack import StackError
+    try:
+        return a.fn(a)
+    except DisposeError as e:
+        # E5: work this command started could not be confirmed ended. Said, never a traceback,
+        # and never a success: whatever the command printed before stands beside this.
+        sys.stderr.write(f"sch: E5 - {e}; ask the scheduler about it before anything else\n")
+        return 3
+    except (DatasetError, StackError, InvariantFailure) as e:
+        _emit(a, {"status": "error", "reason": str(e)}, f"  error: {e}")
+        return 2
 
 
 if __name__ == "__main__":

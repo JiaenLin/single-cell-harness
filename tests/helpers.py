@@ -58,3 +58,53 @@ run = protocol.Run.from_argv()
 
 def cleanup(tmp):
     shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------- a cohort as libraries
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+
+try:
+    import h5py  # noqa: F401
+    HAVE_H5PY = True
+except ImportError:
+    HAVE_H5PY = False
+
+
+def write_part(path: Path, barcodes: list) -> Path:
+    """One library's droplets: an .h5ad whose obs index is `barcodes`, written with h5py alone.
+    The kernel reads identities through h5py and never the matrix, so no matrix is written."""
+    import h5py
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with h5py.File(path, "w") as f:
+        obs = f.create_group("obs")
+        obs.attrs["_index"] = "_index"
+        obs.create_dataset("_index", data=[b.encode() for b in barcodes])
+    return path
+
+
+def library_cohort(dest: Path, libraries: int = 4, droplets: int = 120, assay: str = "snrna",
+                   delimiter: str = "\t") -> tuple:
+    """A samplesheet of `libraries` libraries, two arms, each part holding the SAME barcodes - as
+    10x and Singleron barcodes legitimately recur across the libraries of one experiment - so an
+    identity is only unique within its sample. Returns (samplesheet, registry, design)."""
+    dest = Path(dest)
+    samples = [f"L{i + 1}" for i in range(libraries)]
+    bcs = [f"BC{j:05d}-1" for j in range(droplets)]
+    header = ["sample", "platform", "species", "reference", "assay", "ambient_h5", "condition"]
+    lines = [delimiter.join(header)]
+    for i, s in enumerate(samples):
+        part = write_part(dest / "objects" / f"{s}_ambient.h5ad", bcs)
+        lines.append(delimiter.join([s, "vendor_x", "species_x", "species_x/ref_1", assay,
+                                     str(part), "control" if i % 2 == 0 else "treated"]))
+    sheet = dest / "samplesheet.tsv"
+    sheet.write_text("# a samplesheet as a QC tool reads it\n" + "\n".join(lines) + "\n")
+    # DELIVERED DATA ARE IMMUTABLE (LAYOUT: data/ is never written): read-only, as a mount demands
+    # of every observation file a plugin is handed (ARCHITECTURE E2; harness W010).
+    for f in [sheet] + sorted((dest / "objects").glob("*.h5ad")):
+        f.chmod(0o444)
+    registry = dest / "registry.tsv"
+    registry.write_text("species\tbuild\tpath\nspecies_x\tref_1\treferences/species_x/ref_1\n")
+    design = dest / "design.csv"
+    design.write_text("sample,condition\n" + "".join(
+        f"{s},{'control' if i % 2 == 0 else 'treated'}\n" for i, s in enumerate(samples)))
+    return sheet, registry, design

@@ -1,0 +1,54 @@
+contract: "1.0"
+profile: single-cell/1.0
+name: qc@scqc
+version: 0.1.0
+summary: scQC's quality control mounted as a reversible removal - one mask per criterion over the libraries the stack declares
+when_to_use: >
+  the stack's observations are a cohort's libraries - a parts manifest that is scQC's own
+  samplesheet, each part the library's object at the floor (the denoised object an ambient
+  checkpoint delivered, or the aligner's call) - and you want scQC's decision mounted so that it
+  can be taken back, with every plugin above it knowing when it is
+
+class: method
+layer: stack
+reversible: true
+state_version: 1
+
+wraps:
+  tool: scQC
+  version: "0.4.0"
+  homepage: https://github.com/JiaenLin/scQC
+  license: MIT
+  cite: "Lin J. scQC: a reproducible quality-control pipeline for single-cell and single-nuclei RNA-seq. Software, version 0.4.0."
+  state_version: 1
+
+inject: [dataset]
+needs: [observations/raw]
+provides:
+  - mask/fail_*
+  - column/total_counts
+  - column/n_genes
+  - column/pct_counts_mt
+  - column/pct_counts_ribo
+  - column/nuclear_fraction
+  - column/doublet_score
+  - column/doublet_class
+  - table/*
+  - object/*
+optional: []
+sourceable: []
+sees: [design]
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: high}
+gates: {differential_check: required}
+invariant: invariant.py
+
+cannot_show:
+  - An observation passing QC is not an observation that is intact; it is one whose summary statistics fell inside thresholds scQC derived or was given.
+  - A threshold is a finding about ONE cohort's distributions; nothing in this mount establishes that it transfers to another cohort.
+  - The denoised matrix beneath this mount is a checkpoint, read as delivered; no check here can tell a well-removed ambient transcript from a badly-removed real one.
+  - The differential check this mount passes is the harness's, over the stack's declared design; scQC's own design-aware checks ran over its samplesheet's factor columns and are in its report, not in this gate.
+  - A called doublet is a barcode the detector scored high; without hashing or genotypes no call here is a verified doublet.

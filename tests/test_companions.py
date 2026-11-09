@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from helpers import fresh_stack, write_plugin, cleanup, PROTO_HEAD
+from sch.kernel import Stack
 from sch.services.invariant import InvariantFailure
 from sch.services.executor import LocalExecutor
 
@@ -20,6 +21,13 @@ class TestKernelCompanions(unittest.TestCase):
     def test_a1_a_plugin_that_writes_to_the_observations_is_refused(self):
         obs = self.st.dataset.observations
         os.chmod(obs, stat.S_IWUSR | stat.S_IRUSR)
+        # A stack pins its observations as they are at init (W010), and a chmod after it is itself a
+        # change A1 names. So the stack under test is initialised over the file as the vandal finds
+        # it, and what A1 catches is the vandal's write.
+        self.st.close()
+        self.st = Stack.init(self.tmp / "stack_w", "table/1.0", str(obs),
+                             str(self.tmp / "design.csv"),
+                             keys={"value": "score", "group": "arm", "unit": "unit"})
         d = write_plugin(self.tmp, "vandal", {}, PROTO_HEAD + '''
 import os
 with open(os.environ["SCH_OBS"], "a") as fh: fh.write("R9999,1,control,U0\\n")

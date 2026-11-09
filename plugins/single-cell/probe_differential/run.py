@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Removal rate per arm of the design for every mask in the subject, on an .h5ad view.
-Reads only obs (through h5py), never the matrix. G3: this is the instrument; the gate reads
-this answer and adds a threshold, it does not measure again."""
+"""Removal rate per arm of the design for every mask in the subject, on the stack's view: an .h5ad
+(its obs read through h5py, never the matrix), or the identity-level `view.csv` of a stack whose
+observations arrive in parts (harness W010), whose rows carry the identity and its `{sample}`.
+G3: this is the instrument; the gate reads this answer and adds a threshold, it does not measure
+again."""
 import importlib.util
 import os
 import sys
@@ -23,8 +25,6 @@ protocol = _protocol()
 
 import csv  # noqa: E402
 
-import h5py  # noqa: E402
-
 run = protocol.Run.from_argv()
 idc = run.inp.get("identity", {}).get("column", "barcode")
 subject = run.inp.get("subject") or {}
@@ -39,6 +39,7 @@ def _decode(x):
 def read_strings(node):
     """A string array however this anndata encoding wrote it: a dataset, a nullable-string
     group with `values`, or a categorical group whose `categories` may itself be a group."""
+    import h5py
     if isinstance(node, h5py.Group):
         if "categories" in node and "codes" in node:
             cats = read_strings(node["categories"])
@@ -49,11 +50,20 @@ def read_strings(node):
     return [_decode(v) for v in node[()]]
 
 
-with h5py.File(run.data, "r") as f:
-    obs = f["obs"]
-    idx = _decode(obs.attrs.get("_index", "_index"))
-    ids = read_strings(obs[idx])
-    sample = read_strings(obs[sample_key]) if sample_key and sample_key in obs else None
+if str(run.data).endswith(".csv"):
+    with open(run.data, newline="", encoding="utf-8") as fh:
+        view = csv.DictReader(fh)
+        has_sample = bool(sample_key) and sample_key in (view.fieldnames or [])
+        rows = list(view)
+    ids = [r[idc] for r in rows]
+    sample = [r[sample_key] for r in rows] if has_sample else None
+else:
+    import h5py
+    with h5py.File(run.data, "r") as f:
+        obs = f["obs"]
+        idx = _decode(obs.attrs.get("_index", "_index"))
+        ids = read_strings(obs[idx])
+        sample = read_strings(obs[sample_key]) if sample_key and sample_key in obs else None
 
 arm_of = {}
 factor = run.params.get("factor")
