@@ -6,9 +6,15 @@ mean something looser in everyday use, and the argument depends on the narrow me
 **kernel** — the runtime core: the one component that mounts, unmounts, resolves the dependency
 graph and holds the event stream. There is exactly one. Everything else is a plugin.
 
-**plugin** — a directory carrying a manifest and an entry point, mounted on the kernel. The unit of
-extension for every part of the system: methods, executors, storage, gates, reports. Specified in
-[PLUGIN_FORMAT.md](PLUGIN_FORMAT.md).
+**plugin** — the unit of extension for every part of the system: methods, executors, storage,
+gates, reports. A plugin comes in one of two layouts.
+- **The Universal Plugin Format** ([ADR-0030](docs/adr/0030-one-plugin-format.md)): one file, the
+  maker's layout. Its `PLUGIN` literal is the declaration, read without importing the file. Every
+  published method in the family is written this way.
+- **A directory** carrying a manifest and an entry point ([PLUGIN_FORMAT.md](PLUGIN_FORMAT.md)).
+  The kernel mounts this layout today.
+
+`sch catalogue` lists plugins of both layouts.
 
 **observations** — the reads as delivered by an instrument. Immutable, never regenerated. The
 provenance boundary between what was measured and what was computed lives here; once lost it cannot

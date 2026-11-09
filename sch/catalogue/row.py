@@ -329,16 +329,8 @@ def onefile_details(spec):
     return {
         "api": spec.get("api", NOT_DECLARED),
         "state_version": spec.get("state_version", NOT_DECLARED),
-        # THE DIRECTORY CONTRACT'S KERNEL FIELDS, as ADR-0030 adds them to the UPF: read where a
-        # plugin declares them. The one-file host runs methods only, which is what an absent
-        # `class` means there.
-        "class": spec.get("class") or "method (the one-file host runs methods only)",
-        "profile": spec.get("profile", NOT_DECLARED),
-        "layer": spec.get("layer", NOT_DECLARED),
-        "reversible": spec.get("reversible", NOT_DECLARED),
-        "gates": spec.get("gates", NOT_DECLARED),
-        "invariant": spec.get("invariant") or (
-            {"none": spec["no_runtime_invariant"]} if spec.get("no_runtime_invariant") else NOT_DECLARED),
+        # The one-file host runs methods only, which is what an absent `class` means there.
+        **kernel_fields(spec, "method (the one-file host runs methods only)"),
         "parameters": {k: {"type": (v or {}).get("type", NOT_DECLARED),
                            "default": (v or {}).get("default", NOT_DECLARED),
                            "help": (v or {}).get("help", "")}
@@ -420,18 +412,25 @@ def directory_row(data, *, source, rel, fmt, evidence, companions, layer_slots, 
     }
 
 
+#: THE DIRECTORY CONTRACT'S KERNEL FIELDS (PLUGIN_FORMAT.md §2, §2b, §3, §16), which ADR-0030
+#: adds to the UPF as optional keys with the same meanings. One list, read from either layout.
+KERNEL_FIELDS = ("profile", "contract", "class", "layer", "reversible", "rebuild_from", "gates",
+                 "measures_with", "verdict", "escape")
+
+
+def kernel_fields(spec, class_default):
+    out = {k: spec.get(k, NOT_DECLARED) for k in KERNEL_FIELDS}
+    if not _set(spec.get("class")):
+        out["class"] = class_default
+    out["invariant"] = spec.get("invariant") or (
+        {"none": spec["no_runtime_invariant"]} if spec.get("no_runtime_invariant") else NOT_DECLARED)
+    return out
+
+
 def directory_details(data):
     return {
-        "profile": data.get("profile", NOT_DECLARED),
-        "contract": data.get("contract", NOT_DECLARED),
-        "class": data.get("class", "method (the format's default, PLUGIN_FORMAT.md §2)"),
-        "layer": data.get("layer", NOT_DECLARED),
-        "reversible": data.get("reversible", NOT_DECLARED),
+        **kernel_fields(data, "method (the format's default, PLUGIN_FORMAT.md §2)"),
         "state_version": data.get("state_version", NOT_DECLARED),
-        "gates": data.get("gates", NOT_DECLARED),
-        "measures_with": data.get("measures_with", NOT_DECLARED),
-        "invariant": data.get("invariant") or (
-            {"none": data["no_runtime_invariant"]} if data.get("no_runtime_invariant") else NOT_DECLARED),
         "sees": data.get("sees", NOT_DECLARED),
         "language": data.get("language", NOT_DECLARED),
         "entry": data.get("entry", NOT_DECLARED),

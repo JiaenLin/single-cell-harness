@@ -68,7 +68,9 @@ class ACatalogueRowSaysOnlyWhatIsDeclared(unittest.TestCase):
             "kernelish": plugin_source(spec(**{"class": "probe", "layer": "stack", "reversible": True,
                                                "gates": {"a_gate": "required"},
                                                "no_runtime_invariant": "a pure read of its input",
-                                               "services": ["dataset"], "sourceable": ["spliced"]})),
+                                               "services": ["dataset"], "sourceable": ["spliced"],
+                                               "measures_with": "a_probe", "verdict": ["PASS", "REFUSE"],
+                                               "escape": "--allow", "rebuild_from": {"inputs": ["x"]}})),
             "fetches": plugin_source(spec(needs={"layers": ["spliced"]}, can_source_layers=True)),
         })
         cls.site = cls.tmp / "site"
@@ -176,6 +178,8 @@ class ACatalogueRowSaysOnlyWhatIsDeclared(unittest.TestCase):
         self.assertEqual((d["class"], d["layer"], d["reversible"]), ("probe", "stack", True))
         self.assertEqual(d["gates"], {"a_gate": "required"})
         self.assertEqual(d["invariant"], {"none": "a pure read of its input"})
+        self.assertEqual((d["measures_with"], d["verdict"], d["escape"], d["rebuild_from"]),
+                         ("a_probe", ["PASS", "REFUSE"], "--allow", {"inputs": ["x"]}))
         self.assertEqual((i["services"], i["sourceable"]), (["dataset"], ["spliced"]))
         self.assertEqual(self.rows["scprofile:alpha"]["inputs"]["services"], "not declared")
         self.assertEqual(self.rows["scprofile:fetches"]["inputs"]["sourceable"], ["spliced"])
