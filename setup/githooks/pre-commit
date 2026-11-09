@@ -3,15 +3,28 @@
 # setup/githooks`; `sch conform .` is red until it is. ADR-0022 closed with two commits landed
 # while the suite was red, which the tool's own gate (ADR-0015) would have refused.
 set -euo pipefail
+# THE SUITE MUST NOT INHERIT THE REPOSITORY GIT IS COMMITTING TO (ADR-0029). In a linked
+# worktree git hands this hook an ABSOLUTE GIT_DIR and GIT_INDEX_FILE (measured, git 2.55.0; in
+# the main checkout only a relative GIT_INDEX_FILE). Every test that runs `git -C <tmpdir> ...`
+# then acted on the real repository: on 2026-11-09 `git init` set core.bare=true in the shared
+# config, a test's `git config user.*` became the author of the next commit on main, and the
+# tests' fixture commits landed on the worktree's branch. The hook runs at the root of the
+# working tree, so nothing below needs them.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY \
+      GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_PREFIX GIT_NAMESPACE
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
-if ! PYTHONPATH=. python3 -m unittest discover -s tests > /tmp/sch_precommit_suite.log 2>&1; then
+# One log per commit: two worktrees committing at once used to share one file under /tmp.
+SUITE_LOG="$(mktemp -t sch_precommit_suite.XXXXXX)"
+CONFORM_LOG="$(mktemp -t sch_precommit_conform.XXXXXX)"
+if ! PYTHONPATH=. python3 -m unittest discover -s tests > "$SUITE_LOG" 2>&1; then
   echo "BLOCKED: the suite is red (python3 -m unittest discover -s tests):" >&2
-  tail -20 /tmp/sch_precommit_suite.log >&2
+  tail -20 "$SUITE_LOG" >&2
   exit 1
 fi
-if ! PYTHONPATH=. python3 -m sch conform . > /tmp/sch_precommit_conform.log 2>&1; then
+if ! PYTHONPATH=. python3 -m sch conform . > "$CONFORM_LOG" 2>&1; then
   echo "BLOCKED: sch conform . is red:" >&2
-  tail -20 /tmp/sch_precommit_conform.log >&2
+  tail -20 "$CONFORM_LOG" >&2
   exit 1
 fi
+rm -f "$SUITE_LOG" "$CONFORM_LOG"
