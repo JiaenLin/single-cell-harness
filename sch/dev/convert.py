@@ -1974,6 +1974,25 @@ def migrate_worksheet(spec, doc, point_name, name="", width=96):
                 return m[k]
         return default
 
+    # THE AXIS OF AN ENTRY THE MAPS DO NOT PLACE IS THE PLUGIN'S TO SAY, NOT A DEFAULT (autodev
+    # W019, GAP-C42). This wrote `unit` for every such entry; de runs once over the whole cohort,
+    # and its migration printed six cohort plates as per-unit ones. Whether a plugin runs once per
+    # unit is a field of its own declaration, which the plan stage may name (`entry_keys.per_unit`):
+    # set, the plugin runs per unit; empty, once over the cohort. Not named, the maker cannot tell,
+    # and it asks - the placeholder, counted among what a person still owes.
+    pu_key = keys.get("per_unit", "")
+    if pu_key:
+        derived = "unit" if _dotted(spec, pu_key) else "cohort"
+        axis_note = (f"`{pu_key}` is {'set' if derived == 'unit' else 'empty'}: this plugin runs "
+                     f"{'once per unit' if derived == 'unit' else 'once over the whole cohort'}, "
+                     f"so an entry the axis map does not place is `{derived}`")
+    else:
+        derived = None
+        axis_note = ("the plan stage names no `entry_keys.per_unit`, so whether this plugin runs "
+                     "once per unit or once over the cohort is asked, never assumed")
+    ask_axis = (f"{ph} - unit or cohort: does this plugin run once per unit, or once over the "
+                f"whole cohort?")
+
     entries, todo = [], 0
     # 1. the families the legacy rules name, one entry per member of a brace family
     for stem, rfield, per_item, bound, cap in _families(spec, rules):
@@ -1999,12 +2018,17 @@ def migrate_worksheet(spec, doc, point_name, name="", width=96):
             e = {"id": fid, "drawn_by": str(rec.get("drawn_by") or "tool")}
             if fn:
                 e[fn_key] = fn
-            e["axis"] = longest(axis_map, fid, "unit")
+            e["axis"] = longest(axis_map, fid, derived)
+            if e["axis"] is None:
+                e["axis"] = ask_axis
+                todo += 1
             e["position"] = longest(pos_map, fid, "contrast")
             if per_item:
                 e[items_key] = f"{ph} - the name of the vector this is drawn once per item of"
                 todo += 1
-                e[bound_key] = int(cap) if cap else f"{ph} - files per {e['axis']}"
+                e[bound_key] = int(cap) if cap else (
+                    f"{ph} - files per {e['axis']}" if e["axis"] != ask_axis
+                    else f"{ph} - files per occurrence of its axis")
                 if not cap:
                     todo += 1
             elif len(members) > 1 or cap:
@@ -2027,7 +2051,11 @@ def migrate_worksheet(spec, doc, point_name, name="", width=96):
             continue
         e2 = dict(e)
         e2.setdefault("drawn_by", "plugin")
-        e2.setdefault("axis", longest(axis_map, fid, "unit"))
+        if not e2.get("axis"):
+            e2["axis"] = longest(axis_map, fid, derived)
+            if e2["axis"] is None:
+                e2["axis"] = ask_axis
+                todo += 1
         e2.setdefault("position", longest(pos_map, fid, "contrast"))
         if not str(e2.get("legend") or "").strip():
             e2["legend"] = f"{ph} - what this panel shows, as a template; the caption passed at emit still wins"
@@ -2044,6 +2072,7 @@ def migrate_worksheet(spec, doc, point_name, name="", width=96):
          f"{len(rules)} legacy field(s), {todo} field(s) left for a person.",
          f"    # Paste in place of {', '.join(sorted({str(r.get('field')) for r in rules if r.get('field')}))}, "
          f"`{axis_field or 'the axis map'}` and `figure_position`. A `{ph}` does not validate.",
+         f"    # The axis: {axis_note}.",
          f'    "{field.split(".")[-1]}": [']
     for e in entries:
         L.append("        {")

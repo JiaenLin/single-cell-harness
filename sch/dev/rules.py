@@ -59,6 +59,22 @@ def declared(doc):
     return r if isinstance(r, dict) else {}
 
 
+def maker_output(doc, point_name) -> list:
+    """The artefacts at a point that are the maker's OUTPUT: every one this repository's own
+    `rules.held_out` does not hold out, sorted (every artefact, where no rules are declared).
+
+    WHAT THE DEV SUITE RUNS (autodev W019, GAP-C44). `jobs/dev_suite.pbs` checked one plugin by a
+    name written into the job - a held-out one - so a plugin migrated through the maker was never
+    on the cluster's ladder, and its baseline was never recorded where it runs. The list is the
+    repository's to state, as the held-out list already is; a plugin leaves the held-out list in
+    the commit after its blind record, and from that commit it is checked. Read from the same
+    declarations `sch dev rules` checks and `status` prints, so the three cannot name different
+    sets.
+    """
+    held = {str(x) for x in ((declared(doc).get("held_out") or {}).get("names") or [])}
+    return sorted(n for n, _s in CV._convert_specs_for_ladder(doc, point_name) if n not in held)
+
+
 def since_of(doc):
     """The commit the round declares it started at, or "".
 

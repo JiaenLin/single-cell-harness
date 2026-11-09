@@ -9,8 +9,12 @@ THREE WAYS TO FIND PLOTS, TRIED IN ORDER, AND THE ANSWER SAYS WHICH ONE ANSWERED
 
   1. A PLOTTING SUBMODULE. scanpy, scvelo, cellrank, decoupler and liana all put their figures
      behind `pl` or `plotting`. Where one exists it IS the surface, and nothing needs guessing.
-  2. NAMES. Without a submodule, public callables whose names begin the way plotting functions are
-     named. This is what cellchat's R extractor does and it is a heuristic; it is reported as one.
+  2. NAMES, SIGNATURES AND BODIES. Without a submodule, public callables whose names begin the way
+     plotting functions are named, or that take an axes or a figure, or that write a figure file -
+     read at the top level, AS METHODS of every public class the package defines (its own methods
+     only), and IN every public submodule (autodev W019: pydeseq2 draws with two classes' methods
+     and a function in `utils`, and none of the three is at its top level). The name rule is a
+     heuristic and is reported as one; each name says which rule found it.
   3. NOTHING FOUND. Reported as incomplete, never as an empty inventory - "this package exports no
      plots" and "I could not find where its plots live" are different findings and only the first
      is about the tool.
@@ -165,38 +169,111 @@ else:
             return False
         return any(s in src for s in SAVES)
 
-    pub = public_callables(mod)
-    byname = {a for a in pub if any(a.lower().startswith(p) for p in NAMEY)}
-    bybody = {a for a, v in pub.items() if by_signature(v)}
-    bysaves = {a for a, v in pub.items() if by_saves(v)}
-    got = {a: pub[a] for a in sorted(byname | bybody | bysaves)}
+    # WHERE A PACKAGE WITHOUT A PLOTTING SUBMODULE KEEPS ITS PLOTS (autodev W019, GAP-C39). Its
+    # top level is not the whole of it: pydeseq2 exports nothing at the top, draws with METHODS of
+    # its two classes (`DeseqDataSet.plot_dispersions`, `DeseqStats.plot_MA`) and with a function
+    # in a SUBMODULE (`utils.make_MA_plot`), and this extractor read only the top level - "no
+    # extractor could look at pydeseq2". So the same three rules also read every public class the
+    # package defines, by its OWN methods (pydeseq2's DeseqDataSet is an AnnData, and AnnData's
+    # methods are not pydeseq2's plots), and every public submodule, by what it defines. A name is
+    # relative to the package, one per function, the shortest public path to it.
+    import pkgutil
+    hits = {}                  # id(function) -> [name, function, rules]
+    classes, submodules, unimportable = set(), [], []
+
+    def consider(qual, short, v):
+        rules = [r for r, hit in (
+            ("name", any(short.lower().startswith(p) for p in NAMEY)),
+            ("signature", by_signature(v)), ("saves", by_saves(v))) if hit]
+        if not rules:
+            return
+        have = hits.get(id(v))
+        if have is None or (len(qual), qual) < (len(have[0]), have[0]):
+            hits[id(v)] = [qual, v, rules]
+
+    def methods_of(cls, prefix):
+        classes.add(cls)
+        for a, raw in vars(cls).items():
+            if a.startswith("_"):
+                continue
+            fn = raw.__func__ if isinstance(raw, (staticmethod, classmethod)) else raw
+            if inspect.isfunction(fn):
+                consider("%s.%s" % (prefix, a), a, fn)
+
+    def defined_in(v, modname):
+        return getattr(v, "__module__", "") == modname
+
+    for a, v in public_callables(mod).items():
+        consider(a, a, v)
+    for a in dir(mod):
+        if a.startswith("_"):
+            continue
+        try:
+            v = getattr(mod, a)
+        except Exception:
+            continue
+        if inspect.isclass(v) and str(getattr(v, "__module__", "")).split(".")[0] == name.split(".")[0]:
+            methods_of(v, a)
+    if hasattr(mod, "__path__"):
+        _skip = ("tests", "test", "testing", "conftest")
+        for info in pkgutil.walk_packages(mod.__path__, name + ".",
+                                          onerror=lambda n: unimportable.append(n)):
+            rel = info.name[len(name) + 1:]
+            if any(p.startswith("_") or p in _skip for p in rel.split(".")):
+                continue
+            try:
+                sub = importlib.import_module(info.name)
+            except Exception as e:
+                unimportable.append("%s (%s)" % (rel, type(e).__name__))
+                continue
+            submodules.append(rel)
+            for a in dir(sub):
+                if a.startswith("_"):
+                    continue
+                try:
+                    v = getattr(sub, a)
+                except Exception:
+                    continue
+                if inspect.isclass(v):
+                    if defined_in(v, info.name):
+                        methods_of(v, "%s.%s" % (rel, a))
+                elif callable(v) and defined_in(v, info.name):
+                    consider("%s.%s" % (rel, a), a, v)
+
+    got = {q: (v, rules) for q, v, rules in sorted(hits.values(), key=lambda t: t[0])}
+    byname = {q for q, (_v, r) in got.items() if "name" in r}
+    bybody = {q for q, (_v, r) in got.items() if "signature" in r}
+    bysaves = {q for q, (_v, r) in got.items() if "saves" in r}
+    read = ("; read: the top level, %d public class(es) by their own methods and %d public "
+            "submodule(s)%s" % (len(classes), len(submodules),
+                                (", %d submodule(s) would not import: %s"
+                                 % (len(unimportable), ", ".join(unimportable[:6])))
+                                if unimportable else ""))
     if got:
         out["names"] = list(got)
-        out["detail"] = {a: describe(v) for a, v in got.items()}
-        for a in got:
-            rules = [r for r, hit in (("name", a in byname), ("signature", a in bybody),
-                                      ("saves", a in bysaves)) if hit]
-            out["detail"][a]["found_by"] = "+".join(rules) if len(rules) > 1 else rules[0]
+        out["detail"] = {q: describe(v) for q, (v, _r) in got.items()}
+        for q, (_v, rules) in got.items():
+            out["detail"][q]["found_by"] = "+".join(rules)
         only_sig = sorted(bybody - byname - bysaves)
         only_saves = sorted(bysaves - byname - bybody)
         out["how"] = ("public callables of %s whose names begin like plotting functions - a "
                       "HEURISTIC, because this package has no pl/plotting submodule - or whose "
                       "signature takes an axes or a figure to draw on, or whose body writes a "
                       "figure file. %d of %d were reached by the signature rule%s; %d by the "
-                      "body rule%s"
+                      "body rule%s%s"
                       % (name, len(bybody), len(got),
                          (", %d ONLY by it: %s" % (len(only_sig), ", ".join(only_sig[:8])))
                          if only_sig else "",
                          len(bysaves),
                          (", %d ONLY by it: %s" % (len(only_saves), ", ".join(only_saves[:8])))
-                         if only_saves else ""))
+                         if only_saves else "", read))
         out["complete"] = True
     else:
-        out["why_not"] = ("%s has no pl/plotting submodule, no public callable named like a "
-                          "plotting function, none whose signature takes an axes or a figure, "
-                          "and none whose body writes a figure file, so this extractor "
-                          "cannot say where its figures live. It is not evidence that there are "
-                          "none." % name)
+        out["why_not"] = ("%s has no pl/plotting submodule, and no public callable - at its top "
+                          "level, as a method of a class it defines, or in a submodule - named "
+                          "like a plotting function, taking an axes or a figure, or writing a "
+                          "figure file, so this extractor cannot say where its figures live. It "
+                          "is not evidence that there are none%s." % (name, read))
 print(json.dumps(out))
 """.replace("__NAMEY__", repr(list(_NAMEY))).replace("__DRAWS__", repr(list(_AXIS_PARAMS))) \
    .replace("__SAVES__", repr(list(_SAVES)))

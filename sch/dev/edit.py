@@ -45,6 +45,74 @@ def _src_of(value, like: bytes = b"") -> str:
     return repr(value)
 
 
+# ------------------------------------------------------------------------- like the file
+# A KEY THE MAKER WRITES IS WRITTEN THE WAY THE FILE AROUND IT IS WRITTEN (autodev W019, GAP-C43).
+# W013's figure plan for de went in through this verb, and every legend, position and axis it
+# added landed on its entry's FIRST line, after the id: six lines of 400 to 660 characters in a
+# file whose other lines stay under 100. A plugin is read by people, and the verb exists so that
+# nobody has to edit one by hand - so what the verb writes has to look like what a person wrote.
+
+def _margin(text: str) -> int:
+    """The right margin the file keeps: the 95th percentile of its non-blank line lengths, and
+    never under 79. Read from the file, so a file kept at 100 is written at 100."""
+    lens = sorted(len(ln) for ln in text.splitlines() if ln.strip())
+    if not lens:
+        return 79
+    return max(79, lens[min(len(lens) - 1, int(0.95 * len(lens)))])
+
+
+def _quote_of(like: bytes) -> str:
+    return '"' if like[:1] == b'"' else "'"
+
+
+def _lit(s: str, q: str) -> str:
+    """One string literal of `s` in quote `q`, escaped as `repr` escapes it."""
+    r = repr(s)
+    if r[0] == q:
+        return r
+    return q + r[1:-1].replace(q, "\\" + q) + q
+
+
+def _str_src(value: str, q: str, col: int, margin: int, tail: int = 1) -> str:
+    """A string as the file writes a long one: adjacent literals split after a space, each line
+    inside the margin, continuation lines aligned under the first quote at column `col`. `tail`
+    is what follows the value on its last line (a comma, a closing bracket). One literal when it
+    fits, or when there is no space to split at."""
+    one = _lit(value, q)
+    if col + len(one) + tail <= margin:
+        return one
+    words = re.findall(r"\S+\s*|\s+", value)
+    chunks, cur = [], ""
+    for w in words:
+        if cur and col + len(_lit(cur + w, q)) + 1 > margin:
+            chunks.append(cur)
+            cur = w
+        else:
+            cur += w
+    chunks.append(cur)
+    # the last line carries what follows the value, so it may have to give up a word
+    while len(chunks[-1].split()) > 1 and col + len(_lit(chunks[-1], q)) + tail > margin:
+        head, last = chunks[-1].rstrip().rsplit(" ", 1)
+        trail = chunks[-1][len(chunks[-1].rstrip()):]
+        chunks[-1:] = [head + " ", last + trail]
+    if len(chunks) == 1:
+        return one
+    return ("\n" + " " * col).join(_lit(c, q) for c in chunks)
+
+
+def _value_src(value, q: str, col: int, margin: int, tail: int = 1) -> str:
+    """The source of a value written at column `col`: a string wrapped like the file, anything
+    else as its literal."""
+    if isinstance(value, str) and not isinstance(value, Raw):
+        return _str_src(value, q, col, margin, tail)
+    return _src_of(value, like=q.encode())
+
+
+def _char_col(src, lineno: int, col_bytes: int) -> int:
+    a, _ = src.line_bounds(lineno)
+    return len(src.b[a:a + col_bytes].decode("utf-8", errors="replace"))
+
+
 # ------------------------------------------------------------------------------- the literal
 def _plugin_node(tree):
     node = next((n for n in tree.body if isinstance(n, ast.Assign)
@@ -179,27 +247,76 @@ _SITES = []        # the draw sites an add or duplicate wrote, with their contex
 
 
 def op_set(text: str, path: str, value) -> str:
+    out = _set(text, path, value)
+    # WHAT WAS WRITTEN READS BACK AS WHAT WAS GIVEN: a value is now written over several lines,
+    # and a literal split wrongly would evaluate to something else without failing to parse.
+    if not isinstance(value, Raw):
+        _t, plug2 = _parse(out)
+        _p, _k, _kn, node = resolve(plug2, path)
+        try:
+            back = ast.literal_eval(node)
+        except ValueError:
+            back = None
+        if back != value:
+            raise ValueError(f"{path}: the value written does not read back as the value given")
+    return out
+
+
+def _set(text: str, path: str, value) -> str:
     tree, plug = _parse(text)
     parent, key, knode, vnode = resolve(plug, path)
     src = _Src(text)
+    margin = _margin(text)
     if vnode is not None:
         a, b = src.span(vnode)
-        return src.replace(a, b, _src_of(value, like=src.b[a:a + 1]))
-    # A KEY THE MAPPING LACKS: after its first key, on its own line when the keys have their own
-    # lines (the layout's own rule for the ceiling), inline otherwise.
+        like = src.b[a:a + 1]
+        if isinstance(value, str) and like[:1] in (b"'", b'"'):
+            # A STRING REPLACED IN PLACE keeps its quote style and wraps from where it starts,
+            # leaving room for what follows it on its last line.
+            col = _char_col(src, vnode.lineno, vnode.col_offset)
+            _ls, le = src.line_bounds(vnode.end_lineno)
+            tail = len(src.b[b:le].decode("utf-8", errors="replace").rstrip("\n"))
+            return src.replace(a, b, _str_src(value, _quote_of(like), col, margin, max(1, tail)))
+        return src.replace(a, b, _src_of(value, like=like))
+    # A KEY THE MAPPING LACKS, WRITTEN LIKE THE MAPPING (autodev W019, GAP-C43). It went inline
+    # after the entry's id unless every key of the mapping had a line of its own - and an entry
+    # whose first line carries several keys before one key a line below (de's, the shape most of
+    # this family's entries have) took every new key on that first line.
     if not parent.keys:
         raise ValueError(f"{path}: `{key}` cannot be added to an empty mapping by span")
     k0, v0 = parent.keys[0], parent.values[0]
-    multi = _own_line(src, k0) and (len(parent.keys) < 2 or parent.keys[1].lineno != k0.lineno)
+    q = _quote_of(src.b[src.span(k0)[0]:src.span(k0)[0] + 1])
+    key_src = _lit(str(key), q)
     # the entry's `id` first, when it has one: the layout inserts the ceiling after it
     kid, vid = _get(parent, "id")
-    anchor = vid if vid is not None else v0
-    if multi:
-        _, end = src.line_bounds(anchor.end_lineno)
-        ins = f"{_indent_of(src, anchor.lineno)}{key!r}: {_src_of(value)},\n"
-        return src.replace(end, end, ins)
-    _, b = src.span(anchor)
-    return src.replace(b, b, f", {key!r}: {_src_of(value)}")
+    first = list(parent.keys).index(kid) if kid is not None else 0
+    pairs = list(zip(parent.keys, parent.values))
+    if parent.lineno == parent.end_lineno:
+        # ONE LINE STAYS ONE LINE while it fits
+        anchor = pairs[first][1]
+        _, b = src.span(anchor)
+        inline = f", {key_src}: {_src_of(value, like=q.encode())}"
+        ls, le = src.line_bounds(anchor.end_lineno)
+        if len(src.b[ls:le].decode("utf-8", errors="replace").rstrip("\n")) + len(inline) <= margin:
+            return src.replace(b, b, inline)
+    # THE COLUMN OF THE KEYS THAT START THEIR OWN LINES, or of the first key
+    own = [k for k in parent.keys if _own_line(src, k)]
+    col = _char_col(src, (own or [k0])[0].lineno, (own or [k0])[0].col_offset)
+    indent = " " * col
+    vcol = col + len(key_src) + 2
+    # ON ITS OWN LINE, after the first pair - from the anchor on - whose line ends at its comma
+    for k, v in pairs[first:]:
+        _, b = src.span(v)
+        _ls, le = src.line_bounds(v.end_lineno)
+        rest = src.b[b:le].decode("utf-8", errors="replace")
+        if re.match(r"^\s*,\s*(#.*)?$", rest.rstrip("\n")):
+            ins = f"{indent}{key_src}: {_value_src(value, q, vcol, margin)},\n"
+            return src.replace(le, le, ins if src.b[le - 1:le] == b"\n" else "\n" + ins)
+    # OR BEFORE THE CLOSING BRACE, after the last value
+    _, b = src.span(pairs[-1][1])
+    _ls, le = src.line_bounds(pairs[-1][1].end_lineno)
+    tail = len(src.b[b:le].decode("utf-8", errors="replace").rstrip("\n"))
+    return src.replace(b, b, f",\n{indent}{key_src}: {_value_src(value, q, vcol, margin, max(1, tail))}")
 
 
 def op_delete(text: str, path: str) -> str:
@@ -252,6 +369,14 @@ def op_list_add(text: str, path: str, value) -> str:
     closes_on_last = vnode.end_lineno == last.end_lineno
     a, b = src.span(last)
     new = _src_of(value, like=src.b[a:a + 1])
+    if own_line:
+        # AN ELEMENT ON A LINE OF ITS OWN IS WRAPPED LIKE THE FILE (autodev W019, GAP-C43): a
+        # sentence added to `cannot_show` was one line of its whole length.
+        ind = _indent_of(src, last.lineno)
+        q = _quote_of(src.b[a:a + 1])
+        _ls, le = src.line_bounds(vnode.end_lineno)
+        tail = len(src.b[src.span(vnode)[1] - 1:le].decode("utf-8", errors="replace").rstrip("\n"))
+        new = _value_src(value, q, len(ind), _margin(text), 1 if not closes_on_last else tail)
     if own_line and not closes_on_last:
         _, end = src.line_bounds(last.end_lineno)
         ins = f"{_indent_of(src, last.lineno)}{new},\n"
@@ -385,11 +510,14 @@ def op_remove(text: str, fid: str, keys: dict, skip: dict | None = None) -> str:
     return text
 
 
-def _entry_block(entry: dict, indent: str) -> str:
+def _entry_block(entry: dict, indent: str, margin: int = 99) -> str:
+    """An added entry, one key a line, a long string wrapped like the file (autodev W019)."""
     inner = indent + "    "
     lines = [f"{indent}{{\n"]
     for k, v in entry.items():
-        lines.append(f"{inner}{k!r}: {_src_of(v)},\n")
+        key_src = repr(k)
+        lines.append(f"{inner}{key_src}: "
+                     f"{_value_src(v, chr(39), len(inner) + len(key_src) + 2, margin)},\n")
     lines.append(f"{indent}}},\n")
     return "".join(lines)
 
@@ -411,10 +539,10 @@ def op_add(text: str, entry: dict, keys: dict) -> str:
         last = figs.elts[-1]
         indent = _indent_of(src, last.lineno)
         _, end = src.line_bounds(last.end_lineno)
-        text = src.replace(end, end, _entry_block(entry, indent))
+        text = src.replace(end, end, _entry_block(entry, indent, _margin(text)))
     else:
         a, b = src.span(figs)
-        text = src.replace(a, b, "[\n" + _entry_block(entry, "    ") + "]")
+        text = src.replace(a, b, "[\n" + _entry_block(entry, "    ", _margin(text)) + "]")
     fn = entry.get("fn")
     skips_path = keys.get("skips", "report.skips")
     if fn:
