@@ -4,9 +4,10 @@ Updated 2026-11-10T02:29Z by the coordinator. This is the living page. Every LOO
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 **RESUMED 2026-11-10T01:3xZ (the PI: "WE HAVE TOKENS. GO!"; BLK-010 closed)** under the 2026-11-10 blocks of RULES.md:
-2 builders (W020, W029 resumed from their transcripts), 1 verifier (the harness batch W026 + W024), every development
-agent on Opus 5.5 at max effort (the PI, 01:4xZ: "the development will be carried by opus 5.5 max"; this session fixes
-the harness), token mode LIMITED (8 M output a day; only the PI's words switch it), the PBS mirror watching 783740.
+2 builders and 1 verifier, every development agent on Opus 5.5 at max effort (the PI: "the development will be carried by
+opus 5.5 max"; this session fixes the harness), token mode LIMITED (8 M output a day; only the PI's words switch it).
+The two builders first resumed from their transcripts ran on Fable (BLK-011) and were replaced at 02:1xZ by fresh
+Opus-max builders; `setup/autodev/agent_models.sh` now checks every agent at each tick.
 
 ## Verdict
 
