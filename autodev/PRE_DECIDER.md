@@ -79,6 +79,10 @@ Everything else is decided here.
 | spend a held-out plugin through the maker | yes, one at a time, graded before the maker changes | tier II, pre-decider's reading 2026-11-09 |
 | exceed the agent cap, or the budget | ask, with the numbers | tier IV (2026-11-10), `budget or token mode` |
 | promote a run, re-promote a moved run | ask, with the numbers and a recommendation | tier III |
+| an agent running on a model other than Opus 5.5 at max | stop it and launch a fresh one (model opus, effort max) on its branch; never resume it under another session model | D-010; tier II (the PI 2026-11-10) |
+| deploy a verified platform wave (its merge into Lab, Studio or Service main publishes the live app) | ask the PI's go, per wave, with the verifier's verdict; the build itself never waits for it | BLK-005; `permission` |
+| count floors or ceilings on single cells | derived from the called cells within the PI's declared bounds; the bound's lower end where no valley exists, said so | D-008 |
+| edit the PI's own skills, settings or config outside the program's repositories | decline; fix the program's side | D-009 |
 
 ## 5. Where it is enforced
 

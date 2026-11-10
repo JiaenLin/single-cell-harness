@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Measure the loop's token burn from Claude Code transcripts (RULES tier IV, the budget, 2026-11-10).
 
-usage: python3 -I autodev/tools/usage.py [--since YYYY-MM-DD] PATH_OR_GLOB ...
+usage: python3 -I setup/autodev/usage.py [--since YYYY-MM-DD] PATH_OR_GLOB ...
 
 Each path is a session transcript (.jsonl) or a background task output (tasks/*.output). The per-day
 table sums the API usage fields of every assistant message: cache_read (the context re-read on each

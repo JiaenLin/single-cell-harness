@@ -1,12 +1,13 @@
 # STATE: where the program stands
 
-Updated 2026-11-10T01:49Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-10T03:04Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 **RESUMED 2026-11-10T01:3xZ (the PI: "WE HAVE TOKENS. GO!"; BLK-010 closed)** under the 2026-11-10 blocks of RULES.md:
-2 builders (W020, W029 resumed from their transcripts), 1 verifier (the harness batch W026 + W024), every development
-agent on Opus 5.5 at max effort (the PI, 01:4xZ: "the development will be carried by opus 5.5 max"; this session fixes
-the harness), token mode LIMITED (8 M output a day; only the PI's words switch it), the PBS mirror watching 783740.
+2 builders and 1 verifier, every development agent on Opus 5.5 at max effort (the PI: "the development will be carried by
+opus 5.5 max"; this session fixes the harness), token mode LIMITED (8 M output a day; only the PI's words switch it).
+The two builders first resumed from their transcripts ran on Fable (BLK-011) and were replaced at 02:1xZ by fresh
+Opus-max builders; `setup/autodev/agent_models.sh` now checks every agent at each tick.
 
 ## Verdict
 
@@ -45,14 +46,14 @@ gaps not closed are size M or larger.
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | **W014 MERGED** (`main` `98504bd`): scQC builds its three environments on a fresh prefix from its own locks, and stage 1 on them is IDENTICAL to the reference (job 34, PBS 783151, AS PREDICTED on every line). The CellBender checkpoint error persists in both environments (GAP-C49). **W020** (19 constraints) building again (resumed 2026-11-10T01:3xZ at B1-042) | merged; 1 building |
-| ANNO | scAnno | **W011 MERGED** (`main` `d0ee926`). **W018 DONE: the promoted stage 2 reproduces at its own commit** (PBS 783148, `bd45f5d`): IDENTICAL on 1,464 obs columns over 31 objects, the joint object, the scope record and every table, with inputs and environment measured equal first (GAP-033 closed). **W021 MERGED** (`main` `68233f0`): scAnno's 18 inherited constraints removed or trimmed; `scanno build-markers` rebuilds SAMBO's corpus row for row and `scanno tree propose` drafts a tree (GAP-028 closed); stage 2 IDENTICAL on SAMBO's path (PBS 783253, 783345) | merged x2; done |
+| QC | scQC | **W014 MERGED** (`main` `98504bd`). **W020** (19 constraints) building: a FRESH builder on Opus 5.5 max since 02:1xZ (the resumed one ran on Fable, BLK-011); 14 rows were done by Opus before the limit, 5 commits made under Fable are under its review. **W031** (the 1.26 M-cell scale cohort, A3.4) registered: starts after W020 merges. D-008 decides the single-cell floors (GAP-026, the next QC wave) | merged; 1 building; 1 registered |
+| ANNO | scAnno | **W011 and W021 MERGED** (`main` `68233f0`): 18 inherited constraints removed or trimmed, `scanno build-markers` and `scanno tree propose` (GAP-028 closed). **W018 DONE** (the promoted stage 2 reproduces at its own commit). No ANNO wave open | merged x2; done |
 | INT | scIntegrate | **W012 + W025 held:** job 30 (PBS 783282) MISSED on LISI's unseeded subsample for `none` (0.0019 > 1e-3). Harmony's own lines held, and the cause is fixed (threaded KMeans). Next, round 2: make LISI reproducible (GAP-C67), then one re-gate. GAP-C65 and GAP-C12 (harmony on the fixture) follow | held |
-| PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013**: `de` runs through the maker in the declared-control direction, AS PREDICTED in three runs (bit-identical to 720548). Fix-up 5 (`b39ca4a`): **PBS 783740 AS PREDICTED** (2026-11-10T01:51Z, unpinned, 14 min on compute1005; BLK-009 closed: the long queue starts again). Its fix-only re-check is queued behind the harness batch (one verifier at a time). Its ladder line with merged W019 is verified green. **W023** queued | gate passed; re-check queued; 1 queued |
-| HARN | single-cell-harness | **W010, W016 and W019 MERGED** (`main` `70c25b9`): stage 1 through the harness; one plugin format plus `sch catalogue`; the maker's six defects from the de conversion (`agree` judges every output, excusing only a tool's declared execution record). **W026**: SAMBO stage 2 through the harness AS PREDICTED at the fix-up too (job 28b, PBS 783363); the merge waits on the fix-only re-check of `f640455`. **W024**: the merge waits on the fix-only re-check of `ca4825f`. **W029** building again (resumed 2026-11-10T01:3xZ). The harness batch (W026 `f640455` + W024 `ca4825f`) is under its one fix-only re-check (relaunched on Opus 5.5 max at 01:5xZ, the PI's rule) | merged x3; 2 verifying (one batch); 1 building |
-| PLAT | studio, lab, service | **DEPLOYED by the PI's go:** Lab W005 (`51a00fa`), Studio W008 (`1d591f9`), and Service W009 + W015 (`997d132`). W017 (Lab) and W028 (Studio) are now stacked on deployed mains. Under the throttle, W017 gets at most one more fix-only re-check (`243783f`). The W028 verifier resumes after the harness batch (one audit agent at a time) | deployed x4; 2 open |
-| AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014, W019, W021**. Pass 0004 is due: it starts when the harness batch's verifier hands back (one audit agent at a time), and writes scores.tsv for all 20 tests | due |
-| BLOCKER | — | **Sweep 14:11Z:** nothing removable is waiting. The B1 register's 68 rows are all in waves (W020 building, W021 verifying, W022 and W023 queued behind their repositories), and the checkouts each follow their gating wave. New: GAP-C62 (the commit hook runs the whole suite on records-only commits). **BLK-010 CLOSED 2026-11-10T01:3xZ** (the PI lifted the limit). **BLK-009 CLOSED:** PBS 783740 started at once and sealed AS PREDICTED; the mirror reported the seal (its first). Nothing waits on the PI | watching |
+| PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013 HELD, not merged:** its final re-check FAILED on the fix (D1 and D4 closed; D2 and D3 open by one-line variants; a statement on the declaration's line doubled every DE fold change with every check green). No third round (the throttle): the residue is **W032** (GAP-C72..C76, on W013's branch), and W013 + W032 merge as one batch on W032's PASS (D-012, D-013). Then **W023**; GAP-055 (promoting SAMBO stage 4) comes to the PI after that batch merges | held; 2 queued |
+| HARN | single-cell-harness | **W010, W016, W019, W026 and W024 MERGED** (`main` `2fc727d`): stages 1 and 2 through the harness (`qc@scqc`, `anno@scanno`); the leak guard reads every tracked file by content with generated per-cohort lists (six gaps closed). **W029** building: a FRESH builder on Opus 5.5 max (BLK-011), with the coordinator's item GAP-C71 (S1 reads `.mailmap` as attribution; `.mailmap` was withdrawn until then) | merged x5; 1 building |
+| PLAT | studio, lab, service | **DEPLOYED by the PI's go:** Lab W005 (`51a00fa`), Studio W008 (`1d591f9`), Service W009 + W015 (`997d132`). **W017** (Lab) built at `243783f`, waits for its one last fix-only re-check; **W028** (Studio) waits for its verifier to resume; **W030** (Service: local reads, GAP-P05, GAP-C55, B1-059) registered. Each platform merge deploys a live app, so it comes to the PI as a go when verified | deployed x4; 2 waiting; 1 registered |
+| AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014, W019, W021, W026, W024**. **Pass 0004 running** (the first scored pass: scores.tsv for all 20 tests, the mean, HAPPY = mean >= 0.9 with none < 0.5) | running |
+| BLOCKER | — | **Sweep 02:1xZ (2026-11-10):** BLK-011 found and removed (two builders ran on Fable after a resume; relaunched on Opus max; `agent_models.sh` checks every agent each tick). Decided by the catalogue, not asked: B1-112 (SAMBO's DE direction, D-007), B1-113 (single-cell floors, D-008), GAP-P07 (the PI's skill stays untouched, D-009). Closed: BLK-003, SWEEP-1 (every queued B1 row has a wave). Unblocked: GAP-043, GAP-C55, GAP-P17. Queued as waves: W030 (Service), W031 (scale). Nothing waits on the PI | watching |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
 - PBS 720930 is IDENTICAL, as predicted.
@@ -61,16 +62,22 @@ gaps not closed are size M or larger.
 
 The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027.
 
+## The queue (RULES tier IV, 2026-11-10: 2 builders, 1 verifier; lanes in turn)
+
+- **Builders now:** W020 (QC), W029 (HARN), both Opus 5.5 max.
+- **Next builder slots, in order:** W025 round 2 (INT: LISI made reproducible, GAP-C67; the last round allowed), W032 (PROF: W013's residue), W031 (scale, after W020 merges), W030 (Service), W022 (INT, after W012), W023 (PROF, after the W013 + W032 batch).
+- **Verifier now:** audit pass 0004 (scored). **Next:** the W028 verifier, W017's last re-check, then each repository's batch as it lands.
+
 ## Machinery (session-only; re-create on resume, see README)
 
 | job | id | cron | created | expires |
 |---|---|---|---|---|
-| LOOP TICK | `9195c252` | `7 */3 * * *` (the 2026-11-10 prompt: mirror files first, the pre-decider sweep, 2 builders on opus/max, 1 verifier per batch) | 2026-11-10 | 2026-11-17 |
-| PERIODIC CHECK | `9b5a55ca` | `23 */6 * * *` (adds the budget meter) | 2026-11-10 | 2026-11-17 |
+| LOOP TICK | `ebc3fb6b` | `7 */3 * * *` (the 2026-11-10 prompt: mirror files first, the pre-decider sweep, 2 builders on opus/max, 1 verifier per batch) | 2026-11-10 | 2026-11-17 |
+| PERIODIC CHECK | `b76f3618` | `23 */6 * * *` (adds the budget meter) | 2026-11-10 | 2026-11-17 |
 | BLOCKER SWEEP | `8fbcd2dc` | `41 */3 * * *` | 2026-11-10 | 2026-11-17 |
-| the PBS mirror | background task `bmm0s2yg5` | `bash autodev/tools/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
-| the verdict Monitor | `b17pn93t2` | `bash autodev/tools/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min, re-armed at expiry | 2026-11-10 | re-arm |
-| bootstrap | `bash autodev/tools/bootstrap.sh check` / `print` | what runs, what is missing, the start lines | 2026-11-10 | - |
+| the PBS mirror | background task `b5y0vb0jd` | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
+| the verdict Monitor | armed only while watch.tsv lists a job (none now) | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min | 2026-11-10 | re-arm |
+| bootstrap | `bash setup/autodev/bootstrap.sh check` / `print` | what runs, what is missing, the start lines | 2026-11-10 | - |
 
 ## Decisions needed from the PI
 
@@ -82,7 +89,7 @@ None. The four that were listed here (2-5) were decided by the pre-decider on 20
   ([audits/DIAGNOSIS_20261110_vs_vcc.md](audits/DIAGNOSIS_20261110_vs_vcc.md)), and "for the predecider, improve it".
   Done the same day, in RULES.md's 2026-11-10 block: agent use as VCC's row (2 builders; one verifier per merge batch per
   repository; 2 rounds then a gap); the measured score per test and HAPPY = mean >= 0.9 with no test < 0.5 (D-006);
-  the PBS mirror and the verdict Monitor (`tools/`); the manifest rule for fix-ups; the budget (provisional: 8 M output a
+  the PBS mirror and the verdict Monitor (`setup/autodev/`); the manifest rule for fix-ups; the budget (provisional: 8 M output a
   day, 40 M a week, 1.5 M a wave; token mode LIMITED; D-005 holds the PI's number); lanes in turn; the pre-decider v2
   ([PRE_DECIDER.md](PRE_DECIDER.md): the form, `ledger/decisions.tsv`, the catalogue, the test).
 - **2, commit `f488621` authored `t <t@t>`: left as it is, and attributed by `.mailmap`.** Rewriting it needs a force-push
