@@ -3,7 +3,7 @@
 Updated 2026-11-10T15:42:32Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
-**PAUSED since 2026-11-10T15:42:32Z by the PI** ("GOOD, PAUSE THE DEVELOPMENT FOR NOW"): no builder, verifier, audit or sweep starts, and no PBS job is submitted, until the PI's word resumes it. Nothing is running: no agent, no PBS job of ours, and the PERIODIC CHECK and the mirror are stopped. On resume: `bash setup/autodev/bootstrap.sh check`, then the queue below (the next key builder is the first held-out plugin through the maker; D-019's cap resets each UTC day). Built and gated, unmerged, waiting for validation: W029, W013 + W032 + W023, W020, W012 + W025, W033, W034, W028, W017.
+**PAUSED since 2026-11-10T15:42:32Z by the PI** ("GOOD, PAUSE THE DEVELOPMENT FOR NOW"): no builder, verifier, audit or sweep starts, and no PBS job is submitted, until the PI's word resumes it. Nothing is running: no agent, no PBS job of ours, and the PERIODIC CHECK and the mirror are stopped. **Ready to resume** (prepared at the PI's "prepare and be ready for resume"): every branch is pushed, the tree is clean, every cluster checkout is clean (scQC `98504bd`, scAnno `68233f0`, scIntegrate `b148030` = W025's head, scProfile `f5175ea`, harness `9804e16`), and no watch row is live. On the PI's word: (1) `bash setup/autodev/bootstrap.sh check`; (2) restart the mirror in the background (`bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300`) and the PERIODIC CHECK cron (`23 */6 * * *`, the token-limited prompt in README) if TOKEN-LIMITED still holds; (3) launch **W035** (registered: the maker's prose verb, GAP-C80, and cellchat's leak hit) from the launch brief at the end of `waves/W035.md`, model opus, effort max, then check it with `agent_models.sh`; (4) if the PI resumes validation too, start one verifier per batch in the order of the list below. D-019's cap resets each UTC day. Built and gated, unmerged, waiting for validation: W029, W013 + W032 + W023, W020, W012 + W025, W033, W034, W028, W017.
 
 **TOKEN-LIMITED since 2026-11-10T05:2xZ** (the PI: "turn on token limit mode. focus on key processes" / "focus on development
 first. validation later"): one builder on the key path (W033 now; then W034, W023, the eight plugins); no verifier and no
@@ -62,9 +62,16 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 ## The queue (TOKEN-LIMITED: one builder on the key path; validation later)
 
 - **Builder now: none until 2026-11-11T00:00Z** (D-019: the day's output measured 8.12 M at 07:55Z, the 8 M cap; periodic check 10:53Z: no builder, 784504 running 3 h 20 min, nothing landed). **W023 built** (`6f970e5`, 21 of 24 rows, 3 partly returned: GAP-C88, B1-026, B1-095's cohort half); its gate, the de job resubmitted unchanged by the manifest rule, **PBS 784551, AS PREDICTED** (gate met; waits for validation with W013 + W032). On PBS: nothing.
-- **Next builders, one at a time, by score:** the eight plugins through the maker (stacked), GAP-119 (scQC), W031 (scale).
-- **Waiting for validation (built, unmerged):** W029 (both gates AS PREDICTED), W013 + W032 (AS PREDICTED), W020 (gate met),
-  W012 + W025 (30b AS PREDICTED), W034 (after job 31), W028 and W017 (platform). **Paused:** W030 (Service).
+- **Next builders, one at a time, by score:** **W035** (registered; the maker's prose verb, which the eight plugins need first), then the eight plugins through the maker (stacked), GAP-119 (scQC), W031 (scale).
+- **Waiting for validation (built, unmerged), one verifier per batch in this order:**
+  1. W029 (harness `006b72c`; PBS 784088, 784130 AS PREDICTED);
+  2. W013 + W032 + W023 (scProfile `6f970e5`; PBS 784285 at `157ed9d`, 784551 at `6f970e5`, AS PREDICTED);
+  3. W020 (scQC `b255e45`; PBS 783992 IDENTICAL, 784271 AS PREDICTED);
+  4. W012 + W025 (scIntegrate `b148030`; PBS 784233 AS PREDICTED);
+  5. W034 (harness `eac7860`; PBS 784504 AS PREDICTED);
+  6. W033 (C46 project, no tool change; PBS 784414 AS PREDICTED, 784490 with every run line held and L3 missed);
+  7. W028 and W017 (platform; each deploy needs the PI's go).
+  **Paused:** W030 (Service, uncommitted work in its clone).
 
 ## Machinery (session-only; re-create on resume, see README)
 
