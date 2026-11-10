@@ -62,7 +62,8 @@ class AQsubThatDoesNotAnswerIsNeverDoubled(unittest.TestCase):
         self.commands = {}
         for c in ("qsub", "qstat", "qdel"):
             w = bin_ / c
-            w.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{FIXTURES / "fake_pbs.py"}" {c} "$@"\n')
+            fake = FIXTURES / "fake_pbs.py"
+            w.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{fake}" {c} "$@"\n')
             w.chmod(0o755)
             self.commands[c] = str(w)
         self._env = {k: os.environ.get(k) for k in ("FAKE_PBS_STATE", "FAKE_PBS_MODE",
@@ -190,11 +191,11 @@ class AQsubThatDoesNotAnswerIsNeverDoubled(unittest.TestCase):
         self.assertIn("E5", err)
 
     def test_a_job_the_scheduler_held_for_good_is_not_waited_for(self):
-        """PBS 783349 (2026-11-10): after four failed attempts to run it, PBS Pro held W013's job
-        (`job_state = H`, `comment = job held, too many failed attempts to run`), and a held job
-        stays held until a person releases or deletes it. `wait` returns at once with the hold in
-        its facts and the exit unknown - a death to the kernel - and the disposer qdels it,
-        confirmed."""
+        """autodev BLK-009 (2026-11-10): after four failed attempts to run it, PBS Pro held
+        W013's job (`job_state = H`, `comment = job held, too many failed attempts to run`), and
+        a held job stays held until a person releases or deletes it. `wait` returns at once with
+        the hold in its facts and the exit unknown - a death to the kernel - and the disposer
+        qdels it, confirmed."""
         from sch.services.executor import make_executor
         os.environ["FAKE_PBS_MODE"] = "hold"
         cfg = yamlish.load(self.stack / "stack.yml")["pbs"]

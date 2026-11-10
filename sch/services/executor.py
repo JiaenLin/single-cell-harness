@@ -200,11 +200,12 @@ _JOB_ID = re.compile(r"^\s*(\d+\S*)\s*$", re.M)
 _JOB_ROW = re.compile(r"^\d+(\[\d*\])?(\.[\w.-]+)?$")
 #: The environment variable a job's script declares (`#PBS -v`) to carry its submission's token.
 SUBMISSION = "SCH_SUBMISSION"
-#: A HOLD THE SCHEDULER PUTS ON A JOB IT COULD NOT START, measured on PBS 783349 (2026-11-10): after
-#: four failed attempts to run it, PBS Pro held it (`job_state = H`, `comment = job held, too many
-#: failed attempts to run`), and it stays held until a person releases or deletes it. Waiting on it
-#: is waiting for ever: the handle returns at once with the hold in its facts and the exit unknown,
-#: which the kernel reads as a death, and the disposer qdels it, which a held job allows.
+#: A HOLD THE SCHEDULER PUTS ON A JOB IT COULD NOT START, measured on the program's cluster
+#: (autodev BLK-009, 2026-11-10): after four failed attempts to run it, PBS Pro held it
+#: (`job_state = H`, `comment = job held, too many failed attempts to run`), and it stays held
+#: until a person releases or deletes it. Waiting on it is waiting for ever: the handle returns at
+#: once with the hold in its facts and the exit unknown, which the kernel reads as a death, and the
+#: disposer qdels it, which a held job allows.
 HELD_FOR_GOOD = re.compile(r"too many failed attempts", re.I)
 
 
@@ -323,7 +324,7 @@ class PbsHandle:
             if self._over(st, ex, known):
                 break
             if st == "H" and self.comment and HELD_FOR_GOOD.search(self.comment):
-                # HELD BY THE SCHEDULER FOR GOOD (PBS 783349): not ended, and never going to run.
+                # HELD BY THE SCHEDULER FOR GOOD (autodev BLK-009): not ended, never going to run.
                 # The handle stays live with the exit unknown, so the kernel reads a death and the
                 # disposer qdels the job and confirms it, instead of waiting for ever.
                 self.facts["held"] = self.comment
