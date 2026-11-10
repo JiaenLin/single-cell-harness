@@ -68,7 +68,9 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 | LOOP TICK | suspended 2026-11-09T16:02Z (was `2dac581d`) | `7 */3 * * *` (the PI's throttle) | 2026-11-09 | - |
 | PERIODIC CHECK | suspended 2026-11-09T16:02Z (was `c5bc935a`) | `23 */6 * * *` | 2026-11-09 | - |
 | BLOCKER SWEEP | suspended 2026-11-09T16:02Z (was `94a2c268`) | `41 */3 * * *` | 2026-11-09 | - |
-| RESUME (one-shot) | `46b90b26` | `17 9 14 11 *` local = 2026-11-14T01:17Z: resumes W020, W029 and W028 and re-creates the three | 2026-11-09 | fires once |
+| RESUME (one-shot) | `af7d2f9d` | `17 9 14 11 *` local = 2026-11-14T01:17Z: applies the 2026-11-10 block, re-creates the three reminders, resumes W020, W029 and W028, runs the harness merge batch and audit 0004 | 2026-11-10 | fires once |
+| the PBS mirror | background task `bq07hdiji` | `bash autodev/tools/pbs_mirror.sh <scratchpad>/pbs 300`; watch.tsv holds 783349 (W013, held) | 2026-11-10 | with the session |
+| the verdict Monitor | `bmjowp93d` | `bash autodev/tools/monitor_verdicts.sh <scratchpad>/pbs`, 30 min, re-armed at expiry | 2026-11-10 | re-arm |
 
 ## Decisions needed from the PI
 
