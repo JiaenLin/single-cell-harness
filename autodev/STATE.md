@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-10T02:29Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-10T03:04Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 **RESUMED 2026-11-10T01:3xZ (the PI: "WE HAVE TOKENS. GO!"; BLK-010 closed)** under the 2026-11-10 blocks of RULES.md:
@@ -49,10 +49,10 @@ gaps not closed are size M or larger.
 | QC | scQC | **W014 MERGED** (`main` `98504bd`). **W020** (19 constraints) building: a FRESH builder on Opus 5.5 max since 02:1xZ (the resumed one ran on Fable, BLK-011); 14 rows were done by Opus before the limit, 5 commits made under Fable are under its review. **W031** (the 1.26 M-cell scale cohort, A3.4) registered: starts after W020 merges. D-008 decides the single-cell floors (GAP-026, the next QC wave) | merged; 1 building; 1 registered |
 | ANNO | scAnno | **W011 and W021 MERGED** (`main` `68233f0`): 18 inherited constraints removed or trimmed, `scanno build-markers` and `scanno tree propose` (GAP-028 closed). **W018 DONE** (the promoted stage 2 reproduces at its own commit). No ANNO wave open | merged x2; done |
 | INT | scIntegrate | **W012 + W025 held:** job 30 (PBS 783282) MISSED on LISI's unseeded subsample for `none` (0.0019 > 1e-3). Harmony's own lines held, and the cause is fixed (threaded KMeans). Next, round 2: make LISI reproducible (GAP-C67), then one re-gate. GAP-C65 and GAP-C12 (harmony on the fixture) follow | held |
-| PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013**: gate passed at fix-up 5 `b39ca4a` (PBS 783740 AS PREDICTED); its FINAL fix-only re-check is running (Opus max); anything beyond the fix becomes a gap. Then **W023** (the scProfile inherited constraints); GAP-055 (promoting SAMBO stage 4) comes to the PI after W013 merges | verifying; 1 queued |
+| PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013 HELD, not merged:** its final re-check FAILED on the fix (D1 and D4 closed; D2 and D3 open by one-line variants; a statement on the declaration's line doubled every DE fold change with every check green). No third round (the throttle): the residue is **W032** (GAP-C72..C76, on W013's branch), and W013 + W032 merge as one batch on W032's PASS (D-012, D-013). Then **W023**; GAP-055 (promoting SAMBO stage 4) comes to the PI after that batch merges | held; 2 queued |
 | HARN | single-cell-harness | **W010, W016, W019, W026 and W024 MERGED** (`main` `2fc727d`): stages 1 and 2 through the harness (`qc@scqc`, `anno@scanno`); the leak guard reads every tracked file by content with generated per-cohort lists (six gaps closed). **W029** building: a FRESH builder on Opus 5.5 max (BLK-011), with the coordinator's item GAP-C71 (S1 reads `.mailmap` as attribution; `.mailmap` was withdrawn until then) | merged x5; 1 building |
 | PLAT | studio, lab, service | **DEPLOYED by the PI's go:** Lab W005 (`51a00fa`), Studio W008 (`1d591f9`), Service W009 + W015 (`997d132`). **W017** (Lab) built at `243783f`, waits for its one last fix-only re-check; **W028** (Studio) waits for its verifier to resume; **W030** (Service: local reads, GAP-P05, GAP-C55, B1-059) registered. Each platform merge deploys a live app, so it comes to the PI as a go when verified | deployed x4; 2 waiting; 1 registered |
-| AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014, W019, W021, W026, W024**. Pass 0004 (the first scored pass, scores.tsv) runs in the verifier slot after W013's re-check | due |
+| AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014, W019, W021, W026, W024**. **Pass 0004 running** (the first scored pass: scores.tsv for all 20 tests, the mean, HAPPY = mean >= 0.9 with none < 0.5) | running |
 | BLOCKER | — | **Sweep 02:1xZ (2026-11-10):** BLK-011 found and removed (two builders ran on Fable after a resume; relaunched on Opus max; `agent_models.sh` checks every agent each tick). Decided by the catalogue, not asked: B1-112 (SAMBO's DE direction, D-007), B1-113 (single-cell floors, D-008), GAP-P07 (the PI's skill stays untouched, D-009). Closed: BLK-003, SWEEP-1 (every queued B1 row has a wave). Unblocked: GAP-043, GAP-C55, GAP-P17. Queued as waves: W030 (Service), W031 (scale). Nothing waits on the PI | watching |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
@@ -65,8 +65,8 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 ## The queue (RULES tier IV, 2026-11-10: 2 builders, 1 verifier; lanes in turn)
 
 - **Builders now:** W020 (QC), W029 (HARN), both Opus 5.5 max.
-- **Next builder slots, in order:** W025 round 2 (INT: LISI made reproducible, GAP-C67; the last round allowed), W031 (scale, after W020 merges), W030 (Service), W022 (INT, after W012), W023 (PROF, after W013).
-- **Verifier now:** W013's final fix-only re-check. **Next:** audit pass 0004 (scored), the W028 verifier, W017's last re-check, then each repository's batch as it lands.
+- **Next builder slots, in order:** W025 round 2 (INT: LISI made reproducible, GAP-C67; the last round allowed), W032 (PROF: W013's residue), W031 (scale, after W020 merges), W030 (Service), W022 (INT, after W012), W023 (PROF, after the W013 + W032 batch).
+- **Verifier now:** audit pass 0004 (scored). **Next:** the W028 verifier, W017's last re-check, then each repository's batch as it lands.
 
 ## Machinery (session-only; re-create on resume, see README)
 
