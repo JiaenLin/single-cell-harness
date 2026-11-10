@@ -46,7 +46,7 @@ meant to unify, and each was caught by hand, late, and partly by luck.
 
 | what happened | what it really was |
 |---|---|
-| A ribosomal-gene regex excluded `Rps6ka2` — an mTOR **kinase**, correlation with the ribosome module r = +0.046 — from gene selection in a high-fat-diet study. Nothing objected; the exclusion looked routine. | An **irreversible decision with undeclared scope.** Nothing knew what the filter would remove until a human printed it. |
+| A ribosomal-gene regex excluded `Rps6ka2` — an mTOR **kinase**, correlation with the ribosome module r = +0.046 — from gene selection in the first cohort's study. Nothing objected; the exclusion looked routine. | An **irreversible decision with undeclared scope.** Nothing knew what the filter would remove until a human printed it. |
 | A report was presented as a stage deliverable whose assembler had never run. A table was quoted from a local copy while the compute host held a newer file of the same name. Four times in two days. | **No reactive invalidation.** A stale artifact opens, renders and reads exactly like a correct one. Staleness has no symptom. |
 | An integration assessment may have been computed on a *stitched* concatenation of per-sample embeddings rather than a joint one — measured offset spread 0.000000. Still unresolved. | **A dependency nothing modelled**, so nothing could warn that the input was not what the consumer assumed. |
 | A pinned plugin could not read an object written by a newer `anndata`. The error named an IO registry and pointed nowhere near the cause: pandas 3 changed a default string dtype. | **Version skew between components sharing one object** — invisible until fatal. |
@@ -186,16 +186,16 @@ every single-cell paper eventually gets: *how sensitive is this to your QC?*
 
 ```console
 $ sch stack
-  observations   10 libraries, 39,037 droplets      immutable
+  observations   6 libraries, 52,418 droplets       immutable
   ▸ align@celescope       2.7.3                     checkpoint
   ▸ ambient@cellbender    lr=5e-5 fpr=0             checkpoint
-  ▸ qc@scqc               0.4.0   masks 6,851 obs   mounted
+  ▸ qc@scqc               0.4.0   masks 7,093 obs   mounted
   ▸ annotate@scanno       0.10.0  labels 4 columns  mounted
   ▸ integrate@scintegrate 0.4.0   provides 5 embeddings, default X_scanvi
   ▸ profile@velocity      REFUSED — no spliced layer beside this object
 
 $ sch unmount qc@scqc --dry-run
-  would restore 6,851 observations
+  would restore 7,093 observations
   would invalidate, in order:
     annotate@scanno          labels were fitted on the masked set
     integrate@scintegrate    5 embeddings, all of them
@@ -205,8 +205,8 @@ $ sch unmount qc@scqc --dry-run
 $ sch fork no-qc --without qc@scqc
 $ sch run no-qc && sch diff main no-qc --on composition
   cell type           main      no-qc     Δ
-  Cardiomyocyte      37.3%     34.9%   -2.4pp
-  Endothelial        24.3%     24.1%   -0.2pp
+  type A             41.6%     39.2%   -2.4pp
+  type B             21.7%     21.6%   -0.1pp
   ...
   one population moves more than 1pp. The QC decision is load-bearing for it
   and not for the rest; the report says so.
@@ -293,7 +293,7 @@ cannot be is not allowed on the page.
 
 | | what it does | why it is not this |
 |---|---|---|
-| **Nextflow / nf-core, Snakemake, CWL, WDL** | orchestrate jobs over files, with resume and containers. Mature, excellent, widely used | They model **files and jobs**, not a dataset with revertible operations. A DAG runner knows file A produced file B; it cannot tell you step 3 removed 8,427 cells unevenly across your design arms, because it does not know what a cell is |
+| **Nextflow / nf-core, Snakemake, CWL, WDL** | orchestrate jobs over files, with resume and containers. Mature, excellent, widely used | They model **files and jobs**, not a dataset with revertible operations. A DAG runner knows file A produced file B; it cannot tell you step 3 removed thousands of cells unevenly across your design arms, because it does not know what a cell is |
 | **Galaxy** | GUI, reproducible histories, a large tool library | A history is a linear record, not a mountable stack. You cannot unmount step 2 and keep steps 3–6 |
 | **scverse (scanpy / anndata / muon)** | the object model and the algorithms all of this stands on | A library, not a runtime. AnnData is deliberately mutable and has no notion of an operation that can be reverted |
 | **Seurat / Bioconductor** | the R half of the same | same |

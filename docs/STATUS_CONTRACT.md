@@ -24,7 +24,7 @@ a crash leaves a file that says *partial*, not silence — and rewritten **last*
   "tool": "scqc", "version": "0.4.0", "commit": "51dc1a429f88",
   "state_version": 3,
   "status": "ok",
-  "headline": "masked 6,851 of 39,037 observations on six criteria",
+  "headline": "masked 7,093 of 52,418 observations on six criteria",
   "started": "2026-09-06T08:41:12Z", "finished": "2026-09-06T09:09:40Z",
   "job": {"scheduler": "pbs", "id": "684955", "host": "node-a"},
   "inputs":   [{"path": "objects/cohort.h5ad", "sha256": "…", "relative_to": "run"}],

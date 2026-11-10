@@ -1329,21 +1329,53 @@ class EveryActionLoadsTheDeclarationsItReads(unittest.TestCase):
 class TheJobsCheckerRunsBeforeItIsSubmitted(unittest.TestCase):
     """A prediction is only as good as the thing grading it, and nothing was grading that.
 
-    THREE TIMES IN ONE JOB. The SAMBO writing job carries its predictions as an embedded Python
-    checker, and three separate defects in that checker reached the cluster: it counted only one
-    of the two places a legend can live and reported 558 undescribed panels against 378 saying
-    so; it searched for one module's phrasing of the aliasing caveat and called two pages that
-    carry it silent; and it used a name that the section below it defined, which is fine until
-    the file is read top to bottom, which is how it runs. Each cost a submission, and the first
-    two produced confident FAIL lines about the tool that were about the checker.
+    THREE TIMES IN ONE JOB. A writing job carried its predictions as an embedded Python checker,
+    and three separate defects in that checker reached the cluster: it counted only one of the two
+    places a legend can live; it searched for one module's phrasing of the aliasing caveat and
+    called two pages that carry it silent; and it used a name that the section below it defined,
+    which is fine until the file is read top to bottom, which is how it runs. Each cost a
+    submission, and the first two produced confident FAIL lines about the tool that were about
+    the checker.
 
-    A wrong answer about a tool looks exactly like a right one. So the checker is extracted and
-    RUN here, against a tiny synthetic tree shaped like a run, and every prediction has to
-    evaluate. This does not check that the predictions are TRUE - only the cohort can say that -
-    it checks that asking them does not raise.
+    A wrong answer about a tool looks exactly like a right one. So a job's checker is extracted
+    and RUN here, against a tiny synthetic tree shaped like a run, and every prediction has to
+    evaluate. THE JOB IS SYNTHETIC (W024 fix-up): the cohort's own writing job moved to the project
+    that owns the cohort, with the test of its own checker; what the harness tests is the shape -
+    a job whose `<<'PYCHK'` block is extracted, parses, and answers every prediction without
+    raising. It does not check that a prediction is TRUE - only a cohort can say that.
     """
 
-    JOB = ROOT / "jobs" / "writing_sambo.pbs"
+    JOB_TEXT = (
+        "#!/bin/bash\n"
+        "#PBS -l walltime=00:10:00\n"
+        "set -euo pipefail\n"
+        'RUNDIR="${1:?the run}"\n'
+        "PANELS=1 LEGENDS=0 python3 - \"$RUNDIR\" <<'PYCHK' | tee \"$RUNDIR/predictions.txt\"\n"
+        "import json, os, sys\n"
+        "from pathlib import Path\n"
+        "d = Path(sys.argv[1])\n"
+        "panels, legends = int(os.environ['PANELS']), int(os.environ['LEGENDS'])\n"
+        "rep = json.loads((d / 'report.json').read_text())\n"
+        "html = ' '.join(p.read_text() for p in sorted((d / 'report').glob('*.html')))\n"
+        "figs = sorted((d / 'kernels').glob('*/*/figures/*.png'))\n"
+        "brief = ' '.join(p.read_text() for p in sorted((d / 'kernels').glob('*/WRITING_BRIEF.md')))\n"
+        "def say(tag, ok, what):\n"
+        "    print(f'  {tag}  ' + ('PASS' if ok else 'FAIL') + '  ' + what)\n"
+        "say('P0', (d / 'report').is_dir(), 'the report was written')\n"
+        "say('P1', len(figs) >= panels, f'{len(figs)} panel(s) drawn, {panels} expected')\n"
+        "say('P2', html.count('NO LEGEND WAS WRITTEN') >= legends, 'an undescribed panel says so')\n"
+        "say('P3', all(f in rep['design'][s] for s in rep['design'] for f in rep['controls']),\n"
+        "    'every sample has a level of every controlled factor')\n"
+        "say('P4', 'varies together with' in html, 'the report says which factor is aliased')\n"
+        "say('P5', 'aliased' in brief, 'the writing brief names the alias')\n"
+        "say('P6', 'from lo to hi' in html, 'the contrast reads from the control')\n"
+        "PYCHK\n")
+
+    def setUp(self):
+        self.d = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.d, True)
+        self.JOB = self.d / "job_with_a_checker.pbs"
+        self.JOB.write_text(self.JOB_TEXT)
 
     def _checker(self):
         lines = self.JOB.read_text().split("\n")
@@ -1357,9 +1389,8 @@ class TheJobsCheckerRunsBeforeItIsSubmitted(unittest.TestCase):
         ast.parse(self._checker())
 
     def test_every_prediction_evaluates_on_a_tree_shaped_like_a_run(self):
-        d = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, d, True)
-        (d / "report").mkdir()
+        d = self.d / "run"
+        (d / "report").mkdir(parents=True)
         figs = d / "kernels" / "k" / "u" / "figures"
         figs.mkdir(parents=True)
         (d / "report" / "p.html").write_text(
@@ -1375,18 +1406,13 @@ class TheJobsCheckerRunsBeforeItIsSubmitted(unittest.TestCase):
         (d / "report.json").write_text(json.dumps(
             {"design": des, "controls": {"f1": "lo", "f2": "base"},
              "kernels": {"k": {"figures": []}}}))
-
-        tool = os.environ.get("SCH_TEST_TOOL", "")
-        env = dict(os.environ, PANELS="1", LEGENDS="0", TOOL=tool)
+        env = dict(os.environ, PANELS="1", LEGENDS="0")
         r = subprocess.run([sys.executable, "-", str(d)], input=self._checker(),
                            text=True, capture_output=True, env=env)
-        if "cannot import the enumerator" in r.stdout:
-            self.skipTest("the plugin format's own package is not importable here")
         self.assertNotIn("Traceback", r.stderr, f"the checker raised:\n{r.stderr[-600:]}")
         for tag in ("P0", "P1", "P2", "P3", "P4", "P5", "P6"):
             self.assertIn(f"  {tag}  ", r.stdout, f"{tag} did not evaluate:\n{r.stdout}")
-
-
+        self.assertNotIn("FAIL", r.stdout, r.stdout)
 
 
 class JobsDoNotDieOnAGrepThatFindsNothing(unittest.TestCase):

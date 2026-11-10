@@ -315,11 +315,17 @@ def t_rules(doc, point_name, results):
 
 
 def t1_contract(doc, results, terms=None):
-    from ..conform import conform_repo
+    from ..conform import TermListError, conform_repo
     t0 = time.time()
     root = doc["_root"]
     terms = terms or (Path(root) / doc["terms"] if doc.get("terms") else None)
-    checks = conform_repo(root, str(terms) if terms and Path(terms).is_file() else None)
+    # A NAMED LIST IS READ OR REFUSED (W024, GAP-101). `Path(terms).is_file()` was False for two
+    # lists joined by os.pathsep, so naming both cohorts' lists here read neither.
+    try:
+        checks = conform_repo(root, str(terms) if terms else None)
+    except (FileNotFoundError, TermListError) as e:
+        return _t(results, "contract", False, [f"the word list cannot be read as named: {e}"],
+                  seconds=time.time() - t0)
     bad = [f"{c['id']}: {c['evidence']}" for c in checks if not c["ok"] and c["level"] == "error"]
     warn = sum(1 for c in checks if not c["ok"] and c["level"] == "warn")
     return _t(results, "contract", not bad,
@@ -339,6 +345,24 @@ def t2_unit(doc, results, skip=False):
               [f"exit {r['code']}: {' '.join(r['cmd'])}"] + _excerpt(r["out"]),
               cannot="anything about data the suite does not carry",
               seconds=r["seconds"])
+
+
+def _statuses(d) -> list:
+    """[(name, the record or the reason it is unreadable)] for STATUS.json and every
+    STATUS.<cmd>.json in `d`, in that order (W024, GAP-C38). A tool of several commands writes one
+    status per command - the status contract allows it, and `sch conform --run RUNDIR` reads it -
+    and a ladder that opened STATUS.json alone passed a command that exited 0 having written
+    `partial`."""
+    d = Path(d)
+    names = (["STATUS.json"] if (d / "STATUS.json").is_file() else []) + \
+        sorted(p.name for p in d.glob("STATUS.*.json") if p.is_file())
+    out = []
+    for n in names:
+        try:
+            out.append((n, json.loads((d / n).read_text(encoding="utf-8"))))
+        except (OSError, ValueError) as e:
+            out.append((n, e))
+    return out
 
 
 def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=None):
@@ -409,22 +433,29 @@ def _fixture_tier(doc, point_name, name, shape, fixdir, results, tier, out_name=
             ev += [ln for ln in r["out"].splitlines() if ln.strip()][-14:]
             ok = False
             break
-    status = out / "STATUS.json"
-    if status.is_file():
-        try:
-            st = json.loads(status.read_text(encoding="utf-8"))
-            ev.append(f"STATUS.json: {st.get('status')} - {st.get('headline')}")
-            if st.get("status") == "refused" and spec.get("accepts_refusal"):
-                ok = True
-                refused = True
-                ev.append("refusal accepted: this point declares refusal a valid outcome on the fixture")
-            elif st.get("status") not in ("ok",):
-                ok = False
-        except ValueError as e:
-            ev.append(f"STATUS.json is not readable: {e}")
-            ok = False
-    elif spec.get("products"):
-        ev.append("no STATUS.json - the status contract is not being written by this command")
+    # EVERY STATUS THE COMMAND WROTE (W024, GAP-C38): STATUS.json, and the STATUS.<cmd>.json a
+    # tool of several commands writes one per command. One that is not ok is enough to fail.
+    statuses = _statuses(out)
+    accepted = bad = False
+    for sname, st in statuses:
+        if not isinstance(st, dict):
+            ev.append(f"{sname} is not readable: {st}")
+            bad = True
+            continue
+        ev.append(f"{sname}: {st.get('status')} - {st.get('headline')}")
+        if st.get("status") == "refused" and spec.get("accepts_refusal"):
+            accepted = True
+        elif st.get("status") not in ("ok",):
+            bad = True
+    if bad:
+        ok = False
+    elif accepted:
+        ok = True
+        refused = True                 # read by agree and baseline from this record (W019)
+        ev.append("refusal accepted: this point declares refusal a valid outcome on the fixture")
+    if not statuses and spec.get("products"):
+        ev.append("no STATUS.json or STATUS.<cmd>.json - the status contract is not being "
+                  "written by this command")
     missing = [p for p in (spec.get("products") or []) if not (out / str(p).format(name=name)).exists()]
     if missing:
         ev.append("missing products: " + ", ".join(missing))
@@ -700,8 +731,11 @@ def t5_leak(doc, fixdir, results, terms=None):
     four children demonstrate by containing none. This tier searches only supplied terms, never
     shapes, so it needs no exemption and grants none - and on 2026-09-06 it found a cohort's name
     in the comment of the one file whose job is to prove the cohort's name is absent, sitting in
-    the blind spot the wholesale exemption creates."""
-    from ..conform.checks import _load_terms, _read, _text_files, term_files
+    the blind spot the wholesale exemption creates.
+
+    THE SAME SCAN AS S1 (W024): every file by its content, the list's `word:`/`exact:` forms, and
+    the repository's own LEAK_SCOPE.txt. A list that is named and missing fails the tier."""
+    from ..conform.checks import TermListError, _load_terms, leak_scan
     t0 = time.time()
     root = Path(doc["_root"])
     # THE WORD LIST LIVES OUTSIDE THE REPOSITORY, ALWAYS. A tool that ships the cohort's
@@ -712,8 +746,12 @@ def t5_leak(doc, fixdir, results, terms=None):
     candidates = [terms, os.environ.get(env_var), os.environ.get("SCH_FORBIDDEN_TERMS")]
     if doc.get("terms"):
         candidates.append(root / doc["terms"])
-    tf = next((c for c in candidates if c and term_files(c)), None)   # one list per project
-    words = _load_terms(str(tf)) if tf else []
+    tf = next((c for c in candidates if c), None)       # one list per project, joined by pathsep
+    try:
+        words = _load_terms(str(tf)) if tf else []
+    except (FileNotFoundError, TermListError) as e:
+        return _t(results, "leak", False, [f"the word list cannot be read as named: {e}"],
+                  seconds=time.time() - t0)
     if not words:
         return _t(results, "leak", True,
                   [f"no word list: pass --terms, or set ${env_var} to a file of terms this "
@@ -725,12 +763,7 @@ def t5_leak(doc, fixdir, results, terms=None):
     # reported all five repositories as leaking because of where the run directory sat. What is
     # being asked here is whether the TOOL wrote a cohort's vocabulary into its output, so the
     # caller's path is redacted before the search and the redaction is reported.
-    hits = []
-    for p in _text_files(root):
-        low = _read(p).lower()
-        for w in words:
-            if w.lower() in low:
-                hits.append(f"{p.relative_to(root)}: {w}")
+    hits = list(dict.fromkeys(f"{h.rel}: {h.name}" for h in leak_scan(root, words)["hits"]))
     return _t(results, "leak", not hits,
               hits[:20] or [f"{len(words)} terms from {tf}, none present anywhere in the tree"],
               cannot="that a term nobody listed is absent - the list is the limit of this check; "

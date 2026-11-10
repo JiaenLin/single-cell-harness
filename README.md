@@ -54,12 +54,14 @@ it.
 
 ## What it does
 
+The sessions below are illustrative: their numbers and labels are invented.
+
 ```console
 $ sch stack
-  observations   10 libraries, 39,037 droplets      immutable
+  observations   6 libraries, 52,418 droplets       immutable
   ▸ align@celescope       2.7.3                     checkpoint
   ▸ ambient@cellbender    lr=5e-5 fpr=0             checkpoint
-  ▸ qc@scqc               0.4.0   masks 6,851 obs   mounted
+  ▸ qc@scqc               0.4.0   masks 7,093 obs   mounted
   ▸ annotate@scanno       0.10.0  labels 4 columns  mounted
   ▸ integrate@scintegrate 0.4.0   5 embeddings, default X_scanvi
   ▸ profile@velocity      REFUSED — no spliced layer beside this object
@@ -69,7 +71,7 @@ Remove a decision and see the cost before paying it:
 
 ```console
 $ sch unmount qc@scqc --dry-run
-  would restore 6,851 observations
+  would restore 7,093 observations
   would invalidate, in order:
     annotate@scanno          labels were fitted on the masked set
     integrate@scintegrate    5 embeddings, all of them
@@ -83,8 +85,8 @@ Fork the stack to hold everything else constant:
 $ sch fork no-qc --without qc@scqc && sch run no-qc
 $ sch diff main no-qc --on composition
   cell type           main      no-qc     Δ
-  Cardiomyocyte      37.3%     34.9%   -2.4pp
-  Endothelial        24.3%     24.1%   -0.2pp
+  type A             41.6%     39.2%   -2.4pp
+  type B             21.7%     21.6%   -0.1pp
 ```
 
 ## Everything is a plugin

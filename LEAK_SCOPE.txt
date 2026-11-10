@@ -1,0 +1,20 @@
+# LEAK_SCOPE.txt - what `sch conform`'s S1 may find in this repository, and why (harness W024).
+#
+# One entry per line:   <path> :: <what may appear> :: <why>
+#   <path>   repository-relative; a trailing / takes a directory and everything below it
+#   <what>   *  a RECORD: S1 does not read it, and S1f says how many files that covers. A `*`
+#               is accepted only on the five tier-II paths below (W024 fix-up);
+#            or listed terms (or shape names) separated by ", ", excused at that path only
+#   <why>    required: an entry without a reason is refused and not applied
+#
+# THE RULE THIS APPLIES. The program's tier II: "Cohort data never enters a tool" does NOT require
+# "keeping cohort names out of the harness's own records. ADRs and these ledgers name cohorts."
+# A record says what was run, on what, and where; the code that runs it may not. Nothing the
+# harness runs or ships - sch/, tests/, skills/, setup/, plugins/, spike/ - is declared here, and a
+# test keeps it so.
+
+GOALS.md          :: * :: the project's goals, set by the PI; its layer-3 tests name the two held-out cohorts by design
+autodev/          :: * :: the program's ledgers, wave registrations, state and rules: the record of what ran on which cohort
+docs/adr/         :: * :: the architecture decision records: each states the cohort and the runs its decision rests on
+docs/blind/       :: * :: the blind tests' records: the cohort, the runs, and what an agent found on them
+docs/postmortem/  :: * :: the post-mortems: a failure is described with the run, the cohort and the machine it happened on

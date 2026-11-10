@@ -3,10 +3,12 @@
 # Never qsub the job directly: the run directory and its logs/ are made here, bare, the tree is
 # checked against the commit the job expects, and the site's validator runs first (rule H1).
 # Authored on the workstation and pushed. Runs on a login node in seconds: mkdir, validate, qsub.
-#   submit_rerun.sh jobs/<emitted>.pbs
+#   submit_rerun.sh <project>/jobs/<emitted>.pbs
+# A TEMPLATE (W024): it names no site. The validator is the site's, installed under $HOME by
+# LAYOUT; an emitted job lives in the project that owns its cohort, never in the harness.
 set -euo pipefail
-HOME_=/data/wangyb/home/jiaen.lin
-JOB="${1:?the emitted job, e.g. jobs/rerun_0006.pbs}"
+HOME_="$HOME"
+JOB="${1:?the emitted job, e.g. <project>/jobs/<emitted>.pbs}"
 [ -f "$JOB" ] || { echo "no such job: $JOB"; exit 3; }
 RUNDIR="$(awk -F'"' '/^RUNDIR=/{print $2; exit}' "$JOB")"
 TOOLDIR="$(awk -F'"' '/^TOOLDIR=/{print $2; exit}' "$JOB")"

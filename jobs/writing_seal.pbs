@@ -28,9 +28,11 @@
 # rule-one: no-removal. Reads $REF; writes only inside $RUNDIR.
 # Authored on the workstation and pushed (rule H1). No `git` runs below.
 #
-#   bash jobs/submit_writing_seal.sh --prepare REF        # makes RUNDIR and prints incoming/
+#   bash <project>/jobs/submit_writing_seal.sh --prepare REF   # makes RUNDIR, prints incoming/
 #   ... the agent sends the written layer into RUNDIR/incoming/ ...
-#   bash jobs/submit_writing_seal.sh --seal RUNDIR        # validates and submits this job
+#   bash <project>/jobs/submit_writing_seal.sh --seal RUNDIR   # validates and submits this job
+# The submitter names its project's paths, so it lives in the project (W024; the harness's
+# autodev/waves/W024-moved-jobs.md says where it went).
 
 set -euo pipefail
 
