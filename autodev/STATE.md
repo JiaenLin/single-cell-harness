@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-10T05:10Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-10T05:12Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 **RESUMED 2026-11-10T01:3xZ (the PI: "WE HAVE TOKENS. GO!"; BLK-010 closed)** under the 2026-11-10 blocks of RULES.md:
@@ -49,7 +49,7 @@ Opus-max builders; `setup/autodev/agent_models.sh` now checks every agent at eac
 | HARN | single-cell-harness | **W010, W016, W019, W026 and W024 MERGED** (`main` `2fc727d`). **W029: both gates AS PREDICTED** at `006b72c` (job 29 stage 2, PBS 784088; job 36 stage 1, PBS 784130, including the new scheduler reconcile); its verifier follows audit 0004 | merged x5; 1 verified-next |
 | PLAT | studio, lab, service | **DEPLOYED by the PI's go:** Lab W005 (`51a00fa`), Studio W008 (`1d591f9`), Service W009 + W015 (`997d132`). **W030** (Service: local reads, GAP-P05, GAP-C55, B1-059) **building** (Opus max; the PI's four files untouched). **W017** (Lab, `243783f`) waits for its last re-check; **W028** (Studio) for its verifier. Each platform merge deploys a live app, so it comes to the PI as a go when verified | deployed x4; 1 building; 2 waiting |
 | AUDIT | — | **Pass 0004 done (the first scored pass): NOT HAPPY, mean 0.271** (0.269 under D-014). The next pass after 3 more merges or 24 h with one. The queue follows its section 9 (RULES, the 2026-11-10 audit block) | done; next after 3 merges |
-| BLOCKER | — | **Sweep 02:1xZ (2026-11-10):** BLK-011 found and removed (two builders ran on Fable after a resume; relaunched on Opus max; `agent_models.sh` checks every agent each tick). Decided by the catalogue, not asked: B1-112 (SAMBO's DE direction, D-007), B1-113 (single-cell floors, D-008), GAP-P07 (the PI's skill stays untouched, D-009). Closed: BLK-003, SWEEP-1 (every queued B1 row has a wave). Unblocked: GAP-043, GAP-C55, GAP-P17. Queued as waves: W030 (Service), W031 (scale). Nothing waits on the PI | watching |
+| BLOCKER | — | **Sweep 05:1xZ (SWEEP-4):** W022 and W023 made startable under D-016 (stacked on W025's and W032's heads); W023 moved up the builder queue (the eight plugins' path); the scProfile cluster checkout back on main. Still waiting on the PI: the budget (D-005); later, GAP-055's promotion. The verifier queue is the throttle's one slot | watching |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
 - PBS 720930 is IDENTICAL, as predicted.
@@ -61,7 +61,7 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 ## The queue (RULES tier IV: 2 builders, 1 verifier; the next slot goes by score, pass 0004 section 9)
 
 - **Builders now:** W030 (Service; moves no score, kept by D-015) and W033 (C46 stage 2, +1/8 on A1.1), both Opus 5.5 max.
-- **Next builder slots, by score:** (1) the remaining ADAPTERS and a STAGE DRIVER (harness: int@scintegrate, prof@scprofile, one design sheet; GAP-001, -002, -122; about +0.08), startable now under D-016; (2) after the W013 + W032 batch, the eight plugins through the maker, abundance first (GAP-044 and kin; about +0.11), then W023; (3) GAP-119 first in QC's next wave after W020, then W031 (scale) and D-008's floors; (4) false documentation per repository (about +0.044); (5) C46 stages 3-4 after W033 (about +0.04); then W022 (INT, with GAP-128) after the W012 + W025 batch.
+- **Next builder slots, by score:** (1) the remaining ADAPTERS and a STAGE DRIVER (harness: int@scintegrate, prof@scprofile, one design sheet; GAP-001, -002, -122; about +0.08), startable now under D-016; (2) W023 (scProfile's inherited constraints, stacked on W032's head; the eight plugins' path), then after the W013 + W032 batch the eight plugins through the maker, abundance first (GAP-044 and kin; about +0.11); (3) GAP-119 first in QC's next wave after W020, then W031 (scale) and D-008's floors; (4) false documentation per repository (about +0.044); (5) C46 stages 3-4 after W033 (about +0.04); then W022 (INT, stacked on W025's head, with GAP-128).
 - **Verifier now:** W029. **Next, by what the merge unlocks:** the W013 + W032 batch (both gates AS PREDICTED; its merge opens the eight plugins, +0.11), W020 (gate met), the W012 + W025 batch (after PBS 784233; opens W034's gate), the W028 verifier, W017's last re-check.
 - **The budget (D-005, provisional):** 5.87 M output and 1.21 B context by 04:57Z (73 % and 48 % of the daily caps). At 6.4 M output (80 %) no new builder starts until 00:00Z; running agents finish.
 
