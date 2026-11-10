@@ -159,3 +159,13 @@ All tier IV (C) unless a line says otherwise.
 - **A clone's commit gate reads the cohorts' generated term lists** through `setup/githooks/conform.local` (git-ignored;
   the lists sit in `autodev/.machinery/terms/`, also ignored). `shapes=` stays unset until GAP-C66's site-string lines
   are gone, because S1 with the shapes is red today.
+
+## Added 2026-11-10 after audit pass 0004 (the first scored pass: mean 0.271, NOT HAPPY)
+
+- **The queue follows the score (tier IV, C):** the next builder slot goes to the open wave whose closing moves the mean
+  most, as the last audit ranks them (pass 0004, section 9: the eight plugins through the maker +0.11; the remaining
+  adapters and a stage driver +0.08; the three missing components +0.05 each; false documentation +0.044; C46's stages
+  2-4 +0.04), ahead of the fixed lane rotation; the rotation breaks ties. A correctness defect the audit finds (GAP-119:
+  a failed removal audit in scQC stops nothing) goes first in its lane.
+- **Rule 6 relaxed (D-016):** a lane may start its next wave once its previous wave's code is done (gating or verifying);
+  the cluster's one checkout per tool is still taken by one gating job at a time, in submission order.

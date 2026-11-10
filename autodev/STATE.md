@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-10T04:42Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-10T04:54Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 **RESUMED 2026-11-10T01:3xZ (the PI: "WE HAVE TOKENS. GO!"; BLK-010 closed)** under the 2026-11-10 blocks of RULES.md:
@@ -11,36 +11,32 @@ Opus-max builders; `setup/autodev/agent_models.sh` now checks every agent at eac
 
 ## Verdict
 
-**NOT HAPPY: 0 of 20 tests PASS (9 PARTIAL, 11 FAIL)** at audit pass 0003; **score: pending pass 0004** (the mean of the 20 measured scores, GOALS.md "Layer 3, scored"; 3 of 20 measured by the coordinator on 2026-11-10: A1.1 0.25, A3.4 0, A4.2 0)
-([`audits/0003-audit.md`](audits/0003-audit.md)). Pass 0002 had 7 PARTIAL and 13 FAIL. A1.1 moved FAIL → PARTIAL (stage 1 through
-the harness) and A4.4 FAIL → PARTIAL (`sch catalogue`). All 9 closures claimed since pass 0002 were re-checked and hold, and
-GAP-033 is closed from 783148's own files. The register holds 161 gap ids: 91 open, 39 in a wave, 31 closed. 46 of the
-gaps not closed are size M or larger.
+**NOT HAPPY: mean 0.271 of 20 measured scores at audit pass 0004** (the first scored pass; [`audits/0004-audit.md`](audits/0004-audit.md)): 0 PASS, 13 PARTIAL, 7 FAIL; 14 of 20 below 0.5. HAPPY needs a mean of at least 0.9 with no test below 0.5. Under D-014's corrected A3.4 formula (only a cohort of at least 1,000,000 cells counts) the mean is 0.269. Moved since pass 0003: A1.1 1/8 -> 2/8 and A1.2 3/10 -> 5/10 (W026), A1.3 1/5 -> 2/5 (W014), A6.3 0 -> 2/3 (the deployed Service), A5.1 0.923 (the run's own claim ledger), A4.4 0.5. All 29 closures since 0003 hold; 11 gaps are new (GAP-119..129), among them GAP-119 (scQC: a failed removal audit stops nothing) and GAP-128 (scIntegrate: withheld cells stay in the PCA the docs say they leave). The leak guard is red in 7 of 8 repositories under the generated lists.
 
-## Scoreboard (GOALS.md layer 3; pass 0003)
+## Scoreboard (GOALS.md layer 3, scored; pass 0004)
 
-| test | grade | the main reason (gap ids) |
-|---|---|---|
-| A1.1 one request, every stage | PARTIAL | Stage 1 runs through `sch mount qc@scqc` with the pbs executor, AS PREDICTED (PBS 782817, 782922). Stage 2 runs through `sch mount anno@scanno` AS PREDICTED twice (W026: PBS 783280, and 783363 at the fix-up); its merge waits on a fix-only re-check. No adapter for stages 3-4, and no driver (GAP-001). |
-| A1.2 the ten steps mapped | PARTIAL | No map of the ten steps. Step 2 on nuclei runs only outside the tools (GAP-C49). Differential abundance has never run, and step 9 has nothing. |
-| A1.3 environments from main | PARTIAL | Only scProfile builds from main on a fresh prefix (782609). scQC's fresh build reproduced stage 1 in every value but missed its interpreter pin (782920); job 34 is gating (GAP-107). |
-| A2.1 pre-declared reproduction | PARTIAL | Stages 1 and 2 reproduce; stage 2's promoted run reproduces at its own commit (783148). Stage 3's harmony spread broke (782882; W025). Stage 4 and C46 have nothing promoted. |
-| A2.2 documentation true | FAIL | A seeded draw of 96 doc claims found 10 false, in 6 of 8 repositories (GAP-115..117, plus pass 0002's). |
-| A2.3 cold reproduction | FAIL | Never attempted, and the harness suite fails on any fresh clone (GAP-111, GAP-004). |
-| A3.1 held-out cohorts | FAIL | C46 is still at stage 1. Fixtures reach the pipeline in 1 of 4 tools. The leak guard was nearly blind: 802 leaks across the tools (W024). |
-| A3.2 design-aware | PARTIAL | scProfile's main kernels are unchanged; W013 fixes DE's direction on a branch only. |
-| A3.3 assay rule sets | PARTIAL | Three tools have per-assay rules. scProfile changes only captions, and the Service's main has no assay. |
-| A3.4 scale | FAIL | No cohort of 1M cells or more (W027 choosing one). Three tools record no memory (GAP-015). |
-| A4.1 existing pool in one format | FAIL | 1 of 9 plugins is in the maker's layout (W013, de, not merged). The cluster dev suite has not run since 2026-10-02. |
-| A4.2 maker on new tools | FAIL | No draw rule and no conversion (GAP-046). |
-| A4.3 provenance of methods | PARTIAL | The catalogue shows no DOI for 9 of 9 plugins and an exact pin for 3 of 9 (GAP-045). |
-| A4.4 AI-native | PARTIAL | `sch catalogue` lists 22 plugins. A scProfile plugin cannot yet be planned or mounted through `sch`. |
-| A5.1 report from evidence | PARTIAL | paper.py:799-800 still prints withdrawn claims; CellChat only (GAP-047, GAP-048). |
-| A5.2 hypotheses | FAIL | No co-scientist code (GAP-012). |
-| A6.1 Harness UI | FAIL | No UI code (GAP-013). |
-| A6.2 Studio hand-off | FAIL | Lab and Studio main are unchanged (W005, W008 and W017 are held for the PI's deploy). scIntegrate's emit.py:138 drops earlier stages' records (GAP-P20). |
-| A6.3 Service takes single-cell requests | FAIL | Service main is unchanged. It is PARTIAL once W009 and W015 are deployed; the harness intake is still missing (GAP-P06). |
-| A7.1 agents drive it | FAIL | No skill runs a cohort (GAP-003). |
+| test | score (pass 0004) | label | evidence (one line; the full record is the audit) |
+|---|---|---|---|
+| A1.1 one request, every stage | 0.250 (2/8) | PARTIAL | SAMBO stage 1 through qc@scqc (PBS 782817, 782922: SEALED exit=0, AS PREDICTED (1'), isolated IDENTICAL) and stage 2 through anno@scanno (PBS 783280, 783363: AS PREDICTED… |
+| A1.2 the ten steps mapped | 0.500 (5/10) | PARTIAL | steps 3,4 (scQC via qc@scqc), 5,7 (scAnno cluster/annotate via anno@scanno) run in A1.1; step 1 declared upstream (GOALS G1); step 2 only outside the family (inputs are r… |
+| A1.3 environments from main | 0.400 (2/5) | PARTIAL | scQC 98504bd: PBS 783151 P1 HELD (55+165 pins, R stack) P2 HELD selftest 46/0/1; scProfile 27e254f (setup/ = main but comments): PBS 782609 P1 161/161, P2 7/0; scAnno, sc… |
+| A2.1 pre-declared reproduction | 0.500 (2/4) | PARTIAL | stage 1 promoted run reproduced (782817/782922 AS PREDICTED (1') vs results/01_qc); stage 2 (783148 PREDICTION HELD vs results/02_annotate); stage 3: 783282 FAILED as wri… |
+| A2.2 documentation true | 0.125 (1/8) | PARTIAL | seeded draw Random(4), 12 claims per repository (96 checked) plus 18 known-false re-checks: 9 new FALSE in 5 repositories, 17 known-false STILL FALSE; only rnaseq-service… |
+| A2.3 cold reproduction | 0.000 (0/4) | FAIL | no cold reproduction of a sealed stage run was ever attempted (records, waves and RUNLOGs grepped); a cold reproducer would meet a red harness suite (GAP-127, GAP-C64) |
+| A3.1 held-out cohorts | 0.125 (0.125/1) | PARTIAL | 0.5 x (2/8: SAMBO stages 1-2 through the harness; C46 none) + 0.5 x (0/5: S1 red under both cohorts' generated lists in scQC 234, scAnno 36, scIntegrate 12, scProfile 204… |
+| A3.2 design-aware | 0.250 (1/4) | PARTIAL | scProfile main f5175ea: one factor n=2 runs; two-factor with interaction: DE adds the term but never contrasts it (its cannot_show says so) and kernels/abundance.py has a… |
+| A3.3 assay rule sets | 0.800 (4/5) | PARTIAL | scQC (ambient.py:59, quality.py:92, steps.py:1476-1481 refuses), scAnno (assay.py NO DEFAULT; --assay required cli.py:2501), scIntegrate (ASSAY_RULES = {} declared, --ass… |
+| A3.4 scale | 0.050 (201426/4000000) (0 under D-014's corrected formula) | PARTIAL | literal formula: 100,713 cells x 2 stages through A1.1 on standard queues (long 782922; short 783363), measured in OBSERVATIONS.txt of both runs; no cohort of 1,000,000 c… |
+| A4.1 existing pool in one format | 0.000 (0/9) | FAIL | 1 of 9 in the maker's layout (catalogue: cellchat maker, 8 one-file); no dev-suite run on the cluster since 20261002T081440Z__sch-b2e79db; scProfile fails sch conform S1 … |
+| A4.2 maker on new tools | 0.000 (0/5) | FAIL | no draw rule from the scRNA-tools catalogue and no conversion of a never-seen tool (git grep of the harness, autodev/waves) |
+| A4.3 provenance of methods | 0.333 (3/9) | PARTIAL | sch catalogue --json at 7ca2515 over scProfile f5175ea: every plugin cites a peer-reviewed source (cite field), doi 'not declared' in 9 of 9; exact upstream pin only cell… |
+| A4.4 AI-native | 0.500 (2/4) | PARTIAL | cold agent (this pass, skills + sch only, synthetic fixture): listed the catalogue (23 plugins) and picked scprofile:abundance; run FAILED (sch plan scprofile:abundance -… |
+| A5.1 report from evidence | 0.923 (12/13) | PARTIAL | PBS 711781 writing run 20260915T051032Z__scprofile-c1e92c2__04_profile__written: PAPER_CLAIMS.cellchat.jsonl 13 claims, reviewer verdicts 12 standing, 1 narrowed, 0 withd… |
+| A5.2 hypotheses | 0.000 (0/1) | FAIL | no hypothesis record, falsifying test or plan-from-hypothesis in harness 7ca2515 or scProfile f5175ea (grep); 0 hypotheses proposed and 0 follow-ups |
+| A6.1 Harness UI | 0.000 (0/5) | FAIL | no web or server code in the harness (no http.server/flask/fastapi/aiohttp/websocket; no .html/.ts/.js tracked) |
+| A6.2 Studio hand-off | 0.000 (0/2) | FAIL | Studio main 1d591f9 has no Run card or meta.run (git grep src: 0); the family's own final object was never converted by Lab's CLI and opened in Studio (only W005's fixtur… |
+| A6.3 Service takes single-cell requests | 0.667 (2/3) | PARTIAL | Service main 997d132: npm test 7 scripts, 338 ok, Cell Ranger and CeleScope deliveries write the request, scQC samplesheet, registry row and design.csv; the bulk request … |
+| A7.1 agents drive it | 0.000 (0/5) | FAIL | no cold agent has run A1.1 on a held-out cohort; skills/ holds harness-agent, harness-developer, plugin-maker and none runs a cohort across stages (GAP-003); stages 3-4 h… |
 
 ## Lanes
 
@@ -52,7 +48,7 @@ gaps not closed are size M or larger.
 | PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013 HELD** (D-012) and **W032 gating** at `157ed9d`: W013's open routes closed (79 attack checks, 67 red on the old code), 4 of 5 gaps closed, the fifth down from 205 real leak hits to 5 in plugin comments that only the maker may change (GAP-C79, GAP-C80); de's job resubmitted UNCHANGED as **PBS 784285** (the manifest rule). The W013 + W032 batch's verifier follows the queue. A4.1 stays 0/9 until GAP-C79 and GAP-C81 (dev_suite.pbs runs only abundance) | held + gating; 1 queued |
 | HARN | single-cell-harness | **W010, W016, W019, W026 and W024 MERGED** (`main` `2fc727d`). **W029: both gates AS PREDICTED** at `006b72c` (job 29 stage 2, PBS 784088; job 36 stage 1, PBS 784130, including the new scheduler reconcile); its verifier follows audit 0004 | merged x5; 1 verified-next |
 | PLAT | studio, lab, service | **DEPLOYED by the PI's go:** Lab W005 (`51a00fa`), Studio W008 (`1d591f9`), Service W009 + W015 (`997d132`). **W030** (Service: local reads, GAP-P05, GAP-C55, B1-059) **building** (Opus max; the PI's four files untouched). **W017** (Lab, `243783f`) waits for its last re-check; **W028** (Studio) for its verifier. Each platform merge deploys a live app, so it comes to the PI as a go when verified | deployed x4; 1 building; 2 waiting |
-| AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014, W019, W021, W026, W024**. **Pass 0004 running** (the first scored pass: scores.tsv for all 20 tests, the mean, HAPPY = mean >= 0.9 with none < 0.5) | running |
+| AUDIT | — | **Pass 0004 done (the first scored pass): NOT HAPPY, mean 0.271** (0.269 under D-014). The next pass after 3 more merges or 24 h with one. The queue follows its section 9 (RULES, the 2026-11-10 audit block) | done; next after 3 merges |
 | BLOCKER | — | **Sweep 02:1xZ (2026-11-10):** BLK-011 found and removed (two builders ran on Fable after a resume; relaunched on Opus max; `agent_models.sh` checks every agent each tick). Decided by the catalogue, not asked: B1-112 (SAMBO's DE direction, D-007), B1-113 (single-cell floors, D-008), GAP-P07 (the PI's skill stays untouched, D-009). Closed: BLK-003, SWEEP-1 (every queued B1 row has a wave). Unblocked: GAP-043, GAP-C55, GAP-P17. Queued as waves: W030 (Service), W031 (scale). Nothing waits on the PI | watching |
 
 **Read 2026-11-09** (rule 5: these landed 2026-10-02 and were never read):
@@ -62,11 +58,11 @@ gaps not closed are size M or larger.
 
 The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027.
 
-## The queue (RULES tier IV, 2026-11-10: 2 builders, 1 verifier; lanes in turn)
+## The queue (RULES tier IV: 2 builders, 1 verifier; the next slot goes by score, pass 0004 section 9)
 
-- **Builders now:** W030 (PLAT: Service) and W033 (ANNO: C46 stage 2), both Opus 5.5 max. W020, W025, W029 and W032 handed back; their gates run on PBS.
-- **Next builder slots, in order:** W031 (scale, after W020 merges), W022 (INT, after W012), W023 (PROF, after the W013 + W032 batch).
-- **Verifier now:** audit pass 0004 (scored). **Next:** W029 (both gates AS PREDICTED), W020 (after job 35b), the W012 + W025 batch (after job 30b), the W013 + W032 batch (after PBS 784285), the W028 verifier, W017's last re-check, then each repository's batch as it lands.
+- **Builders now:** W030 (Service; moves no score, kept by D-015) and W033 (C46 stage 2, +1/8 on A1.1), both Opus 5.5 max.
+- **Next builder slots, by score:** (1) the remaining ADAPTERS and a STAGE DRIVER (harness: int@scintegrate, prof@scprofile, one design sheet; GAP-001, -002, -122; about +0.08), startable now under D-016; (2) after the W013 + W032 batch, the eight plugins through the maker, abundance first (GAP-044 and kin; about +0.11), then W023; (3) GAP-119 first in QC's next wave after W020, then W031 (scale) and D-008's floors; (4) false documentation per repository (about +0.044); (5) C46 stages 3-4 after W033 (about +0.04); then W022 (INT, with GAP-128) after the W012 + W025 batch.
+- **Verifier now:** W029. **Next:** W020 (after PBS 784271), the W012 + W025 batch (after PBS 784233), the W013 + W032 batch (after PBS 784285), the W028 verifier, W017's last re-check.
 
 ## Machinery (session-only; re-create on resume, see README)
 

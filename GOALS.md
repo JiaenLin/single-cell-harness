@@ -128,7 +128,7 @@ here so that a score never falls because the denominator grew.
 | A3.1 | 0.5 x (cohort stages run end to end: SAMBO 4 + C46 4) / 8 + 0.5 x (tools where the leak guard finds nothing and the fixture's value axes reach the pipeline) / 5 |
 | A3.2 | designs handled or refused by name (one factor n = 2; two-factor with interaction; a covariate) plus contrasts labelled as SAMBO's / 4 |
 | A3.3 | tools that declare separate `scrna` and `snrna` rule sets, or declare no assay dependence, with no silent default / 5 |
-| A3.4 | min(1, cells x stages completed through A1.1 on the standard queues / 4,000,000) |
+| A3.4 | min(1, cells of a cohort of at least 1,000,000 cells x its stages completed through A1.1 on the standard queues / 4,000,000); a smaller cohort counts 0 (restated 2026-11-10, D-014, to the test's words) |
 | A4.1 | current plugins (the eight held-out and CellChat) in the maker's layout passing `sch dev` and `sch conform` on the cluster / 9 |
 | A4.2 | never-seen tools converted by agents alone that pass the dev suite and reproduce their published example / 5 |
 | A4.3 | plugins naming a peer-reviewed source and a pinned version / 9 |
