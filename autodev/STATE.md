@@ -59,7 +59,7 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## The queue (TOKEN-LIMITED: one builder on the key path; validation later)
 
-- **Builder now: none until 2026-11-11T00:00Z** (D-019: the day's output measured 8.12 M at 07:55Z, the 8 M cap). **W023 built** (`6f970e5`, 21 of 24 rows, 3 partly returned: GAP-C88, B1-026, B1-095's cohort half); its gate, the de job resubmitted unchanged by the manifest rule, **PBS 784551, AS PREDICTED** (gate met; waits for validation with W013 + W032). On PBS: W034's job 31 (784504).
+- **Builder now: none until 2026-11-11T00:00Z** (D-019: the day's output measured 8.12 M at 07:55Z, the 8 M cap; periodic check 10:53Z: no builder, 784504 running 3 h 20 min, nothing landed). **W023 built** (`6f970e5`, 21 of 24 rows, 3 partly returned: GAP-C88, B1-026, B1-095's cohort half); its gate, the de job resubmitted unchanged by the manifest rule, **PBS 784551, AS PREDICTED** (gate met; waits for validation with W013 + W032). On PBS: W034's job 31 (784504).
 - **Next builders, one at a time, by score:** the eight plugins through the maker (stacked), GAP-119 (scQC), W031 (scale).
 - **Waiting for validation (built, unmerged):** W029 (both gates AS PREDICTED), W013 + W032 (AS PREDICTED), W020 (gate met),
   W012 + W025 (30b AS PREDICTED), W034 (after job 31), W028 and W017 (platform). **Paused:** W030 (Service).
