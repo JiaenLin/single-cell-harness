@@ -1,7 +1,9 @@
 # STATE: where the program stands
 
-Updated 2026-11-10T05:53Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-10T15:42:32Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
+
+**PAUSED since 2026-11-10T15:42:32Z by the PI** ("GOOD, PAUSE THE DEVELOPMENT FOR NOW"): no builder, verifier, audit or sweep starts, and no PBS job is submitted, until the PI's word resumes it. Nothing is running: no agent, no PBS job of ours, and the PERIODIC CHECK and the mirror are stopped. On resume: `bash setup/autodev/bootstrap.sh check`, then the queue below (the next key builder is the first held-out plugin through the maker; D-019's cap resets each UTC day). Built and gated, unmerged, waiting for validation: W029, W013 + W032 + W023, W020, W012 + W025, W033, W034, W028, W017.
 
 **TOKEN-LIMITED since 2026-11-10T05:2xZ** (the PI: "turn on token limit mode. focus on key processes" / "focus on development
 first. validation later"): one builder on the key path (W033 now; then W034, W023, the eight plugins); no verifier and no
@@ -69,9 +71,9 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 | job | id | cron | created | expires |
 |---|---|---|---|---|
 | LOOP TICK | paused (TOKEN-LIMITED; was `ebc3fb6b`) | `7 */3 * * *` (the 2026-11-10 prompt: mirror files first, the pre-decider sweep, 2 builders on opus/max, 1 verifier per batch) | 2026-11-10 | 2026-11-17 |
-| PERIODIC CHECK | `f256d66a` (the short token-limited prompt) | `23 */6 * * *` (adds the budget meter) | 2026-11-10 | 2026-11-17 |
+| PERIODIC CHECK | stopped 15:42Z (PAUSED; was `f256d66a`, the short token-limited prompt) | `23 */6 * * *` (adds the budget meter) | 2026-11-10 | 2026-11-17 |
 | BLOCKER SWEEP | paused (TOKEN-LIMITED; was `8fbcd2dc`) | `41 */3 * * *` | 2026-11-10 | 2026-11-17 |
-| the PBS mirror | background task `b8ggoear2` (reports SEALED, FAILED or GONE since 03:48Z, BLK-012) | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
+| the PBS mirror | stopped 15:42Z (PAUSED, no job of ours on PBS; was `b8ggoear2`, reports SEALED, FAILED or GONE, BLK-012) | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
 | the verdict Monitor | off (TOKEN-LIMITED; the mirror's files are read at each wake-up) | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min | 2026-11-10 | re-arm |
 | bootstrap | `bash setup/autodev/bootstrap.sh check` / `print` | what runs, what is missing, the start lines | 2026-11-10 | - |
 
