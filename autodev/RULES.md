@@ -133,3 +133,15 @@ All tier IV (C) unless a line says otherwise.
    `ledger/decisions.tsv` for every candidate question, a user-only list, a catalogue of stated answers that grows with
    every answered ASK, and `tests/test_autodev.py` fails a question that reaches STATE without an ASK row or that the
    catalogue answers.
+
+## Added 2026-11-10 by the PI: "you are here to fix harness. the development will be carried by opus 5.5 max"
+
+- **Tier II, the development model:** every development agent (builder, verifier, auditor, blocker remover, research
+  helper) is launched with the Agent tool's `model: "opus"` (Claude Opus 5.5) and `effort: "max"`. The coordinating
+  session's own job is the harness: the rules, the machinery, the records and the loop; its model is whatever the PI set.
+  An agent that inherited another model is stopped and relaunched (the harness batch's verifier, 2026-11-10T01:5xZ).
+- **Tier IV, one coordinator and a hand-off:** one session coordinates at a time. A hand-off to a new session: the old
+  session's agents hand back first (their transcripts belong to it), its records are committed and pushed, its crons,
+  mirror and Monitor die with it; the new session runs `bash autodev/tools/bootstrap.sh check`, then `print`, and starts
+  what is missing. Machinery state lives at `<HARNESS>/autodev/.machinery/` (git-ignored), not in a session's scratchpad,
+  so the mirror's verdict files survive a hand-off.

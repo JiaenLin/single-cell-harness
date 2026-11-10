@@ -9,12 +9,19 @@ and its practices (see [RULES.md](RULES.md) tiers I and IV).
 
 ## Start here (a new session, or after a restart)
 
-1. Read [STATE.md](STATE.md): the scoreboard, the running waves, the blockers and the decisions needed.
-   Then read the newest rows of [`ledger/waves.tsv`](ledger/waves.tsv) and [`ledger/blockers.tsv`](ledger/blockers.tsv).
-2. Re-create the reminders below with CronCreate. They live only in the session that made them and
-   expire after 7 days. Run `CronList` first.
-3. Resume any wave marked `running` in `waves.tsv`. Its row names its branch and PBS ids. Read any landed
-   result by its registered prediction before starting anything new.
+1. Read [STATE.md](STATE.md): the verdict and score, the running waves, the blockers and the decisions needed.
+   Then the newest rows of [`ledger/waves.tsv`](ledger/waves.tsv) and [`ledger/blockers.tsv`](ledger/blockers.tsv).
+2. Run `bash autodev/tools/bootstrap.sh check` (what runs, what is missing, what waits), then
+   `bash autodev/tools/bootstrap.sh print` (the exact start lines), and start what is missing: the PBS mirror
+   (background), the verdict Monitor, the three reminders (CronCreate; they live only in the session and expire
+   after 7 days; run `CronList` first).
+3. Read the mirror's verdict and held files (`autodev/.machinery/pbs/`), then every landed result by its registered
+   prediction, before starting anything new.
+4. Resume the waves `waves.tsv` marks `building`, `gating` or `verifying`: the row names the branch, the commits and
+   the PBS ids. An agent of a previous session cannot be resumed; its branch can (a fresh builder, briefed with the
+   row and the branch).
+5. One coordinator at a time (RULES tier IV, the hand-off rule). Development agents run on Opus 5.5 at max effort
+   (RULES tier II, 2026-11-10); the coordinating session's own job is the harness.
 
 ## The design in one paragraph
 
@@ -86,7 +93,7 @@ re-created with the 2026-11-10 prompts above when the PI lifted it (2026-11-10T0
 
 | name | cron (local) | prompt |
 |---|---|---|
-| LOOP TICK | `7 */3 * * *` (the PI's throttle, 2026-11-09) | "autodev LOOP TICK (<HARNESS>/autodev/README.md). Quick and non-blocking: (0) read the PBS mirror's verdict and held files first (<scratchpad>/pbs/*.verdict, *.held); re-run the pre-decider (autodev/PRE_DECIDER.md) over STATE's "Decisions needed" and act on what a rule or the catalogue decides; (1) read every landed result (builder hand-backs, PBS jobs named in autodev/ledger/waves.tsv) by its registered prediction, then gate, verify or merge as the loop says; (2) for every idle lane with an open, unblocked gap in autodev/ledger/gaps.tsv: register the next wave and start one builder (at most 2 builders at a time, lanes in turn QC, ANNO, INT, PROF, HARN, PLAT; one verifier per merge batch per repository; RULES.md "Added 2026-11-10"; brief from BRIEFS.md §0 and §1); (3) for any wave waiting on something: run the blocker remover (BRIEFS.md §3); (4) if the audit trigger is met (≥ 3 waves merged since the last pass, or 24 h with ≥ 1 merge), start a full audit pass (BRIEFS.md §0 and §2b; it writes scores.tsv). Log each change in the ledgers and update autodev/STATE.md. No blocking questions. Report only what changed." |
+| LOOP TICK | `7 */3 * * *` (the PI's throttle, 2026-11-09) | "autodev LOOP TICK (<HARNESS>/autodev/README.md). Quick and non-blocking: (0) read the PBS mirror's verdict and held files first (<MACHINERY>/*.verdict, *.held); re-run the pre-decider (autodev/PRE_DECIDER.md) over STATE's "Decisions needed" and act on what a rule or the catalogue decides; (1) read every landed result (builder hand-backs, PBS jobs named in autodev/ledger/waves.tsv) by its registered prediction, then gate, verify or merge as the loop says; (2) for every idle lane with an open, unblocked gap in autodev/ledger/gaps.tsv: register the next wave and start one builder (at most 2 builders at a time, lanes in turn QC, ANNO, INT, PROF, HARN, PLAT; one verifier per merge batch per repository; RULES.md "Added 2026-11-10"; brief from BRIEFS.md §0 and §1); (3) for any wave waiting on something: run the blocker remover (BRIEFS.md §3); (4) if the audit trigger is met (≥ 3 waves merged since the last pass, or 24 h with ≥ 1 merge), start a full audit pass (BRIEFS.md §0 and §2b; it writes scores.tsv). Log each change in the ledgers and update autodev/STATE.md. No blocking questions. Report only what changed." |
 | BLOCKER SWEEP | `41 */3 * * *` | "autodev BLOCKER SWEEP (every 3 h; the PI 2026-11-09: "it is very important to remove unreasonalble designs, and remove blockers and constrains from previous single cell harness family. enable the blocker remover"; <HARNESS>/autodev/BRIEFS.md §3). (1) List everything waiting: waves not moving (autodev/ledger/waves.tsv), gaps whose blocked_by is not "none" (gaps.tsv), open rows of blockers.tsv, decisions pending in STATE.md. (2) For each: remove it now if an agent can (environment pins, queue routing, stale checkouts, flaky or environment-bound tests, an inherited design that protects no goal); otherwise prepare the PI's decision card. Start a blocker-remover agent (BRIEFS §3) for anything that needs more than a few minutes. (3) The inherited-constraints register (pass B1 and later): apply its next REMOVE items, and queue its tool or platform changes as waves. Log each action in blockers.tsv, update STATE.md, and report only what changed." |
 | PERIODIC CHECK | `23 */6 * * *` | "autodev PERIODIC CHECK (every 6 h; <HARNESS>/autodev/BRIEFS.md §4; the PI 2026-11-09: "a regular housekeeping to keep project lean and efficient"). One pass: (1) RULE 5: idle lanes, unread results, stalled or failed PBS jobs (the mirror's files first, then at most one batched read-only ssh), waves waiting, trivial work; act at once. (1b) THE BUDGET: run `python3 -I autodev/tools/usage.py --since <today UTC> <this session's transcript .jsonl> '<this session's tasks>/*.output'` and write the day's output and context tokens into STATE.md against the budget (RULES.md "Added 2026-11-10": 8 M output a day, 40 M a week, 1.5 M a wave; mode LIMITED); past 80 % of a cap, start no new builder. (2) LEAN: delete merged autodev/* branches, finished builders' clones and worktrees, and our own cluster scratch older than 14 days; delete superseded job scripts and stale docs only when no record cites them; never delete records. (3) DOCS: STATE.md current; commit and push the harness's main. (4) MEMORY: verify the notes against STATE.md; keep MEMORY.md lean. (5) GITHUB: every running wave's branch is pushed. Log each action in autodev/ledger/housekeeping.tsv. Report only what changed: per lane, then the fixes, then the decisions needed." |
 
@@ -94,8 +101,8 @@ re-created with the 2026-11-10 prompts above when the PI lifted it (2026-11-10T0
 
 | piece | start line (from the harness checkout) | what it does |
 |---|---|---|
-| the PBS mirror | `bash autodev/tools/pbs_mirror.sh <scratchpad>/pbs 300` as a background command | one ssh every 5 min; `watch.tsv` (jobid, rundir, wave) in that folder; writes `<id>.verdict` on seal and `<id>.held` on a held job |
-| the verdict Monitor | Monitor on `bash autodev/tools/monitor_verdicts.sh <scratchpad>/pbs` (30 min, re-armed at expiry) | one event per new verdict or held file |
+| the PBS mirror | `bash autodev/tools/pbs_mirror.sh <MACHINERY> 300` as a background command (`<MACHINERY>` = `<HARNESS>/autodev/.machinery/pbs`, git-ignored, so it survives a session hand-off) | one ssh every 5 min; `watch.tsv` (jobid, rundir, wave) in that folder; writes `<id>.verdict` on seal and `<id>.held` on a held job |
+| the verdict Monitor | Monitor on `bash autodev/tools/monitor_verdicts.sh <MACHINERY>` (30 min, re-armed at expiry) | one event per new verdict or held file |
 | the usage meter | `python3 -I autodev/tools/usage.py <transcript.jsonl> '<tasks>/*.output'` at every PERIODIC CHECK | the day's calls, context, output and launches against the budget (RULES tier IV, 2026-11-10) |
 
 The coordinator appends a line to `watch.tsv` at every qsub and reads verdict files, not run directories.

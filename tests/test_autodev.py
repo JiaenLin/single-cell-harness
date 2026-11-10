@@ -170,5 +170,36 @@ class TheScoresAreMeasured(unittest.TestCase):
             self.assertTrue(rec["evidence"].strip(), f"scores.tsv line {i}: no evidence")
 
 
+class TheHarnessPackageIsWhole(unittest.TestCase):
+    """autodev/ is rebuilt from the repository alone (RULES tier IV, 2026-11-10): what a new session needs is here."""
+
+    def test_every_layer3_test_has_a_score_formula(self):
+        scored = goals_text().split("## Layer 3, scored", 1)[1].split("\n## ", 1)[0]
+        formulas = re.findall(r"^\| (A\d\.\d) \|", scored, flags=re.M)
+        self.assertEqual(formulas, layer3_tests(), "the scored table is not the layer-3 list in order")
+
+    def test_the_tools_exist_and_the_shell_ones_parse(self):
+        import subprocess
+        tools = ROOT / "autodev" / "tools"
+        for name in ("usage.py", "pbs_mirror.sh", "monitor_verdicts.sh", "bootstrap.sh"):
+            self.assertTrue((tools / name).is_file(), name)
+            if name.endswith(".sh"):
+                rc = subprocess.run(["bash", "-n", str(tools / name)], capture_output=True)
+                self.assertEqual(rc.returncode, 0, f"{name}: {rc.stderr.decode()[:200]}")
+
+    def test_the_method_files_carry_their_sections(self):
+        readme = (ROOT / "autodev" / "README.md").read_text(encoding="utf-8")
+        for name in ("LOOP TICK", "BLOCKER SWEEP", "PERIODIC CHECK"):
+            self.assertIn(f"| {name} |", readme, f"README's reminders table lacks {name}")
+        self.assertIn("## The machinery", readme)
+        briefs = (ROOT / "autodev" / "BRIEFS.md").read_text(encoding="utf-8")
+        self.assertIn("## 0. The block every brief carries", briefs)
+        pre = (ROOT / "autodev" / "PRE_DECIDER.md").read_text(encoding="utf-8")
+        for sec in ("## 1.", "## 2.", "## 3.", "## 4.", "## 5."):
+            self.assertIn(sec, pre, f"PRE_DECIDER.md lacks {sec}")
+        rules = (ROOT / "autodev" / "RULES.md").read_text(encoding="utf-8")
+        self.assertIn("## Added 2026-11-10 by the PI's", rules)
+
+
 if __name__ == "__main__":
     unittest.main()

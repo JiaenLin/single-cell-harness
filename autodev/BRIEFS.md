@@ -11,6 +11,8 @@ does not, because a home path in it is a site leak (`tests/test_portability.py`)
 
 ## 0. The block every brief carries (added 2026-11-10)
 
+Every agent below is launched with `model: "opus"` and `effort: "max"` (RULES tier II, the PI 2026-11-10).
+
 ```
 THE PRE-DECIDER (<HARNESS>/autodev/PRE_DECIDER.md): you decide what the rules decide. A question for the
 PI may appear in your hand-back only as a filled form (action; reversible yes/no; outward yes/no; the rule
