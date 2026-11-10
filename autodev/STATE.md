@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-10T04:37Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-10T04:42Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 **RESUMED 2026-11-10T01:3xZ (the PI: "WE HAVE TOKENS. GO!"; BLK-010 closed)** under the 2026-11-10 blocks of RULES.md:
@@ -47,9 +47,9 @@ gaps not closed are size M or larger.
 | lane | repository | wave | status |
 |---|---|---|---|
 | QC | scQC | **W014 MERGED** (`main` `98504bd`). **W020 gating, fix round 1 of 2**: C46 gate IDENTICAL (PBS 783992); the SAMBO miss (PBS 783991) was two keys from `0e6a5f6` (ADR-0027 row 4, on main since W001) that job 35 did not declare; **job 35b** (job 35 + job 33's F1 declaration, no code change) running as **PBS 784271**. GAP-C78 (218 leak hits). **W031** (scale) after W020 merges | gating; 1 registered |
-| ANNO | scAnno | **W011 and W021 MERGED** (`main` `68233f0`): 18 inherited constraints removed or trimmed, `scanno build-markers` and `scanno tree propose` (GAP-028 closed). **W018 DONE** (the promoted stage 2 reproduces at its own commit). No ANNO wave open | merged x2; done |
+| ANNO | scAnno | **W011 and W021 MERGED** (`main` `68233f0`). **W018 DONE**. **W033 building** (Opus max): C46's stage 2 through the harness on single cells, with C46's own corpus (`scanno build-markers`) and a draft tree (`scanno tree propose`, unapproved, said so); A1.1 2/8 -> 3/8 predicted | merged x2; done; 1 building |
 | INT | scIntegrate | **W012 + W025 gating** (round 2, the last allowed): iLISI and cLISI now score every cell (scIB's subsample cannot be seeded), bit-identical between runs; re-gate job 30b **PBS 784233** running at `b148030`. On AS PREDICTED, one verifier checks the pair as a batch. GAP-C65, GAP-C12 and GAP-C61 stay for later; **W022** follows the pair's merge | gating; 1 queued |
-| PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013 HELD, not merged** (its final re-check FAILED on the fix; D-012). **W032 building** (Opus max): W013's residue GAP-C72..C76 on W013's branch; the W013 + W032 batch merges on W032's PASS (D-013). Then **W023**; GAP-055 (promoting SAMBO stage 4) comes to the PI after that batch | held; 1 building; 1 queued |
+| PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013 HELD** (D-012) and **W032 gating** at `157ed9d`: W013's open routes closed (79 attack checks, 67 red on the old code), 4 of 5 gaps closed, the fifth down from 205 real leak hits to 5 in plugin comments that only the maker may change (GAP-C79, GAP-C80); de's job resubmitted UNCHANGED as **PBS 784285** (the manifest rule). The W013 + W032 batch's verifier follows the queue. A4.1 stays 0/9 until GAP-C79 and GAP-C81 (dev_suite.pbs runs only abundance) | held + gating; 1 queued |
 | HARN | single-cell-harness | **W010, W016, W019, W026 and W024 MERGED** (`main` `2fc727d`). **W029: both gates AS PREDICTED** at `006b72c` (job 29 stage 2, PBS 784088; job 36 stage 1, PBS 784130, including the new scheduler reconcile); its verifier follows audit 0004 | merged x5; 1 verified-next |
 | PLAT | studio, lab, service | **DEPLOYED by the PI's go:** Lab W005 (`51a00fa`), Studio W008 (`1d591f9`), Service W009 + W015 (`997d132`). **W030** (Service: local reads, GAP-P05, GAP-C55, B1-059) **building** (Opus max; the PI's four files untouched). **W017** (Lab, `243783f`) waits for its last re-check; **W028** (Studio) for its verifier. Each platform merge deploys a live app, so it comes to the PI as a go when verified | deployed x4; 1 building; 2 waiting |
 | AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014, W019, W021, W026, W024**. **Pass 0004 running** (the first scored pass: scores.tsv for all 20 tests, the mean, HAPPY = mean >= 0.9 with none < 0.5) | running |
@@ -64,9 +64,9 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## The queue (RULES tier IV, 2026-11-10: 2 builders, 1 verifier; lanes in turn)
 
-- **Builders now:** W032 (PROF) and W030 (PLAT: Service), both Opus 5.5 max. W020, W025 and W029 handed back; their gates run on PBS or are done.
+- **Builders now:** W030 (PLAT: Service) and W033 (ANNO: C46 stage 2), both Opus 5.5 max. W020, W025, W029 and W032 handed back; their gates run on PBS.
 - **Next builder slots, in order:** W031 (scale, after W020 merges), W022 (INT, after W012), W023 (PROF, after the W013 + W032 batch).
-- **Verifier now:** audit pass 0004 (scored). **Next:** W029 (both gates AS PREDICTED), W020 (after job 35b), the W012 + W025 batch (after job 30b), the W028 verifier, W017's last re-check, then each repository's batch as it lands.
+- **Verifier now:** audit pass 0004 (scored). **Next:** W029 (both gates AS PREDICTED), W020 (after job 35b), the W012 + W025 batch (after job 30b), the W013 + W032 batch (after PBS 784285), the W028 verifier, W017's last re-check, then each repository's batch as it lands.
 
 ## Machinery (session-only; re-create on resume, see README)
 
@@ -76,7 +76,7 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 | PERIODIC CHECK | `b76f3618` | `23 */6 * * *` (adds the budget meter) | 2026-11-10 | 2026-11-17 |
 | BLOCKER SWEEP | `8fbcd2dc` | `41 */3 * * *` | 2026-11-10 | 2026-11-17 |
 | the PBS mirror | background task `b8ggoear2` (reports SEALED, FAILED or GONE since 03:48Z, BLK-012) | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
-| the verdict Monitor | `b9l6z28mr`, armed while watch.tsv lists a job (784233, 784271 now) | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min | 2026-11-10 | re-arm |
+| the verdict Monitor | `b9l6z28mr`, armed while watch.tsv lists a job (784233, 784271, 784285 now) | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min | 2026-11-10 | re-arm |
 | bootstrap | `bash setup/autodev/bootstrap.sh check` / `print` | what runs, what is missing, the start lines | 2026-11-10 | - |
 
 ## Decisions needed from the PI
