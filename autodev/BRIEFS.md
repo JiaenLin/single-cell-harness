@@ -9,6 +9,25 @@ Two fields are always the same. `<HARNESS>` is the harness checkout on the works
 the folder that holds the cohort projects' mirrors. The coordinator's memory names both. The repository
 does not, because a home path in it is a site leak (`tests/test_portability.py`).
 
+## 0. The block every brief carries (added 2026-11-10)
+
+```
+THE PRE-DECIDER (<HARNESS>/autodev/PRE_DECIDER.md): you decide what the rules decide. A question for the
+PI may appear in your hand-back only as a filled form (action; reversible yes/no; outward yes/no; the rule
+you searched; what it decides; your verdict ACT/DECLINE/ASK; for ASK the user-only clause). A question
+without the form is not forwarded. A cohort fact is looked up and measured, and what stays unknown is a
+stated limit. Declining an outward or irreversible action is the default.
+THE SCORE: this wave moves <test ids> by <predicted delta> (GOALS.md "Layer 3, scored"); say in the
+hand-back what it measured.
+THE CAP: one wave, one hand-back, within about 1.5 M output tokens including verification; at 2 fix
+rounds the residue is a gap, not a third round. Push your branch after every commit.
+```
+
+For the auditor (2b) the block adds: write one row per test into `autodev/ledger/scores.tsv` (stamp, pass, test_id,
+score, numerator, denominator, evidence), by the formulas in GOALS.md; the verdict is HAPPY when the mean is at least 0.9
+and no test is below 0.5. For the verifier (2a) it adds: one verification per merge batch per repository, the fix-only
+re-check on a fix-up, at most 2 rounds.
+
 ## 1. Development builder
 
 ```

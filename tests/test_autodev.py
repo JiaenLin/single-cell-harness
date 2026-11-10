@@ -35,7 +35,12 @@ HEADERS = {
     "blockers.tsv": ["stamp", "blocker_id", "blocks", "class", "symptom", "root_cause",
                      "evidence", "action", "owner", "status"],
     "housekeeping.tsv": ["stamp", "pass", "kind", "target", "action", "reason"],
+    "decisions.tsv": ["stamp", "decision_id", "action", "reversible", "outward", "rules_searched",
+                      "decides", "verdict", "decided_by", "where_recorded"],
+    "scores.tsv": ["stamp", "pass", "test_id", "score", "numerator", "denominator", "evidence"],
 }
+USER_ONLY = ("promotion", "sign convention", "threshold the data cannot decide", "core rule or goal",
+             "budget or token mode", "permission", "collaborator or vendor", "account")
 GAP_STATUS = {"open", "in_wave", "closed", "deferred", "lean"}
 WAVE_STATUS = {"registered", "building", "gating", "verifying", "merged", "done", "held", "failed"}
 
@@ -110,6 +115,59 @@ class TheLedgersJoinTheGoals(unittest.TestCase):
                 self.assertIn(gid, ids, f"{rec['wave_id']} names {gid}")
             for gap in split_ids(rec["gap_ids"]):
                 self.assertIn(gap, opened, f"{rec['wave_id']} names unopened {gap}")
+
+
+class ThePreDeciderGate(unittest.TestCase):
+    """autodev/PRE_DECIDER.md v2 (2026-11-10): a question reaches the PI only through the form."""
+
+    def test_every_decision_row_is_well_formed_and_every_ask_names_a_user_only_clause(self):
+        for i, row in enumerate(rows("decisions.tsv")[1:], start=2):
+            rec = dict(zip(HEADERS["decisions.tsv"], row))
+            self.assertRegex(rec["decision_id"], r"^D-\d{3}$", f"decisions.tsv line {i}")
+            self.assertIn(rec["reversible"], {"yes", "no"}, f"decisions.tsv line {i}")
+            self.assertIn(rec["outward"], {"yes", "no"}, f"decisions.tsv line {i}")
+            self.assertIn(rec["verdict"], {"ACT", "DECLINE", "ASK"}, f"decisions.tsv line {i}")
+            if rec["verdict"] == "ASK":
+                self.assertTrue(any(c in rec["decided_by"] for c in USER_ONLY),
+                                f"{rec['decision_id']} asks the PI without a user-only clause")
+
+    def test_every_question_in_state_cites_an_ask_row(self):
+        state = (ROOT / "autodev" / "STATE.md").read_text(encoding="utf-8")
+        section = state.split("## Decisions needed from the PI", 1)[1].split("\n## ", 1)[0]
+        asks = {dict(zip(HEADERS["decisions.tsv"], r))["decision_id"]
+                for r in rows("decisions.tsv")[1:] if r[7] == "ASK"}
+        for line in section.splitlines():
+            if re.match(r"^\d+\. ", line):
+                cited = re.findall(r"\bD-\d{3}\b", line)
+                self.assertTrue(cited, f"a question without a decisions.tsv row: {line[:80]}")
+                for d in cited:
+                    self.assertIn(d, asks, f"{d} is cited as a question but is not an ASK row")
+
+    def test_no_ask_repeats_a_catalogue_class(self):
+        doc = (ROOT / "autodev" / "PRE_DECIDER.md").read_text(encoding="utf-8")
+        catalogue = doc.split("## 4.", 1)[1].split("## 5.", 1)[0]
+        classes = {m.strip().lower() for m in re.findall(r"^\| ([^|]+) \|", catalogue, flags=re.M)}
+        classes -= {"class of question", "---"}
+        for r in rows("decisions.tsv")[1:]:
+            rec = dict(zip(HEADERS["decisions.tsv"], r))
+            if rec["verdict"] == "ASK":
+                self.assertNotIn(rec["action"].strip().lower(), classes,
+                                 f"{rec['decision_id']} asks a question the catalogue answers")
+
+
+class TheScoresAreMeasured(unittest.TestCase):
+    """GOALS.md layer 3 scored (2026-11-10): a score is a numerator over a denominator, in [0, 1]."""
+
+    def test_scores_rows(self):
+        tests = set(layer3_tests())
+        for i, row in enumerate(rows("scores.tsv")[1:], start=2):
+            rec = dict(zip(HEADERS["scores.tsv"], row))
+            self.assertIn(rec["test_id"], tests, f"scores.tsv line {i}")
+            num, den, score = float(rec["numerator"]), float(rec["denominator"]), float(rec["score"])
+            self.assertGreater(den, 0, f"scores.tsv line {i}")
+            self.assertTrue(0 <= score <= 1, f"scores.tsv line {i}")
+            self.assertAlmostEqual(score, min(1.0, num / den), places=3, msg=f"scores.tsv line {i}")
+            self.assertTrue(rec["evidence"].strip(), f"scores.tsv line {i}: no evidence")
 
 
 if __name__ == "__main__":

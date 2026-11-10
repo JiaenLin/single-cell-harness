@@ -10,7 +10,7 @@ are suspended (Machinery).
 
 ## Verdict
 
-**NOT HAPPY: 0 of 20 tests PASS (9 PARTIAL, 11 FAIL)** at audit pass 0003
+**NOT HAPPY: 0 of 20 tests PASS (9 PARTIAL, 11 FAIL)** at audit pass 0003; **score: pending pass 0004** (the mean of the 20 measured scores, GOALS.md "Layer 3, scored"; 3 of 20 measured by the coordinator on 2026-11-10: A1.1 0.25, A3.4 0, A4.2 0)
 ([`audits/0003-audit.md`](audits/0003-audit.md)). Pass 0002 had 7 PARTIAL and 13 FAIL. A1.1 moved FAIL → PARTIAL (stage 1 through
 the harness) and A4.4 FAIL → PARTIAL (`sch catalogue`). All 9 closures claimed since pass 0002 were re-checked and hold, and
 GAP-033 is closed from 783148's own files. The register holds 161 gap ids: 91 open, 39 in a wave, 31 closed. 46 of the
@@ -76,6 +76,13 @@ None. The four that were listed here (2-5) were decided by the pre-decider on 20
 
 ## Decided (2026-11-10, by the pre-decider; the PI: "review rules and goals and decide")
 
+- **2026-11-10, the PI: "agree, proceed with all"** on the diagnosis's seven changes
+  ([audits/DIAGNOSIS_20261110_vs_vcc.md](audits/DIAGNOSIS_20261110_vs_vcc.md)), and "for the predecider, improve it".
+  Done the same day, in RULES.md's 2026-11-10 block: agent use as VCC's row (2 builders; one verifier per merge batch per
+  repository; 2 rounds then a gap); the measured score per test and HAPPY = mean >= 0.9 with no test < 0.5 (D-006);
+  the PBS mirror and the verdict Monitor (`tools/`); the manifest rule for fix-ups; the budget (provisional: 8 M output a
+  day, 40 M a week, 1.5 M a wave; token mode LIMITED; D-005 holds the PI's number); lanes in turn; the pre-decider v2
+  ([PRE_DECIDER.md](PRE_DECIDER.md): the form, `ledger/decisions.tsv`, the catalogue, the test).
 - **2, commit `f488621` authored `t <t@t>`: left as it is, and attributed by `.mailmap`.** Rewriting it needs a force-push
   to a public `main`. Declining that is the default and needs nobody (RULES tier IV, the pre-decider's step 3a). `.mailmap`
   maps it to Jiaen Lin, so `git log` and `git shortlog` show the true author without rewriting history (BLK-004).

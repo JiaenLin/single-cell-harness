@@ -90,6 +90,16 @@ suspended and one one-shot at the reset resumes the stopped agents and re-create
 | BLOCKER SWEEP | `41 */3 * * *` | "autodev BLOCKER SWEEP (every 3 h; the PI 2026-11-09: "it is very important to remove unreasonalble designs, and remove blockers and constrains from previous single cell harness family. enable the blocker remover"; <HARNESS>/autodev/BRIEFS.md §3). (1) List everything waiting: waves not moving (autodev/ledger/waves.tsv), gaps whose blocked_by is not "none" (gaps.tsv), open rows of blockers.tsv, decisions pending in STATE.md. (2) For each: remove it now if an agent can (environment pins, queue routing, stale checkouts, flaky or environment-bound tests, an inherited design that protects no goal); otherwise prepare the PI's decision card. Start a blocker-remover agent (BRIEFS §3) for anything that needs more than a few minutes. (3) The inherited-constraints register (pass B1 and later): apply its next REMOVE items, and queue its tool or platform changes as waves. Log each action in blockers.tsv, update STATE.md, and report only what changed." |
 | PERIODIC CHECK | `23 */6 * * *` | "autodev PERIODIC CHECK (every 6 h; <HARNESS>/autodev/BRIEFS.md §4; the PI 2026-11-09: "a regular housekeeping to keep project lean and efficient"). One pass: (1) RULE 5: idle lanes, unread results, stalled or failed PBS jobs (one batched read-only ssh), waves waiting, trivial work; act at once. (2) LEAN: delete merged autodev/* branches, finished builders' clones and worktrees, and our own cluster scratch older than 14 days; delete superseded job scripts and stale docs only when no record cites them; never delete records. (3) DOCS: STATE.md current; commit and push the harness's main. (4) MEMORY: verify the notes against STATE.md; keep MEMORY.md lean. (5) GITHUB: every running wave's branch is pushed. Log each action in autodev/ledger/housekeeping.tsv. Report only what changed: per lane, then the fixes, then the decisions needed." |
 
+## The machinery (added 2026-11-10; session-only processes, restart on resume)
+
+| piece | start line (from the harness checkout) | what it does |
+|---|---|---|
+| the PBS mirror | `bash autodev/tools/pbs_mirror.sh <scratchpad>/pbs 300` as a background command | one ssh every 5 min; `watch.tsv` (jobid, rundir, wave) in that folder; writes `<id>.verdict` on seal and `<id>.held` on a held job |
+| the verdict Monitor | Monitor on `bash autodev/tools/monitor_verdicts.sh <scratchpad>/pbs` (30 min, re-armed at expiry) | one event per new verdict or held file |
+| the usage meter | `python3 -I autodev/tools/usage.py <transcript.jsonl> '<tasks>/*.output'` at every PERIODIC CHECK | the day's calls, context, output and launches against the budget (RULES tier IV, 2026-11-10) |
+
+The coordinator appends a line to `watch.tsv` at every qsub and reads verdict files, not run directories.
+
 ## Records
 
 | file | holds |
