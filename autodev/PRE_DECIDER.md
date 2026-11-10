@@ -68,7 +68,7 @@ Everything else is decided here.
 | delete a merged remote branch when the permission layer refuses | no: keep it, it costs nothing | D-002 (2026-11-10) |
 | rewrite public history (a force-push) | never; attribute by `.mailmap`, correct by a dated addition | D-001 (2026-11-10) |
 | resubmit a job the queue held or a node failed to start | yes, unchanged, with a dated RUNLOG note; the prediction stands | BLK-008, BLK-009 |
-| re-pin a job's tool commit after a fix-up | yes, as a copy with a dated header note written before submission | job 28b (W026) |
+| re-pin a job's tool commit after a fix-up, or correct an input path its own precondition refused before any tool ran | yes, as a copy with a dated header note written before submission; the prediction stands | job 28b (W026); D-018 |
 | carry a gating result over to a fixed commit by a code or AST diff | never; resubmit, unless the job's runtime-file manifest is unchanged (tier IV, 2026-11-10) | W011, W021 |
 | choose a public cohort, a plugin format, a data-derived floor, a tool to convert | a design: decide, record, report | pass 0001 |
 | a cohort fact the delivery does not state | look up, measure, then a stated limit in the report | D-003 (2026-11-10) |
