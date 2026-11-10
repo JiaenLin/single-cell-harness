@@ -42,8 +42,8 @@ Monitor paused; one PERIODIC CHECK every 6 h. Every development agent is Opus 5.
 | lane | repository | wave | status |
 |---|---|---|---|
 | QC | scQC | **W014 MERGED** (`main` `98504bd`). **W020's gate met**: C46 IDENTICAL (PBS 783992) and SAMBO AS PREDICTED (job 35b, PBS 784271, after fix round 1 declared job 33's F1 keys); queued for its verifier after the W013 + W032 batch. Then GAP-119 first in QC's next wave, W031 (scale) and D-008's floors. GAP-C78 (218 leak hits) | verifying next; 1 registered |
-| ANNO | scAnno | **W011 and W021 MERGED** (`main` `68233f0`). **W033 gating**: C46's references (job 01, **PBS 784414**) and stage 2 through the harness on single cells (job 02, **PBS 784415**, after 01 by afterok), both rehearsed end to end; the draft tree stays unapproved, so no label is quoted. Findings GAP-C82..C85 | gating |
-| INT | scIntegrate | **W012 + W025 gating** (round 2, the last allowed): iLISI and cLISI now score every cell (scIB's subsample cannot be seeded), bit-identical between runs; re-gate job 30b **PBS 784233** running at `b148030`. On AS PREDICTED, one verifier checks the pair as a batch. GAP-C65, GAP-C12 and GAP-C61 stay for later; **W022** follows the pair's merge | gating; 1 queued |
+| ANNO | scAnno | **W011 and W021 MERGED** (`main` `68233f0`). **W033 gating**: C46's references (job 01, **PBS 784414**, AS PREDICTED); stage 2 through the harness on single cells: job 02 (PBS 784415) failed at its input check before any tool ran (it named the run's layout, not the promoted copy's), so its one-line copy **02b runs as PBS 784490** (D-018); the draft tree stays unapproved, so no label is quoted. Findings GAP-C82..C85 | gating |
+| INT | scIntegrate | **W012 + W025 gating** (round 2, the last allowed): iLISI and cLISI now score every cell (scIB's subsample cannot be seeded), bit-identical between runs; re-gate job 30b **PBS 784233 AS PREDICTED** at `b148030` (harmony bit-identical in-job, LISI exact, scvi/scanvi within 0.02). **W034 built** (`int@scintegrate`, harness `eac7860`): its job 31 (stage 3 through the harness) is submitted once 784490 frees the harness checkout. The pair waits for validation. GAP-C65, GAP-C12 and GAP-C61 stay for later; **W022** follows the pair's merge | gating; 1 queued |
 | PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013 HELD** (D-012) and **W032 gating** at `157ed9d`: W013's open routes closed (79 attack checks, 67 red on the old code), 4 of 5 gaps closed, the fifth down from 205 real leak hits to 5 in plugin comments that only the maker may change (GAP-C79, GAP-C80); de's job resubmitted UNCHANGED as **PBS 784285** (the manifest rule). The W013 + W032 batch's verifier follows the queue. A4.1 stays 0/9 until GAP-C79 and GAP-C81 (dev_suite.pbs runs only abundance) | held + gating; 1 queued |
 | HARN | single-cell-harness | **W010, W016, W019, W026 and W024 MERGED** (`main` `2fc727d`). **W029: both gates AS PREDICTED** at `006b72c` (job 29 stage 2, PBS 784088; job 36 stage 1, PBS 784130, including the new scheduler reconcile); its verifier follows audit 0004 | merged x5; 1 verified-next |
 | PLAT | studio, lab, service | **DEPLOYED by the PI's go:** Lab W005 (`51a00fa`), Studio W008 (`1d591f9`), Service W009 + W015 (`997d132`). **W030** (Service: local reads, GAP-P05, GAP-C55, B1-059) **building** (Opus max; the PI's four files untouched). **W017** (Lab, `243783f`) waits for its last re-check; **W028** (Studio) for its verifier. Each platform merge deploys a live app, so it comes to the PI as a go when verified | deployed x4; 1 building; 2 waiting |
@@ -59,11 +59,10 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## The queue (TOKEN-LIMITED: one builder on the key path; validation later)
 
-- **Builder now:** W034 (int@scintegrate; the adapters item). W033's jobs run on PBS (784414, then 784415).
-- **Next builders, one at a time, by score:** W023 (scProfile's inherited
-  constraints, stacked on W032's head), then the eight plugins through the maker (stacked), GAP-119 (scQC), W031 (scale).
+- **Builder now:** W023 (scProfile's inherited constraints, stacked on W032's `157ed9d`). On PBS: 784490 (C46 stage 2), then W034's job 31.
+- **Next builders, one at a time, by score:** the eight plugins through the maker (stacked), GAP-119 (scQC), W031 (scale).
 - **Waiting for validation (built, unmerged):** W029 (both gates AS PREDICTED), W013 + W032 (AS PREDICTED), W020 (gate met),
-  W012 + W025 (job 30b, PBS 784233, running), W028 and W017 (platform). **Paused:** W030 (Service).
+  W012 + W025 (30b AS PREDICTED), W034 (after job 31), W028 and W017 (platform). **Paused:** W030 (Service).
 
 ## Machinery (session-only; re-create on resume, see README)
 
