@@ -386,12 +386,18 @@ class ThroughTheRealCli(unittest.TestCase):
         finally:
             shutil.rmtree(d, ignore_errors=True)
 
+    # The two shapes run AT ONCE (a two-thread pool), and on this platform 9 of 300 concurrent
+    # pairs of interpreters read the same time.time() (measured, autodev W029): the undeclared
+    # test then saw agree green about 3 runs in 100. The measurement moves between the shapes by
+    # construction - shape b adds 1 - and the clock only makes it look like one.
     BODY = ("import json, os, pathlib, sys, time\n"
             "out = pathlib.Path(sys.argv[1]); t = time.time()\n"
             "if os.environ.get('SCH_DEV_FIXTURE') in REFUSING:\n"
             "    print('NOT READY HERE'); sys.exit(2)\n"
+            "bump = 1.0 if os.environ.get('SCH_DEV_FIXTURE') == 'b' else 0.0\n"
             "json.dump({'result': {'n_obs_read': 2000.0},\n"
-            "           'measured': {'wall_s': t % 97.0, 'peak_rss_gb': (t * 7) % 3.0}},\n"
+            "           'measured': {'wall_s': t % 97.0 + bump,\n"
+            "                        'peak_rss_gb': (t * 7) % 3.0 + bump}},\n"
             "          open(out / 'out.json', 'w'))\n")
 
     def _yaml(self, refusing=(), record=True):

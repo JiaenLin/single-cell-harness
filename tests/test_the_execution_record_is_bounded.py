@@ -192,9 +192,14 @@ class ThroughTheRealCli(unittest.TestCase):
             proves: it runs
             cannot_prove: that it is right
         """)
-    BODY = ("import json, pathlib, sys, time\n"
+    # The two shapes run AT ONCE (sch dev: a two-thread pool), and on this platform 9 of 300
+    # concurrent pairs of interpreters read the same time.time() (measured, autodev W029). So
+    # what must move between the shapes moves by construction - shape b adds 1 - and the clock
+    # only makes it look like a measurement.
+    BODY = ("import json, os, pathlib, sys, time\n"
             "out = pathlib.Path(sys.argv[1]); t = time.time()\n"
-            "json.dump({'result': {'lfc': t % 7.0}, 'measured': {'wall_s': t % 97.0}},\n"
+            "bump = 1.0 if os.environ.get('SCH_DEV_FIXTURE') == 'b' else 0.0\n"
+            "json.dump({'result': {'lfc': t % 7.0 + bump}, 'measured': {'wall_s': t % 97.0}},\n"
             "          open(out / 'out.json', 'w'))\n")
 
     def check(self, record):
