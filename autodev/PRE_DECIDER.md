@@ -87,3 +87,5 @@ Everything else is decided here.
 - Every brief (BRIEFS.md section 0) tells agents: a hand-back may carry a question only as a filled form; a hand-back
   question without the form is returned to the catalogue by the coordinator, never forwarded.
 - The LOOP TICK re-runs the steps over STATE's "Decisions needed" and removes what a row decides.
+- The VCC devharness carries the same v2 (`docs/round13/PRE_DECIDER.md` v2, `PRE_DECIDER.tsv`, its guard checks; 2026-11-10,
+  the PI: "also improve the vcc pre-decider"). A lesson found in one copy is carried to the other (the amplifier).
