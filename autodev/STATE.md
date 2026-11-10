@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-10T05:02Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-10T05:10Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 **RESUMED 2026-11-10T01:3xZ (the PI: "WE HAVE TOKENS. GO!"; BLK-010 closed)** under the 2026-11-10 blocks of RULES.md:
@@ -42,7 +42,7 @@ Opus-max builders; `setup/autodev/agent_models.sh` now checks every agent at eac
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | **W014 MERGED** (`main` `98504bd`). **W020 gating, fix round 1 of 2**: C46 gate IDENTICAL (PBS 783992); the SAMBO miss (PBS 783991) was two keys from `0e6a5f6` (ADR-0027 row 4, on main since W001) that job 35 did not declare; **job 35b** (job 35 + job 33's F1 declaration, no code change) running as **PBS 784271**. GAP-C78 (218 leak hits). **W031** (scale) after W020 merges | gating; 1 registered |
+| QC | scQC | **W014 MERGED** (`main` `98504bd`). **W020's gate met**: C46 IDENTICAL (PBS 783992) and SAMBO AS PREDICTED (job 35b, PBS 784271, after fix round 1 declared job 33's F1 keys); queued for its verifier after the W013 + W032 batch. Then GAP-119 first in QC's next wave, W031 (scale) and D-008's floors. GAP-C78 (218 leak hits) | verifying next; 1 registered |
 | ANNO | scAnno | **W011 and W021 MERGED** (`main` `68233f0`). **W018 DONE**. **W033 building** (Opus max): C46's stage 2 through the harness on single cells, with C46's own corpus (`scanno build-markers`) and a draft tree (`scanno tree propose`, unapproved, said so); A1.1 2/8 -> 3/8 predicted | merged x2; done; 1 building |
 | INT | scIntegrate | **W012 + W025 gating** (round 2, the last allowed): iLISI and cLISI now score every cell (scIB's subsample cannot be seeded), bit-identical between runs; re-gate job 30b **PBS 784233** running at `b148030`. On AS PREDICTED, one verifier checks the pair as a batch. GAP-C65, GAP-C12 and GAP-C61 stay for later; **W022** follows the pair's merge | gating; 1 queued |
 | PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013 HELD** (D-012) and **W032 gating** at `157ed9d`: W013's open routes closed (79 attack checks, 67 red on the old code), 4 of 5 gaps closed, the fifth down from 205 real leak hits to 5 in plugin comments that only the maker may change (GAP-C79, GAP-C80); de's job resubmitted UNCHANGED as **PBS 784285** (the manifest rule). The W013 + W032 batch's verifier follows the queue. A4.1 stays 0/9 until GAP-C79 and GAP-C81 (dev_suite.pbs runs only abundance) | held + gating; 1 queued |
@@ -62,7 +62,7 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 - **Builders now:** W030 (Service; moves no score, kept by D-015) and W033 (C46 stage 2, +1/8 on A1.1), both Opus 5.5 max.
 - **Next builder slots, by score:** (1) the remaining ADAPTERS and a STAGE DRIVER (harness: int@scintegrate, prof@scprofile, one design sheet; GAP-001, -002, -122; about +0.08), startable now under D-016; (2) after the W013 + W032 batch, the eight plugins through the maker, abundance first (GAP-044 and kin; about +0.11), then W023; (3) GAP-119 first in QC's next wave after W020, then W031 (scale) and D-008's floors; (4) false documentation per repository (about +0.044); (5) C46 stages 3-4 after W033 (about +0.04); then W022 (INT, with GAP-128) after the W012 + W025 batch.
-- **Verifier now:** W029. **Next, by what the merge unlocks:** the W013 + W032 batch (both gates AS PREDICTED; its merge opens the eight plugins, +0.11), the W012 + W025 batch (after PBS 784233; opens W034's gate), W020 (after PBS 784271), the W028 verifier, W017's last re-check.
+- **Verifier now:** W029. **Next, by what the merge unlocks:** the W013 + W032 batch (both gates AS PREDICTED; its merge opens the eight plugins, +0.11), W020 (gate met), the W012 + W025 batch (after PBS 784233; opens W034's gate), the W028 verifier, W017's last re-check.
 - **The budget (D-005, provisional):** 5.87 M output and 1.21 B context by 04:57Z (73 % and 48 % of the daily caps). At 6.4 M output (80 %) no new builder starts until 00:00Z; running agents finish.
 
 ## Machinery (session-only; re-create on resume, see README)
@@ -73,7 +73,7 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 | PERIODIC CHECK | `b76f3618` | `23 */6 * * *` (adds the budget meter) | 2026-11-10 | 2026-11-17 |
 | BLOCKER SWEEP | `8fbcd2dc` | `41 */3 * * *` | 2026-11-10 | 2026-11-17 |
 | the PBS mirror | background task `b8ggoear2` (reports SEALED, FAILED or GONE since 03:48Z, BLK-012) | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
-| the verdict Monitor | `b9l6z28mr`, armed while watch.tsv lists a job (784233, 784271, 784285 now) | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min | 2026-11-10 | re-arm |
+| the verdict Monitor | `bcj52q7ae`, armed while watch.tsv lists a job (784233 now) | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min | 2026-11-10 | re-arm |
 | bootstrap | `bash setup/autodev/bootstrap.sh check` / `print` | what runs, what is missing, the start lines | 2026-11-10 | - |
 
 ## Decisions needed from the PI
