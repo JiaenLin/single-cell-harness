@@ -13,8 +13,8 @@ server that keeps no history lists no job that has ended. Found, that job is the
 the job is submitted again; and when the scheduler cannot say, nothing is submitted again - the
 run is refused, naming the job - and the executor keeps the submission, so the command's disposer
 asks once more and fails E5 if it still cannot. Driven through `sch mount` with the stand-in
-scheduler (tests/fixtures/fake_pbs.py), whose qsub can queue a job and then hang, run it to its
-end and then hang, or hang having queued nothing, and whose server may keep no history.
+scheduler (tests/fixtures/fake_pbs.py), whose qsub can queue a job and then hang, hang having
+queued nothing, or run the job to its end and print no id; and whose server may keep no history.
 """
 import io
 import json
@@ -69,7 +69,7 @@ class AQsubThatDoesNotAnswerIsNeverDoubled(unittest.TestCase):
         self._env = {k: os.environ.get(k) for k in ("FAKE_PBS_STATE", "FAKE_PBS_MODE",
                                                     "FAKE_PBS_HANG_S", "FAKE_PBS_HISTORY")}
         os.environ["FAKE_PBS_STATE"] = str(self.state)
-        os.environ["FAKE_PBS_HANG_S"] = "4"
+        os.environ["FAKE_PBS_HANG_S"] = "5"
         self.declare()
 
     def tearDown(self):
@@ -90,7 +90,7 @@ class AQsubThatDoesNotAnswerIsNeverDoubled(unittest.TestCase):
         cfg = {"queue": "testq", "select": "1:ncpus=1:mem=1gb", "walltime": "00:10:00",
                "commands": dict(self.commands), "poll_s": 0.01, "stop_grace_s": 0.2,
                "queue_full_first_wait_s": 0.01, "seal_visibility_s": 0.2,
-               "qsub_timeout_s": 1.0, "qstat_outage_polls": 3}
+               "qsub_timeout_s": 2.0, "qstat_outage_polls": 3}
         cfg.update(over)
         decl = yamlish.load(self.stack / "stack.yml")
         decl["executor"] = "pbs"
@@ -135,13 +135,12 @@ class AQsubThatDoesNotAnswerIsNeverDoubled(unittest.TestCase):
         self.assertNotIn("reconciled", self.facts())
 
     def test_a_job_that_ran_and_ended_where_the_server_keeps_no_history_is_found_by_its_seal(self):
-        """A server with job history disabled lists only jobs that have not ended. A qsub that
-        timed out after its job had already run and ended read as absent twice, and the job was
+        """A server with job history disabled lists only jobs that have not ended. A qsub whose
+        answer was lost after its job had already run and ended - here it exits 0 and prints no
+        job id, which the reconcile treats as a timeout - read as absent twice, and the job was
         submitted again: the plugin ran twice into one run directory. The job's own seal in the
-        run names it, so it is adopted and nothing is submitted again. The qsub timeout here is
-        long enough for the job to end before it expires, and shorter than the hang after it."""
-        os.environ.update(FAKE_PBS_MODE="hang:ran:1", FAKE_PBS_HISTORY="0", FAKE_PBS_HANG_S="8")
-        self.declare(qsub_timeout_s=5.0)
+        run names it, so it is adopted and nothing is submitted again."""
+        os.environ.update(FAKE_PBS_MODE="noid:ran:1", FAKE_PBS_HISTORY="0")
         rc, r, _err = self.mount()
         self.assertEqual((rc, r.get("status")), (0, "mounted"), r)
         self.assertEqual(len(self.method_qsubs()), 1, "the job was submitted twice")
@@ -149,17 +148,18 @@ class AQsubThatDoesNotAnswerIsNeverDoubled(unittest.TestCase):
         facts = self.facts()
         self.assertEqual((facts["job"], facts["exit"]), ("1000.server", 0))
         self.assertEqual(facts["reconciled"]["found"], "1000.server")
+        self.assertIn("printed no job id", facts["reconciled"]["after"])
         self.assertIn("seal", facts["reconciled"]["said"])
 
     def test_a_job_that_sealed_is_adopted_while_qstat_cannot_say(self):
-        """The seal is the job's own word that it ran (harness W010b D1), so a qsub that timed
-        out after its job ended needs no scheduler to be reconciled: one qsub, the job adopted,
-        and its exit read from the seal."""
-        os.environ.update(FAKE_PBS_MODE="hang:ran:1", FAKE_PBS_HANG_S="8")
+        """The seal is the job's own word that it ran (harness W010b D1), so a qsub whose answer
+        was lost after its job ended needs no scheduler to be reconciled: one qsub, the job
+        adopted, and its exit read from the seal."""
+        os.environ["FAKE_PBS_MODE"] = "noid:ran:1"
         down = self.tmp / "bin" / "qstat_down"
         down.write_text("#!/bin/sh\necho 'qstat: cannot connect to server' >&2\nexit 1\n")
         down.chmod(0o755)
-        self.declare(commands={**self.commands, "qstat": str(down)}, qsub_timeout_s=5.0)
+        self.declare(commands={**self.commands, "qstat": str(down)})
         rc, r, _err = self.mount()
         self.assertEqual((rc, r.get("status")), (0, "mounted"), r)
         self.assertEqual(len(self.method_qsubs()), 1, "submitted again while the job had sealed")

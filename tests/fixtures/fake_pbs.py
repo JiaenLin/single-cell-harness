@@ -20,15 +20,16 @@ Environment:
                      it with jobs of its own ({"next", "jobs": {id: {...}}, "calls": []}); a job
                      with a "comment" prints it, as a held job's `comment = ...`
     FAKE_PBS_MODE    run (default) | hold | undeletable | lost | full:N | hang:queued:N |
-                     hang:ran:N | hang:lost:N
+                     hang:lost:N | noid:ran:N
                      hold: queued and never started until qdel; undeletable: qdel is accepted
                      and the job keeps running; lost: the job never runs and qstat forgets it;
                      full:N: the first N qsub calls are refused for a queue's per-user limit;
                      hang:queued:N: the first N qsub calls QUEUE the job - it runs when qstat
                      first asks about it - and then never answer: they hang FAKE_PBS_HANG_S
-                     (default 5) and exit 1, as a client that lost the server; hang:ran:N: the
-                     same, but the job runs to its end - its seal written - before qsub hangs;
-                     hang:lost:N: the same, with no job queued. Later qsub calls run as `run` does.
+                     (default 5) and exit 1, as a client that lost the server; hang:lost:N: the
+                     same, with no job queued; noid:ran:N: the first N qsub calls queue the job and
+                     run it to its end - its seal written - then exit 0 printing no job id, as a
+                     client whose reply was lost. Later qsub calls run as `run` does.
     FAKE_PBS_HISTORY 1 (default) | 0: whether the server keeps ended jobs. At 0, a job that has
                      ended is neither listed by `qstat -u` nor known to `qstat -f` (Unknown Job
                      Id), as on a server with job history disabled.
@@ -113,13 +114,10 @@ def main():
         job = {"script": script, "state": "Q", "exit": None, "user": os.environ.get("USER", "u"),
                **directives(script)}
         s["jobs"][jid] = job
-        if hang and MODE.split(":")[1] == "ran":    # queued, run to its end, then the hang
-            save(s)
-            s = run_job(s, jid)
-            save(s)
-            time.sleep(float(os.environ.get("FAKE_PBS_HANG_S", "5")))
-            print("qsub: connection to server lost", file=sys.stderr)
-            return 1
+        if MODE.startswith("noid:") and n_qsub <= int(MODE.split(":")[2]):
+            save(s)                               # queued, run to its end, and no id printed
+            save(run_job(s, jid))
+            return 0
         if hang:                                  # queued, and run when qstat first asks
             job["lazy"] = True
             save(s)
@@ -127,7 +125,7 @@ def main():
             print("qsub: connection to server lost", file=sys.stderr)
             return 1
         save(s)
-        if MODE in ("run", "lost") or MODE.startswith("full:") or MODE.startswith("hang:"):
+        if MODE in ("run", "lost") or MODE.startswith(("full:", "hang:", "noid:")):
             if MODE != "lost":
                 s = run_job(s, jid)
         elif MODE in ("hold", "undeletable"):
