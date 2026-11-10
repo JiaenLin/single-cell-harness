@@ -27,13 +27,14 @@ it) submits each run as a PBS job:
   - qsub itself has a timeout (`pbs.qsub_timeout_s`, 120). One that times out - or exits 0 and
     prints no job id - may already have queued the job, so nothing is submitted again until the
     scheduler is asked BY JOB NAME (`qstat -x -w -u <user>`), each job of that name confirmed by
-    the submission's own token (`#PBS -v SCH_SUBMISSION=...`, in `qstat -x -f`). Found, that job
-    is the run's. Absent - twice in a row, from a listing that showed the user's jobs - it is
-    submitted again, at most `pbs.qsub_retries` (2) times. If the scheduler cannot say, nothing is
-    resubmitted: the run is refused naming the job and the token, and the executor keeps the
-    submission, so its disposer asks again and qdels the job if it is there, or fails E5 (autodev
-    W029, GAP-C59). A qsub refused with an exit status - a full queue - created no job, and is
-    retried as before.
+    the submission's own token (`#PBS -v SCH_SUBMISSION=...`, in `qstat -x -f`) - or, for a job
+    that has already ended where the server keeps no history, by the seal it wrote in the run.
+    Found, that job is the run's. Absent - twice in a row, from a listing that showed the user's
+    jobs - it is submitted again, at most `pbs.qsub_retries` (2) times. If the scheduler cannot
+    say, nothing is resubmitted: the run is refused naming the job and the token, and the executor
+    keeps the submission, so its disposer asks again and qdels the job if it is there, or fails E5
+    (autodev W029, GAP-C59). A qsub refused with an exit status - a full queue - created no job,
+    and is retried as before.
 
 The kernel itself still runs inside a scheduler job (nothing computes on a login node); `pbs`
 sends each plugin run to its own job, the shape a tool's own `--executor pbs` has.
@@ -207,6 +208,24 @@ SUBMISSION = "SCH_SUBMISSION"
 HELD_FOR_GOOD = re.compile(r"too many failed attempts", re.I)
 
 
+def _sealed_job(jobdir) -> str | None:
+    """The job id the seal in a run's job directory names, or None. The directory is made for ONE
+    submission (a bare mkdir in `launch`), and only a job running that submission's script writes
+    a seal into it - so a seal there says that this submission's job ran and ended, whatever the
+    scheduler can still be asked (a server that keeps no history forgets an ended job at once)."""
+    if jobdir is None:
+        return None
+    for n in SEALS:
+        try:
+            text = (Path(jobdir) / n).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        m = re.search(r"^jobid=(\S+)\s*$", text, re.M)
+        if m and m.group(1) != "none":
+            return m.group(1)
+    return None
+
+
 class PbsHandle:
     """One submitted job. The same four independent facts as a local handle (E5), plus the job id
     and the seal the exit was read from."""
@@ -372,7 +391,8 @@ class PendingSubmission:
 
     def stop(self, grace: float | None = None) -> dict:
         self.facts["requested"] = True
-        verdict, jobs, said = self.executor._reconcile(self.qstat, self.cfg, self.name, self.token)
+        verdict, jobs, said = self.executor._reconcile(self.qstat, self.cfg, self.name, self.token,
+                                                       self.jobdir)
         self.facts["reconcile"] = said
         if verdict == "absent":
             self.facts["stopped"] = True
@@ -505,11 +525,17 @@ class PbsExecutor(LocalExecutor):
             return "found", mine, said
         return "absent", None, said
 
-    def _reconcile(self, qstat: list, cfg: dict, name, token) -> tuple:
+    def _reconcile(self, qstat: list, cfg: dict, name, token, jobdir=None) -> tuple:
         """Ask the scheduler whether this submission queued a job, until it can say: found at
         once (the jobs carrying its token, oldest first); absent only when two looks in a row say
         so (a job a slow server has not yet listed must not be submitted twice); unknown after
-        `pbs.qstat_outage_polls` looks."""
+        `pbs.qstat_outage_polls` looks.
+
+        A LOOK THAT FINDS NOTHING IS FOLLOWED BY THE RUN'S OWN SEAL. The listing shows a job that
+        has ended only where the server keeps job history: on one that keeps none, a qsub that
+        timed out after its job had already run and ended read as absent twice, and the run was
+        submitted again - the double this reconcile exists to prevent. The job's seal in the
+        run's job directory names it (`_sealed_job`), so it is found either way."""
         polls = max(2, int(cfg.get("qstat_outage_polls", 5)))
         poll = float(cfg.get("poll_s", 30))
         pause, absent, said = min(2.0, poll), 0, ""
@@ -517,6 +543,10 @@ class PbsExecutor(LocalExecutor):
             verdict, jobs, said = self._by_name(qstat, cfg, name, token)
             if verdict == "found":
                 return verdict, jobs, said
+            sealed = _sealed_job(jobdir)
+            if sealed:
+                return "found", [sealed], (f"{said}; the run's own seal names job {sealed}, which "
+                                           f"ran and ended")
             absent = absent + 1 if verdict == "absent" else 0
             if absent >= 2:
                 return "absent", None, said
@@ -559,7 +589,7 @@ class PbsExecutor(LocalExecutor):
             if not (qstat and token):               # nothing to ask: never submit twice blind
                 raise ExecutorError(f"executor pbs: {why}; it may have queued the job, and "
                                     f"nothing here can ask, so nothing was submitted again")
-            verdict, jobs, said = self._reconcile(qstat, cfg, name, token)
+            verdict, jobs, said = self._reconcile(qstat, cfg, name, token, script.parent)
             if verdict == "found":
                 # two jobs of one submission would be a double already: the oldest is the run's,
                 # and every other is stopped now, and kept, so a disposer confirms it (E5)

@@ -8,11 +8,13 @@ it blind would run the plugin twice into one run directory.
 Now qsub has a timeout, and before anything is submitted again the scheduler is asked BY JOB NAME
 for the jobs of this submission, each confirmed by the token its script declares
 (`#PBS -v SCH_SUBMISSION=...`, read from `qstat -x -f`, whose long values PBS wraps onto tab-led
-lines). Found, that job is the run's; absent, the job is submitted again; and when the scheduler
-cannot say, nothing is submitted again - the run is refused, naming the job - and the executor
-keeps the submission, so the command's disposer asks once more and fails E5 if it still cannot.
-Driven through `sch mount` with the stand-in scheduler (tests/fixtures/fake_pbs.py), whose
-qsub can queue a job and then hang, or hang having queued nothing.
+lines) - and, after a look that finds nothing, by the seal the job wrote in the run, since a
+server that keeps no history lists no job that has ended. Found, that job is the run's; absent,
+the job is submitted again; and when the scheduler cannot say, nothing is submitted again - the
+run is refused, naming the job - and the executor keeps the submission, so the command's disposer
+asks once more and fails E5 if it still cannot. Driven through `sch mount` with the stand-in
+scheduler (tests/fixtures/fake_pbs.py), whose qsub can queue a job and then hang, run it to its
+end and then hang, or hang having queued nothing, and whose server may keep no history.
 """
 import io
 import json
@@ -64,7 +66,7 @@ class AQsubThatDoesNotAnswerIsNeverDoubled(unittest.TestCase):
             w.chmod(0o755)
             self.commands[c] = str(w)
         self._env = {k: os.environ.get(k) for k in ("FAKE_PBS_STATE", "FAKE_PBS_MODE",
-                                                    "FAKE_PBS_HANG_S")}
+                                                    "FAKE_PBS_HANG_S", "FAKE_PBS_HISTORY")}
         os.environ["FAKE_PBS_STATE"] = str(self.state)
         os.environ["FAKE_PBS_HANG_S"] = "4"
         self.declare()
@@ -130,6 +132,37 @@ class AQsubThatDoesNotAnswerIsNeverDoubled(unittest.TestCase):
         self.assertEqual(len(self.method_qsubs()), 2)
         self.assertEqual(len(self.method_jobs()), 1)
         self.assertNotIn("reconciled", self.facts())
+
+    def test_a_job_that_ran_and_ended_where_the_server_keeps_no_history_is_found_by_its_seal(self):
+        """A server with job history disabled lists only jobs that have not ended. A qsub that
+        timed out after its job had already run and ended read as absent twice, and the job was
+        submitted again: the plugin ran twice into one run directory. The job's own seal in the
+        run names it, so it is adopted and nothing is submitted again. The qsub timeout here is
+        long enough for the job to end before it expires, and shorter than the hang after it."""
+        os.environ.update(FAKE_PBS_MODE="hang:ran:1", FAKE_PBS_HISTORY="0", FAKE_PBS_HANG_S="8")
+        self.declare(qsub_timeout_s=5.0)
+        rc, r, _err = self.mount()
+        self.assertEqual((rc, r.get("status")), (0, "mounted"), r)
+        self.assertEqual(len(self.method_qsubs()), 1, "the job was submitted twice")
+        self.assertEqual(list(self.method_jobs()), ["1000.server"])
+        facts = self.facts()
+        self.assertEqual((facts["job"], facts["exit"]), ("1000.server", 0))
+        self.assertEqual(facts["reconciled"]["found"], "1000.server")
+        self.assertIn("seal", facts["reconciled"]["said"])
+
+    def test_a_job_that_sealed_is_adopted_while_qstat_cannot_say(self):
+        """The seal is the job's own word that it ran (harness W010b D1), so a qsub that timed
+        out after its job ended needs no scheduler to be reconciled: one qsub, the job adopted,
+        and its exit read from the seal."""
+        os.environ.update(FAKE_PBS_MODE="hang:ran:1", FAKE_PBS_HANG_S="8")
+        down = self.tmp / "bin" / "qstat_down"
+        down.write_text("#!/bin/sh\necho 'qstat: cannot connect to server' >&2\nexit 1\n")
+        down.chmod(0o755)
+        self.declare(commands={**self.commands, "qstat": str(down)}, qsub_timeout_s=5.0)
+        rc, r, _err = self.mount()
+        self.assertEqual((rc, r.get("status")), (0, "mounted"), r)
+        self.assertEqual(len(self.method_qsubs()), 1, "submitted again while the job had sealed")
+        self.assertEqual(self.facts()["reconciled"]["found"], "1000.server")
 
     def test_an_earlier_job_of_the_same_name_is_never_taken_for_this_one(self):
         self.seed({"900.server": {"script": "", "state": "F", "exit": 0, "user": USER,
