@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-10T03:33Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-10T03:49Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 **RESUMED 2026-11-10T01:3xZ (the PI: "WE HAVE TOKENS. GO!"; BLK-010 closed)** under the 2026-11-10 blocks of RULES.md:
@@ -46,11 +46,11 @@ gaps not closed are size M or larger.
 
 | lane | repository | wave | status |
 |---|---|---|---|
-| QC | scQC | **W014 MERGED** (`main` `98504bd`). **W020 gating** at `b255e45`: 16 rows built by Opus max, B1-050 no change, B1-044 and B1-076's partition returned with reasons; jobs **PBS 783991** (SAMBO stage 1, IDENTICAL predicted) and **PBS 783992** (C46 apply, 53,534 kept predicted) submitted 03:19Z, watched by the mirror; its verifier follows audit 0004. New: GAP-C78 (218 leak hits under the generated lists). **W031** (scale) starts after W020 merges | gating; 1 registered |
+| QC | scQC | **W014 MERGED** (`main` `98504bd`). **W020 held, fix round 1 of 2 queued**: its C46 gate IDENTICAL (PBS 783992: 53,534 kept, every column), its SAMBO gate MISSED as written (PBS 783991: 100,713 kept and every criterion IDENTICAL, but two undeclared keys added to each library's metrics record); the next builder confirms the keys' source row and writes job 35b with them declared. GAP-C78 (218 leak hits). **W031** (scale) after W020 merges | held (fix round 1); 1 registered |
 | ANNO | scAnno | **W011 and W021 MERGED** (`main` `68233f0`): 18 inherited constraints removed or trimmed, `scanno build-markers` and `scanno tree propose` (GAP-028 closed). **W018 DONE** (the promoted stage 2 reproduces at its own commit). No ANNO wave open | merged x2; done |
 | INT | scIntegrate | **W012 + W025 held** after job 30 (PBS 783282) missed on LISI's unseeded subsample. **W025 round 2 building** (the last allowed; Opus max): iLISI and cLISI made deterministic (GAP-C67), then a new re-gate job. GAP-C65, GAP-C12 and GAP-C61 stay for later waves; **W022** follows the pair's merge | building; 1 queued |
 | PROF | scProfile | **W002 MERGED** (`f5175ea`). **W013 HELD, not merged** (its final re-check FAILED on the fix; D-012). **W032 building** (Opus max): W013's residue GAP-C72..C76 on W013's branch; the W013 + W032 batch merges on W032's PASS (D-013). Then **W023**; GAP-055 (promoting SAMBO stage 4) comes to the PI after that batch | held; 1 building; 1 queued |
-| HARN | single-cell-harness | **W010, W016, W019, W026 and W024 MERGED** (`main` `2fc727d`): stages 1 and 2 through the harness; the leak guard reads every tracked file by content. **W029 gating** at `006b72c` (Opus max: every change done, the Fable commits kept with fixes, a flaky inherited test fixed; 844 OK): job 29 (stage 2) **PBS 784088** submitted; job 36 (stage 1) waits for W020's PBS 783991 to free the scQC checkout. Its verifier follows audit 0004 | merged x5; 1 gating |
+| HARN | single-cell-harness | **W010, W016, W019, W026 and W024 MERGED** (`main` `2fc727d`). **W029 gating** at `006b72c`: job 29 (stage 2, PBS 784088) **AS PREDICTED on every line**; job 36 (stage 1, PBS 784130) running. Its verifier follows audit 0004 | merged x5; 1 gating |
 | PLAT | studio, lab, service | **DEPLOYED by the PI's go:** Lab W005 (`51a00fa`), Studio W008 (`1d591f9`), Service W009 + W015 (`997d132`). **W017** (Lab) built at `243783f`, waits for its one last fix-only re-check; **W028** (Studio) waits for its verifier to resume; **W030** (Service: local reads, GAP-P05, GAP-C55, B1-059) registered. Each platform merge deploys a live app, so it comes to the PI as a go when verified | deployed x4; 2 waiting; 1 registered |
 | AUDIT | — | **Pass 0003 done: NOT HAPPY, 0/20 (9 PARTIAL, 11 FAIL)**. Merged since: **W014, W019, W021, W026, W024**. **Pass 0004 running** (the first scored pass: scores.tsv for all 20 tests, the mean, HAPPY = mean >= 0.9 with none < 0.5) | running |
 | BLOCKER | — | **Sweep 02:1xZ (2026-11-10):** BLK-011 found and removed (two builders ran on Fable after a resume; relaunched on Opus max; `agent_models.sh` checks every agent each tick). Decided by the catalogue, not asked: B1-112 (SAMBO's DE direction, D-007), B1-113 (single-cell floors, D-008), GAP-P07 (the PI's skill stays untouched, D-009). Closed: BLK-003, SWEEP-1 (every queued B1 row has a wave). Unblocked: GAP-043, GAP-C55, GAP-P17. Queued as waves: W030 (Service), W031 (scale). Nothing waits on the PI | watching |
@@ -65,7 +65,7 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 ## The queue (RULES tier IV, 2026-11-10: 2 builders, 1 verifier; lanes in turn)
 
 - **Builders now:** W025 round 2 (INT) and W032 (PROF), both Opus 5.5 max. W020 and W029 handed back; their gates run on PBS.
-- **Next builder slots, in order:** W031 (scale, after W020 merges), W030 (Service), W022 (INT, after W012), W023 (PROF, after the W013 + W032 batch).
+- **Next builder slots, in order:** W020 fix round 1 (job 35b), W031 (scale, after W020 merges), W030 (Service), W022 (INT, after W012), W023 (PROF, after the W013 + W032 batch).
 - **Verifier now:** audit pass 0004 (scored). **Next:** W020 and W029 (when their jobs seal), the W028 verifier, W017's last re-check, then each repository's batch as it lands.
 
 ## Machinery (session-only; re-create on resume, see README)
@@ -75,8 +75,8 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 | LOOP TICK | `ebc3fb6b` | `7 */3 * * *` (the 2026-11-10 prompt: mirror files first, the pre-decider sweep, 2 builders on opus/max, 1 verifier per batch) | 2026-11-10 | 2026-11-17 |
 | PERIODIC CHECK | `b76f3618` | `23 */6 * * *` (adds the budget meter) | 2026-11-10 | 2026-11-17 |
 | BLOCKER SWEEP | `8fbcd2dc` | `41 */3 * * *` | 2026-11-10 | 2026-11-17 |
-| the PBS mirror | background task `b5y0vb0jd` | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
-| the verdict Monitor | `brh7b58b4`, armed while watch.tsv lists 783991, 783992 and 784088 | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min | 2026-11-10 | re-arm |
+| the PBS mirror | background task `b8ggoear2` (reports SEALED, FAILED or GONE since 03:48Z, BLK-012) | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
+| the verdict Monitor | `brh7b58b4`, armed while watch.tsv lists a job (784130 now) | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min | 2026-11-10 | re-arm |
 | bootstrap | `bash setup/autodev/bootstrap.sh check` / `print` | what runs, what is missing, the start lines | 2026-11-10 | - |
 
 ## Decisions needed from the PI
