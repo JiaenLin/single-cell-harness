@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-10T04:54Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-10T05:02Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 **RESUMED 2026-11-10T01:3xZ (the PI: "WE HAVE TOKENS. GO!"; BLK-010 closed)** under the 2026-11-10 blocks of RULES.md:
@@ -62,7 +62,8 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 - **Builders now:** W030 (Service; moves no score, kept by D-015) and W033 (C46 stage 2, +1/8 on A1.1), both Opus 5.5 max.
 - **Next builder slots, by score:** (1) the remaining ADAPTERS and a STAGE DRIVER (harness: int@scintegrate, prof@scprofile, one design sheet; GAP-001, -002, -122; about +0.08), startable now under D-016; (2) after the W013 + W032 batch, the eight plugins through the maker, abundance first (GAP-044 and kin; about +0.11), then W023; (3) GAP-119 first in QC's next wave after W020, then W031 (scale) and D-008's floors; (4) false documentation per repository (about +0.044); (5) C46 stages 3-4 after W033 (about +0.04); then W022 (INT, with GAP-128) after the W012 + W025 batch.
-- **Verifier now:** W029. **Next:** W020 (after PBS 784271), the W012 + W025 batch (after PBS 784233), the W013 + W032 batch (after PBS 784285), the W028 verifier, W017's last re-check.
+- **Verifier now:** W029. **Next, by what the merge unlocks:** the W013 + W032 batch (both gates AS PREDICTED; its merge opens the eight plugins, +0.11), the W012 + W025 batch (after PBS 784233; opens W034's gate), W020 (after PBS 784271), the W028 verifier, W017's last re-check.
+- **The budget (D-005, provisional):** 5.87 M output and 1.21 B context by 04:57Z (73 % and 48 % of the daily caps). At 6.4 M output (80 %) no new builder starts until 00:00Z; running agents finish.
 
 ## Machinery (session-only; re-create on resume, see README)
 
@@ -77,7 +78,7 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## Decisions needed from the PI
 
-None. The four that were listed here (2-5) were decided by the pre-decider on 2026-11-10, below.
+1. **The daily budget (D-005, `budget or token mode`).** The provisional cap is 8 M output tokens a day. Today's burn reached 5.87 M by 04:57Z (2 builders, 1 verifier, an audit), so new builders stop near 05:30Z and wait until 00:00Z, about 18 h. VCC's UNLIMITED days ran 12-17 M a day. **Recommendation:** 20 M output a day (100 M a week), keeping 2 builders and 1 verifier, so the loop runs through the day; or say "no token limit" for UNLIMITED. Until you answer, the 8 M cap holds.
 
 ## Decided (2026-11-10, by the pre-decider; the PI: "review rules and goals and decide")
 
