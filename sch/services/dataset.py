@@ -205,13 +205,19 @@ def read_keyed_csv(path, id_field: str) -> dict:
 
 # ---------------------------------------------------------------------------- the view
 class View:
-    """A materialisation. Read-only by construction and disposable: deleting it loses nothing."""
+    """A materialisation. Read-only by construction and disposable: deleting it loses nothing.
 
-    def __init__(self, ids: list, keep: dict, columns: dict, masks: dict, path: Path | None):
+    `carried` maps each embedding and graph contribution (`embedding/<name>`, `graph/<name>`) to
+    the digest of its content. Those stay in their own files - a matrix of observations x k is not
+    a column of the view - but a consumer reads them, so the digest covers them (harness W034)."""
+
+    def __init__(self, ids: list, keep: dict, columns: dict, masks: dict, path: Path | None,
+                 carried: dict | None = None):
         self._ids = tuple(ids)
         self._keep = dict(keep)
         self._columns = {k: dict(v) for k, v in columns.items()}
         self._masks = {k: dict(v) for k, v in masks.items()}
+        self._carried = dict(carried or {})
         self.path = path
 
     @property
@@ -242,9 +248,15 @@ class View:
     def masks(self) -> dict:
         return {k: dict(v) for k, v in self._masks.items()}
 
+    def carried(self) -> dict:
+        return dict(self._carried)
+
     def digest(self) -> str:
-        """Over the kept ids, every mask and every column, so a mount that changes nothing a
-        consumer sees produces the same digest and a mount that does changes it."""
+        """Over the kept ids, every mask, every column and every embedding and graph, so a mount
+        that changes nothing a consumer sees produces the same digest and a mount that does
+        changes it. A layer of embeddings alone (harness W034: an integration changes no obs
+        column) used to leave the digest as it was, so neither its mount nor E4 could see it. A
+        view with no embedding or graph hashes exactly as before."""
         h = hashlib.sha256()
         for i in self.kept:
             h.update(i.encode())
@@ -260,6 +272,8 @@ class View:
                 v = col.get(i)
                 h.update(("" if v is None else str(v)).encode())
                 h.update(b"\0")
+        for k in sorted(self._carried):
+            h.update(b"\0carried\0" + k.encode() + b"\0" + self._carried[k].encode())
         return h.hexdigest()[:16]
 
 
@@ -566,7 +580,27 @@ class Dataset(Service):
                                    for i in rows}
         return keep, columns, masks
 
+    #: The contribution slots a view carries by reference, not as a column: they stay in their
+    #: own files, and the view's digest covers each by its content (harness W034).
+    CARRIED = ("embedding", "graph")
+
+    def carried(self, contributions) -> dict:
+        """`{slot/name: digest}` of every embedding and graph contribution: the file's own digest
+        and, where the profile binds the slot to an identity file beside it (`barcodes.txt`), that
+        file's too - the identities are what bind each row to an observation."""
+        out = {}
+        for c in contributions:
+            if c.slot not in self.CARRIED:
+                continue
+            h = hashlib.sha256(file_digest(c.path).encode())
+            ident = (self.profile.slots.get(c.slot) or {}).get("identity")
+            if ident and (Path(c.path).parent / str(ident)).is_file():
+                h.update(b"\0" + file_digest(Path(c.path).parent / str(ident)).encode())
+            out[c.capability()] = h.hexdigest()
+        return out
+
     def materialise(self, contributions, out_dir, filtered=True) -> View:
+        contributions = list(contributions)
         keep, columns, masks = self.fold(contributions)
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -577,7 +611,7 @@ class Dataset(Service):
             path = self._write_csv(out_dir, keep, columns, masks, filtered)
         else:
             path = self._write_h5ad(out_dir, keep, columns, masks, contributions, filtered)
-        view = View(self.ids, keep, columns, masks, path)
+        view = View(self.ids, keep, columns, masks, path, carried=self.carried(contributions))
         self._write_readme(out_dir, view, path)
         return view
 
@@ -673,7 +707,10 @@ class Dataset(Service):
                  f"- profile: {self.profile.id}",
                  f"- kept: {view.n} of {view.n_total}",
                  f"- masks: {', '.join(sorted(view.masks())) or 'none'}",
-                 f"- columns: {', '.join(view.columns()) or 'none'}",
-                 f"- file: `{path.name}` (read-only)", "",
+                 f"- columns: {', '.join(view.columns()) or 'none'}"]
+        if view.carried():
+            lines.append(f"- carried in their own files, in the digest by content: "
+                         f"{', '.join(sorted(view.carried()))}")
+        lines += [f"- file: `{path.name}` (read-only)", "",
                  "This directory is derived and disposable. Deleting it loses nothing."]
         (out_dir / "README.md").write_text("\n".join(lines) + "\n")

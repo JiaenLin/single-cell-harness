@@ -110,6 +110,16 @@ class Run:
         """An object the wrapped tool already wrote under out_dir, referenced where it lies."""
         self._out["objects"][name] = self._inside(rel)
 
+    def embedding_at(self, name: str, rel: str):
+        """An embedding the plugin wrote under out_dir in the profile's own binding (single-cell:
+        `embeddings/<name>.npy` beside `barcodes.txt`), referenced where it lies (harness W034)."""
+        self._out["embeddings"][name] = self._inside(rel)
+
+    def graph_at(self, name: str, rel: str):
+        """A graph the plugin wrote under out_dir in the profile's own binding (single-cell:
+        `graphs/<name>.npz` beside `barcodes.txt`), referenced where it lies (harness W034)."""
+        self._out["graphs"][name] = self._inside(rel)
+
     def figure(self, path_rel: str, caption: str, source_rel: str = None, vector_rel: str = None):
         self._out["figures"].append({"path": path_rel, "caption": caption,
                                      "source": source_rel, "vector": vector_rel})

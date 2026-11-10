@@ -17,7 +17,7 @@ slots:
   feature_column: {dir: features,   format: csv, fields: [feature, value],        binds: var}
   embedding:      {dir: embeddings, format: npy, identity: barcodes.txt,          binds: obsm}
   matrix:         {dir: matrices,   format: npz,                                  binds: layers}
-  graph:          {dir: graphs,     format: npz,                                  binds: obsp}
+  graph:          {dir: graphs,     format: npz, identity: barcodes.txt,          binds: obsp}
   mask:           {dir: masks,      format: csv, fields: [barcode, keep, reason]}
   object:         {dir: objects,    format: h5ad}
   table:          {dir: tables}

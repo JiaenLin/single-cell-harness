@@ -1,0 +1,53 @@
+contract: "1.0"
+profile: single-cell/1.0
+name: int@scintegrate
+version: 0.1.0
+summary: scIntegrate's integration mounted as a layer the stack can take back - every embedding, graph and column scIntegrate adds to the cohort's joint object
+when_to_use: >
+  the stack's observations are a cohort's joint object - its libraries already in one file, the one
+  part of a parts manifest - and you want scIntegrate's methods compared, its benchmark run and its
+  embeddings and graphs on the observations as a layer that unmounts, with scIntegrate's own record
+  of the run kept beside them
+
+class: method
+layer: stack
+reversible: true
+state_version: 1
+# The assays scIntegrate accepts (scintegrate/axes.py ASSAYS; `scintegrate describe`). No rule there
+# differs by assay; which one a run is, is the stack's declaration (`--context assay=`), passed to
+# integrate verbatim. There is no default.
+assays: [scrna, snrna]
+
+wraps:
+  tool: scIntegrate
+  version: "0.5.0"
+  homepage: https://github.com/JiaenLin/scIntegrate
+  license: MIT
+  cite: "Lin J. scIntegrate: is integration needed, which method, and one object carrying the answer. Software, version 0.5.0."
+  state_version: 1
+
+inject: [dataset]
+needs: [observations/raw]
+provides:
+  - embedding/*
+  - graph/*
+  - column/*
+  - table/*
+  - object/*
+optional: []
+sourceable: []
+sees: []
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: high}
+invariant: invariant.py
+
+cannot_show:
+  - A default embedding is the method that ranked first on scIB's total over chosen weights and chosen metrics; it is not evidence that the batch effect it removed was technical.
+  - A factor nested in or aliased with the batch key is removed by construction, not measured; scIntegrate's constraint on use, in its report, says which claims the corrected embedding cannot carry.
+  - Cells withheld from the fit carry NaN in every embedding of the layer; any count over an embedding excludes them, and any share is over the cells that remained.
+  - The layer is what scIntegrate changed in the joint object; an embedding, graph or column the object already carried with the same values is the observation's own and is not in it, whatever scIntegrate copied.
+  - The labels scored against are the annotation's, inherited; nothing in this mount shows they are correct, and every limit of the stage that wrote them applies here.
+  - The embeddings are over the observations the stack holds; a removal upstream that was differential across the design shaped the space they sit in, and nothing in this mount can undo it.

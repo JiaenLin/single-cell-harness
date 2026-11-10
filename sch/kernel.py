@@ -276,7 +276,7 @@ class Stack:
         f = cache_dir / ("view.csv" if filtered else "view_full.csv")
         if not f.exists():
             f = cache_dir / ("view.h5ad" if filtered else "view_full.h5ad")
-        return View(self.dataset.ids, keep, columns, masks, f)
+        return View(self.dataset.ids, keep, columns, masks, f, carried=self.dataset.carried(contribs))
 
     # ------------------------------------------------------------- running plugins
     def _run_argv(self, argv, cwd, log) -> dict:
