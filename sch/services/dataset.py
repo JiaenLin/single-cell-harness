@@ -1,10 +1,11 @@
 """The dataset service: observations, contributions, and materialisation.
 
-D2  Nothing writes to observations. The file is opened read-only and its digest is checked by
-    the A1 companion after every successful mount.
-A1  The observations are PINNED at init: ONE digest over all their files (the sha256 of each
-    file's sha256, in order), and, per file, a stat fingerprint (dev, inode, size, mtime_ns,
-    ctime_ns). The fingerprint - not the digest, which reads every byte - is checked before a
+D2  Nothing writes to observations. The file is opened read-only, and the A1 companion reads
+    every byte again for its digest after a mount's plugin returns a result (before its gates),
+    after every scratch run, and in `sch doctor`.
+A1  The observations are PINNED at init: ONE digest over all their files (one file's own sha256;
+    on a parts stack, the sha256 of each file's sha256, in manifest order), and, per file, a stat
+    fingerprint (dev, inode, size, mtime_ns, ctime_ns). The fingerprint - not the digest, which reads every byte - is checked before a
     command first reads the observations (their identities, their inventory, the view: `Stack()`
     restoring its contributions included) and after every plugin run, whatever its outcome. So is
     what the declared path RESOLVES to now, and the pin itself against the `observations/pinned`

@@ -293,14 +293,15 @@ E2 then rests on two things. Permissions alone hold only against in-place writes
   For a file someone else owns, where chmod fails (EPERM), the remedy is the owner, or a
   read-only copy.
 - **A pin.** Every stack is pinned at `init` (`observations.pin.json`): ONE digest over all its
-  observation files (the sha256 of each file's sha256, in order), and, per file, its (dev, inode,
-  size, mtime_ns, ctime_ns). `init` records the pin as an `observations/pinned` event. Checked
+  observation files (one file's own sha256; on a parts stack, the sha256 of each file's sha256,
+  in manifest order), and, per file, its (dev, inode, size, mtime_ns, ctime_ns). `init` records the pin as an `observations/pinned` event. Checked
   before a command first reads the observations (their identities, their inventory, a view -
   opening a stack with plugins mounted included) and after every plugin run, whatever its
   outcome: each file's fingerprint - not its digest, which reads every byte - what the declared
   path resolves to NOW (a `latest -> v2` symlink re-pointed after `init` is a change naming the
   file now read), and the pin itself (missing or rewritten while the event records one is a
-  change). The digest is compared after every successful mount (A1). This catches what
+  change). The digest - every byte, read again - is compared after a mount's plugin returns a
+  result, before its gates, and after every scratch run (A1). This catches what
   permissions cannot: a part renamed over through its writable directory, chmod'ed and written by
   its owner, or re-pointed; a pin deleted by a plugin that then died. A change is an A1 error
   naming the file, from then on. A pin is written by `init`, and once, on its first read, for a

@@ -192,13 +192,13 @@ judged like any other. And the declaration is BOUNDED (autodev W029), because un
 same guess by another hand - `["*"]` excused every field of every product, all of de's DE result
 columns among them, and `agree` stayed green: a glob has one `::`, and its two parts are matched
 apart; in the product `*` stays inside one path segment; the key's first segment (before its first
-`.` or `[`) is literal, so `measured.*` names a namespace the run writes and `*` names nothing; and
-it excuses JSON leaves only - a glob that matches a CSV or TSV column is a declaration error, the
-column is judged, and the error fails `agree`, the baseline's check and its recording, naming the
-glob. A fixture run that ended in a
-declared refusal on BOTH shapes has no products: neither tier applies to it, and no baseline is
-ever recorded from one; a refusal on one shape only fails `agree`, because one cohort written twice
-cannot be refused under one set of names and analysed under the other. Floats compare with a
+`.` or `[`) is literal, so `measured.*` names a namespace the run writes and a key of `*` is
+refused; and it excuses JSON leaves only - a glob that matches a CSV or TSV column is a
+declaration error, the column is judged, and the error fails `agree`, the baseline's check and its
+recording, naming the glob. A fixture run that ended in a declared refusal on BOTH shapes has no
+products: neither tier applies to it, and no baseline is ever recorded from one; a refusal on one
+shape only fails `agree`, because one cohort written twice cannot be refused under one set of
+names and analysed under the other. Floats compare with a
 relative tolerance rather than bit-equality, because bit-equality across machines is not a property
 this family has — 0.214 was measured between two nodes of the same model on 2026-09-06.
 

@@ -386,8 +386,9 @@ before Phase 10 builds on it.
 > - qsub has a timeout (`pbs.qsub_timeout_s`), and a qsub that did not answer - it timed out, or
 >   exited 0 with no job id - is reconciled before anything is submitted again (autodev W029): the
 >   scheduler is asked by job name, each job confirmed by the submission's token
->   (`#PBS -v SCH_SUBMISSION=...`); found, that job is the run's; absent, one resubmission
->   (`pbs.qsub_retries`); and when the scheduler cannot say, nothing is resubmitted, the mount is
+>   (`#PBS -v SCH_SUBMISSION=...`); found, that job is the run's; absent from two looks in a row,
+>   it is submitted again, at most `pbs.qsub_retries` (2) times; and when the scheduler cannot
+>   say, nothing is resubmitted, the mount is
 >   refused naming the job, and the disposer asks again or fails E5. A job the scheduler held for
 >   "too many failed attempts to run" is not waited for: the wait returns with the hold in its
 >   facts, and the disposer qdels it.

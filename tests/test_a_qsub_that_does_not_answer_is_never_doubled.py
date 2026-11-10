@@ -159,9 +159,9 @@ class AQsubThatDoesNotAnswerIsNeverDoubled(unittest.TestCase):
     def test_a_job_the_scheduler_held_for_good_is_not_waited_for(self):
         """PBS 783349 (2026-11-10): after four failed attempts to run it, PBS Pro held W013's job
         (`job_state = H`, `comment = job held, too many failed attempts to run`), and a held job
-        stays held until a person releases or deletes it. A qsub that queued such a job and hung
-        is reconciled to it like any other; then `wait` returns at once with the hold in its facts
-        and the exit unknown - a death to the kernel - and the disposer qdels it, confirmed."""
+        stays held until a person releases or deletes it. `wait` returns at once with the hold in
+        its facts and the exit unknown - a death to the kernel - and the disposer qdels it,
+        confirmed."""
         from sch.services.executor import make_executor
         os.environ["FAKE_PBS_MODE"] = "hold"
         cfg = yamlish.load(self.stack / "stack.yml")["pbs"]
