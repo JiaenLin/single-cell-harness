@@ -16,9 +16,11 @@ everything downstream knows when one does.
 > implements Phase 1 (the domain-free core, proved on a toy profile), Phase 2 (the profile and the
 > 15-check validator, every rule tripped by a broken plugin), the gate-is-a-probe machinery of
 > Phase 4, and the agent surface of Phase 10 with its adversarial suite. Phase 3's first adapter,
-> `qc@scqc` (the first tool the kernel runs), and Phase 9's `pbs` executor are built (W010) and
-> not yet graded: the adapter waits on a pre-declared reproduction on the reference cohort, the
-> executor on a run against a real scheduler. Phases 5–8 and 11 are not built.
+> `qc@scqc` (the first tool the kernel runs), and Phase 9's `pbs` executor were built in W010 and
+> graded by a pre-declared reproduction of the reference cohort's stage 1 through the harness,
+> with nested jobs on a real scheduler (PBS 782922). The second adapter, `anno@scanno` (W026),
+> is built and graded on a synthetic cohort against the real scAnno; its stage-2 reproduction is
+> written and not yet run. Phases 5–8 and 11 are not built.
 >
 > `sch conform` checks a child tool against
 > [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it; all four pass with
@@ -52,12 +54,14 @@ it.
 
 ## What it does
 
+The sessions below are illustrative: their numbers and labels are invented.
+
 ```console
 $ sch stack
-  observations   10 libraries, 39,037 droplets      immutable
+  observations   6 libraries, 52,418 droplets       immutable
   ▸ align@celescope       2.7.3                     checkpoint
   ▸ ambient@cellbender    lr=5e-5 fpr=0             checkpoint
-  ▸ qc@scqc               0.4.0   masks 6,851 obs   mounted
+  ▸ qc@scqc               0.4.0   masks 7,093 obs   mounted
   ▸ annotate@scanno       0.10.0  labels 4 columns  mounted
   ▸ integrate@scintegrate 0.4.0   5 embeddings, default X_scanvi
   ▸ profile@velocity      REFUSED — no spliced layer beside this object
@@ -67,7 +71,7 @@ Remove a decision and see the cost before paying it:
 
 ```console
 $ sch unmount qc@scqc --dry-run
-  would restore 6,851 observations
+  would restore 7,093 observations
   would invalidate, in order:
     annotate@scanno          labels were fitted on the masked set
     integrate@scintegrate    5 embeddings, all of them
@@ -81,8 +85,8 @@ Fork the stack to hold everything else constant:
 $ sch fork no-qc --without qc@scqc && sch run no-qc
 $ sch diff main no-qc --on composition
   cell type           main      no-qc     Δ
-  Cardiomyocyte      37.3%     34.9%   -2.4pp
-  Endothelial        24.3%     24.1%   -0.2pp
+  type A             41.6%     39.2%   -2.4pp
+  type B             21.7%     21.6%   -0.1pp
 ```
 
 ## Everything is a plugin

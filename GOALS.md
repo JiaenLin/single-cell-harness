@@ -108,13 +108,45 @@ developing towards. keep developing". Each bar is (C), set by the pre-decider, a
 | **A6.3 Service takes single-cell requests** | A single-cell delivery (Cell Ranger or CeleScope outputs) and the questionnaire become a request that the harness runs as A1.1's input, with no hand editing. The bulk path's own tests still pass. | G6, PLAT.1 |
 | **A7.1 agents drive it** | A cold agent equipped only with the harness's skills runs A1.1 on a held-out cohort: assembling, submitting, recovering from failures, auditing and recording. | G7 |
 
+## Layer 3, scored (added 2026-11-10; the PI: "agree, proceed with all")
+
+The audit grades each test by a measured score in [0, 1], one row of
+[`autodev/ledger/scores.tsv`](autodev/ledger/scores.tsv) per test and pass, with its numerator, denominator and
+evidence. The program's progress is the **mean of the 20 scores**, read at every audit; a wave that moves no score is
+trivial (rule 5's ban) and is not built. **HAPPY** = the mean is at least 0.9 and no test is below 0.5 (C, adjustable).
+The grade columns of audits.tsv stay as labels: PASS = 1, FAIL = 0, PARTIAL = anything between. A denominator is fixed
+here so that a score never falls because the denominator grew.
+
+| test | score = numerator / denominator |
+|---|---|
+| A1.1 | stages that run through the harness AS PREDICTED under a pre-declared job (SAMBO's 4 and C46's 4) / 8 |
+| A1.2 | typical steps mapped to a component that runs in A1.1, or declared upstream / 10 |
+| A1.3 | tools whose environment builds from `main` on a fresh prefix on PBS and passes its self-test (scQC, scAnno, scIntegrate, scProfile, the harness) / 5 |
+| A2.1 | SAMBO's promoted stage runs reproduced under a pre-declared PBS job, graded as written / 4 |
+| A2.2 | repositories (5 tools, 3 platform apps) where at least 10 sampled claims were checked and none was false / 8 |
+| A2.3 | sealed stage runs a context-free agent reproduced from the record and the docs alone / 4 |
+| A3.1 | 0.5 x (cohort stages run end to end: SAMBO 4 + C46 4) / 8 + 0.5 x (tools where the leak guard finds nothing and the fixture's value axes reach the pipeline) / 5 |
+| A3.2 | designs handled or refused by name (one factor n = 2; two-factor with interaction; a covariate) plus contrasts labelled as SAMBO's / 4 |
+| A3.3 | tools that declare separate `scrna` and `snrna` rule sets, or declare no assay dependence, with no silent default / 5 |
+| A3.4 | min(1, cells x stages completed through A1.1 on the standard queues / 4,000,000) |
+| A4.1 | current plugins (the eight held-out and CellChat) in the maker's layout passing `sch dev` and `sch conform` on the cluster / 9 |
+| A4.2 | never-seen tools converted by agents alone that pass the dev suite and reproduce their published example / 5 |
+| A4.3 | plugins naming a peer-reviewed source and a pinned version / 9 |
+| A4.4 | acts a cold agent completes without reading plugin code (list the catalogue, pick a plugin for a question, run it, read its result) / 4 |
+| A5.1 | claims of the generated Results section that survive independent review / claims written (0 while no generator exists) |
+| A5.2 | 0.5 x (hypotheses with evidence, a falsifying test and a runnable follow-up) / hypotheses proposed + 0.5 x (a follow-up executed through the loop: 1 or 0) |
+| A6.1 | UI acts that work (ask in plain language; see the plan; approve the user-owned decisions; follow the run; open the reports and the record) / 5 |
+| A6.2 | (the final object opens in Studio through Lab's converter with no manual step) + (Studio shows the run that produced it) / 2 |
+| A6.3 | (delivery + questionnaire become a request with no hand editing) + (the request runs as A1.1's input) + (the bulk path's tests pass) / 3 |
+| A7.1 | acts a cold agent with only the harness's skills completes on a held-out cohort (assemble, submit, recover from a failure, audit, record) / 5 |
+
 ## How the goals are used
 
 - [`autodev/ledger/gaps.tsv`](autodev/ledger/gaps.tsv) holds one row per gap against a layer-2
   capability or a layer-3 test.
 - Every development wave names the goal ids it moves. Rule 5 bans waves that move none.
-- The audit grades each layer-3 test PASS, PARTIAL, FAIL or UNKNOWN, with evidence, and gives a verdict
-  of HAPPY or NOT HAPPY. Its history is in [`autodev/ledger/audits.tsv`](autodev/ledger/audits.tsv).
+- The audit scores each layer-3 test as the table above says (scores.tsv), labels it PASS, PARTIAL, FAIL or
+  UNKNOWN, and gives the verdict HAPPY when the mean score is at least 0.9 and no test is below 0.5. Its history is in [`autodev/ledger/audits.tsv`](autodev/ledger/audits.tsv).
 - VISION.md argues the runtime's thesis and ARCHITECTURE.md binds its invariants. This file says what
   the whole family is *for*. Where ROADMAP.md's ordering conflicts with these goals, this file wins
   ([ADR-0028](docs/adr/0028-the-goals-and-the-loop.md)).

@@ -14,6 +14,19 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY \
       GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_PREFIX GIT_NAMESPACE
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
+# THE COHORTS' WORD LISTS, WHEN THIS CLONE HAS THEM (W024, GAP-110). A list holds a cohort's
+# strings, so it lives outside every repository and this hook cannot name it. A clone that has the
+# lists says where in setup/githooks/conform.local, which git ignores: a `terms=` line (several
+# lists joined by ':') and a `shapes=` line. The file is read as data, never sourced. Without it,
+# conform runs as it always has; with it, a cohort string in sch/ or tests/ blocks the commit,
+# and a list that is named and missing blocks it too.
+CONFORM_ARGS=()
+if [ -f setup/githooks/conform.local ]; then
+  TERMS_LOCAL="$(sed -n 's/^terms=//p' setup/githooks/conform.local | tr -d '\r' | tail -1)"
+  SHAPES_LOCAL="$(sed -n 's/^shapes=//p' setup/githooks/conform.local | tr -d '\r' | tail -1)"
+  if [ -n "$TERMS_LOCAL" ]; then CONFORM_ARGS+=(--terms "$TERMS_LOCAL"); fi
+  if [ -n "$SHAPES_LOCAL" ]; then CONFORM_ARGS+=(--shapes "$SHAPES_LOCAL"); fi
+fi
 # One log per commit: two worktrees committing at once used to share one file under /tmp.
 SUITE_LOG="$(mktemp -t sch_precommit_suite.XXXXXX)"
 CONFORM_LOG="$(mktemp -t sch_precommit_conform.XXXXXX)"
@@ -22,7 +35,8 @@ if ! PYTHONPATH=. python3 -m unittest discover -s tests > "$SUITE_LOG" 2>&1; the
   tail -20 "$SUITE_LOG" >&2
   exit 1
 fi
-if ! PYTHONPATH=. python3 -m sch conform . > "$CONFORM_LOG" 2>&1; then
+# `${A[@]+"${A[@]}"}`: an empty array under `set -u` is an error in the bash macOS ships (3.2).
+if ! PYTHONPATH=. python3 -m sch conform . ${CONFORM_ARGS[@]+"${CONFORM_ARGS[@]}"} > "$CONFORM_LOG" 2>&1; then
   echo "BLOCKED: sch conform . is red:" >&2
   tail -20 "$CONFORM_LOG" >&2
   exit 1

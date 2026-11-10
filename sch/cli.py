@@ -16,6 +16,7 @@
     sch events [--kind K]
     sch plugin validate|test|new
     sch doctor --architecture | --runtime DIR
+    sch conform terms build COHORT --out FILE   a cohort's word list, from its records
     sch conform REPO [--terms FILE] | --run RUNDIR [--against REFRUN]
     sch catalogue [show ID] [--scprofile CHECKOUT]   every plugin the family has, never imported
 
@@ -287,8 +288,25 @@ def cmd_doctor(a):
     return 0 if all(x["ok"] for x in f) else 2
 
 
+class _RepoOrTerms:
+    """`conform`'s first word: a repository path, or the word `terms` (W024).
+
+    argparse cannot say "a path, or this word", and a positional with `choices` is how this CLI
+    names a command path - the agent-surface check walks them. A container that holds every
+    string accepts any path, and lists the one word that has a meaning of its own."""
+
+    def __contains__(self, value):
+        return True
+
+    def __iter__(self):
+        return iter(("terms",))
+
+
 def cmd_conform(a):
     from .conform import conform_against, conform_repo, conform_run, format_checks
+    if a.repo == "terms" or a.verb or a.cohort or a.out or a.stems or a.carry or a.shapes_out:
+        from .conform.terms import run_cli
+        return run_cli(a)
     if a.against:
         if not a.run or len(a.run) != 1:
             raise SystemExit("--against needs exactly one --run RUNDIR to compare")
@@ -306,7 +324,13 @@ def cmd_conform(a):
             print(format_checks(cs))
             checks += cs
     else:
-        checks = conform_repo(a.repo, a.terms, getattr(a, "shapes", None))
+        from .conform import TermListError
+        try:
+            checks = conform_repo(a.repo, a.terms, getattr(a, "shapes", None))
+        except (FileNotFoundError, TermListError) as e:
+            # A NAMED LIST IS READ OR REFUSED (W024, GAP-101): never scanned as if it were empty.
+            print(f"{a.repo}: refused - {e}", file=sys.stderr)
+            return 2
         print(f"{a.repo}:")
         print(format_checks(checks))
     if a.json:
@@ -1644,7 +1668,21 @@ def build_parser():
     q.add_argument("--point", default="kernel")
     q.set_defaults(fn=cmd_dev)
 
-    p = sub.add_parser("conform"); p.add_argument("repo", nargs="?"); p.add_argument("--terms")
+    p = sub.add_parser("conform")
+    p.add_argument("repo", nargs="?", choices=_RepoOrTerms(), metavar="REPO",
+                   help="the repository to check; or `terms build COHORT --out FILE`: a cohort's "
+                        "word list, generated from its records (W024)")
+    p.add_argument("verb", nargs="?", choices=["build"], help=argparse.SUPPRESS)
+    p.add_argument("cohort", nargs="?", help=argparse.SUPPRESS)
+    p.add_argument("--terms")
+    for flag, more in (("--out", "with `terms build`: where the list is written, outside the "
+                                 "cohort and outside any repository"),
+                       ("--stems", "with `terms build`: a hand-kept stems file (repeatable)"),
+                       ("--carry", "with `terms build`: a handed-back list to carry (repeatable)"),
+                       ("--shapes-out", "with `terms build`: also write the site's shapes - its "
+                                        "queues and bare job ids - for --shapes")):
+        p.add_argument(flag, help=more,
+                       **({} if flag in ("--out", "--shapes-out") else {"action": "append"}))
     p.add_argument("--shapes", metavar="FILE",
                    help="site shapes (hostnames, job ids, filesystem roots) - the file belongs to "
                         "the site, not to the tool; $SCH_SITE_SHAPES is the fallback")

@@ -76,13 +76,72 @@ empty, so that "rule 3" and "rule 5" mean the same thing in both projects.
 | design | what | lesson it comes from | must not block |
 |---|---|---|---|
 | **No standing agents** | One coordinator (the main session) owns the ledgers, merges, the cluster deploy lanes and the PI's questions. Short-lived **builders** each take one registered wave, in a fresh context, then end. Auditors are fresh and read-only. | VCC 10-26: "reduce the agent use"; VCC 10-27: short-lived wave builders | Rule 5: start more builders when that is faster and the Mac allows it. |
-| **Concurrency** | At most 5 editing agents (builders, and the blocker remover when it edits) and 4 audit agents (verifiers and full-pass auditors) at once on the Mac, which has 36 GB. The audit cap went from 3 to 4 on 2026-11-09 at a load of about 9, with four verifiers ready. Both caps were raised on 2026-11-09 under rule 5. The audit cap went from 1 because a verifier was waiting behind the two gap reviews. The builder cap went from 3 to 4 because three lanes were idle while the blocker remover held one slot, then to 5 for the platform lane's first wave, a light Node project. One cluster deploy lane per tool, because `~/tools/<Tool>` has one checkout: a deploy waits only for that tool's running jobs. | VCC "do not abuse use mac"; ADR-0027's queue limit and environment race | Raise the cap as soon as an idle lane is waiting on it. |
+| **Concurrency** | SUPERSEDED 2026-11-10 (the block at the end: 2 builders, 1 verifier per merge batch). Was: at most 5 editing agents (builders, and the blocker remover when it edits) and 4 audit agents (verifiers and full-pass auditors) at once on the Mac, which has 36 GB. The audit cap went from 3 to 4 on 2026-11-09 at a load of about 9, with four verifiers ready. Both caps were raised on 2026-11-09 under rule 5. The audit cap went from 1 because a verifier was waiting behind the two gap reviews. The builder cap went from 3 to 4 because three lanes were idle while the blocker remover held one slot, then to 5 for the platform lane's first wave, a light Node project. One cluster deploy lane per tool, because `~/tools/<Tool>` has one checkout: a deploy waits only for that tool's running jobs. | VCC "do not abuse use mac"; ADR-0027's queue limit and environment race | Raise the cap as soon as an idle lane is waiting on it. |
 | **Registered before numbers** | Each wave states its goal ids, its acceptance check and its prediction before any run. A PBS job carries its prediction in the script. It is graded by its own rule, and a miss is recorded as a miss. | This project's rule 1; VCC "registrations before numbers" | A registration takes minutes and is never a reason to hold a run. |
 | **A merge rests only on what was written before the run** | Every comparison or exception a merge relies on is written into the job script before submission. A comparison designed after the result is evidence for the PI, never a gate. | Audit pass 0002, GAP-102: W007 was merged on an isolating comparison designed after submission | Isolating comparisons are written up front (job 31 shows how). |
-| **The pre-decider** | Before asking the PI anything: (1) does a tier I–III rule decide it? Then act. (2) Is it a tier-IV design? Then decide, act and report. (3) Only a PI-owned decision, or an outward-facing and hard-to-reverse action that no rule covers, goes to the PI, with its numbers and a recommendation. Each decision made this way is recorded in STATE.md together with the rule that decided it. | The PI's direction (tier III); the steps are (C), from VCC 11-01: "add a pre-decider design" | Never a reason to idle a lane while waiting for an answer. |
+| **The pre-decider** | v2 (2026-11-10): [PRE_DECIDER.md](PRE_DECIDER.md), the form, the user-only list, the catalogue, the test. Before asking the PI anything: (1) does a tier I–III rule decide it? Then act. (2) Is it a tier-IV design? Then decide, act and report. (3) Only a PI-owned decision, or an outward-facing and hard-to-reverse action that no rule covers, goes to the PI, with its numbers and a recommendation. Each decision made this way is recorded in STATE.md together with the rule that decided it. | The PI's direction (tier III); the steps are (C), from VCC 11-01: "add a pre-decider design" | Never a reason to idle a lane while waiting for an answer. |
 | **No blocking questions while work is in flight** | Questions go to the PI in plain text at the end of a turn. Every lane keeps working meanwhile. | VCC no-blocking-questions-in-flight | — |
 | **The amplifier** | A defect class found in one tool is checked in all five. For example ADR-0027's thesis: a default that equals SAMBO's value hides a bug. The audit carries each lesson as a row in `gaps.tsv`. | VCC 10-25 AMPLIFIER | Checking is not copying: each tool fixes the defect in its own design. |
 | **Fix bugs always** | A bug found is fixed with a test that fails on the old code. | VCC fix-bugs-always; this repo's practice (ADR-0027 tests) | — |
 | **Honest records** | Ledgers and RUNLOGs are append-only. A correction is a dated addition. Stamps come from `date -u`. A failure is reported as a failure. | VCC "log honestly"; ADR README "never renumbered, never deleted" | — |
 | **Worktrees** | Builders work in their own clone or worktree and push only their own branch. A linked worktree of the harness may commit again: the pre-commit hook unsets git's repository variables (`2a6f77b`, BLK-004), and a guard test fails if the suite changes the real repository's config or HEAD. Never run `git config` against the shared repository. The coordinator never `cd`s into a builder's worktree; it reads files by absolute path. | VCC repository habits | — |
 | **One cohort per question** | A wave that touches a tool reproduces SAMBO's promoted run, and exercises BrainOrganoid_C46 when the cohort reaches that stage. | ADR-0027 | — |
+
+## Added 2026-11-09 by the PI's decisions
+
+- **Tier II, decision 0b ("go", 2026-11-09), option (b):** a change MEANT to move a promoted run's outputs may merge under
+  the standing yes when its PBS run matches a difference predicted output by output BEFORE submission, graded by its
+  written criterion. Re-promoting the moved run stays the PI's. The W007 merge (GAP-102) is accepted under this rule.
+- **Tier IV, the throttle (the PI: "agree", 2026-11-09):**
+  - at most 2 builders and 1 verifier at a time;
+  - at most 2 fix rounds per change, after which the leftover issue is recorded as a gap, never looped on;
+  - re-checks look only at the fix, not the whole change;
+  - no polishing of changes that wait on the PI's deploy;
+  - the LOOP TICK fires every 3 hours.
+
+- **Tier IV, the pre-decider tightened (the PI, 2026-11-10: "where is predecider, why need my decision, review rules and goals and decide"):** four items had been left as questions that the rules already settled. Hence: (3a) declining an outward-facing or hard-to-reverse action is the default, and it is decided, not asked; only a REQUEST to take such an action goes to the PI. (3b) A fact about a cohort is looked up in its delivery and records, and measured where it can be, before it is asked. What stays unknown is written as a limit in the report, never left as a question that holds a lane. (3c) A design that a cohort's own names declare is used, with its unknowns labelled. (3d) An item goes to "Decisions needed" only when it is PI-owned by tier III (a promotion, a sign convention, a threshold the data cannot decide) or needs the PI's hand (a permission, an account, a collaborator). It carries a recommendation, and the lane carries on meanwhile.
+
+## Added 2026-11-10 by the PI's "agree, proceed with all" (the diagnosis: [audits/DIAGNOSIS_20261110_vs_vcc.md](audits/DIAGNOSIS_20261110_vs_vcc.md))
+
+All tier IV (C) unless a line says otherwise.
+1. **Agent use, as VCC's tier-II row:** the coordinator plans, reads, grades and merges itself. At most 2 short-lived
+   builders at a time, each one registered wave, then end. The adversarial verifier runs **once per merge batch per
+   repository** (a batch = the waves merged into that repository since its last verification, at most one batch a day),
+   never per change; at most 2 rounds, then the residue is a gap. Fix-only re-checks look at the fix. Every wave is still
+   gated by its suite, the leak guard, the fixture and its pre-declared reproduction (rule 1) before it merges.
+2. **One number:** each layer-3 test has a measured score (GOALS.md, "Layer 3, scored"); the program's progress is the
+   mean, read at every audit; HAPPY = mean >= 0.9 and no test < 0.5. A wave must name the score it moves and by how much
+   it predicts to move it; a wave that moves none is trivial (rule 5) and is not built. **The PI decided this (D-006).**
+3. **Watching by machinery:** `tools/pbs_mirror.sh` polls the cluster (one ssh every 5 min, login-node reads only) over a
+   watch list of submitted jobs and writes one verdict file per sealed run and one held file per held job;
+   `tools/monitor_verdicts.sh` turns them into Monitor events. The coordinator reads verdict lines, not run directories;
+   the LOOP TICK (3-hourly) is the fallback.
+4. **A cheaper gate:** a fix-up after a gating run does not resubmit when the job's runtime-file manifest (the sha256 of
+   every file the job executes, as job 26 declares it) is unchanged by the fix-up; the comparison of manifests is
+   recorded in the wave. Any other fix-up resubmits the same job. Never an AST or code diff. Infrastructure failures
+   (held nodes, missing directories) are retried unchanged with a dated note, as a script's job when one exists.
+5. **The budget (the PI owns the number, D-005; provisional (C) until the PI states one):** this loop spends at most
+   8 M output tokens and 2.5 B context-read tokens a day, 40 M output a week, and 1.5 M output per wave including its
+   verification; past a wave's cap the residue is a gap. `tools/usage.py` measures it at every PERIODIC CHECK and the
+   number goes into STATE.md. **Token mode = LIMITED** since the throttle of 2026-11-09; only the PI's words switch it
+   ("no token limit" / "full speed" to UNLIMITED; "save tokens" / "token limited" back), as VCC's TOKEN_MODE. Past 80 %
+   of a cap, no new builder starts.
+6. **Lanes take turns:** at most two lanes build at once (the two builders), in a fixed rotation QC, ANNO, INT, PROF,
+   HARN, PLAT; a lane's next wave starts only when its previous one is merged, held or failed; a tool's cluster checkout
+   follows its one gating wave.
+7. **The pre-decider is enforced** ([PRE_DECIDER.md](PRE_DECIDER.md) v2, the PI: "improve it"): a form in
+   `ledger/decisions.tsv` for every candidate question, a user-only list, a catalogue of stated answers that grows with
+   every answered ASK, and `tests/test_autodev.py` fails a question that reaches STATE without an ASK row or that the
+   catalogue answers.
+
+## Added 2026-11-10 by the PI: "you are here to fix harness. the development will be carried by opus 5.5 max"
+
+- **Tier II, the development model:** every development agent (builder, verifier, auditor, blocker remover, research
+  helper) is launched with the Agent tool's `model: "opus"` (Claude Opus 5.5) and `effort: "max"`. The coordinating
+  session's own job is the harness: the rules, the machinery, the records and the loop; its model is whatever the PI set.
+  An agent that inherited another model is stopped and relaunched (the harness batch's verifier, 2026-11-10T01:5xZ).
+- **Tier IV, one coordinator and a hand-off:** one session coordinates at a time. A hand-off to a new session: the old
+  session's agents hand back first (their transcripts belong to it), its records are committed and pushed, its crons,
+  mirror and Monitor die with it; the new session runs `bash autodev/tools/bootstrap.sh check`, then `print`, and starts
+  what is missing. Machinery state lives at `<HARNESS>/autodev/.machinery/` (git-ignored), not in a session's scratchpad,
+  so the mirror's verdict files survive a hand-off.

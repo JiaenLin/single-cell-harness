@@ -146,8 +146,9 @@ class TestConform(unittest.TestCase):
             self.assertEqual("warn", g["level"])
             subprocess.run(["git", "-C", str(r), "config", "core.hooksPath", "setup/githooks"], check=True)
             self.assertTrue(by_id(conform_repo(r), "G1 ")[0]["ok"])
-        self.assertTrue(by_id(conform_repo(ROOT), "G1 ")[0]["ok"],
-                        "this clone has no commit gate installed: git config core.hooksPath setup/githooks")
+        # WHETHER THIS CLONE HAS IT is the clone's fact, not the repository's (GAP-111): asserted
+        # here it failed every fresh clone's suite. `sch doctor` reports it, and the versioned
+        # hook's content is tested in test_the_commit_gate_is_versioned_and_reported.py.
 
     # WHAT GIT RUNS IS A DIRECTORY (ADR-0029). On 2026-11-09 the main checkout's core.hooksPath
     # was set to the ABSOLUTE path of its own setup/githooks: the gate was installed and running,

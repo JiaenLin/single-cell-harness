@@ -2,8 +2,8 @@
 
 WHY THIS EXISTS. Every tool in this family was developed against one real cohort, and a tool
 developed against one cohort learns that cohort. It learns that the sample column is called
-`sample`, that there are ten libraries, that the arms are two, that a cell type called
-`Cardiomyocyte` exists. None of that is true of the next dataset, and none of it fails a test,
+`sample`, that there are ten libraries, that the arms are two, that a cell type of its one
+tissue exists. None of that is true of the next dataset, and none of it fails a test,
 because the only dataset the tests have is the one the assumptions came from. Overfitting here is
 not a mistake somebody makes - it is the default outcome of having one dataset.
 

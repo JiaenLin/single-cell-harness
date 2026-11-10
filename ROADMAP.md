@@ -195,6 +195,23 @@ contract**, do not write three more adapters against it.
 > - **F3** is not timed;
 > - **ADR-0004's test** has no rewrite estimate written before the adapter. The adapter is 242
 >   lines, and its companion 69.
+>
+> **BUILT, NOT YET GRADED ON THE COHORT, 2026-11-09 (W026, branch `autodev/W026-anno-adapter`): the
+> second adapter, `anno@scanno`.** `plugins/single-cell/anno@scanno` runs scAnno's real CLI over the
+> libraries a parts stack declares: `describe`, then `cluster`, `annotate` once per library and
+> `rescue`, each only when the stage declares it. Every flag is the stage's, by scAnno's name. Its
+> labels are a **layer**: every obs column scAnno's delivered object carries that the library did
+> not, and every one scAnno rewrote with other values. They are read back by identity with h5py,
+> so anndata is not needed. Unmounting removes exactly those columns. scAnno's
+> `STATUS.<cmd>.json` and seals are adopted, each only when it names the call's own argv.
+>
+> Graded on a synthetic cohort through the `sch` CLI (`tests/test_the_harness_runs_scanno.py`):
+> - against a stand-in scAnno: the exact calls in scAnno's order, the layer, rule 2, every refusal,
+>   and every death;
+> - against the real scAnno 0.12.0: mounted, then unmounted to the pre-mount digest.
+>
+> Not yet graded: **numbers**, by the reference cohort's stage-2 reproduction through the harness
+> against scAnno run alone at the same commit (written before it runs).
 
 ---
 

@@ -1,0 +1,4 @@
+stamp	pass	test_id	score	numerator	denominator	evidence
+2026-11-10T01:29:46Z	coord	A1.1	0.25	2	8	SAMBO stages 1 and 2 run through sch mount (qc@scqc PBS 782817/782922; anno@scanno PBS 783280/783363, W026 unmerged); stages 3-4 and C46 stages 2-4: none
+2026-11-10T01:29:46Z	coord	A3.4	0	0	4000000	no cohort of 1,000,000 cells has run any stage (the lupus PBMC atlas chosen, W027, not staged)
+2026-11-10T01:29:46Z	coord	A4.2	0	0	5	no never-seen tool converted by the maker
