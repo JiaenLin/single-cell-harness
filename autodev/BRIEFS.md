@@ -150,6 +150,8 @@ it; or the decision card.
 
 ## 4. Housekeeping pass
 
+**Before any deletion (2026-11-10):** grep every open wave's record (waves/W0xx.md, not merged) and every running agent's brief for the path; a path any of them names stays, merged or not.
+
 ```
 autodev PERIODIC CHECK (every 6 h; the PI, 2026-11-09: "a regular housekeeping to keep project lean
 and efficient"). One pass. Fix at once. Log each action in autodev/ledger/housekeeping.tsv.

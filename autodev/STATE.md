@@ -1,13 +1,12 @@
 # STATE: where the program stands
 
-Updated 2026-11-10T05:12Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-10T05:16Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
-**RESUMED 2026-11-10T01:3xZ (the PI: "WE HAVE TOKENS. GO!"; BLK-010 closed)** under the 2026-11-10 blocks of RULES.md:
-2 builders and 1 verifier, every development agent on Opus 5.5 at max effort (the PI: "the development will be carried by
-opus 5.5 max"; this session fixes the harness), token mode LIMITED (8 M output a day; only the PI's words switch it).
-The two builders first resumed from their transcripts ran on Fable (BLK-011) and were replaced at 02:1xZ by fresh
-Opus-max builders; `setup/autodev/agent_models.sh` now checks every agent at each tick.
+**TOKEN-LIMITED since 2026-11-10T05:2xZ** (the PI: "turn on token limit mode. focus on key processes" / "focus on development
+first. validation later"): one builder on the key path (W033 now; then W034, W023, the eight plugins); no verifier and no
+audit until the PI resumes validation; W030 and W029's verifier stopped; the LOOP TICK, the BLOCKER SWEEP and the
+Monitor paused; one PERIODIC CHECK every 6 h. Every development agent is Opus 5.5 at max.
 
 ## Verdict
 
@@ -58,27 +57,28 @@ Opus-max builders; `setup/autodev/agent_models.sh` now checks every agent at eac
 
 The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027.
 
-## The queue (RULES tier IV: 2 builders, 1 verifier; the next slot goes by score, pass 0004 section 9)
+## The queue (TOKEN-LIMITED: one builder on the key path; validation later)
 
-- **Builders now:** W030 (Service; moves no score, kept by D-015) and W033 (C46 stage 2, +1/8 on A1.1), both Opus 5.5 max.
-- **Next builder slots, by score:** (1) the remaining ADAPTERS and a STAGE DRIVER (harness: int@scintegrate, prof@scprofile, one design sheet; GAP-001, -002, -122; about +0.08), startable now under D-016; (2) W023 (scProfile's inherited constraints, stacked on W032's head; the eight plugins' path), then after the W013 + W032 batch the eight plugins through the maker, abundance first (GAP-044 and kin; about +0.11); (3) GAP-119 first in QC's next wave after W020, then W031 (scale) and D-008's floors; (4) false documentation per repository (about +0.044); (5) C46 stages 3-4 after W033 (about +0.04); then W022 (INT, stacked on W025's head, with GAP-128).
-- **Verifier now:** W029. **Next, by what the merge unlocks:** the W013 + W032 batch (both gates AS PREDICTED; its merge opens the eight plugins, +0.11), W020 (gate met), the W012 + W025 batch (after PBS 784233; opens W034's gate), the W028 verifier, W017's last re-check.
-- **The budget (D-005, provisional):** 5.87 M output and 1.21 B context by 04:57Z (73 % and 48 % of the daily caps). At 6.4 M output (80 %) no new builder starts until 00:00Z; running agents finish.
+- **Builder now:** W033 (C46 stage 2 through the harness; A1.1 +1/8).
+- **Next builders, one at a time, by score:** W034 (int@scintegrate, the adapters item), W023 (scProfile's inherited
+  constraints, stacked on W032's head), then the eight plugins through the maker (stacked), GAP-119 (scQC), W031 (scale).
+- **Waiting for validation (built, unmerged):** W029 (both gates AS PREDICTED), W013 + W032 (AS PREDICTED), W020 (gate met),
+  W012 + W025 (job 30b, PBS 784233, running), W028 and W017 (platform). **Paused:** W030 (Service).
 
 ## Machinery (session-only; re-create on resume, see README)
 
 | job | id | cron | created | expires |
 |---|---|---|---|---|
-| LOOP TICK | `ebc3fb6b` | `7 */3 * * *` (the 2026-11-10 prompt: mirror files first, the pre-decider sweep, 2 builders on opus/max, 1 verifier per batch) | 2026-11-10 | 2026-11-17 |
-| PERIODIC CHECK | `b76f3618` | `23 */6 * * *` (adds the budget meter) | 2026-11-10 | 2026-11-17 |
-| BLOCKER SWEEP | `8fbcd2dc` | `41 */3 * * *` | 2026-11-10 | 2026-11-17 |
+| LOOP TICK | paused (TOKEN-LIMITED; was `ebc3fb6b`) | `7 */3 * * *` (the 2026-11-10 prompt: mirror files first, the pre-decider sweep, 2 builders on opus/max, 1 verifier per batch) | 2026-11-10 | 2026-11-17 |
+| PERIODIC CHECK | `f256d66a` (the short token-limited prompt) | `23 */6 * * *` (adds the budget meter) | 2026-11-10 | 2026-11-17 |
+| BLOCKER SWEEP | paused (TOKEN-LIMITED; was `8fbcd2dc`) | `41 */3 * * *` | 2026-11-10 | 2026-11-17 |
 | the PBS mirror | background task `b8ggoear2` (reports SEALED, FAILED or GONE since 03:48Z, BLK-012) | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
-| the verdict Monitor | `bcj52q7ae`, armed while watch.tsv lists a job (784233 now) | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min | 2026-11-10 | re-arm |
+| the verdict Monitor | off (TOKEN-LIMITED; the mirror's files are read at each wake-up) | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min | 2026-11-10 | re-arm |
 | bootstrap | `bash setup/autodev/bootstrap.sh check` / `print` | what runs, what is missing, the start lines | 2026-11-10 | - |
 
 ## Decisions needed from the PI
 
-1. **The daily budget (D-005, `budget or token mode`).** The provisional cap is 8 M output tokens a day. Today's burn reached 5.87 M by 04:57Z (2 builders, 1 verifier, an audit), so new builders stop near 05:30Z and wait until 00:00Z, about 18 h. VCC's UNLIMITED days ran 12-17 M a day. **Recommendation:** 20 M output a day (100 M a week), keeping 2 builders and 1 verifier, so the loop runs through the day; or say "no token limit" for UNLIMITED. Until you answer, the 8 M cap holds.
+None. D-005 (the budget) was answered by the PI's token-limited mode (D-017).
 
 ## Decided (2026-11-10, by the pre-decider; the PI: "review rules and goals and decide")
 

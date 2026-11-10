@@ -169,3 +169,21 @@ All tier IV (C) unless a line says otherwise.
   a failed removal audit in scQC stops nothing) goes first in its lane.
 - **Rule 6 relaxed (D-016):** a lane may start its next wave once its previous wave's code is done (gating or verifying);
   the cluster's one checkout per tool is still taken by one gating job at a time, in submission order.
+
+## Added 2026-11-10 by the PI: "turn on token limit mode. focus on key processes", then "focus on development first. validation later"
+
+**TOKEN-LIMITED mode** (as VCC's; only the PI's words switch it: "no token limit" or "full speed" to UNLIMITED; the PI's
+word resumes validation):
+- **One builder at a time, on the key path,** in score order (STATE's queue): W033 (running), then W034, W023, the eight
+  plugins. No other builder, except a short repair the key path needs.
+- **Validation later:** no verifier and no audit run until the PI resumes validation. Built waves wait, unmerged (a merge
+  still needs a verifier's PASS, tier II); the next waves stack on their heads (D-016). PBS gate jobs are still submitted
+  and graded when they land: they cost the cluster, not tokens, and they are each wave's own test (rule 1).
+- **Paused:** the LOOP TICK and the BLOCKER SWEEP (their prompts stay in README); the verdict Monitor (the mirror runs on
+  and its files are read at every wake-up). **On:** one PERIODIC CHECK every 6 hours, with a short prompt.
+- **Short replies;** no registration or housekeeping beyond what the key path needs.
+- The 8 M output a day cap stays as the ceiling (D-005 answered by the mode, D-017).
+
+**Housekeeping corrected (2026-11-10):** before deleting a merged wave's scratch, grep the open waves' records
+(waves/W0xx.md of every wave not merged) and the running agents' briefs for the path; a path any of them names stays.
+The 05:02Z pass deleted verify_W010c while W029's verifier was reading W010's probes there.
