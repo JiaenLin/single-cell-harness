@@ -112,9 +112,9 @@ All tier IV (C) unless a line says otherwise.
 2. **One number:** each layer-3 test has a measured score (GOALS.md, "Layer 3, scored"); the program's progress is the
    mean, read at every audit; HAPPY = mean >= 0.9 and no test < 0.5. A wave must name the score it moves and by how much
    it predicts to move it; a wave that moves none is trivial (rule 5) and is not built. **The PI decided this (D-006).**
-3. **Watching by machinery:** `tools/pbs_mirror.sh` polls the cluster (one ssh every 5 min, login-node reads only) over a
+3. **Watching by machinery:** `setup/autodev/pbs_mirror.sh` polls the cluster (one ssh every 5 min, login-node reads only) over a
    watch list of submitted jobs and writes one verdict file per sealed run and one held file per held job;
-   `tools/monitor_verdicts.sh` turns them into Monitor events. The coordinator reads verdict lines, not run directories;
+   `setup/autodev/monitor_verdicts.sh` turns them into Monitor events. The coordinator reads verdict lines, not run directories;
    the LOOP TICK (3-hourly) is the fallback.
 4. **A cheaper gate:** a fix-up after a gating run does not resubmit when the job's runtime-file manifest (the sha256 of
    every file the job executes, as job 26 declares it) is unchanged by the fix-up; the comparison of manifests is
@@ -122,7 +122,7 @@ All tier IV (C) unless a line says otherwise.
    (held nodes, missing directories) are retried unchanged with a dated note, as a script's job when one exists.
 5. **The budget (the PI owns the number, D-005; provisional (C) until the PI states one):** this loop spends at most
    8 M output tokens and 2.5 B context-read tokens a day, 40 M output a week, and 1.5 M output per wave including its
-   verification; past a wave's cap the residue is a gap. `tools/usage.py` measures it at every PERIODIC CHECK and the
+   verification; past a wave's cap the residue is a gap. `setup/autodev/usage.py` measures it at every PERIODIC CHECK and the
    number goes into STATE.md. **Token mode = LIMITED** since the throttle of 2026-11-09; only the PI's words switch it
    ("no token limit" / "full speed" to UNLIMITED; "save tokens" / "token limited" back), as VCC's TOKEN_MODE. Past 80 %
    of a cap, no new builder starts.
@@ -142,6 +142,20 @@ All tier IV (C) unless a line says otherwise.
   An agent that inherited another model is stopped and relaunched (the harness batch's verifier, 2026-11-10T01:5xZ).
 - **Tier IV, one coordinator and a hand-off:** one session coordinates at a time. A hand-off to a new session: the old
   session's agents hand back first (their transcripts belong to it), its records are committed and pushed, its crons,
-  mirror and Monitor die with it; the new session runs `bash autodev/tools/bootstrap.sh check`, then `print`, and starts
+  mirror and Monitor die with it; the new session runs `bash setup/autodev/bootstrap.sh check`, then `print`, and starts
   what is missing. Machinery state lives at `<HARNESS>/autodev/.machinery/` (git-ignored), not in a session's scratchpad,
   so the mirror's verdict files survive a hand-off.
+
+## Added 2026-11-10 by the coordinator (measured; tier IV, adjustable)
+
+- **An agent resumes on the session's model.** W020's and W029's builders, resumed by SendMessage at 01:34Z while the
+  coordinating session ran Fable, ran on claude-fable-5-1 at xhigh until 02:2xZ (their transcripts' own fields; 5 and 2
+  commits). So: resume an agent only while the session runs Opus 5.5 at max; otherwise launch a FRESH agent with
+  `model: "opus"`, `effort: "max"`, briefed with its branch, its clone and the commits to review. Every LOOP TICK runs
+  `bash setup/autodev/agent_models.sh <tasks folder>`; an agent that is not opus/max is stopped and relaunched (BLK-011).
+- **The coordinator's scripts are code, so they live where the leak guard reads them:** `setup/autodev/` (moved from
+  `autodev/tools/`, which LEAK_SCOPE excuses as a record path and S1 therefore never read). The mirror reads the queue
+  for the remote account's own user and names none.
+- **A clone's commit gate reads the cohorts' generated term lists** through `setup/githooks/conform.local` (git-ignored;
+  the lists sit in `autodev/.machinery/terms/`, also ignored). `shapes=` stays unset until GAP-C66's site-string lines
+  are gone, because S1 with the shapes is red today.

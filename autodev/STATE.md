@@ -68,9 +68,9 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 | LOOP TICK | `9195c252` | `7 */3 * * *` (the 2026-11-10 prompt: mirror files first, the pre-decider sweep, 2 builders on opus/max, 1 verifier per batch) | 2026-11-10 | 2026-11-17 |
 | PERIODIC CHECK | `9b5a55ca` | `23 */6 * * *` (adds the budget meter) | 2026-11-10 | 2026-11-17 |
 | BLOCKER SWEEP | `8fbcd2dc` | `41 */3 * * *` | 2026-11-10 | 2026-11-17 |
-| the PBS mirror | background task `bmm0s2yg5` | `bash autodev/tools/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
-| the verdict Monitor | `b17pn93t2` | `bash autodev/tools/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min, re-armed at expiry | 2026-11-10 | re-arm |
-| bootstrap | `bash autodev/tools/bootstrap.sh check` / `print` | what runs, what is missing, the start lines | 2026-11-10 | - |
+| the PBS mirror | background task `bmm0s2yg5` | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
+| the verdict Monitor | `b17pn93t2` | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min, re-armed at expiry | 2026-11-10 | re-arm |
+| bootstrap | `bash setup/autodev/bootstrap.sh check` / `print` | what runs, what is missing, the start lines | 2026-11-10 | - |
 
 ## Decisions needed from the PI
 
@@ -82,7 +82,7 @@ None. The four that were listed here (2-5) were decided by the pre-decider on 20
   ([audits/DIAGNOSIS_20261110_vs_vcc.md](audits/DIAGNOSIS_20261110_vs_vcc.md)), and "for the predecider, improve it".
   Done the same day, in RULES.md's 2026-11-10 block: agent use as VCC's row (2 builders; one verifier per merge batch per
   repository; 2 rounds then a gap); the measured score per test and HAPPY = mean >= 0.9 with no test < 0.5 (D-006);
-  the PBS mirror and the verdict Monitor (`tools/`); the manifest rule for fix-ups; the budget (provisional: 8 M output a
+  the PBS mirror and the verdict Monitor (`setup/autodev/`); the manifest rule for fix-ups; the budget (provisional: 8 M output a
   day, 40 M a week, 1.5 M a wave; token mode LIMITED; D-005 holds the PI's number); lanes in turn; the pre-decider v2
   ([PRE_DECIDER.md](PRE_DECIDER.md): the form, `ledger/decisions.tsv`, the catalogue, the test).
 - **2, commit `f488621` authored `t <t@t>`: left as it is, and attributed by `.mailmap`.** Rewriting it needs a force-push

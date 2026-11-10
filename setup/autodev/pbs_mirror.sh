@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The autodev PBS mirror (RULES tier IV, "watching by machinery", 2026-11-10).
 #
-#   bash autodev/tools/pbs_mirror.sh OUTDIR [POLL_SECONDS=300]
+#   bash setup/autodev/pbs_mirror.sh OUTDIR [POLL_SECONDS=300]
 #
 # Reads OUTDIR/watch.tsv (lines: jobid<TAB>rundir<TAB>wave; '#' comments). Every poll makes ONE ssh
 # call to the cluster (login-node reads only: qstat, cat, grep, ls) and writes:
@@ -11,7 +11,8 @@
 #   OUTDIR/<id>.held       written ONCE when qstat shows the job in state H
 #   OUTDIR/mirror.log      one line per poll
 # The coordinator reads the verdict files (monitor_verdicts.sh turns them into Monitor events). The
-# mirror never submits, deletes or modifies anything. The host alias is $PBS_HOST (default hpc).
+# mirror never submits, deletes or modifies anything. The host alias is $PBS_HOST (default hpc); the
+# queue is read for the remote account's own user, so the script names no user.
 set -u
 OUT=${1:?OUTDIR}; POLL=${2:-300}; HOST=${PBS_HOST:-hpc}
 mkdir -p "$OUT"; touch "$OUT/watch.tsv"
@@ -19,7 +20,7 @@ while true; do
   stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   watch=$(grep -v '^#' "$OUT/watch.tsv" | awk -F'\t' 'NF>=2{print $1" "$2}')
   ssh -o BatchMode=yes -o ConnectTimeout=30 "$HOST" 'bash -s' <<EOF > "$OUT/poll.tmp" 2>/dev/null
-echo "== QSTAT"; qstat -u jiaen.lin 2>/dev/null | tail -n +6
+echo "== QSTAT"; qstat -u \$(whoami) 2>/dev/null | tail -n +6
 while read -r job dir; do
   [ -z "\$job" ] && continue
   echo "== JOB \$job"
