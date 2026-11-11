@@ -21,6 +21,9 @@ assays: [scrna, snrna]
 # What it reads and hands on (harness W041): the joint object in, scIntegrate's object out.
 reads: joint
 hands_on: {joint: null}
+# The design sheet's column naming each library, where scIntegrate takes it; the driver writes
+# the request's keys.sample here (harness W042, GAP-C92).
+library_key: integrate.design_sample_col
 
 wraps:
   tool: scIntegrate

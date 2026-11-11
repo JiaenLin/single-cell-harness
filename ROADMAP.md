@@ -245,8 +245,13 @@ contract**, do not write three more adapters against it.
 > declares as its tool's user's (`decisions:`: scQC's `mode` and `decisions`, scProfile's `control`)
 > stops the run before that stage, named, until `--answer NAME=VALUE --by WHO` records it; a sealed
 > stage is never re-run; a failed one is kept and named with the resume command. `anno@scanno` gained
-> scAnno's `embed` (off unless declared), the join a stage-3 object comes from. Not built: the cluster
-> path (run 2: a job generated from the request) and any cohort's chained run.
+> scAnno's `embed` (off unless declared), the join a stage-3 object comes from. Run 2 (W042): the cluster
+> path - a site file's `executor: pbs` and `pbs.queues` (each queue's ceilings), the request's
+> `resources:` (the cohort's sizes; a queue there is refused), a tool's `resources:` as the default
+> beneath them; each run's `cost` from the scheduler's `resources_used` and the report's `cost` (cells,
+> wall time, peak memory, every figure with its events); one library column (`library_key:` in each
+> adapter, written from `keys.sample`); `sch run --request --job` generates the job. Not run: any
+> cohort's chained run (the first cohort's job is generated and waits for the coordinator).
 >
 > **BUILT, NOT YET GRADED ON THE COHORT, 2026-11-11 (W036, branch `autodev/W036-prof-adapter`): the
 > fourth adapter, `prof@scprofile`.** `plugins/single-cell/prof@scprofile` runs scProfile's real CLI

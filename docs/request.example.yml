@@ -31,4 +31,8 @@ stages:                              # in order; params are each tool's own flag
   - plugin: prof@scprofile
     params:
       scprofile: /path/to/scProfile
-      run: {kernel: "de,abundance", label_key: cell_type, sample_key: sample, batch_key: sample, embedding: X_harmony}
+      # the library column is not repeated here: the driver writes keys.sample into each tool's own flag
+      run: {kernel: "de,abundance", label_key: cell_type, batch_key: sample, embedding: X_harmony}
+resources:                             # the cohort's sizes; on pbs the site file's pbs.queues picks each queue
+  drive: {ncpus: 2, mem: 16gb, walltime: "12:00:00"}
+  qc: {ncpus: 8, mem: 64gb, walltime: "12:00:00"}

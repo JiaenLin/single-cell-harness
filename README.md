@@ -30,8 +30,12 @@ everything downstream knows when one does.
 > the stage before it handed on from that stage's record, stopping before a stage whose tool declares
 > a choice as the user's until it is answered by name, and sealing each stage and the run; `sch plan
 > --request FILE` shows the plan and runs nothing. It is graded on the synthetic fixture with the
-> stand-ins; the cluster path (a job generated from the request) is run 2. Phases 5–8 and 11 are not
-> built.
+> stand-ins. Run 2 (W042) is the cluster path: under a site file declaring `executor: pbs`, each stage
+> is a scheduler job sized by the request's `resources:` and queued by the site's `pbs.queues` (the
+> first queue whose ceilings hold it); every stage's report gives its cells, wall time and peak memory
+> from the scheduler's own accounting (`cost`); the request's `keys.sample` is written into every tool
+> that takes the library column; and `sch run --request FILE --job FILE` writes the job that runs the
+> request, never hand-written. Phases 5–8 and 11 are not built.
 >
 > `sch conform` checks a child tool against
 > [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it; all four pass with

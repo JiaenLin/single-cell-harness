@@ -289,8 +289,21 @@ class Stack:
         env = {"SCH_CONTRACT": CONTRACT,
                "SCH_PROTOCOL": str(Path(__file__).resolve().parent / "plugin" / "protocol.py")}
         facts = self.executor.run(argv, cwd, log, env=env)
+        self._record_cost(f"the companion of {Path(str(cwd)).name}", Path(str(log)).parent, facts)
         self._observations_unchanged(f"the companion of {Path(str(cwd)).name}", facts)
         return facts
+
+    def _record_cost(self, who: str, run_dir, facts: dict):
+        """WHAT EACH RUN COST, as an event (autodev W042, GAP-C91): the executor's own record of it -
+        the scheduler's accounting under pbs, the clock under local - so a report can say what a
+        stage cost and name the event each figure came from (P2), and what nobody measured."""
+        cost = dict(facts.get("cost") or {"from": None, "unknown": "the executor recorded no cost"})
+        try:
+            where = str(Path(run_dir).resolve().relative_to(self.dir))
+        except ValueError:
+            where = str(run_dir)
+        self.prov.append("run/cost", plugin=who, run=where, executor=facts.get("executor", "local"),
+                         exit=facts.get("exit"), **cost)
 
     def _observations_unchanged(self, who: str, facts: dict):
         """A1 after EVERY plugin run, whatever its outcome (harness W010b): each pinned file's
@@ -345,6 +358,7 @@ class Stack:
                                   timeout=float(timeout) if timeout else None, scrub=scrub,
                                   name=name or manifest.name, expect=[out_dir / "out.json"])
         (run_dir / "facts.json").write_text(json.dumps(facts, indent=1))
+        self._record_cost(name or manifest.name, run_dir, facts)
         self._observations_unchanged(name or manifest.name, facts)
         out_path = out_dir / "out.json"
         # A DEATH IS A DEATH, WHATEVER IS ON DISK (verifier W010 F1). An out.json written before the
@@ -682,6 +696,9 @@ class Stack:
 
     # ------------------------------------------------------------- report, fork
     def report(self, include_scratch: bool = False) -> dict:
+        # THE STAGE'S CELLS, counted on its observations as the report is made (A3.4; autodev W042)
+        ids = self.dataset.ids
+        self.prov.append("cost/cells", cells=len(ids() if callable(ids) else ids))
         return self.reports.render(self.dir / "report" / "report.json", self.declaration(),
                                    include_scratch=include_scratch)
 

@@ -252,7 +252,19 @@ def cmd_fork(a):
 def cmd_run(a):
     if a.request:
         # ONE REQUEST, EVERY STAGE (harness W041): each stage a stack, run as below, then sealed
-        from .drive import RequestError, load, plan_lines, run
+        from .drive import RequestError, load, plan_lines, run, write_job
+        if a.job:
+            try:
+                req = load(a.request)
+                rec = write_job(req, a.job, answers=a.answer, by=a.by, predict=a.predict, check=a.check,
+                                purpose=a.purpose, where=a.where)
+            except RequestError as e:
+                return _drive_refused(a, e)
+            _emit(a, rec, "\n".join(plan_lines(req)) + f"\n  JOB {rec['job']} ({rec['lines']} lines, md5 "
+                  f"{rec['md5']})\n  nothing was run: the coordinator submits it by its recipe")
+            return 0
+        if a.predict or a.check or a.purpose or a.where:
+            raise SystemExit("--predict, --check, --purpose and --where belong to sch run --request --job")
         if not a.out:
             raise SystemExit("sch run --request needs --out: the run's own directory")
         try:
@@ -1532,6 +1544,15 @@ def build_parser():
     p.add_argument("--answer", action="append", metavar="NAME=VALUE",
                    help="with --request: answer a decision a tool declares as the user's, by its name")
     p.add_argument("--by", help="with --answer: who made the decision; it is recorded with it")
+    p.add_argument("--job", type=Path, metavar="FILE", help="with --request: write, instead of running, the "
+                   "job that runs this request on the cluster (its site from $SCH_SITE; harness W042)")
+    p.add_argument("--predict", type=Path, metavar="FILE", help="with --job: the prediction, laid into the "
+                   "job's header verbatim, written before any run")
+    p.add_argument("--check", type=Path, metavar="FILE", help="with --job: a script the job runs after the "
+                   "chained run; each VERDICT line it prints is counted by the job's GATE")
+    p.add_argument("--purpose", help="with --job: the run key's last field")
+    p.add_argument("--where", help="with --job: the job's directory as the cluster names it (the submit "
+                   "recipe cds there); default the job's own directory")
     p.set_defaults(fn=cmd_run)
     p = sub.add_parser("events"); stackable(p); p.add_argument("--kind"); p.set_defaults(fn=cmd_events)
     p = sub.add_parser("plugin"); ps = p.add_subparsers(dest="sub", required=True)

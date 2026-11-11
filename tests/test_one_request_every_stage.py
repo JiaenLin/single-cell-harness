@@ -21,6 +21,7 @@ import io
 import json
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -67,9 +68,11 @@ def cohort(dest: Path, shape: str, libraries: int = 4, droplets: int = 40) -> di
     return {"dir": dest, "roles": r, "design": dest / "design.csv"}
 
 
-def stages(c: dict) -> list:
-    """Each stage's tool flags, verbatim, by the tool's own names."""
-    return [
+def stages(c: dict, lib: bool = True) -> list:
+    """Each stage's tool flags, verbatim, by the tool's own names. `lib`: the library column written
+    into each tool's own flag by hand, as the driver writes keys.sample there (W042); without it,
+    the request leaves them to the driver."""
+    out = [
         {"plugin": "qc@scqc", "params": {"scqc": str(FIXTURES / "fake_scqc.py"),
                                          "registry": str(c["dir"] / "registry.tsv"), "executor": "local",
                                          "allow_local": True, "dbr": 0.06, "seed": 0}},
@@ -77,7 +80,8 @@ def stages(c: dict) -> list:
             "scanno": str(FIXTURES / "fake_scanno.py"), "cluster": {"resolutions": "0.5,1.0", "seed": 0},
             "annotate": {"cluster_key": ["leiden_0p5", "leiden_1p0"], "tree": "/refs/tree.json",
                          "species": "species_x", "tissue": "tissue_x"},
-            "embed": {"label_obs": ["scanno_cell_type=cell_type"], "seed": 0}}},
+            "embed": {"label_obs": ["scanno_cell_type=cell_type"], "seed": 0,
+                      "sample_key": c["roles"]["sample"]}}},
         {"plugin": "int@scintegrate", "params": {
             "scintegrate": str(FIXTURES / "fake_scintegrate"),
             "integrate": {"batch_key": "sample", "label_key": "cell_type", "design": str(c["design"]),
@@ -85,10 +89,15 @@ def stages(c: dict) -> list:
                           "seed": 0, "n_cores": 1}}},
         {"plugin": "prof@scprofile", "params": {
             "scprofile": str(FIXTURES / "fake_scprofile"),
-            "run": {"kernel": "de,abundance", "label_key": "cell_type", "sample_key": "sample",
+            "run": {"kernel": "de,abundance", "label_key": "cell_type", "sample_key": c["roles"]["sample"],
                     "batch_key": "sample", "embedding": "X_harmony", "no_cache": True,
                     "prefix": "/declared/prefix", "timeout": 600}}},
     ]
+    if not lib:
+        del out[1]["params"]["embed"]["sample_key"]
+        del out[2]["params"]["integrate"]["design_sample_col"]
+        del out[3]["params"]["run"]["sample_key"]
+    return out
 
 
 def request(c: dict, name="request.yml", **over) -> Path:
@@ -316,16 +325,11 @@ class OneRequestEveryStage(_Base):
         rc, rec = self.drive(req, out, *ANSWERS, "--answer", CONTROL.format(c="arm"), "--by", "a tester")
         sheet = (out / "02_anno" / "observations.tsv").read_text()
         self.assertTrue(sheet.startswith("library_id\th5ad\n"), sheet)
-        reps, died = self.check_equal_by_hand(c, out, 3)
-        if rc == 0:
-            self.assertIsNone(died)
-        else:
-            # scQC writes `sample` into its objects whatever the cohort calls it, and scProfile joins
-            # the design on its --sample-key: stage 4 fails, through the driver and by hand alike
-            self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "04_prof"), rec)
-            self.assertIn("--out", rec["resume"])
-            self.assertIsNotNone(died)
-            self.assertEqual(died["status"], rec["reason"].split(" ")[1].rstrip(":"))
+        # W042 (GAP-C92): the library column is one fact - scAnno's embed writes keys.sample into the
+        # joint object, and scIntegrate and scProfile take it by that name - so shape b seals
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        reps, died = self.check_equal_by_hand(c, out, 4)
+        self.assertIsNone(died)
 
 
 class AFailedStageSaysWhereAndResumes(_Base):
@@ -360,6 +364,189 @@ class AFailedStageSaysWhereAndResumes(_Base):
         rc, rec = self.drive(request(c, name="other.yml", context={"assay": "snrna", "species": "s2"}), out)
         self.assertIn("another request", rec["reason"])
 
+
+
+ANSWERED = ANSWERS + ["--answer", CONTROL.format(c="{c}"), "--by", "a tester"]
+
+
+def answered(c):
+    return [a.replace("{c}", c["roles"]["condition"]) for a in ANSWERED]
+
+
+class OneLibraryColumn(_Base):
+    """W042, GAP-C92: the request's keys.sample is written into every tool that takes the library."""
+
+    def test_the_driver_writes_keys_sample_into_every_stage_and_shape_b_seals(self):
+        c = cohort(self.tmp / "c", "b")
+        req, out = request(c, stages=stages(c, lib=False)), self.tmp / "run"
+        rc, rec = self.drive(req, out, *answered(c))
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        calls = self.calls()
+        embed = [a for k, a in calls if k == "FAKE_SCANNO_LOG" and a[0] == "embed"][0]
+        self.assertEqual(embed[embed.index("--sample-key") + 1], "library_id")
+        prof = [a for k, a in calls if k == "FAKE_SCPROFILE_LOG" and a[0] == "run"][0]
+        self.assertEqual(prof[prof.index("--sample-key") + 1], "library_id")
+        integ = [a for k, a in calls if k == "FAKE_SCINTEGRATE_LOG" and "library_id" in a]
+        self.assertEqual(len(integ), 1, [a for k, a in calls if k == "FAKE_SCINTEGRATE_LOG"])
+        rc, text = cli("plan", "--request", str(req))
+        self.assertIn("the library column: keys.sample=library_id -> run.sample_key", text)
+
+    def test_a_stage_that_names_another_library_column_is_refused_before_any_tool(self):
+        c = cohort(self.tmp / "c", "b")
+        st = stages(c, lib=False)
+        st[3]["params"]["run"]["sample_key"] = "sample"           # scQC's word, not the cohort's
+        rc, rec = self.drive(request(c, stages=st), self.tmp / "run", *answered(c))
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn("keys.sample = 'library_id'", rec["reason"])
+        self.assertEqual(self.calls(), [], "no tool started")
+
+
+class TheClusterPath(_Base):
+    """W042, ROUTE R03 run 2: every stage a job on the scheduler (the stand-in), sized by the request,
+    queued by the site file; and the job that runs a request, generated."""
+    QUEUES = [{"queue": "q_small", "walltime": "01:00:00", "ncpus": 2, "mem": "4gb"},
+              {"queue": "q_big", "walltime": "48:00:00", "ncpus": 24, "mem": "90gb"}]
+    USED = {"walltime": "00:00:07", "mem": "4096kb", "ncpus": "1"}
+
+    def setUp(self):
+        super().setUp()
+        self._pbs_env = {k: os.environ.get(k) for k in ("FAKE_PBS_STATE", "FAKE_PBS_USED", "SCH_SITE")}
+        bin_ = self.tmp / "bin"
+        bin_.mkdir()
+        commands = {}
+        for c in ("qsub", "qstat", "qdel"):
+            w = bin_ / c
+            w.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{FIXTURES / "fake_pbs.py"}" {c} "$@"\n')
+            w.chmod(0o755)
+            commands[c] = str(w)
+        self.site = self.tmp / "site"
+        self.site.mkdir()
+        yamlish.dump({"executor": "pbs", "pbs": {
+            "queue": "q_small", "queues": self.QUEUES, "select": "1:ncpus=1:mem=1gb", "walltime": "00:10:00",
+            "commands": commands, "poll_s": 0.01, "stop_grace_s": 0.2, "seal_visibility_s": 0.2}},
+            self.site / "stack.yml")
+        os.environ["FAKE_PBS_STATE"] = str(self.tmp / "pbs_state.json")
+        os.environ["FAKE_PBS_USED"] = json.dumps(self.USED)
+        os.environ["SCH_SITE"] = str(self.site)
+
+    def tearDown(self):
+        for k, v in self._pbs_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        super().tearDown()
+
+    SIZES = {"drive": {"ncpus": 1, "mem": "2gb", "walltime": "04:00:00"},
+             "qc": {"ncpus": 4, "mem": "8gb", "walltime": "02:00:00"},
+             "prof": {"ncpus": 2, "mem": "2gb", "walltime": "00:30:00"}}
+
+    def test_every_stage_is_a_job_sized_by_the_request_queued_by_the_site_and_reports_its_cost(self):
+        c = cohort(self.tmp / "c", "a")
+        req, out = request(c, resources=self.SIZES), self.tmp / "run"
+        rc, rec = self.drive(req, out, *answered(c))
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        want = {"01_qc": ("q_big", "1:ncpus=4:mem=8gb", "02:00:00"),
+                "02_anno": ("q_small", "1:ncpus=1:mem=1gb", "00:10:00"),
+                "03_int": ("q_small", "1:ncpus=1:mem=1gb", "00:10:00"),
+                "04_prof": ("q_small", "1:ncpus=2:mem=2gb", "00:30:00")}
+        plugin = {"01_qc": "qc_scqc", "02_anno": "anno_scanno", "03_int": "int_scintegrate",
+                  "04_prof": "prof_scprofile"}
+        for sd, (queue, select, wall) in want.items():
+            with self.subTest(stage=sd):
+                script = (out / sd / "plugins" / plugin[sd] / "pbs" / "job.pbs").read_text()
+                self.assertIn(f"#PBS -q {queue}\n", script)
+                self.assertIn(f"#PBS -l select={select}\n", script)
+                self.assertIn(f"#PBS -l walltime={wall}\n", script)
+                cost = json.loads((out / sd / "report" / "report.json").read_text())["cost"]
+                self.assertEqual(cost["measured_by"], ["scheduler"])
+                self.assertEqual(cost["peak_mem_kb"]["value"], 4096)
+                self.assertEqual(cost["wall_s"]["value"], 7 * len(cost["runs"]))
+                self.assertGreater(cost["cells"]["value"], 0)
+        rc, text = cli("plan", "--request", str(req))
+        self.assertIn("size: mem=8gb, ncpus=4, walltime=02:00:00", text)
+
+    def test_a_queue_in_the_request_or_a_size_no_queue_holds_is_refused(self):
+        c = cohort(self.tmp / "c", "a")
+        rc, rec = self.drive(request(c, name="q.yml", resources={"qc": {"queue": "q_big"}}), self.tmp / "r1")
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn("a queue is the site's", rec["reason"])
+        big = {"qc": {"ncpus": 64, "mem": "500gb", "walltime": "100:00:00"}}
+        rc, rec = self.drive(request(c, name="big.yml", resources=big), self.tmp / "r2", *answered(c))
+        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "01_qc"), rec)
+        self.assertIn("no declared queue holds", rec["reason"])
+        self.assertEqual(self.calls(), [], "no tool started")
+
+    def job(self, c, req, check_ok=True):
+        """The job generated for `req`, in a stage's jobs/ directory, with its site's job.yml."""
+        import subprocess
+        harness = self.tmp / "harness"
+        if not harness.exists():
+            harness.mkdir()
+            (harness / "sch").symlink_to(Path(__file__).resolve().parent.parent / "sch")
+            head = subprocess.run(["git", "-C", str(Path(__file__).resolve().parent.parent), "rev-parse",
+                                   "HEAD"], capture_output=True, text=True).stdout.strip()
+            (harness / "HEAD.txt").write_text(head + "\n")
+        # this interpreter may keep its packages in the user's site, which a job hides by default
+        yamlish.dump({"harness": str(harness), "python": sys.executable, "runs": "../../runs/sch",
+                      "setup": ["unset PYTHONNOUSERSITE"]}, self.site / "job.yml")
+        jobs = c["dir"] / "00_driver" / "jobs"
+        pred, chk = c["dir"] / "00_driver" / "PREDICTION.txt", c["dir"] / "00_driver" / "checks.sh"
+        jobs.mkdir(parents=True, exist_ok=True)
+        pred.write_text("(1) the chained run seals, four stages from one request.\n")
+        want = 4 if check_ok else 5              # a check that cannot hold, to see the GATE miss
+        chk.write_text("#!/bin/bash\nn=$(ls \"$1\"/0*/report/report.json | wc -l | tr -d ' ')\n"
+                       f"if [ \"$n\" -eq {want} ]; then echo \"VERDICT (four reports): AS PREDICTED - $n\"\n"
+                       "else echo \"VERDICT (four reports): MISSED - $n\"; fi\n")
+        f = jobs / ("drive.pbs" if check_ok else "drive_missed.pbs")
+        rc, text = cli("--json", "run", "--request", str(req), "--job", str(f), "--predict", str(pred),
+                       "--check", str(chk), "--purpose", "w042", *answered(c))
+        self.assertEqual(rc, 0, text)
+        return f, json.loads(text)
+
+    def run_job(self, f, name):
+        import subprocess
+        rundir = self.tmp / name
+        (rundir / "logs").mkdir(parents=True)
+        p = subprocess.run(["bash", str(f)], cwd=str(self.tmp), capture_output=True, text=True,
+                           env=dict(os.environ, RUNDIR=str(rundir), PBS_O_WORKDIR=str(f.parent),
+                                    HARNESSHEAD="test"))
+        return p, rundir
+
+    def test_the_job_is_generated_from_the_request_and_its_body_runs_it_to_the_gate(self):
+        import subprocess
+        c = cohort(self.tmp / "c", "a")
+        req = request(c, resources=self.SIZES)
+        f, rec = self.job(c, req)
+        text = f.read_text()
+        self.assertEqual(subprocess.run(["bash", "-n", str(f)]).returncode, 0)
+        rc, jc = cli("dev", "jobcheck", str(f))
+        self.assertEqual(rc, 0, jc)
+        self.assertIn("#PBS -q q_big\n", text, "the driver's 4 h is over q_small's 1 h")
+        self.assertIn("#PBS -l select=1:ncpus=1:mem=2gb\n", text)
+        head = text.split("# SUBMIT-BEGIN")[0]
+        self.assertIn("(1) the chained run seals", head, "the prediction is in the header, before the run")
+        recipe = text.split("# SUBMIT-BEGIN\n")[1].split("# SUBMIT-END")[0]
+        self.assertTrue(all(ln.startswith("#   ") for ln in recipe.splitlines()), recipe)
+        self.assertIn("qsub -o \"$RUNDIR/logs/\"", recipe)
+        self.assertIn('mkdir "$RUNDIR" "$RUNDIR/logs"', recipe)
+        self.assertNotIn(str(self.tmp), text.split("# SUBMIT-END")[1].replace(str(self.site), "")
+                         .replace(sys.executable, "").replace(str(self.tmp / "harness"), ""),
+                         "the body names the cohort's files relative to the job, nowhere else")
+        p, rundir = self.run_job(f, "rundir")
+        self.assertEqual(p.returncode, 0, p.stdout[-3000:] + p.stderr[-2000:])
+        self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: AS PREDICTED")
+        seal = (rundir / "SEALED.txt").read_text()
+        self.assertIn("VERDICT (drive): SEALED - 4 stages from one request", seal)
+        self.assertIn("VERDICT (four reports): AS PREDICTED - 4", seal)
+        for sd in ("01_qc", "02_anno", "03_int", "04_prof"):
+            cost = json.loads((rundir / sd / "report" / "report.json").read_text())["cost"]
+            self.assertEqual(cost["measured_by"], ["scheduler"], sd)
+        f2, _ = self.job(c, req, check_ok=False)
+        p, rundir = self.run_job(f2, "rundir2")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: MISSED (1)")
+        self.assertTrue((rundir / "FAILED.txt").is_file())
 
 if __name__ == "__main__":
     unittest.main()

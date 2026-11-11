@@ -23,6 +23,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 import time
 from pathlib import Path
 
@@ -39,12 +40,23 @@ FIELDS = {
     "context": "what the dataset is, declared once: profile axes (assay, species, tissue, ...)",
     "upstream": "the steps the family does not perform, each by name: alignment and ambient",
     "stages": "in order, each {plugin, params}: params are the tool's own flags, verbatim",
+    "resources": "the cohort's sizes, for the driver and per stage: {drive|<stage>: {ncpus, mem, walltime}}; "
+                 "the queue is the site's, chosen from these by the site file's pbs.queues",
 }
 REQUIRED = ("request", "observations", "parts", "keys", "context", "upstream", "stages")
 WAITING = 3          # the exit status of a run stopped at a user's decision
 SHAPES = ("libraries", "joint")
 #: What the plan says of the tool a stage wraps.
 WRAPS = ("tool", "version")
+#: The driver's own job, as `resources:` names it beside the stages' short names.
+DRIVE = "drive"
+#: A size, in the words a request and a tool's `resources:` use (the pbs executor writes `select`).
+SIZE_WORDS = ("ncpus", "mem", "walltime", "select")
+#: What a site's job.yml declares for a generated job: where the harness is, the kernel's
+#: interpreter, where run directories go (relative to the job's own directory), and shell lines.
+JOB_SITE = ("harness", "python", "runs", "setup", "submit")
+#: What a site's job.yml must declare; the rest is optional.
+JOB_REQUIRED = ("harness", "python", "runs")
 
 
 class RequestError(ValueError):
@@ -154,6 +166,22 @@ def load(path) -> dict:
         if short in seen:
             raise RequestError(f"stages[{i}]: a second {short!r} stage; each stage runs once")
         seen.add(short)
+        # THE LIBRARY IS ONE FACT (autodev W042, GAP-C92): each tool takes the column naming each
+        # library where its adapter declares (`library_key:`), and the driver writes the request's
+        # keys.sample there, wherever that command is declared. A stage that names another column
+        # is refused: two names for one column is how the fixture's second shape died at stage 4.
+        lib = str(keys["sample"])
+        paths = m.data.get("library_key") or []
+        for path in [paths] if isinstance(paths, str) else list(paths):
+            head, _, rest = str(path).partition(".")
+            if rest and head not in params:
+                continue                         # that command is not declared: nothing to tell it
+            got = dict(params.get(head) or {}).get(rest) if rest else params.get(head)
+            if got is not None and str(got) != lib:
+                raise RequestError(f"stages[{i}] ({m.name}): {path} is {got!r}, but the request's library "
+                                   f"column is keys.sample = {lib!r}; the library is one fact and the driver "
+                                   f"writes it into every stage: drop {path} from the stage's params")
+            params = _set(params, str(path), lib)
         decisions = []
         for d in m.data.get("decisions") or []:
             head, _, rest = str(d["param"]).partition(".")
@@ -168,7 +196,29 @@ def load(path) -> dict:
                      "wraps": {k: (m.data.get("wraps") or {}).get(k) for k in WRAPS},
                      "assays": list(m.data.get("assays") or []), "reads": m.data.get("reads"),
                      "hands_on": _hands_on(m, params), "params": params, "decisions": decisions,
+                     "library_key": [paths] if isinstance(paths, str) else list(paths),
+                     "resources": dict(m.data.get("resources") or {}),
                      "cannot_show": list(m.data.get("cannot_show") or [])})
+
+    # ---- the sizes: the cohort's, per stage and for the driver; a tool's own default beneath them
+    res = doc.get("resources") or {}
+    if not isinstance(res, dict):
+        raise RequestError("resources: is not a mapping of {drive | <stage>: {ncpus, mem, walltime}}")
+    short = {p["stage"].split("_", 1)[1]: p for p in plan}
+    for who, size in res.items():
+        if who != DRIVE and who not in short:
+            raise RequestError(f"resources: {who!r} is neither {DRIVE!r} nor a stage of this request "
+                               f"({', '.join(short)})")
+        if not isinstance(size, dict):
+            raise RequestError(f"resources.{who}: is not a mapping of {', '.join(SIZE_WORDS)}")
+        if "queue" in size:
+            raise RequestError(f"resources.{who}: declares a queue; a queue is the site's, chosen from the "
+                               f"size by the site file's pbs.queues - declare ncpus, mem and walltime")
+        bad = sorted(set(size) - set(SIZE_WORDS))
+        if bad:
+            raise RequestError(f"resources.{who}: {', '.join(bad)} is not a size word ({', '.join(SIZE_WORDS)})")
+        if who in short:
+            short[who]["resources"] = {**short[who]["resources"], **{k: str(v) for k, v in size.items()}}
 
     # one spelling per assay: the word every stage's tool is declared to take
     words = [set(p["assays"]) for p in plan]
@@ -219,7 +269,8 @@ def load(path) -> dict:
     return {"path": str(src), "sha256": _sha(src), "observations": where("observations"),
             "design": where("design") if doc.get("design") else None, "parts": str(doc["parts"]),
             "keys": {str(k): str(v) for k, v in keys.items()},
-            "context": {str(k): str(v) for k, v in ctx.items()}, "upstream": up, "stages": plan}
+            "context": {str(k): str(v) for k, v in ctx.items()}, "upstream": up, "stages": plan,
+            "drive_resources": {str(k): str(v) for k, v in dict(res.get(DRIVE) or {}).items()}}
 
 
 def plan_lines(req: dict, answers: dict | None = None) -> list:
@@ -234,6 +285,12 @@ def plan_lines(req: dict, answers: dict | None = None) -> list:
                      f"reads {p['reads']}, hands on {', '.join(p['hands_on']) or 'nothing'}")
         lines.append(f"           given: {', '.join(sorted(p['params'])) or 'nothing'}; every other flag: "
                      f"{w.get('tool')}'s own default")
+        if p.get("library_key"):
+            lines.append(f"           the library column: keys.sample={req['keys']['sample']} -> "
+                         f"{', '.join(p['library_key'])}")
+        if p.get("resources"):
+            lines.append("           size: " + ", ".join(f"{k}={v}" for k, v in sorted(p["resources"].items()))
+                         + " (on pbs, the site file's queues choose the queue)")
         for d in p["decisions"]:
             got = (f"answered {json.dumps(answers[d['name']]['value'])} by {answers[d['name']]['by']}"
                    if d["name"] in answers else "UNANSWERED - the run stops before this stage")
@@ -254,6 +311,18 @@ def _set(params: dict, path: str, value) -> dict:
     else:
         out[head] = value
     return out
+
+
+def _home(v):
+    """A param's leading `~/` is the running user's home, as a shell would read it: a request names
+    a tool's checkout without naming an account, and is read where it runs."""
+    if isinstance(v, str) and v.startswith("~/"):
+        return os.path.expanduser(v)
+    if isinstance(v, list):
+        return [_home(x) for x in v]
+    if isinstance(v, dict):
+        return {k: _home(x) for k, x in v.items()}
+    return v
 
 
 def _manifest(stage_dir: Path, shape: str, scope: str, handed: dict) -> tuple:
@@ -354,7 +423,11 @@ def run(req: dict, out, answers_given: list | None = None, by: str | None = None
             return failed(f"sch init refused: {e}", "correct what the refusal names, then resume")
         st.close()
         decl = yamlish.load(sd / "stack.yml")
-        decl["plugins"] = {p["plugin"]: {"plugin": p["dir"], "params": params}}
+        decl["plugins"] = {p["plugin"]: {"plugin": p["dir"], "params": _home(params)}}
+        if p.get("resources"):
+            # the stage's own run takes the stage's size; its probes, gates and companion keep the
+            # site's default block (the pbs executor lays pbs.plugins.<name> over it, per run)
+            decl["pbs"] = {"plugins": {p["plugin"]: dict(p["resources"])}}
         yamlish.dump(decl, sd / "stack.yml")
         st = Stack.open(sd)
         st.prov.append("drive/stage", request=req["path"], request_sha256=req["sha256"], stage=p["stage"],
@@ -391,3 +464,180 @@ def run(req: dict, out, answers_given: list | None = None, by: str | None = None
     (out / "SEALED.json").write_text(json.dumps({"sealed_at": _now(), **rec}, indent=1, default=str) + "\n")
     _record(out, **rec)
     return 0, rec
+
+
+# ---------------------------------------------------------------------------- the job (run 2)
+def _site() -> tuple:
+    """($SCH_SITE, its stack layer, its job.yml): the site's facts for a generated job."""
+    site = os.environ.get("SCH_SITE")
+    if not site or not (Path(site) / "stack.yml").is_file() or not (Path(site) / "job.yml").is_file():
+        raise RequestError("--job: the job's queue, its size and where the harness is are the site's: "
+                           "$SCH_SITE must name a directory holding stack.yml (executor: pbs, pbs: its "
+                           "queues and defaults) and job.yml (" + ", ".join(JOB_SITE) + ")")
+    layer, job = yamlish.load(Path(site) / "stack.yml"), yamlish.load(Path(site) / "job.yml")
+    bad = sorted(set(job or {}) - set(JOB_SITE))
+    if bad:
+        raise RequestError(f"{site}/job.yml: {', '.join(bad)} is not a job field ({', '.join(JOB_SITE)})")
+    absent = [k for k in JOB_REQUIRED if not (job or {}).get(k)]
+    if absent:
+        raise RequestError(f"{site}/job.yml declares no {', '.join(absent)}")
+    if str(layer.get("executor")) != "pbs" or not isinstance(layer.get("pbs"), dict):
+        raise RequestError(f"{site}/stack.yml: a job runs its stages on the scheduler; it declares "
+                           f"`executor: pbs` and a `pbs:` block")
+    return Path(site).resolve(), layer, job
+
+
+def _commit(root: Path) -> str | None:
+    import subprocess
+    try:
+        r = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True,
+                           timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
+
+
+def job_text(req: dict, job_path, answers: list | None = None, by: str | None = None,
+             predict=None, check=None, purpose: str | None = None, where: str | None = None) -> str:
+    """THE JOB THAT RUNS ONE REQUEST ON THE CLUSTER, generated, never hand-written (ROUTE R03 run 2).
+
+    Its body is one `sch run --request ... --out $RUNDIR` with the recorded answers; every stage is
+    then the kernel's pbs executor's child job, sized by the request and queued by the site file.
+    Its own `#PBS` block is the site's default, sized by the request's `resources.drive` and queued
+    the same way. Every path in it is relative to the job's own directory (the cohort's folder is
+    the same tree on the workstation and the cluster), or the site's. It seals its run directory,
+    writes one VERDICT line for the chained run and one per check, and its last act is the GATE
+    line. Nothing about a cohort or a site is in this function: the request, the site file, the
+    prediction and the checks bring all of it."""
+    import shlex
+    from .services.executor import PBS_REQUIRED, PbsExecutor
+    q = shlex.quote
+    job_path = Path(job_path).resolve()
+    jobs = job_path.parent
+    if jobs.name != "jobs":
+        raise RequestError(f"--job {job_path}: a job lives in its stage's jobs/ directory (the run key "
+                           f"takes the stage's name from it)")
+    stage = jobs.parent.name
+    site, layer, job = _site()
+    cfg = PbsExecutor(config={**dict(layer["pbs"]), "plugins": {DRIVE: req.get("drive_resources") or {}}}
+                      ).settings(DRIVE)
+    miss = [k for k in PBS_REQUIRED if not cfg.get(k)]
+    if miss:
+        raise RequestError(f"--job: the site's pbs block and resources.drive give no {', '.join(miss)}")
+
+    def rel(p) -> str:
+        return '"$PBS_O_WORKDIR"/' + q(os.path.relpath(Path(p).resolve(), jobs))
+    root = Path(__file__).resolve().parent.parent
+    commit = _commit(root)
+    pre = [f"#   {ln}" if ln.strip() else "#" for ln in
+           (Path(predict).read_text(encoding="utf-8").splitlines() if predict else
+            ["NO PREDICTION WAS GIVEN (--predict): this job's GATE can only read MISSED."])]
+    argv = ["sch", "run", "--request", "$REQUEST", "--out", "$RUNDIR"]
+    tail = "".join(f" --answer {q(a)}" for a in (answers or [])) + (f" --by {q(by)}" if by else "")
+    hn = str(job["harness"])
+    hn_sh = ('"$HOME"/' + q(hn[2:])) if hn.startswith("~/") else q(hn)
+    py = str(job["python"])
+    py_sh = ('"$HOME"/' + q(py[2:])) if py.startswith("~/") else q(py)
+    at = str(where or jobs)
+    at = at if re.fullmatch(r"[~A-Za-z0-9_./-]+", at) else q(at)   # `~` left for the shell to read
+    key = f"$(date -u +%Y%m%dT%H%M%SZ)__sch-${{HC:0:7}}__{stage}" + (f"__{purpose}" if purpose else "")
+    name = re.sub(r"[^A-Za-z0-9_]", "_", f"sch_{stage}")[:15]
+    reports = " ".join(f'"$RUNDIR"/{p["stage"]}/report/report.json' for p in req["stages"])
+    out = [
+        "#!/bin/bash", f"#PBS -N {name}", f"#PBS -q {cfg['queue']}", f"#PBS -l select={cfg['select']}",
+        f"#PBS -l walltime={cfg['walltime']}", "#PBS -j oe",
+        *([f"#PBS -P {cfg['account']}"] if cfg.get("account") else []), "#",
+        "# GENERATED by `sch run --request ... --job` (the single-cell harness, ROUTE R03 run 2), never",
+        "# hand-written: to change it, change the request, the site file or the prediction and generate it again.",
+        f"#   request   {os.path.relpath(req['path'], jobs)}  sha256 {req['sha256']}",
+        f"#   site      {os.path.relpath(site, jobs)}  (stack.yml sha256 {_sha(site / 'stack.yml')[:16]}, "
+        f"job.yml sha256 {_sha(site / 'job.yml')[:16]})",
+        f"#   harness   {commit or 'not a git checkout: unpinned'}" + (f" (the job refuses another)" if commit else ""),
+        f"#   stages    " + ", ".join(f"{p['stage']} {p['plugin']}" + (f" [{', '.join(f'{k}={v}' for k, v in sorted(p['resources'].items()))}]" if p.get("resources") else "") for p in req["stages"]),
+        f"#   this job  {cfg.get('queue_chosen') or 'the site block queue'}",
+        f"#   answers   {tail.strip() or 'none'}",
+        "#", "# THE PREDICTION, WRITTEN BEFORE ANY RUN:", *pre, "#",
+        "# The submit recipe (the login node; the CLEAN line must print before the qsub):",
+        "# SUBMIT-BEGIN",
+        f"#   cd {at}",
+        *[f"#   {ln}" for ln in (job.get("submit") or [])],
+        f"#   HN={hn_sh}; HC=$(cat $HN/HEAD.txt)",
+        "#   [ -z \"$(git -C $HN status --porcelain)\" ] && [ \"$(git -C $HN rev-parse HEAD)\" = \"$HC\" ] && echo HARNESS-CLEAN",
+        f"#   mkdir -p {q(str(job['runs']))}/{stage}; RUNS=$(cd {q(str(job['runs']))}/{stage} && pwd -P)",
+        f"#   RUNDIR=$RUNS/{key}; mkdir \"$RUNDIR\" \"$RUNDIR/logs\"",
+        f"#   qsub -o \"$RUNDIR/logs/\" -v RUNDIR=$RUNDIR,HARNESSHEAD=$HC {q(job_path.name)}",
+        "# SUBMIT-END",
+        "set -euo pipefail",
+        "cd \"$PBS_O_WORKDIR\"",
+        "RUNDIR=\"${RUNDIR:?RUNDIR must be passed with qsub -v}\"",
+        f"HARNESS={hn_sh}",
+        f"PY={py_sh}",
+        f"REQUEST={rel(req['path'])}",
+        f"export SCH_SITE={rel(site)}",
+        f"EXPECT_HARNESS={q(commit or '')}",
+        f"CHECK={rel(check) if check else q('')}",
+        "VERDICTS=\"$RUNDIR/VERDICTS.txt\"",
+        "finish() { s=$?",
+        "  set +e",
+        "  rm -rf \"$RUNDIR/cache\" 2>/dev/null",
+        "  miss=''",
+        f"  for w in \"$RUNDIR/DRIVE.json\" \"$RUNDIR/SEALED.json\" {reports}; do",
+        "    [ -s \"$w\" ] || miss=\"$miss ${w#$RUNDIR/}\"",
+        "  done",
+        "  if [ -n \"$miss\" ] && [ \"$s\" -eq 0 ]; then s=97; fi",
+        "  seal=SEALED.txt; [ \"$s\" -eq 0 ] || seal=FAILED.txt",
+        "  n=$(grep -c '^VERDICT.*MISSED' \"$VERDICTS\" 2>/dev/null || true); n=${n:-0}",
+        "  v=$(grep -c '^VERDICT' \"$VERDICTS\" 2>/dev/null || true); v=${v:-0}",
+        "  if [ \"$s\" -eq 0 ] && [ \"$n\" -eq 0 ] && [ \"$v\" -gt 0 ]; then gate=\"GATE: AS PREDICTED\"",
+        "  else gate=\"GATE: MISSED ($(( n > 0 ? n : 1 )))\"; fi",
+        "  { echo \"exit=$s\"; echo \"jobid=${PBS_JOBID:-none}\"; echo \"harnesshead=${HARNESSHEAD:-unknown}\"",
+        f"    echo \"request_sha256={req['sha256']}\"; echo \"stage={stage}\"; hostname; date -u +%Y-%m-%dT%H:%M:%SZ",
+        "    if [ -n \"$miss\" ]; then echo \"missing=$miss\"; fi",
+        "    cat \"$VERDICTS\" 2>/dev/null; echo \"$gate\"; } > \"$RUNDIR/$seal\"",
+        "  find \"$RUNDIR\" -type f -not -path \"$RUNDIR/logs/*\" -exec chmod a-w {} +",
+        "  echo \"$gate\"",
+        "  exit \"$s\"",
+        "}",
+        "trap finish EXIT",
+        "trap 'exit 143' TERM; trap 'exit 130' INT; trap 'exit 129' HUP   # killed is not clean",
+        ": > \"$VERDICTS\"",
+        "export OMP_NUM_THREADS=${NCPUS:-1} OPENBLAS_NUM_THREADS=${NCPUS:-1} MKL_NUM_THREADS=${NCPUS:-1}",
+        "export NUMBA_NUM_THREADS=${NCPUS:-1} PYTHONNOUSERSITE=1 XDG_CACHE_HOME=\"$RUNDIR/cache\" MPLCONFIGDIR=\"$RUNDIR/cache/mpl\"",
+        *[str(ln) for ln in (job.get("setup") or [])],
+        "cp \"$HARNESS/HEAD.txt\" \"$RUNDIR/TOOL_HEAD.txt\"",
+        "if [ -n \"$EXPECT_HARNESS\" ] && [ \"$(cat \"$HARNESS/HEAD.txt\")\" != \"$EXPECT_HARNESS\" ]; then",
+        "  echo \"VERDICT (harness): MISSED - $HARNESS is at $(cat \"$HARNESS/HEAD.txt\"), this job was generated at $EXPECT_HARNESS\" | tee -a \"$VERDICTS\"",
+        "  exit 2",
+        "fi",
+        "echo \"=== the chained run: $(date -u +%Y-%m-%dT%H:%M:%SZ) ===\"",
+        "set +e",
+        "PYTHONPATH=\"$HARNESS\" \"$PY\" -m " + " ".join(argv).replace("$REQUEST", "\"$REQUEST\"").replace("$RUNDIR", "\"$RUNDIR\"") + tail + " > \"$RUNDIR/DRIVE.log\" 2>&1",
+        "rc=$?",
+        "set -e",
+        "tail -n 60 \"$RUNDIR/DRIVE.log\"",
+        "status=$(grep -o '\"status\": \"[a-z]*\"' \"$RUNDIR/DRIVE.json\" 2>/dev/null | head -1 | cut -d'\"' -f4 || true)",
+        f"if [ \"$rc\" -eq 0 ] && [ \"$status\" = sealed ]; then echo \"VERDICT (drive): SEALED - {len(req['stages'])} stages from one request\" | tee -a \"$VERDICTS\"",
+        "else echo \"VERDICT (drive): MISSED - exit $rc, DRIVE.json status ${status:-none} (see DRIVE.log)\" | tee -a \"$VERDICTS\"; fi",
+        "if [ -n \"$CHECK\" ]; then",
+        "  echo \"=== the checks: $CHECK ===\"",
+        "  set +e",
+        "  RUNDIR=\"$RUNDIR\" PY=\"$PY\" HARNESS=\"$HARNESS\" bash \"$CHECK\" \"$RUNDIR\" > \"$RUNDIR/CHECKS.txt\" 2>&1",
+        "  crc=$?",
+        "  set -e",
+        "  cat \"$RUNDIR/CHECKS.txt\"",
+        "  grep '^VERDICT' \"$RUNDIR/CHECKS.txt\" >> \"$VERDICTS\" || true",
+        "  [ \"$crc\" -eq 0 ] || echo \"VERDICT (checks): MISSED - the checks exited $crc\" | tee -a \"$VERDICTS\"",
+        "fi",
+        "if grep -q '^VERDICT.*MISSED' \"$VERDICTS\"; then exit 1; fi",
+        "exit 0",
+    ]
+    return "\n".join(out) + "\n"
+
+
+def write_job(req: dict, job_path, **kw) -> dict:
+    text = job_text(req, job_path, **kw)
+    p = Path(job_path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p, "w", encoding="utf-8", newline="\n") as fh:      # LF only: a CR breaks bash on the cluster
+        fh.write(text)
+    return {"job": str(p.resolve()), "md5": hashlib.md5(text.encode()).hexdigest(), "lines": text.count("\n")}

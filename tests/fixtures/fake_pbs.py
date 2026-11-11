@@ -37,6 +37,7 @@ Environment:
 import json
 import os
 import re
+import resource
 import subprocess
 import sys
 import time
@@ -74,9 +75,19 @@ def directives(script: str) -> dict:
 
 def run_job(s, jid):
     job = s["jobs"][jid]
+    t0 = time.time()
     r = subprocess.run(["bash", job["script"]], env={**os.environ, "PBS_JOBID": jid})
+    # WHAT THE JOB USED, as PBS Pro accounts it (autodev W042): the wall clock of the run and the
+    # child's peak resident memory (ru_maxrss: bytes on macOS, kilobytes on Linux), unless the
+    # test fixes them (FAKE_PBS_USED, JSON `{name: value}`) or the server reports none
+    # (FAKE_PBS_USED=none)
+    rss = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+    used = {"cput": "00:00:00", "mem": f"{rss // 1024 if sys.platform == 'darwin' else rss}kb",
+            "ncpus": "1", "walltime": time.strftime("%H:%M:%S", time.gmtime(time.time() - t0))}
+    fixed = os.environ.get("FAKE_PBS_USED")
+    used = {} if fixed == "none" else {**used, **(json.loads(fixed) if fixed else {})}
     s = load()
-    s["jobs"][jid].update(state="F", exit=r.returncode, lazy=False)
+    s["jobs"][jid].update(state="F", exit=r.returncode, lazy=False, used=used)
     return s
 
 
@@ -162,6 +173,7 @@ def main():
                  f"    job_state = {job['state']}"]
         if job["state"] == "F" and job["exit"] is not None:
             lines.append(f"    Exit_status = {job['exit']}")
+        lines += [f"    resources_used.{k} = {v}" for k, v in sorted((job.get("used") or {}).items())]
         if job.get("comment"):                    # as a seeded held job carries one
             lines += wrapped("comment", job["comment"])
         env = {"PBS_O_HOME": "/var/pbs/u", "PBS_O_LANG": "C", "PBS_O_LOGNAME": "u",
