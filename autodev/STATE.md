@@ -1,16 +1,9 @@
 # STATE: where the program stands
 
-Updated 2026-11-10T15:42:32Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-11T05:47:04Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
-**PAUSED since 2026-11-10T15:42:32Z by the PI** ("GOOD, PAUSE THE DEVELOPMENT FOR NOW"): no builder, verifier, audit or sweep starts, and no PBS job is submitted, until the PI's word resumes it. Nothing is running: no agent, no PBS job of ours, and the PERIODIC CHECK and the mirror are stopped. **Ready to resume** (prepared at the PI's "prepare and be ready for resume"): every branch is pushed, the tree is clean, every cluster checkout is clean (scQC `98504bd`, scAnno `68233f0`, scIntegrate `b148030` = W025's head, scProfile `f5175ea`, harness `9804e16`), and no watch row is live. On the PI's word: (1) `bash setup/autodev/bootstrap.sh check`; (2) restart the mirror in the background (`bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300`) and the PERIODIC CHECK cron (`23 */6 * * *`, the token-limited prompt in README) if TOKEN-LIMITED still holds; (3) launch **W035** (registered: the maker's prose verb, GAP-C80, and cellchat's leak hit) from the launch brief at the end of `waves/W035.md`, model opus, effort max, then check it with `agent_models.sh`; (4) if the PI resumes validation too, start one verifier per batch in the order of the list below. D-019's cap resets each UTC day. Built and gated, unmerged, waiting for validation: W029, W013 + W032 + W023, W020, W012 + W025, W033, W034, W028, W017.
-
-**TOKEN-LIMITED since 2026-11-10T05:2xZ** (the PI: "turn on token limit mode. focus on key processes" / "focus on development
-first. validation later"): one builder on the key path (W033 now; then W034, W023, the eight plugins); no verifier and no
-audit until the PI resumes validation; W030 and W029's verifier stopped; the LOOP TICK, the BLOCKER SWEEP and the
-Monitor paused; one PERIODIC CHECK every 6 h. Every development agent is Opus 5.5 at max.
-
-## Verdict
+**FULL development since 2026-11-11T05:47:04Z** (the PI: "first, evaluate and improve current development harness towards our goal ... after that, launch full development to reach our goal!"). The pause (D-020) and TOKEN-LIMITED (D-017) are over (D-021); validation runs again. The harness was changed first: the diagnosis is [`audits/DIAGNOSIS_20261111_efficiency.md`](audits/DIAGNOSIS_20261111_efficiency.md), the rules are RULES.md's 2026-11-11 block, and **the queue is [`ROUTE.md`](ROUTE.md)**: about 40 items from a tally of 5.85 to HAPPY's 18.0. In short: small runs (about 150 calls), verify first and gate at the head that merges, verifiers in parallel, up to 6 development agents, the cluster through `setup/autodev/gate.py`, audits at checkpoints, one HEARTBEAT every 2 hours.
 
 **NOT HAPPY: mean 0.271 of 20 measured scores at audit pass 0004** (the first scored pass; [`audits/0004-audit.md`](audits/0004-audit.md)): 0 PASS, 13 PARTIAL, 7 FAIL; 14 of 20 below 0.5. HAPPY needs a mean of at least 0.9 with no test below 0.5. Under D-014's corrected A3.4 formula (only a cohort of at least 1,000,000 cells counts) the mean is 0.269. Moved since pass 0003: A1.1 1/8 -> 2/8 and A1.2 3/10 -> 5/10 (W026), A1.3 1/5 -> 2/5 (W014), A6.3 0 -> 2/3 (the deployed Service), A5.1 0.923 (the run's own claim ledger), A4.4 0.5. All 29 closures since 0003 hold; 11 gaps are new (GAP-119..129), among them GAP-119 (scQC: a failed removal audit stops nothing) and GAP-128 (scIntegrate: withheld cells stay in the PCA the docs say they leave). The leak guard is red in 7 of 8 repositories under the generated lists.
 
@@ -59,19 +52,12 @@ Monitor paused; one PERIODIC CHECK every 6 h. Every development agent is Opus 5.
 
 The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027.
 
-## The queue (TOKEN-LIMITED: one builder on the key path; validation later)
+## The queue: [`ROUTE.md`](ROUTE.md)
 
-- **Builder now: none until 2026-11-11T00:00Z** (D-019: the day's output measured 8.12 M at 07:55Z, the 8 M cap; periodic check 10:53Z: no builder, 784504 running 3 h 20 min, nothing landed). **W023 built** (`6f970e5`, 21 of 24 rows, 3 partly returned: GAP-C88, B1-026, B1-095's cohort half); its gate, the de job resubmitted unchanged by the manifest rule, **PBS 784551, AS PREDICTED** (gate met; waits for validation with W013 + W032). On PBS: nothing.
-- **Next builders, one at a time, by score:** **W035** (registered; the maker's prose verb, which the eight plugins need first), then the eight plugins through the maker (stacked), GAP-119 (scQC), W031 (scale).
-- **Waiting for validation (built, unmerged), one verifier per batch in this order:**
-  1. W029 (harness `006b72c`; PBS 784088, 784130 AS PREDICTED);
-  2. W013 + W032 + W023 (scProfile `6f970e5`; PBS 784285 at `157ed9d`, 784551 at `6f970e5`, AS PREDICTED);
-  3. W020 (scQC `b255e45`; PBS 783992 IDENTICAL, 784271 AS PREDICTED);
-  4. W012 + W025 (scIntegrate `b148030`; PBS 784233 AS PREDICTED);
-  5. W034 (harness `eac7860`; PBS 784504 AS PREDICTED);
-  6. W033 (C46 project, no tool change; PBS 784414 AS PREDICTED, 784490 with every run line held and L3 missed);
-  7. W028 and W017 (platform; each deploy needs the PI's go).
-  **Paused:** W030 (Service, uncommitted work in its clone).
+- **Running now (launched 2026-11-11):** verifiers R01 (harness: W029 + W034 on `autodev/train-harness-1`), R12 (scQC: W020), R19 (scIntegrate: W012 + W025), R22 (scProfile: W013 + W032 + W023); builders R23 = W035 (the maker's prose verb) and R02 = W036 (`prof@scprofile`).
+- **Next, as each verifier passes:** its merge (the harness through its train's three jobs), then that repository's next route item; R16 (scAnno) and R40 (C46's records) at the first free slots.
+- **The PI's steps** are in ROUTE section 3; none is askable yet.
+- **Parked:** W030 (Service; uncommitted work in its clone), W022 as a wave of its own, the B1 register's queued rows.
 
 ## Machinery (session-only; re-create on resume, see README)
 

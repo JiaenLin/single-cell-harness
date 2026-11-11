@@ -30,7 +30,7 @@ while read -r job dir; do
   elif [ -f "\$dir/FAILED.txt" ]; then echo "FAILED"
   elif ! qstat "\$job" >/dev/null 2>&1; then echo "GONE"; qstat -x -f "\$job" 2>/dev/null | grep -E "Exit_status|job_state|comment" | sed 's/^ *//'
   fi
-  grep -h "VERDICT\|RECORD\|MISS\|PREDICT\|exit=" "\$dir/SEALED.txt" "\$dir/FAILED.txt" "\$dir"/logs/*.OU 2>/dev/null | sort -u
+  grep -h "VERDICT\|RECORD\|MISS\|PREDICT\|GATE:\|exit=" "\$dir/SEALED.txt" "\$dir/FAILED.txt" "\$dir"/logs/*.OU 2>/dev/null | sort -u
 done <<WL
 $watch
 WL
@@ -38,7 +38,7 @@ EOF
   rc=$?
   if [ "$rc" -ne 0 ]; then echo "$stamp ssh rc=$rc" >> "$OUT/mirror.log"; sleep "$POLL"; continue; fi
   mv "$OUT/poll.tmp" "$OUT/poll.txt"; echo "$stamp ok" >> "$OUT/mirror.log"
-  while IFS=$'\t' read -r job dir wave; do
+  while IFS=$'\t' read -r job dir wave tools; do   # the 4th column: the tool commits the job uses (gate.py)
     [ -z "$job" ] && continue
     id=${job%%.*}
     block() { awk -v j="$job" '$0=="== JOB "j{f=1;next} /^== /{f=0} f' "$OUT/poll.txt"; }
