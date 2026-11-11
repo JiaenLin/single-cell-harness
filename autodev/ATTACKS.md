@@ -28,6 +28,8 @@ ledger. Of the 9 new waves verified that day, 5 failed first verification, on ca
 | 16 | A leak moved, not removed; a cohort's measured number no term list holds | Scan untruncated, records included; read comments for counts, sizes and times that came from one cohort's run | W035, GAP-C100 |
 | 17 | A refusal that comes after the expensive work | Give the last stage a bad size, flag or file and count how much ran before the refusal | W042 (sizes), W041 (owned flags) |
 | 18 | A silent pick among candidates | Give it two candidates, or none, where it expects one: it must refuse by name | W041 (`hands_on`), GAP-C103 |
+| 19 | A fix round that only patches the design that failed | In a wave that has to FIND something: bring one fresh candidate to the fix round and score both on the same expectations | W044 (one tree rule, patched); carried from VCC's list |
+| 20 | A winner reported as if it were the only thing tried | Say how many candidates the result was chosen from, and keep every one in the pool with its result | carried from VCC's list |
 
 ## Inbox (a verifier appends here; one line each: the defect, the attack, the wave)
 

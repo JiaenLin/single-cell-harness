@@ -35,6 +35,10 @@ THREADS: this workstation is shared by up to 6 agents. Before any test or tool, 
 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2, and run one suite at a time.
 SELF-ATTACK: before hand-back, read <HARNESS>/autodev/ATTACKS.md (one screen: the attacks that broke a wave here) and run
 every one that applies against your own change. Say in the hand-back which you ran and what each showed.
+SEARCH (only when your wave has to find a rule, a design or a hypothesis, not for ordinary engineering): write down what
+you expect BEFORE you try anything; try at least 2 candidates at the cheapest test that can tell them apart; keep the
+current one unless the challenger is strictly better on the registered measure; record every candidate tried and its
+result in <HARNESS>/autodev/pools/<wave>.tsv and say in the hand-back how many the winner was chosen from.
 SUBSET: a job you write that asks for more than 2 hours comes with `<name>.subset.pbs`: the same steps on a declared
 subset, its own prediction, minutes long. The coordinator runs it first.
 GAPS: name at most 3 new gaps, and only ones that block a ROUTE item (<HARNESS>/autodev/ROUTE.md) or are a wrong
