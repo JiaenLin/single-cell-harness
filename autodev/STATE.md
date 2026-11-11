@@ -69,9 +69,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   - Opus 5.5 max: the builder of **the scProfile batch's fix round** (small: its ONE verification FAILED on the maker's
     record: the new rewrite verb leaves no trace and tidies a tampered copy away; unread fields can carry a planted
     value. Everything else held, and no DE result can change. A third reason, two-digit survivors, is a counted limit
-    under D-040); the verifier of **W048's last re-check** (scQC `f57bc6e`: each gate records the
-    design it computed on, and a dropped factor is told to the user; its jobs 790672 and 790673 are on the cluster).
-    A3.1 goes over the bar when scQC merges.
+    under D-040); the builder of **W052** (the harness: the scIntegrate adapter at state version 2, its stand-in
+    as the tool, the first cohort's stage 3 through the harness re-pinned: what scIntegrate's merge waits on).
   - Fable 5.2: the reviewer of **W051** (the Studio's words and elements, built at `d51bf41`: 198 strings reworded and 14
     cut against a written standard of word budgets and terms; a saved figure names the cells not called): every changed
     string read for a claim that moved. Then the PI's go for a re-deploy.
@@ -79,11 +78,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   narrowed while it runs; scIntegrate's merge decoupled from its installer's defect; the queue re-ordered.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
   0. (running) the scProfile batch's fix round; then a LEAN re-check of its two reasons, the gate (the DE job and the
-     dev-suite job at the head), the merge, then the plugin line, abundance first (A4.1, A4.3, A3.2). (running) W048's last fix round; then
-     its re-check under D-040, its two jobs, the merge (A3.1 over the bar).
-  1. **W052** (the harness: the scIntegrate adapter at state version 2, the stand-in as the tool, the first cohort's
-     stage 3 through the harness re-pinned): brief `<scratchpad>/relaunch/q_w052build.txt`. Then its verification, the
-     job, BOTH mains in one step (scIntegrate `2fc7a6c` first), A3.1 +0.1, and the PI's stage-3 question.
+     dev-suite job at the head), the merge, then the plugin line, abundance first (A4.1, A4.3, A3.2).
+  1. (running) **W052**; then its verification, the job, BOTH mains in one step (scIntegrate `2fc7a6c` first), A3.1 +0.1,
+     and the PI's stage-3 question.
   2. **W049's fix round 1** (the driver: an answer for a sealed stage refused; a job states the tools it expects):
      brief `q_w049fix1.txt`. Then its re-check, W045 brought onto it, the first cohort's chained run as the gate.
   3. **W050's verification** (scAnno `f456431`; job 790463 read GATE: AS PREDICTED beside the model job's own 4 untraced
@@ -99,18 +96,19 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **790672** and **790673** (both cohorts' stage 1 at W048's last head `f57bc6e`, prediction IDENTICAL). Earlier
-  today: 790475 and 790476 (the same at `ed9fe18`) AS PREDICTED; 790463 (W050) GATE: AS PREDICTED beside the model job's
-  4 untraced differences; 790442 and 790443 (scIntegrate) MISSED. Checkouts on the cluster: the harness at `main`;
-  scAnno `f456431`; scIntegrate `2fc7a6c`; scQC `f57bc6e`.
+- **On PBS:** nothing. Today's last: 790672 and 790673 (scQC at `f57bc6e`) AS PREDICTED, the gate scQC merged on. Checkouts
+  on the cluster: the harness and scQC at `main`; scAnno `f456431`; scIntegrate `2fc7a6c`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
-- **The tally: 7.69 of 20** (mean 0.384; 0.292 this morning, 0.271 at audit pass 0004): A1.1 5/8, A1.2 7/10, A1.3 3/5, A2.1 3/4, A3.2 3/4, A3.1 0.41, A6.2 1/2 moved today. Counting on a merge, not yet on `main`: A3.1 +0.1 each for scIntegrate and scQC.
+- **The tally: 7.79 of 20** (mean 0.389; 0.292 this morning, 0.271 at audit pass 0004): A1.1 5/8, A1.2 7/10, A1.3 3/5, A2.1 3/4, A3.2 3/4, A3.1 0.51, A6.2 1/2 moved today. Nine tests are still under 0.5: A2.2, A2.3, A3.4, A4.1, A4.2, A4.3, A5.2, A6.1, A7.1. Counting on a merge, not yet on `main`: A3.1 +0.1 for scIntegrate.
 - **Merged 2026-11-11, five batches before those:** scIntegrate `b148030` (W012 + W025), scProfile `6f970e5` (W013 + W032 + W023), scQC `46ffe90`
   (W020), scAnno `779fd08` (W038), and **the harness `a677e8f` (W029 + W034)**: its train's three jobs all AS PREDICTED at the
   merged commit (stages 1, 2 and 3; PBS 788583, 788586, 788587), the merged tree's runtime files equal the gated head's, the
   suite OK.
+- **Merged 2026-11-11, the ninth: scQC `8106f50`** (W048 with two fix rounds; last re-check PASS; PBS 790672 and 790673 AS
+  PREDICTED): scQC's own files carry none of the two cohorts' generated terms (224 hits to 0), its guard reads the lists,
+  each gate records the design it computed on and a dropped factor is told to the user. **A3.1 is 0.51, over its bar.**
 - **Merged 2026-11-11, the eighth: scQC `de62f78`** (W043: a failed removal audit stops the run before any object is written;
   its integrity checks are never acceptable by name). Both cohorts' promoted stage-1 runs reproduced IDENTICAL at the gated
   commit (PBS 789673, 789675). GAP-119, a wrong-result defect, is closed. scQC's leak-clean half of R13 is still open.
