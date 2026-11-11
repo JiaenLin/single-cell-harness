@@ -91,14 +91,14 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
 - **Built, waiting for a verifier slot:** **W050** (scAnno `f456431`: `embed` names a library from the object, a manifest or
   the upstream record, never a file name); its reproduction job is on the cluster (790463).
-- **On PBS:** **790475** and **790476** (scQC's two reproductions at W048's fix head); **790463** (W050's reproduction of the first cohort's promoted stage 2); **790442** (scIntegrate's fresh-prefix build at W046's fix head: A1.3's fourth build) and **790443** (the subset
-  reproduction against W039's run; the full one, a day's ask, waits for it). Landed: **790201** and **790222** (both cohorts' stage 1 at W048's head) AS PREDICTED, kept cells,
-  criteria and names IDENTICAL to the promoted runs: W048's gate is passed and it waits only for its verifier; **790197** (the second cohort's tree at
-  W044's fix-2 head) **MISSED (1)**: in one wild-type library 0 of 12,546 cells walk to Glial cell (the other wild-type
-  library 1,053; the mutants 581 and 420, where the first job had 0). That library's radial-glia-like cells walk to
-  Progenitor cell instead: two lineages of the draft compete for the same cells, and the replicates disagree. The mutant
-  libraries also send about 2,000 and 1,000 cells to Pericyte, which an organoid without vessels may not hold. W044's last
-  re-check reads this. Checkouts on the cluster: the harness at `main`; scAnno `f456431`; scIntegrate `2fc7a6c`; scQC `ed9fe18`.
+- **On PBS:** **790475** and **790476** (scQC's two reproductions at W048's fix head); **790463** (W050's reproduction of
+  the first cohort's promoted stage 2). **Landed MISSED, both of W046's:** **790442** (the fresh-prefix build: the install
+  and the five-method run HELD, but one suite contains a skip on the cluster where the prediction said none) and
+  **790443** (the subset reproduction: its own premise check failed, since the seeded draw holds no withheld cell, so it
+  cannot show what W039 changed). Both go to W046's next round with its re-check's verdict; the full reproduction
+  stays unsubmitted. Earlier today: 790201 and 790222 (W048's first gate) AS PREDICTED; 790197 (the second cohort's
+  tree) MISSED (1); 789561 (W039's gate) AS PREDICTED. Checkouts on the cluster: the harness at `main`; scAnno
+  `f456431`; scIntegrate `2fc7a6c`; scQC `ed9fe18`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
