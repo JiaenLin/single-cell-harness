@@ -10,9 +10,13 @@ sealed: its outputs read-only, so the next stage can pin them, and `SEALED.json`
 
 It adds no analysis and hides none. Every flag is the request's, passed verbatim; every other flag is
 the tool's own default. What a stage cannot run is said by that stage's declaration or its adapter's
-refusal, quoted. A choice a tool declares as the user's (`decisions:` in its plugin.yml) is never
-answered here: the run stops before that stage, naming it, and resumes from the answer, recorded
-with who gave it.
+refusal, quoted. A choice a tool declares as the user's (`decisions:` in its plugin.yml, each naming
+the escape its tool's `describe` declares) is never answered here and never a plain param: the run
+stops before that stage, naming it, and resumes from the answer, recorded with who gave it; an
+escape that lifts one of the tool's refusals (`unanswered: tool-default`) does not stop the run -
+unanswered, its flag is not passed, the tool's own default, and the stage's events say so.
+A run is its request and every file the request names: their hashes are recorded when it starts
+and in each stage's seal, and a resume that finds one changed is refused.
 
 Nothing about a cohort or a site is here. The request is data that lives with the cohort; this
 module holds its schema (FIELDS) and `docs/request.example.yml` a synthetic example.
