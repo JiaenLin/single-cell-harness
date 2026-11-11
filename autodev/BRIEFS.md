@@ -31,7 +31,7 @@ Added 2026-11-11 (RULES, the block of that date), part of the block for every bu
 SIZE: this run is sized for about 150 tool calls. Keep tool output short (tail, head, cut, a line range); read only
 the lines a change touches. At about 150 calls: commit, push, hand back what is done, and return the rest as a
 follow-up. That is a normal hand-back.
-THREADS: this workstation is shared by up to 6 agents. Before any test or tool, export OMP_NUM_THREADS=2
+THREADS: this workstation is shared by several agents. Before any test or tool, export OMP_NUM_THREADS=2
 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2, and run one suite at a time.
 SELF-ATTACK: before hand-back, read <HARNESS>/autodev/ATTACKS.md (one screen: the attacks that broke a wave here) and run
 every one that applies against your own change. Say in the hand-back which you ran and what each showed.

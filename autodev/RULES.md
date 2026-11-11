@@ -223,7 +223,10 @@ names; nothing in tiers I to III changes.
    (`scores.tsv`, pass `v-W###`), by GOALS's formulas, with evidence.
 6. **Lanes in parallel** (supersedes "2 builders" and "lanes take turns"). One builder per repository at a time; a
    second in the same repository only when the two registrations name disjoint files. At most 6 development agents at
-   once (builders and verifiers together). Every one is launched fresh with model opus and effort max (tier II), never
+   once (builders and verifiers together); **since 2026-11-11T14:10Z at most 2 Opus agents at once** (the PI: "reduce
+   opus agent number to 2"), with a Fable designer or design reviewer running beside them (the PI, the same message:
+   "continue fable designer to improve UI design"). When a slot frees, the next item is the one that moves a test
+   under its bar soonest; nothing is launched to fill a slot. Every one is launched fresh with model opus and effort max (tier II), never
    resumed under another session model, and measured with `agent_models.sh` at launch.
 7. **The cluster by script.** `setup/autodev/gate.py submit` and `grade` are how a job goes in and how its result is
    recorded: the checks, the copy and md5, the checkout move (refused while a live watched job uses that tool at

@@ -61,28 +61,27 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   stayed in its clone. No agent was resumed (an agent resumes on the session's model): each was launched fresh with its
   brief from `<scratchpad>/relaunch/` and told to read its predecessor's clone and wave-file plan first. Today's meter
   before the stop: 16.3 M output tokens, 46 launches.
-- **Running now (6 agents), as of 2026-11-11T11:34:24Z:**
-  - the builder (Opus 5.5 max) of **W047 run 3**, small and the last (scProfile): run 2 is built at `7785254` (`de` through
-    the maker; no record keeps a copy of a declaration, a maker fix found among five candidates; 19 host files read
-    whole). The preflight on the batch still lists 344 lines holding a number the batch removed; run 3 classes and
-    clears the ones outside the held-out plugins. Then ONE verification of the whole scProfile batch.
-  - the verifier (Opus 5.5 max) of **W048's fix round 1** (scQC, built at `ed9fe18`: 144 cohort numbers removed across 38
-    files, the survivors each read and classed; the gates record the assay and factors they received and the fixture
-    check reads those records). A3.1 goes over the bar when it merges.
-  - the builder (Opus 5.5 max) of **W048's fix round 1** (scQC: its verification FAILED on two reasons while both gate jobs
-    read AS PREDICTED: about 51 lines still hold one cohort's measured numbers where no list looks; the fixture check
-    stays green when the factor never reaches the gates).
-  - the builder (Opus 5.5 max) of **W050** (scAnno, from `main`: `embed` names a library from the object or the manifest,
-    never from a file name; GAP-C103, one of the two tool-side breaks that stop a chained stage 4; ROUTE R47).
-  - the builder (Opus 5.5 max) of **W046's fix round 2**, the last (scIntegrate): round 1 PASSED its re-check, but its gate
-    MISSED and found that the fresh environment is not the promoted one (scIB's prebuilt LISI helper does not run on
-    the cluster: two metrics absent, exit 0; the promoted one was rebuilt by hand). The installer now has to build it.
-  - the builder (Opus 5.5 max) of **Lab's W017 fix-up 6** (small: the converter reads one file and never follows a link out
-    of it; records on null-prototype objects), for the second deploy.
-  - the builder (Opus 5.5 max) of **W049's fix round 1** (the driver: the batch's verification FAILED on one reason that
-    predates W049, an answer for an already-sealed stage recorded as taken; and a job pins the wrong machine's tools).
-  - the verifier (Opus 5.5 max) of **W050** (scAnno `f456431`; its job 790463 reads GATE: AS PREDICTED beside the model
-    job's own 4 untraced differences, which the verifier must place).
+- **THE CAP IS TWO OPUS AGENTS since 2026-11-11T14:09:43Z (D-039).** The PI: "reduce opus agent number to 2 , continue fable
+  designer to improve UI design, check all elements such as work count, wording and other element design". Four running
+  Opus agents were stopped at once; their briefs are in `<scratchpad>/relaunch/q_*.txt` and their clones keep what they
+  wrote. The heartbeat's prompt and RULES item 6 carry the cap.
+- **Running now (2 Opus + 1 Fable):**
+  - Opus 5.5 max: the builder of **W047 run 3** (scProfile: the survivors outside the held-out plugins; then ONE
+    verification of the whole scProfile batch); the verifier of **W048's fix round 1** (scQC, `ed9fe18`; its jobs 790475
+    and 790476 are on the cluster; A3.1 goes over the bar when it merges).
+  - Fable 5.2: the designer of **W051**, run 5 on the Studio: every word and every element measured, a written standard
+    (word budgets, one term per concept), every element brought to it; a saved figure names uncalled cells.
+- **QUEUED for an Opus slot, in this order** (the next is the one that moves a test under its bar soonest):
+  1. the scProfile batch's ONE verification, when W047 run 3 hands back (it releases the plugin line: A4.1, A4.3, A3.2);
+  2. **W046's fix round 2**, the last (scIntegrate: the installer builds scIB's LISI helper; the subset draws withheld
+     cells), continued from its clone; then its re-check and jobs, the harness's adapter at state version 2 (GAP-C109),
+     the merge with W039, and the PI's stage-3 question (A1.3 +1/5, A3.1 +0.1);
+  3. **W049's fix round 1** (the driver: an answer for a sealed stage refused; a job states the tools it expects), then
+     its re-check, W045 brought onto it, and the first cohort's chained run as the gate (A1.2, A6.3, A7.1, A3.4);
+  4. **W050's verification** (scAnno `f456431`; its job reads GATE: AS PREDICTED beside the model job's own 4 untraced
+     differences, which the verifier must place);
+  5. **Lab's W017 fix-up 6** (the three known defects that are live since D-038), continued from its clone; then one
+     fix-only re-check and the PI's second go.
 - **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
@@ -159,7 +158,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 
 | job | id | cron | created | expires |
 |---|---|---|---|---|
-| HEARTBEAT | `d3695b30` | `17 */2 * * *` (the prompt in README's reminders table) | 2026-11-11 | 2026-11-18 |
+| HEARTBEAT | `1fecbd4b` | `17 */2 * * *` (the prompt in README's reminders table; since 2026-11-11T14:10Z it carries the cap of 2 Opus agents) | 2026-11-11 | 2026-11-18 |
 | LOOP TICK, BLOCKER SWEEP, PERIODIC CHECK | retired 2026-11-11 (RULES, item 9) | - | - | - |
 | the PBS mirror | background task `bt2f5k07v` | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300`; watch.tsv's 4th column is the tool commits a job uses | 2026-11-11 | until the session ends |
 | the gate runner | `python3 -I setup/autodev/gate.py submit ... --go`, `grade <id> --status ...` | site facts in `autodev/.machinery/site.env` (git-ignored) | 2026-11-11 | - |
