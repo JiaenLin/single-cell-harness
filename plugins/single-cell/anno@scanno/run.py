@@ -24,6 +24,7 @@ import csv
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -56,7 +57,7 @@ FLAGS = {
     "cluster": ("h5ad", "out", "split_by", "out_dir", "resolutions", "n_top_genes", "n_pcs",
                 "n_neighbors", "seed", "status_dir", "by"),
     "annotate": ("h5ad", "cluster_key", "tree", "resolve", "scope", "l1_tree", "species", "tissue",
-                 "assay", "db", "store", "background_from_clusters", "exclude_flag", "no_exclude",
+                 "assay", "db", "tissue_fallback", "marker_species", "store", "background_from_clusters", "exclude_flag", "no_exclude",
                  "gap_min", "min_tier", "out_gene_key", "gene_key", "use_raw", "out", "out_h5ad",
                  "report", "sample_key", "condition_key", "label_suffix", "label_prefix",
                  "status_dir", "by"),
@@ -236,6 +237,21 @@ if described.get("state_version") != STATE_VERSION:
     refuse(f"scAnno declares state_version {described.get('state_version')!r}; this adapter's layer "
            f"means state_version {STATE_VERSION}, and a cached view keyed on one would serve the "
            f"other's labels (D6)", "update the adapter to scAnno's labels and bump its state_version")
+
+# ---- THE USER'S DECISIONS FOLLOW THE TOOL (harness W042 fix 1, D): every escape scAnno declares
+# (`describe` escapes[]) is asked by the driver by name, so a scAnno that declares one this
+# adapter's plugin.yml does not ask (`escape:` under `decisions:`, or `escapes_not_asked:`) is refused
+# here, before any of its work: an escape nobody asks would be a user's decision nobody made.
+_mine = Path(__file__).with_name("plugin.yml").read_text(encoding="utf-8")
+_asked = set(re.findall(r'^\s*escape:\s*"([^"]+)"\s*$', _mine, re.M)) | set(
+    re.findall(r'^\s+"([^"]+)":\s*"[^"]*"\s*$', _mine.split("escapes_not_asked:")[1], re.M)
+    if "escapes_not_asked:" in _mine else [])
+_drift = sorted(str(e.get("flag") or e.get("what")) for e in (described.get("escapes") or [])
+                if str(e.get("flag") or e.get("what")) not in _asked)
+if _drift:
+    refuse(f"scAnno {described.get('version')} declares the escape(s) {', '.join(_drift)}, which this "
+           f"adapter does not ask as the user's decision", "name each in plugin.yml's decisions: (escape:, "
+           f"its param) or escapes_not_asked: (with why), then mount again")
 
 # ---------------------------------------------------------------------------- scAnno's own chain
 P = out_dir / "scanno"

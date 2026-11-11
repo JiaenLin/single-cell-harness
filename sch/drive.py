@@ -46,6 +46,12 @@ FIELDS = {
 REQUIRED = ("request", "observations", "parts", "keys", "context", "upstream", "stages")
 WAITING = 3          # the exit status of a run stopped at a user's decision
 SHAPES = ("libraries", "joint")
+#: What an unanswered decision does (autodev W042 fix 1, D): `stop` - the run stops before its stage
+#: until it is answered (the tool has no default the driver may assume); `tool-default` - an escape the
+#: tool declares (`describe` escapes[]) that lifts one of its refusals: unanswered, its flag is not
+#: passed, which is the tool's own default, and the stage's events say so; answered, it is passed and
+#: recorded with who gave it. Either way it is never a plain param.
+UNANSWERED = ("stop", "tool-default")
 #: What the plan says of the tool a stage wraps.
 WRAPS = ("tool", "version")
 #: The driver's own job, as `resources:` names it beside the stages' short names.
@@ -90,6 +96,16 @@ def _resolve(ref: str):
                 if m.name == ref:
                     return m
     raise RequestError(f"plugin {ref!r} not found under {[str(r) for r in roots]}")
+
+
+def _site_pbs():
+    """The site's `pbs:` block when its stack layer runs stages on the scheduler, else None."""
+    site = os.environ.get("SCH_SITE")
+    f = Path(site) / "stack.yml" if site else None
+    if f is None or not f.is_file():
+        return None
+    layer = yamlish.load(f) or {}
+    return dict(layer["pbs"]) if str(layer.get("executor")) == "pbs" and isinstance(layer.get("pbs"), dict) else None
 
 
 def _hands_on(m, params: dict) -> list:
@@ -143,6 +159,9 @@ def load(path, files: bool = True) -> dict:
     ctx = doc["context"]
     if not isinstance(ctx, dict):
         raise RequestError("context: is not a mapping of profile axes")
+    # a word is its letters: " snrna " is snrna, and what reaches the stacks is the trimmed word
+    # (autodev W042 fix 1, observation 3)
+    ctx = {str(k): (str(v).strip() if v is not None else v) for k, v in ctx.items()}
     assay = str(ctx.get("assay") or "").strip()
     if not assay:
         raise RequestError("the request declares no assay; single cells and single nuclei are separate "
@@ -185,6 +204,18 @@ def load(path, files: bool = True) -> dict:
                                    f"column is keys.sample = {lib!r}; the library is one fact and the driver "
                                    f"writes it into every stage: drop {path} from the stage's params")
             params = _set(params, str(path), lib)
+        # A FACT OF THE CONTEXT IS STATED ONCE (autodev W042 fix 1, observation 2): where a tool takes a
+        # context axis as its own flag (`context_params:`), a stage that states it differently is two
+        # facts for one, and refused; the same word, said twice, is the same fact.
+        for axis, path in dict(m.data.get("context_params") or {}).items():
+            head, _, rest = str(path).partition(".")
+            got = dict(params.get(head) or {}).get(rest) if rest else params.get(head)
+            want = ctx.get(axis)
+            norm = lambda v: re.sub(r"[\s_-]+", "_", str(v).strip().casefold())  # noqa: E731
+            if got is not None and want is not None and norm(got) != norm(want):
+                raise RequestError(f"stages[{i}] ({m.name}): {path} is {got!r}, but the request's context "
+                                   f"declares {axis} {want!r}; the {axis} is one fact, stated once in context: "
+                                   f"write the context's word in {path}, or correct the context")
         decisions = []
         for d in m.data.get("decisions") or []:
             head, _, rest = str(d["param"]).partition(".")
@@ -193,7 +224,11 @@ def load(path, files: bool = True) -> dict:
                                    f"the user's decision {short}.{d['name']} ({d['what']}); the driver passes "
                                    f"it only as an answer recorded with who gave it: --answer "
                                    f"{short}.{d['name']}=VALUE --by WHO")
-            decisions.append({"name": f"{short}.{d['name']}", "param": str(d["param"]), "what": d["what"]})
+            if str(d.get("unanswered") or "stop") not in UNANSWERED:
+                raise RequestError(f"{m.name}: decision {d['name']} declares unanswered: {d.get('unanswered')!r}; "
+                                   f"it is one of {', '.join(UNANSWERED)}")
+            decisions.append({"name": f"{short}.{d['name']}", "param": str(d["param"]), "what": d["what"],
+                              "escape": d.get("escape"), "unanswered": str(d.get("unanswered") or "stop")})
         plan.append({"stage": f"{i:02d}_{short}", "plugin": m.name, "dir": str(m.dir),
                      "profile": m.profile, "version": m.version,
                      "wraps": {k: (m.data.get("wraps") or {}).get(k) for k in WRAPS},
@@ -223,6 +258,24 @@ def load(path, files: bool = True) -> dict:
         if who in short:
             short[who]["resources"] = {**short[who]["resources"], **{k: str(v) for k, v in size.items()}}
 
+    # EVERY SIZE AGAINST THE SITE'S QUEUES BEFORE ANYTHING RUNS (autodev W042 fix 1, observation 1):
+    # a size no queue holds is refused here, for every stage and the driver's own job, not when its
+    # stage comes to be submitted after the ones before it ran. The site's queues are read where the
+    # stages read them ($SCH_SITE/stack.yml); with no pbs site there is no queue to hold anything.
+    site_pbs = _site_pbs()
+    if site_pbs is not None:
+        from .services.executor import ExecutorError, PbsExecutor
+        for who, plugin, size in [(DRIVE, DRIVE, dict(res.get(DRIVE) or {}))] + [
+                (p["stage"], p["plugin"], p["resources"]) for p in plan]:
+            if not size:
+                continue
+            plugins = dict(site_pbs.get("plugins") or {})
+            plugins[plugin] = {**dict(plugins.get(plugin) or {}), **{k: str(v) for k, v in size.items()}}
+            try:
+                PbsExecutor(config={**site_pbs, "plugins": plugins}).settings(plugin)
+            except ExecutorError as e:
+                raise RequestError(f"resources ({who}): {e}") from None
+
     # one spelling per assay: the word every stage's tool is declared to take
     words = [set(p["assays"]) for p in plan]
     common = sorted(set.intersection(*words)) if words else []
@@ -251,12 +304,21 @@ def load(path, files: bool = True) -> dict:
     other = sorted(set(up) - set(steps))
     if other:
         raise RequestError(f"upstream: {', '.join(other)} is not an upstream step ({', '.join(steps)})")
-    for step, banned in dict((rule.get("never") or {}).get(assay) or {}).items():
-        tool = str((up.get(step) or {}).get("tool") or "").strip().lower()
-        if tool in [str(b).lower() for b in banned]:
-            raise RequestError(f"upstream: {step} by {tool!r} on {assay}: never ({prof.id}: rule 2, a remover "
-                               f"calibrated on nuclei is not lent to cells); deliver the aligner's call, or "
-                               f"an ambient correction made for this assay")
+    # RULE 2 BY WHAT MAY RUN, NOT BY WHAT MAY NOT (autodev W042 fix 1, A): a ban by name is spelt
+    # around (the name with its version, its command line); the profile's `allowed` names
+    # every tool a step may declare on an assay, and any other name is refused. The rule is the
+    # profile's; this module holds no tool's name.
+    if "never" in rule:
+        raise RequestError(f"{prof.id}: upstream.never is not read; rule 2 is written as what may run "
+                           f"(upstream.allowed.<assay>.<step>: [names])")
+    for step, names in dict((rule.get("allowed") or {}).get(assay) or {}).items():
+        said = str((up.get(step) or {}).get("tool") or "")
+        if said.strip().casefold() not in [str(n).strip().casefold() for n in names or []]:
+            raise RequestError(f"upstream: {step} by {said!r} on {assay}: not a tool {prof.id} allows there "
+                               f"(upstream.allowed.{assay}.{step}: {', '.join(map(str, names or [])) or 'none'}); "
+                               f"rule 2: a remover calibrated on nuclei is not lent to cells, and what may run "
+                               f"upstream of {assay} is what the profile names - deliver the aligner's call "
+                               f"(`tool: none`), or add a remover made for {assay} to the profile, reviewed")
 
     # ---- the chain: each stage reads a shape the stage before it hands on
     if plan[0]["reads"] != "libraries":
@@ -295,13 +357,86 @@ def plan_lines(req: dict, answers: dict | None = None) -> list:
             lines.append("           size: " + ", ".join(f"{k}={v}" for k, v in sorted(p["resources"].items()))
                          + " (on pbs, the site file's queues choose the queue)")
         for d in p["decisions"]:
+            esc = f", {w.get('tool')}'s escape {d['escape']}" if d.get("escape") else ""
             got = (f"answered {json.dumps(answers[d['name']]['value'])} by {answers[d['name']]['by']}"
-                   if d["name"] in answers else "UNANSWERED - the run stops before this stage")
-            lines.append(f"           the user's: {d['name']} ({d['param']}) - {d['what']}; {got}")
+                   if d["name"] in answers else "UNANSWERED - the run stops before this stage"
+                   if d["unanswered"] == "stop" else f"not passed ({w.get('tool')}'s default) unless answered")
+            lines.append(f"           the user's: {d['name']} ({d['param']}{esc}) - {d['what']}; {got}")
     return lines
 
 
 # ---------------------------------------------------------------------------- the run
+#: The run's record of every file its request names, hashed when it starts (autodev W042 fix 1, B).
+INPUTS = "INPUTS.json"
+
+
+def _leaves(v, path=""):
+    if isinstance(v, dict):
+        for k, x in v.items():
+            yield from _leaves(x, f"{path}.{k}" if path else str(k))
+    elif isinstance(v, list):
+        for i, x in enumerate(v):
+            yield from _leaves(x, f"{path}[{i}]")
+    else:
+        yield path, v
+
+
+def named_files(req: dict) -> dict:
+    """EVERY FILE A REQUEST NAMES IS PART OF THE REQUEST (autodev W042 fix 1, B): {role: path} for
+    the request, its samplesheet, its design, each library the samplesheet names (as the stack reads
+    it: relative to the samplesheet) and each stage param that names a file. A resume on files that
+    changed is another run's input under this run's record, so the run hashes them all."""
+    from .services.dataset import read_manifest
+    files = {"request": req["path"], "observations": req["observations"]}
+    if req.get("design"):
+        files["design"] = req["design"]
+    sheet = Path(req["observations"])
+    try:
+        _head, rows = read_manifest(sheet)
+    except Exception:                            # noqa: BLE001 - the stack's own init says what is wrong
+        rows = []
+    for i, r in enumerate(rows, 1):
+        v = str(r.get(req["parts"]) or "").strip()
+        f = Path(v) if Path(v).is_absolute() else sheet.parent / v
+        if v and f.is_file():
+            files[f"observations.{req['parts']}[{r.get(req['keys']['sample']) or i}]"] = str(f)
+    for p in req["stages"]:
+        for path, v in _leaves(p["params"]):
+            if isinstance(v, str) and v.startswith(("/", "~/")) and Path(os.path.expanduser(v)).is_file():
+                files[f"{p['stage']}.{path}"] = str(Path(os.path.expanduser(v)).resolve())
+    return files
+
+
+def _pinned(out: Path, req: dict, dfile: Path) -> dict:
+    """The named files' hashes, recorded when the run starts and compared on every resume; and
+    decisions.json's, so a recorded decision is changed by nobody but `sch run`."""
+    now = {k: {"path": v, "sha256": _sha(v)} for k, v in named_files(req).items()}
+    rec_f = out / INPUTS
+    if not rec_f.exists():
+        if (out / "request.json").exists():
+            raise RequestError(f"{out} records no {INPUTS}: its stages ran on files nobody hashed, so a resume "
+                               f"cannot say they are the same - start a new --out")
+        rec = {"started_at": _now(), "files": now, "decisions_sha256": None}
+        rec_f.write_text(json.dumps(rec, indent=1) + "\n")
+        return rec
+    rec = json.loads(rec_f.read_text())
+    then = rec.get("files") or {}
+    changed = [k for k in sorted(set(then) | set(now))
+               if (then.get(k) or {}).get("sha256") != (now.get(k) or {}).get("sha256")]
+    if changed:
+        said = "; ".join(f"{k} {(then.get(k) or now.get(k))['path']} (sha256 "
+                         f"{((then.get(k) or {}).get('sha256') or 'not named')[:12]} when the run started, "
+                         f"{((now.get(k) or {}).get('sha256') or 'not named now')[:12]} now)" for k in changed)
+        raise RequestError(f"{out} was started on other files: {said}. A run is one request and every file it "
+                           f"names; a stage sealed on the old ones would be read beside one run on the new. "
+                           f"Restore each file as it was, or start a new --out")
+    if dfile.exists() and _sha(dfile) != rec.get("decisions_sha256"):
+        raise RequestError(f"{dfile} was changed outside `sch run` (sha256 {_sha(dfile)[:12]}, recorded "
+                           f"{str(rec.get('decisions_sha256'))[:12]}); a recorded decision is not rewritten: "
+                           f"restore it, or start a new --out")
+    return rec
+
+
 def _record(out: Path, **rec):
     (out / "DRIVE.json").write_text(json.dumps({"at": _now(), **rec}, indent=1, default=str) + "\n")
 
@@ -351,9 +486,6 @@ def _seal(stage_dir: Path, run_dir: Path, rec: dict):
 
 def run(req: dict, out, answers_given: list | None = None, by: str | None = None) -> tuple:
     """(exit status, record). 0 sealed; 2 refused or a stage failed; 3 stopped at a user's decision."""
-    from .kernel import Stack
-    from .services.invariant import InvariantFailure
-    from .stack import StackError
     out = Path(out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     resume = f"sch run --request {req['path']} --out {out}"
@@ -362,9 +494,10 @@ def run(req: dict, out, answers_given: list | None = None, by: str | None = None
         raise RequestError(f"{out} was run from another request (sha256 "
                            f"{json.loads(prior.read_text())['sha256'][:12]}); a run is one request: "
                            f"start a new --out")
+    dfile = out / "decisions.json"
+    pins = _pinned(out, req, dfile)
     prior.write_text(json.dumps(req, indent=1, default=str) + "\n")
     names = {d["name"]: (p, d) for p in req["stages"] for d in p["decisions"]}
-    dfile = out / "decisions.json"
     answers = json.loads(dfile.read_text()) if dfile.exists() else {}
     for a in answers_given or []:
         name, sep, raw = str(a).partition("=")
@@ -382,6 +515,9 @@ def run(req: dict, out, answers_given: list | None = None, by: str | None = None
                                f"{answers[name]['by']}; a recorded decision is not rewritten: start a new --out")
         answers.setdefault(name, {"value": value, "by": by, "at": _now(), "verbatim": a})
     dfile.write_text(json.dumps(answers, indent=1) + "\n")
+    pins["decisions_sha256"] = _sha(dfile)
+    (out / INPUTS).write_text(json.dumps(pins, indent=1) + "\n")
+    inputs = {k: v["sha256"] for k, v in pins["files"].items()}
 
     handed, done = None, []
     for p in req["stages"]:
@@ -395,7 +531,7 @@ def run(req: dict, out, answers_given: list | None = None, by: str | None = None
             while (out / f"{p['stage']}.failed-{n}").exists():
                 n += 1
             sd.rename(out / f"{p['stage']}.failed-{n}")
-        waiting = [d for d in p["decisions"] if d["name"] not in answers]
+        waiting = [d for d in p["decisions"] if d["name"] not in answers and d["unanswered"] == "stop"]
         if waiting:
             rec = {"status": "waiting", "stage": p["stage"], "sealed": done,
                    "waiting_for": waiting, "resume": resume + " " + " ".join(
@@ -404,69 +540,104 @@ def run(req: dict, out, answers_given: list | None = None, by: str | None = None
             return WAITING, rec
         params = dict(p["params"])
         for d in p["decisions"]:
-            params = _set(params, d["param"], answers[d["name"]]["value"])
-        sd.mkdir(parents=True)
-        if handed is None:
-            obs, keys, parts = req["observations"], req["keys"], req["parts"]
-        else:
-            f, col = _manifest(sd, p["reads"], req["keys"]["sample"], handed)
-            obs, keys, parts = str(f), {**req["keys"], "sample": col}, "h5ad"
+            if d["name"] in answers:
+                params = _set(params, d["param"], answers[d["name"]]["value"])
 
         def failed(why, fix, stack=None):
             rec = {"status": "failed", "stage": p["stage"], "plugin": p["plugin"], "sealed": done,
                    "reason": why, "fix": fix, "stack": str(sd), "resume": resume}
+            open_ = [d for d in p["decisions"] if d["name"] not in answers and d["unanswered"] != "stop"]
+            if open_:                            # the escapes this stage's tool declares, by name
+                rec["escapes"] = [{"name": d["name"], "escape": d["escape"], "what": d["what"],
+                                   "answer": f"--answer {d['name']}=VALUE --by WHO"} for d in open_]
             if stack is not None:
                 stack.prov.append("drive/failed", stage=p["stage"], reason=why, fix=fix)
                 stack.close()
             _record(out, **rec)
             return 2, rec
+        if handed is not None and not (handed.get("joint") if p["reads"] == "joint" else handed.get("libraries")):
+            return failed(f"{p['plugin']} reads {p['reads']}, and {done[-1]} handed on none (its out.json "
+                          f"hands_on names no {p['reads']})", f"read {done[-1]}'s record: a stage that hands on "
+                          f"no {p['reads']} cannot be read as one; run a new --out once it does")
         try:
-            st = Stack.init(sd, p["profile"], obs, req["design"], keys, context=req["context"], parts=parts)
-        except StackError as e:
-            return failed(f"sch init refused: {e}", "correct what the refusal names, then resume")
-        st.close()
-        decl = yamlish.load(sd / "stack.yml")
-        decl["plugins"] = {p["plugin"]: {"plugin": p["dir"], "params": _home(params)}}
-        if p.get("resources"):
-            # the stage's own run takes the stage's size; its probes, gates and companion keep the
-            # site's default block (the pbs executor lays pbs.plugins.<name> over it, per run)
-            decl["pbs"] = {"plugins": {p["plugin"]: dict(p["resources"])}}
-        yamlish.dump(decl, sd / "stack.yml")
-        st = Stack.open(sd)
-        st.prov.append("drive/stage", request=req["path"], request_sha256=req["sha256"], stage=p["stage"],
-                       plugin=p["plugin"], reads_from=done[-1] if done else "the request's observations")
-        st.prov.append("upstream/declared", **{k: v for k, v in req["upstream"].items()})
-        for d in p["decisions"]:
-            st.prov.append("decision/answered", name=d["name"], param=d["param"], what=d["what"],
-                           **answers[d["name"]])
-        _record(out, status="running", stage=p["stage"], sealed=done, resume=resume)
-        r = st.run_declared()[0]                 # what `sch run --stack DIR` does: the declared mount
-        if not r.ok:
-            return failed(f"{p['plugin']} {r.status}: {r.reason}", r.fix or "read the stage's stack", st)
-        try:
-            rep = st.report()
-        except InvariantFailure as e:
-            return failed(f"report refused: {e}", "read the stage's events", st)
-        rd = st.run_dir(p["plugin"])
-        got = (json.loads((rd / "out" / "out.json").read_text()).get("answer") or {}).get("hands_on") or {}
-        handed = {"libraries": {k: str(rd / "out" / v) for k, v in (got.get("libraries") or {}).items()},
-                  "joint": str(rd / "out" / got["joint"]) if got.get("joint") else None}
-        lost = [x for x in [*handed["libraries"].values(), handed["joint"]] if x and not Path(x).is_file()]
-        if lost:
-            return failed(f"{p['plugin']} names {lost[0]} as handed on and it is not there",
-                          "read the stage's out.json", st)
-        st.prov.append("drive/sealed", stage=p["stage"], hands_on=handed)
-        st.close()
-        _seal(sd, rd, {"stage": p["stage"], "plugin": p["plugin"], "hands_on": handed,
-                       "report": str(sd / "report" / "report.json"), "numbers": len(rep.get("numbers") or []),
-                       "request_sha256": req["sha256"]})
+            return_ = _stage(p, sd, req, handed, params, answers, done, failed)
+        except Exception as e:                   # noqa: BLE001 - never leave the run marked running
+            return failed(f"the driver stopped in {p['stage']}: {type(e).__name__}: {e}",
+                          "read the stage's events; resume once the cause is corrected")
+        if return_[0] is not None:
+            return return_
+        handed = return_[1]
         done.append(p["stage"])
     rec = {"status": "sealed", "sealed": done, "request": req["path"], "request_sha256": req["sha256"],
-           "decisions": answers, "upstream": req["upstream"],
+           "inputs": inputs, "decisions": answers, "upstream": req["upstream"],
            "reports": {s: str(out / s / "report" / "report.json") for s in done}}
     (out / "SEALED.json").write_text(json.dumps({"sealed_at": _now(), **rec}, indent=1, default=str) + "\n")
     _record(out, **rec)
     return 0, rec
+
+
+def _stage(p, sd, req, handed, params, answers, done, failed) -> tuple:
+    """One stage, as `sch init` + the declared mount + `sch report` + the seal: (None, handed on) when
+    it sealed, else the failed record."""
+    from .kernel import Stack
+    from .services.invariant import InvariantFailure
+    from .stack import StackError
+    out = sd.parent
+    inputs = {k: v["sha256"] for k, v in json.loads((out / INPUTS).read_text())["files"].items()}
+    resume = f"sch run --request {req['path']} --out {out}"
+    sd.mkdir(parents=True)
+    if handed is None:
+        obs, keys, parts = req["observations"], req["keys"], req["parts"]
+    else:
+        f, col = _manifest(sd, p["reads"], req["keys"]["sample"], handed)
+        obs, keys, parts = str(f), {**req["keys"], "sample": col}, "h5ad"
+    try:
+        st = Stack.init(sd, p["profile"], obs, req["design"], keys, context=req["context"], parts=parts)
+    except StackError as e:
+        return failed(f"sch init refused: {e}", "correct what the refusal names, then resume")
+    st.close()
+    decl = yamlish.load(sd / "stack.yml")
+    decl["plugins"] = {p["plugin"]: {"plugin": p["dir"], "params": _home(params)}}
+    if p.get("resources"):
+        # the stage's own run takes the stage's size; its probes, gates and companion keep the
+        # site's default block (the pbs executor lays pbs.plugins.<name> over it, per run)
+        decl["pbs"] = {"plugins": {p["plugin"]: dict(p["resources"])}}
+    yamlish.dump(decl, sd / "stack.yml")
+    st = Stack.open(sd)
+    st.prov.append("drive/stage", request=req["path"], request_sha256=req["sha256"], stage=p["stage"],
+                   plugin=p["plugin"], reads_from=done[-1] if done else "the request's observations")
+    st.prov.append("upstream/declared", **{k: v for k, v in req["upstream"].items()})
+    for d in p["decisions"]:
+        if d["name"] in answers:
+            st.prov.append("decision/answered", name=d["name"], param=d["param"], what=d["what"],
+                           escape=d.get("escape"), **answers[d["name"]])
+        else:                                # an escape nobody took: the tool's own default, said
+            st.prov.append("decision/unanswered", name=d["name"], param=d["param"], what=d["what"],
+                           escape=d.get("escape"), value=None, by=None,
+                           said=f"not passed: {p['wraps'].get('tool')}'s default, the escape not taken")
+    _record(out, status="running", stage=p["stage"], sealed=done, resume=resume)
+    r = st.run_declared()[0]                 # what `sch run --stack DIR` does: the declared mount
+    if not r.ok:
+        return failed(f"{p['plugin']} {r.status}: {r.reason}", r.fix or "read the stage's stack", st)
+    try:
+        rep = st.report()
+    except InvariantFailure as e:
+        return failed(f"report refused: {e}", "read the stage's events", st)
+    rd = st.run_dir(p["plugin"])
+    got = (json.loads((rd / "out" / "out.json").read_text()).get("answer") or {}).get("hands_on") or {}
+    handed = {"libraries": {k: str(rd / "out" / v) for k, v in (got.get("libraries") or {}).items()},
+              "joint": str(rd / "out" / got["joint"]) if got.get("joint") else None}
+    lost = [x for x in [*handed["libraries"].values(), handed["joint"]] if x and not Path(x).is_file()]
+    if lost:
+        return failed(f"{p['plugin']} names {lost[0]} as handed on and it is not there",
+                      "read the stage's out.json", st)
+    st.prov.append("drive/sealed", stage=p["stage"], hands_on=handed)
+    st.close()
+    _seal(sd, rd, {"stage": p["stage"], "plugin": p["plugin"], "hands_on": handed,
+                   "report": str(sd / "report" / "report.json"), "numbers": len(rep.get("numbers") or []),
+                   "request_sha256": req["sha256"], "inputs": inputs,
+                   "decisions": {d["name"]: answers.get(d["name"]) for d in p["decisions"]}})
+    return None, handed
 
 
 # ---------------------------------------------------------------------------- the job (run 2)
@@ -552,7 +723,9 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         *([f"#PBS -P {cfg['account']}"] if cfg.get("account") else []), "#",
         "# GENERATED by `sch run --request ... --job` (the single-cell harness, ROUTE R03 run 2), never",
         "# hand-written: to change it, change the request, the site file or the prediction and generate it again.",
-        f"#   request   {os.path.relpath(req['path'], jobs)}  sha256 {req['sha256']}",
+        f"#   request   {os.path.relpath(req['path'], jobs)}  sha256 {req['sha256']} (the job refuses another)",
+        *([f"#   check     {os.path.relpath(Path(check).resolve(), jobs)}  sha256 {_sha(check)} (the job refuses "
+           f"another)"] if check else []),
         f"#   site      {os.path.relpath(site, jobs)}  (stack.yml sha256 {_sha(site / 'stack.yml')[:16]}, "
         f"job.yml sha256 {_sha(site / 'job.yml')[:16]})",
         f"#   harness   {commit or 'not a git checkout: unpinned'}" + (f" (the job refuses another)" if commit else ""),
@@ -612,6 +785,21 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         "  echo \"VERDICT (harness): MISSED - $HARNESS is at $(cat \"$HARNESS/HEAD.txt\"), this job was generated at $EXPECT_HARNESS\" | tee -a \"$VERDICTS\"",
         "  exit 2",
         "fi",
+        # THE JOB RUNS THE FILES IT WAS GENERATED FOR (autodev W042 fix 1, C): the request, the check
+        # script and the site's two files are compared with their hashes here, before anything runs; an
+        # edited one would run under a prediction written for another
+        "pin() { \"$PY\" -c 'import hashlib, sys; h = hashlib.sha256(); f = open(sys.argv[1], \"rb\"); "
+        "[h.update(b) for b in iter(lambda: f.read(1 << 20), b\"\")]; print(h.hexdigest())' \"$1\"; }",
+        "check_pin() { got=$(pin \"$2\" 2>/dev/null || echo unreadable)",
+        "  if [ \"$got\" != \"$3\" ]; then",
+        "    echo \"VERDICT (pins): MISSED - the $1 $2 has sha256 $got; this job and its prediction were generated for "
+        "$3: generate the job again from the file as it is\" | tee -a \"$VERDICTS\"",
+        "    exit 2",
+        "  fi; }",
+        f"check_pin request \"$REQUEST\" {req['sha256']}",
+        *([f"check_pin check \"$CHECK\" {_sha(check)}"] if check else []),
+        f"check_pin 'site stack.yml' \"$SCH_SITE/stack.yml\" {_sha(site / 'stack.yml')}",
+        f"check_pin 'site job.yml' \"$SCH_SITE/job.yml\" {_sha(site / 'job.yml')}",
         "echo \"=== the chained run: $(date -u +%Y-%m-%dT%H:%M:%SZ) ===\"",
         "set +e",
         "PYTHONPATH=\"$HARNESS\" \"$PY\" -m " + " ".join(argv).replace("$REQUEST", "\"$REQUEST\"").replace("$RUNDIR", "\"$RUNDIR\"") + tail + " > \"$RUNDIR/DRIVE.log\" 2>&1",

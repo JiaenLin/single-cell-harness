@@ -35,6 +35,14 @@ import sys
 from pathlib import Path
 
 MODE = os.environ.get("FAKE_SCANNO_MODE", "ok")
+#: The escapes scAnno's `describe` declares, copied from the tool (scanno/cli.py:3227-3231 at 779fd08):
+#: the adapter's `decisions:` must ask each one (harness W042 fix 1, D); FAKE_SCANNO_MODE=escape_drift
+#: declares one more, as a newer scAnno would.
+ESCAPES = [{"flag": "--no-exclude", "lifts": "the upstream exclusion", "recorded": "STATUS.annotate.json escapes[]"},
+           {"flag": "--background-from-clusters", "lifts": "the calibrated store", "recorded": "STATUS.annotate.json escapes[]"},
+           {"flag": "--gap-min", "lifts": "the descent threshold", "recorded": "STATUS.annotate.json escapes[]"},
+           {"flag": "--tissue-fallback", "lifts": "the declared tissue: every tissue of the species is read", "recorded": "STATUS.<cmd>.json escapes[] and corpus"},
+           {"flag": "--marker-species", "lifts": "the declared species, for markers only", "recorded": "STATUS.<cmd>.json escapes[] and corpus"}]
 STATE_VERSION = int(os.environ.get("FAKE_SCANNO_STATE_VERSION", "1"))
 VERSION, COMMIT = "0.0.0-fake", "f" * 40
 
@@ -178,7 +186,10 @@ def outcome(st, cmd, n_obs, headline):
 def describe(_a):
     print(json.dumps({"contract": "1.0", "name": "scanno", "version": VERSION, "commit": COMMIT,
                       "state_version": STATE_VERSION, "class": "method", "layer": "stack",
-                      "reversible": True, "sees": [], "cannot_show": ["a stand-in shows nothing"]}))
+                      "reversible": True, "sees": [], "escapes": ESCAPES + (
+                          [{"flag": "--drift", "lifts": "a stand-in's new escape", "recorded": "nowhere"}]
+                          if MODE == "escape_drift" else []),
+                      "cannot_show": ["a stand-in shows nothing"]}))
     return 0
 
 
@@ -339,6 +350,8 @@ def main(argv=None):
     s.add_argument("--exclude-flag")
     s.add_argument("--no-exclude", action="store_true")
     s.add_argument("--gap-min", type=float)
+    s.add_argument("--tissue-fallback", choices=["species"])      # scanno/cli.py:2589 at 779fd08
+    s.add_argument("--marker-species")
     s.add_argument("--min-tier", type=int, default=4)
     s.add_argument("--out-gene-key", default="gene_symbol")
     s.add_argument("--gene-key")

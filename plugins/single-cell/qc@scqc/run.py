@@ -196,13 +196,26 @@ for o in sorted((res / "objects").glob("**/*.h5ad")):
 # WHAT THE NEXT STAGE READS (harness W041), in scQC's own layout: each library's kept observations
 # (`objects/<prefix>_per_sample/<sample>.filtered.h5ad`, what annotation reads) and the joint
 # deliverable (`objects/<prefix>.deliverable.h5ad`, what integration and DE read). Named, not copied.
-per = {}
+# Two candidates for one library, or two joint deliverables, are refused by name: picking one of them
+# would hand the next stage an object nobody chose (harness W042 fix 1, observation 5).
+per, cand = {}, {}
 for o in sorted((res / "objects").glob("*_per_sample/*.filtered.h5ad")):
     lib = o.name[:-len(".filtered.h5ad")]
     if lib in scope_of:
-        per[scope_of[lib]] = str(o.relative_to(out_dir))
+        cand.setdefault(scope_of[lib], []).append(str(o.relative_to(out_dir)))
+two = {k: v for k, v in cand.items() if len(v) > 1}
+if two:
+    refuse(f"scQC wrote {len(next(iter(two.values())))} kept objects for library {next(iter(two))}: "
+           + "; ".join(f"{k}: {', '.join(v)}" for k, v in sorted(two.items()))
+           + " - which one the next stage reads is not this adapter's to choose",
+           "run scQC with one output prefix, so each library has one kept object")
+per = {k: v[0] for k, v in cand.items()}
 joint = sorted((res / "objects").glob("*.deliverable.h5ad"))
-run.answer(hands_on={"libraries": per, "joint": str(joint[0].relative_to(out_dir)) if len(joint) == 1 else None})
+if len(joint) > 1:
+    refuse(f"scQC wrote {len(joint)} joint deliverables: {', '.join(str(j.relative_to(out_dir)) for j in joint)}"
+           f" - which one the next stage reads is not this adapter's to choose",
+           "run scQC with one output prefix, so the run has one deliverable")
+run.answer(hands_on={"libraries": per, "joint": str(joint[0].relative_to(out_dir)) if joint else None})
 
 percell = {lib: res / "tables" / f"{lib}.percell.csv" for lib in scope_of}
 if not any(p.exists() for p in percell.values()):

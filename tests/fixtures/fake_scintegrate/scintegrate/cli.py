@@ -206,6 +206,11 @@ def integrate(a):
         key = g.attrs.get("_index", "_index")
         index = _strings(g[key.decode() if isinstance(key, bytes) else key][()])
         batch = _column_text(g[a.batch_key])
+        unmatched = sorted(set(map(str, batch)) - set(design)) if a.design else []
+        if unmatched:                    # scintegrate/inputs.py read_design refuses here (b148030)
+            why = (f"{len(unmatched)} batch(es) in the object have no row in {a.design}: "
+                   + ", ".join(map(repr, unmatched)))
+            return _finish(out, rec, "refused", 2, why, refusal={"reason": why, "fix": "a design row per batch"})
         labels = _column_text(g[a.label_key])
         keep = list(dict.fromkeys([a.batch_key, a.label_key] + ([a.l1_key] if a.l1_key else [])
                                   + [c for c in (a.colour_by or "").split(",") if c.strip()]))
@@ -312,7 +317,13 @@ def main():
         print(json.dumps({"name": "scintegrate", "version": VERSION, "commit": COMMIT,
                           "state_version": STATE_VERSION,
                           "axes": {"assay": {"required": False, "accepted": list(ASSAYS)},
-                                   "species": {"required": True}}}))
+                                   "species": {"required": True}},
+                          # scIntegrate's own escape (scintegrate/cli.py:1385 at b148030); harness W042 fix 1, D
+                          "escapes": [{"what": "withholding labels from the integration", "how": "--drop-labels",
+                                       "recorded": "report.json withheld_from_integration and "
+                                                   "tables/integration_withheld_by_arm.csv"}] + (
+                              [{"what": "a stand-in's new escape", "how": "--drift"}]
+                              if MODE == "escape_drift" else [])}))
         return 0
     if a.cmd == "doctor":
         print("scintegrate doctor (stand-in): nothing measured")

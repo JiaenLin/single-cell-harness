@@ -18,7 +18,8 @@ share. It scores nothing: a test using it checks the harness around scQC, never 
 
 Environment:
     FAKE_SCQC_LOG             append {"argv", "cwd"} as one JSON line per call
-    FAKE_SCQC_MODE            ok (default) | refuse | fail | unsealed | disagree | short
+    FAKE_SCQC_MODE            ok (default) | refuse | fail | unsealed | disagree | short | two_prefixes (a second
+                              output prefix: two candidates per library) | no_joint (no deliverable)
     FAKE_SCQC_STATE_VERSION   what `describe` and STATUS.json report (default 1)
 """
 import argparse
@@ -59,7 +60,14 @@ def barcodes(part):
 def describe():
     print(json.dumps({"contract": "1.0", "name": "scqc", "version": "0.0.0-fake",
                       "state_version": STATE_VERSION, "layer": "stack", "reversible": True,
-                      "sees": ["design"], "cannot_show": ["a stand-in shows nothing"]}))
+                      "sees": ["design"], "cannot_show": ["a stand-in shows nothing"],
+                      # scQC's own escapes (engine/declare.py:78-85 at c5b1a1b); harness W042 fix 1, D
+                      "escapes": [{"what": "a DERIVED threshold", "how": "decisions.yml with value, class, "
+                                   "approved_by, verbatim", "recorded": "reports/payload.json parameters[].decided_by"},
+                                  {"what": "a REVIEW finding", "how": "proceed; the finding stays in gates[]",
+                                   "recorded": "reports/payload.json gates[]"},
+                                  {"what": "the apply step", "how": "--mode evidence runs no removal",
+                                   "recorded": "INPUTS.json described.mode"}]}))
     return 0
 
 
@@ -168,6 +176,13 @@ def run(a):
                 c.attrs.update({"encoding-type": "categorical", "encoding-version": "0.2.0", "ordered": False})
                 c.create_dataset("categories", data=[sample.encode()])
                 c.create_dataset("codes", data=np.zeros(len(names), dtype="int8"))
+        if MODE == "two_prefixes":       # two output prefixes in one run: two candidates for each
+            import shutil
+            for o in sorted((res / "objects").glob("cohort*")):
+                dst = res / "objects" / o.name.replace("cohort", "other", 1)
+                (shutil.copytree if o.is_dir() else shutil.copy)(o, dst)
+        if MODE == "no_joint":           # a run that writes no deliverable
+            (res / "objects" / "cohort.deliverable.h5ad").unlink()
     (res / "reports" / "report.json").write_text(json.dumps({"kept": kept, "total": total}))
     status.update(status="ok", headline=f"{len(rows)} libraries; deliverable written",
                   products=[{"path": "reports/report.json", "bytes": 1}])

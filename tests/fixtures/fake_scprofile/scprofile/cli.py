@@ -118,6 +118,16 @@ def run(a):
         return finish("refused", 2, why["reason"], refusal=why)
     if MODE == "fail":
         return finish("failed", 1, "run returned 1: a plugin crashed")
+    if a.sample_key:                     # the real scProfile refuses here (harness W042 fix 1, E)
+        import h5py
+        with h5py.File(a.h5ad, "r") as f:
+            have = sorted(k for k in f["obs"].keys() if not k.startswith("_"))
+        if a.sample_key not in have:
+            why = {"reason": f"--sample-key {a.sample_key!r} is not present in the object's obs "
+                             f"(columns: {', '.join(have)})",
+                   "fix": "name the object's column for each sample, or carry it into the object"}
+            print(f"REFUSE - {why['reason']}", file=sys.stderr)
+            return finish("refused", 2, why["reason"], refusal=why)
     plugins = [k for k in (a.kernel or "").split(",") if k]
     skipped = []
     if MODE == "skip" and plugins:

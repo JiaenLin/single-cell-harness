@@ -200,7 +200,11 @@ class ThePlan(_Base):
         p = json.loads(text)
         self.assertEqual([s["stage"] for s in p["stages"]], ["01_qc", "02_anno", "03_int", "04_prof"])
         self.assertEqual([d["name"] for s in p["stages"] for d in s["decisions"]],
-                         ["qc.mode", "qc.decisions", "prof.control"])
+                         ["qc.mode", "qc.decisions", "anno.no_exclude", "anno.background_from_clusters",
+                          "anno.gap_min", "anno.tissue_fallback", "anno.marker_species", "int.drop_labels",
+                          "prof.control"])
+        self.assertEqual([d["name"] for s in p["stages"] for d in s["decisions"] if d["unanswered"] == "stop"],
+                         ["qc.mode", "qc.decisions", "prof.control"], "an escape does not stop the run (W042 fix 1)")
         self.assertEqual([(s["reads"], s["hands_on"]) for s in p["stages"]],
                          [("libraries", ["libraries", "joint"]), ("libraries", ["libraries", "joint"]),
                           ("joint", ["joint"]), ("joint", ["joint"])])
@@ -325,8 +329,23 @@ class OneRequestEveryStage(_Base):
         rc, rec = self.drive(req, out, *ANSWERS, "--answer", CONTROL.format(c="arm"), "--by", "a tester")
         sheet = (out / "02_anno" / "observations.tsv").read_text()
         self.assertTrue(sheet.startswith("library_id\th5ad\n"), sheet)
-        # W042 (GAP-C92): the library column is one fact - scAnno's embed writes keys.sample into the
-        # joint object, and scIntegrate and scProfile take it by that name - so shape b seals
+        # W042 fix 1 (E): scIntegrate keeps its batch, label and colour columns and the design's
+        # factors, never the design's key (scintegrate/cli.py:489-503), so with the batch key `sample`
+        # the cohort's `library_id` does not reach stage 4, and scProfile refuses the --sample-key
+        # its object lacks - through the driver and by hand alike: the tools' failure, quoted
+        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "04_prof"), rec)
+        self.assertIn("--sample-key 'library_id' is not present", rec["reason"])
+        reps, died = self.check_equal_by_hand(c, out, 3)
+        self.assertEqual(died["status"], "refused", died)
+        self.assertIn("--sample-key 'library_id' is not present", died["reason"])
+
+
+    def test_a_request_without_the_library_flags_equals_the_stages_by_hand_with_them(self):
+        # W042 fix 1 (observation 7): the driver writes keys.sample where each tool takes it, and
+        # that run is the by-hand one with those flags, flag for flag
+        c = cohort(self.tmp / "c", "a")
+        req, out = request(c, stages=stages(c, lib=False)), self.tmp / "run"
+        rc, rec = self.drive(req, out, *answered(c))
         self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
         reps, died = self.check_equal_by_hand(c, out, 4)
         self.assertIsNone(died)
@@ -361,7 +380,8 @@ class AFailedStageSaysWhereAndResumes(_Base):
         self.assertIn("not rewritten", rec["reason"])
         rc, rec = self.drive(req, out, "--answer", "qc.nothing=1", "--by", "a tester")
         self.assertIn("no stage declares", rec["reason"])
-        rc, rec = self.drive(request(c, name="other.yml", context={"assay": "snrna", "species": "s2"}), out)
+        rc, rec = self.drive(request(c, name="other.yml", upstream={"alignment": {"tool": "aligner_y"},
+                                                                    "ambient": {"tool": "remover_x"}}), out)
         self.assertIn("another request", rec["reason"])
 
 
@@ -376,18 +396,22 @@ def answered(c):
 class OneLibraryColumn(_Base):
     """W042, GAP-C92: the request's keys.sample is written into every tool that takes the library."""
 
-    def test_the_driver_writes_keys_sample_into_every_stage_and_shape_b_seals(self):
+    def test_the_driver_writes_keys_sample_into_every_stage_and_where_a_tool_drops_it_the_tool_says(self):
+        # W042 fix 1 (E): the flags reach every tool; the column does not reach stage 4, because
+        # scIntegrate keeps the design's factors and never its key (scintegrate/cli.py:489-503), and
+        # the strict stand-in refuses as the real scProfile does
         c = cohort(self.tmp / "c", "b")
         req, out = request(c, stages=stages(c, lib=False)), self.tmp / "run"
         rc, rec = self.drive(req, out, *answered(c))
-        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "04_prof"), rec)
+        self.assertIn("--sample-key 'library_id' is not present", rec["reason"])
         calls = self.calls()
         embed = [a for k, a in calls if k == "FAKE_SCANNO_LOG" and a[0] == "embed"][0]
         self.assertEqual(embed[embed.index("--sample-key") + 1], "library_id")
         prof = [a for k, a in calls if k == "FAKE_SCPROFILE_LOG" and a[0] == "run"][0]
         self.assertEqual(prof[prof.index("--sample-key") + 1], "library_id")
-        integ = [a for k, a in calls if k == "FAKE_SCINTEGRATE_LOG" and "library_id" in a]
-        self.assertEqual(len(integ), 1, [a for k, a in calls if k == "FAKE_SCINTEGRATE_LOG"])
+        integ = [a for k, a in calls if k == "FAKE_SCINTEGRATE_LOG" and a[0] == "integrate"][0]
+        self.assertEqual(integ[integ.index("--design-sample-col") + 1], "library_id")
         rc, text = cli("plan", "--request", str(req))
         self.assertIn("the library column: keys.sample=library_id -> run.sample_key", text)
 
@@ -471,10 +495,15 @@ class TheClusterPath(_Base):
         rc, rec = self.drive(request(c, name="q.yml", resources={"qc": {"queue": "q_big"}}), self.tmp / "r1")
         self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
         self.assertIn("a queue is the site's", rec["reason"])
-        big = {"qc": {"ncpus": 64, "mem": "500gb", "walltime": "100:00:00"}}
-        rc, rec = self.drive(request(c, name="big.yml", resources=big), self.tmp / "r2", *answered(c))
-        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "01_qc"), rec)
-        self.assertIn("no declared queue holds", rec["reason"])
+        # W042 fix 1 (observation 1): a size no queue holds is refused before stage 1, at any stage
+        for who in ("qc", "prof"):
+            big = {who: {"ncpus": 64, "mem": "500gb", "walltime": "100:00:00"}}
+            rc, rec = self.drive(request(c, name=f"big_{who}.yml", resources=big), self.tmp / f"r_{who}",
+                                 *answered(c))
+            self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+            self.assertIn(f"resources ({'01_qc' if who == 'qc' else '04_prof'})", rec["reason"])
+            self.assertIn("no declared queue holds", rec["reason"])
+            self.assertFalse((self.tmp / f"r_{who}").exists())
         self.assertEqual(self.calls(), [], "no tool started")
 
     def job(self, c, req, check_ok=True):
@@ -553,6 +582,194 @@ class TheClusterPath(_Base):
         self.assertNotEqual(p.returncode, 0)
         self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: MISSED (1)")
         self.assertTrue((rundir / "FAILED.txt").is_file())
+
+    # ---- W042 fix 1: C (the job pins what it was generated for) and F (a size keeps the site's words)
+    def test_C_the_job_runs_only_the_request_and_check_it_was_generated_for(self):
+        c = cohort(self.tmp / "c", "a")
+        req = request(c, resources=self.SIZES)
+        f, _rec = self.job(c, req)
+        self.assertIn(f'check_pin request "$REQUEST" {sha(req)}', f.read_text())
+        req.write_text(req.read_text() + "# edited after the job was generated\n")
+        p, rundir = self.run_job(f, "edited")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: MISSED (1)")
+        self.assertIn("VERDICT (pins): MISSED - the request", (rundir / "FAILED.txt").read_text())
+        self.assertFalse((rundir / "01_qc").exists(), "nothing ran")
+        f2, _rec = self.job(c, req)              # generated again for the request as it now is
+        chk = c["dir"] / "00_driver" / "checks.sh"
+        chk.write_text(chk.read_text() + "echo 'VERDICT (added): AS PREDICTED'\n")
+        p, rundir = self.run_job(f2, "edited_check")
+        self.assertIn("VERDICT (pins): MISSED - the check", (rundir / "FAILED.txt").read_text())
+        self.assertFalse((rundir / "01_qc").exists(), "nothing ran")
+
+    def test_F_a_size_the_request_does_not_state_keeps_the_sites_value(self):
+        c = cohort(self.tmp / "c", "a")
+        req, out = request(c, resources={"qc": {"ncpus": 4}}), self.tmp / "run"
+        rc, rec = self.drive(req, out, *answered(c))
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        script = (out / "01_qc" / "plugins" / "qc_scqc" / "pbs" / "job.pbs").read_text()
+        self.assertIn("#PBS -l select=1:ncpus=4:mem=1gb\n", script, "the site's 1gb, kept")
+        self.assertIn("#PBS -q q_big\n", script, "4 cpus are over q_small's 2")
+
+
+def sha(path) -> str:
+    import hashlib
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def scrna(**over):
+    return {"assay": "scrna", "species": "species_x", "tissue": "tissue_x", **over}
+
+
+class TheDriverHoldsItsRules(_Base):
+    """W042 fix 1: the verifier's reasons A, B, D and its observations, each through `sch`."""
+
+    def test_A_what_may_run_upstream_of_single_cells_is_what_the_profile_names(self):
+        import sch.drive
+        c = cohort(self.tmp / "c", "a")
+        for i, tool in enumerate(["CellBender 0.3.0", "cellbender remove-background", "CellBender", "remover_x"]):
+            with self.subTest(tool=tool):
+                req = request(c, name=f"a{i}.yml", context=scrna(),
+                              upstream={"alignment": {"tool": "aligner_x"}, "ambient": {"tool": tool}})
+                rc, rec = self.drive(req, self.tmp / f"ra{i}")
+                self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+                self.assertIn("rule 2", rec["reason"])
+                self.assertIn("upstream.allowed.scrna.ambient: none", rec["reason"])
+        for i, tool in enumerate(["none", " None "]):
+            req = request(c, name=f"n{i}.yml", context=scrna(),
+                          upstream={"alignment": {"tool": "aligner_x"}, "ambient": {"tool": tool}})
+            self.assertEqual(cli("plan", "--request", str(req))[0], 0, tool)
+        req = request(c, name="sn.yml", upstream={"alignment": {"tool": "aligner_x"},
+                                                   "ambient": {"tool": "CellBender 0.3.0"}})
+        self.assertEqual(cli("plan", "--request", str(req))[0], 0, "nuclei take any declared remover")
+        self.assertNotIn("cellbender", Path(sch.drive.__file__).read_text().casefold(), "the rule is the profile's")
+        self.assertEqual(self.calls(), [])
+
+    def test_B_a_resume_on_a_changed_file_the_request_names_is_refused_by_name(self):
+        c = cohort(self.tmp / "c", "a")
+        req, out = request(c), self.tmp / "run"
+        rc, rec = self.drive(req, out, *ANSWERS, "--by", "a tester")
+        self.assertEqual((rc, rec["stage"]), (3, "04_prof"), rec)
+        for s in ("01_qc", "02_anno", "03_int"):
+            inputs = json.loads((out / s / "SEALED.json").read_text())["inputs"]
+            self.assertEqual(inputs["design"], sha(c["design"]), s)
+            self.assertEqual(inputs["observations.ambient_h5[L1]"], sha(c["dir"] / "libs" / "L1.h5ad"), s)
+        design, was = c["design"], c["design"].read_text()
+        design.chmod(0o644)                      # the arms swapped after stages 1 to 3 sealed
+        design.write_text(was.replace("control", "@").replace("treated", "control").replace("@", "treated"))
+        before = len(self.calls())
+        rc, rec = self.drive(req, out, "--answer", CONTROL.format(c="condition"), "--by", "a tester")
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn(f"design {design.resolve()}", rec["reason"])
+        self.assertIn("start a new --out", rec["reason"])
+        self.assertEqual(len(self.calls()), before, "stage 4 did not run")
+        self.assertFalse((out / "04_prof").exists())
+        design.write_text(was)                   # restored as it was: the run goes on
+        rc, rec = self.drive(req, out, "--answer", CONTROL.format(c="condition"), "--by", "a tester")
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+
+    def test_a_recorded_decision_is_not_changed_by_editing_decisions_json(self):
+        c = cohort(self.tmp / "c", "a")
+        req, out = request(c), self.tmp / "run"
+        os.environ["FAKE_SCPROFILE_MODE"] = "fail"
+        rc, rec = self.drive(req, out, *answered(c))
+        self.assertEqual((rc, rec["stage"]), (2, "04_prof"), rec)
+        os.environ.pop("FAKE_SCPROFILE_MODE")
+        d = out / "decisions.json"
+        doc = json.loads(d.read_text())
+        doc["prof.control"]["value"] = ["condition=treated"]
+        d.write_text(json.dumps(doc, indent=1) + "\n")
+        rc, rec = self.drive(req, out)
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn("decisions.json was changed outside `sch run`", rec["reason"])
+
+    def test_D_each_adapters_decisions_are_the_escapes_its_tool_declares(self):
+        import subprocess
+        plugins = Path(__file__).resolve().parent.parent / "plugins" / "single-cell"
+        py = [sys.executable]
+        tools = {"qc@scqc": (py + [str(FIXTURES / "fake_scqc.py"), "describe"], None),
+                 "anno@scanno": (py + [str(FIXTURES / "fake_scanno.py"), "describe"], None),
+                 "int@scintegrate": (py + ["-m", "scintegrate.cli", "describe"], FIXTURES / "fake_scintegrate")}
+        for plugin, (argv, path) in tools.items():
+            with self.subTest(plugin=plugin):
+                env = dict(os.environ, **({"PYTHONPATH": str(path)} if path else {}))
+                said = json.loads(subprocess.run(argv, capture_output=True, text=True, env=env).stdout)
+                declared = {str(e.get("flag") or e.get("what")) for e in said.get("escapes") or []}
+                m = yamlish.load(plugins / plugin / "plugin.yml")
+                asked = {d["escape"] for d in m.get("decisions") or [] if d.get("escape")}
+                not_asked = set(m.get("escapes_not_asked") or {})
+                self.assertTrue(declared, "the stand-in carries its tool's escapes")
+                self.assertEqual(declared, asked | not_asked, "an adapter's decisions are its tool's escapes")
+                self.assertFalse(asked & not_asked)
+        m = yamlish.load(plugins / "prof@scprofile" / "plugin.yml")
+        self.assertEqual([d.get("escape") for d in m["decisions"]], [None], "scProfile declares no escape")
+
+    def test_D_an_escape_is_never_a_plain_param_answered_it_is_passed_and_recorded_with_who(self):
+        c = cohort(self.tmp / "c", "a")
+        for i, (k, cmd, flag, v) in enumerate([(1, "annotate", "no_exclude", True), (2, "integrate", "drop_labels", "x")]):
+            st = stages(c)
+            st[k]["params"][cmd][flag] = v
+            rc, rec = self.drive(request(c, name=f"p{i}.yml", stages=st), self.tmp / f"rp{i}", *answered(c))
+            self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+            self.assertIn(f"--answer {st[k]['plugin'].split('@')[0]}.{flag}=VALUE --by WHO", rec["reason"])
+        rc, text = cli("plan", "--request", str(request(c)))
+        self.assertIn("the user's: anno.gap_min (annotate.gap_min, scAnno's escape --gap-min)", text)
+        self.assertIn("not passed (scAnno's default) unless answered", text)
+        self.assertIn("the user's: int.drop_labels (integrate.drop_labels, scIntegrate's escape", text)
+        out = self.tmp / "run"
+        rc, rec = self.drive(request(c), out, *answered(c), "--answer", "anno.gap_min=0.2")
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        ann = [a for k, a in self.calls() if k == "FAKE_SCANNO_LOG" and a[0] == "annotate"]
+        self.assertTrue(ann and all(a[a.index("--gap-min") + 1] == "0.2" for a in ann), ann)
+        self.assertFalse([a for k, a in self.calls() if "--drop-labels" in a or "--no-exclude" in a])
+        rc, text = cli("--json", "events", "--stack", str(out / "02_anno"), "--kind", "decision")
+        ev = {e["name"]: (e["kind"], e["value"], e["by"]) for e in json.loads(text)}
+        self.assertEqual(ev["anno.gap_min"], ("decision/answered", 0.2, "a tester"))
+        self.assertEqual(ev["anno.no_exclude"], ("decision/unanswered", None, None))
+
+    def test_D_a_tool_declaring_an_escape_its_adapter_does_not_ask_is_refused_at_its_stage(self):
+        c = cohort(self.tmp / "c", "a")
+        req, out = request(c), self.tmp / "run"
+        os.environ["FAKE_SCANNO_MODE"] = "escape_drift"
+        rc, rec = self.drive(req, out, *answered(c))
+        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "02_anno"), rec)
+        self.assertIn("declares the escape(s) --drift", rec["reason"])
+        self.assertIn("anno.no_exclude", [e["name"] for e in rec["escapes"]])
+        os.environ.pop("FAKE_SCANNO_MODE")
+        os.environ["FAKE_SCINTEGRATE_MODE"] = "escape_drift"
+        rc, rec = self.drive(req, out)
+        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "03_int"), rec)
+        self.assertIn("declares the escape(s) a stand-in's new escape", rec["reason"])
+
+    def test_a_fact_stated_twice_must_agree_and_a_word_is_its_letters(self):
+        c = cohort(self.tmp / "c", "a")
+        st = stages(c)
+        st[1]["params"]["annotate"]["species"] = "species_y"
+        rc, rec = self.drive(request(c, name="sp.yml", stages=st), self.tmp / "r1")
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn("annotate.species is 'species_y', but the request's context declares species 'species_x'",
+                      rec["reason"])
+        st[1]["params"]["annotate"]["species"] = "Species_X"
+        self.assertEqual(cli("plan", "--request", str(request(c, name="sp2.yml", stages=st)))[0], 0)
+        req = request(c, name="ws.yml", context={"assay": " snrna ", "species": "species_x", "tissue": "tissue_x"})
+        rc, text = cli("--json", "plan", "--request", str(req))
+        self.assertEqual((rc, json.loads(text)["context"]["assay"]), (0, "snrna"))
+        self.assertEqual(self.calls(), [])
+
+    def test_two_candidates_are_refused_by_name_and_a_shape_not_handed_on_fails_its_stage(self):
+        c = cohort(self.tmp / "c", "a")
+        os.environ["FAKE_SCQC_MODE"] = "two_prefixes"
+        rc, rec = self.drive(request(c), self.tmp / "r1", *answered(c))
+        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "01_qc"), rec)
+        self.assertIn("kept objects for library", rec["reason"])
+        os.environ["FAKE_SCQC_MODE"] = "no_joint"
+        st = stages(c)
+        out = self.tmp / "r2"
+        rc, rec = self.drive(request(c, name="nj.yml", stages=[st[0], st[2], st[3]]), out, *answered(c))
+        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "02_int"), rec)
+        self.assertIn("handed on none", rec["reason"])
+        self.assertEqual(json.loads((out / "DRIVE.json").read_text())["status"], "failed")
+
 
 if __name__ == "__main__":
     unittest.main()

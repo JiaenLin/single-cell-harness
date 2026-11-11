@@ -45,11 +45,16 @@ checkpoint_kinds: [align, ambient, impute, "integrate:corrected-counts"]
 
 # THE STEPS THE FAMILY DOES NOT PERFORM, DECLARED BY NAME (harness W041): a request names the tool
 # that aligned the libraries and the tool that removed ambient RNA (`tool: none` is a declaration).
-# `never` is rule 2 (the PI, 2026-10-02): a remover calibrated on nuclei is not lent to cells.
+# `allowed` is rule 2 (the PI, 2026-10-02: "do not run cellbender for single cell"; a remover
+# calibrated on nuclei is not lent to cells), written as what MAY run, never as what may not: a
+# step an assay lists here takes only the names listed (compared trimmed and case-folded, nothing
+# else), so no spelling of a nucleus-calibrated remover - its name with a version, its command -
+# reaches single cells. A remover made for cells enters by a reviewed line here, with its evidence.
+# An assay or a step not listed takes any declared name (single nuclei: CellBender is theirs).
 upstream:
   steps: [alignment, ambient]
-  never:
-    scrna: {ambient: [cellbender]}
+  allowed:
+    scrna: {ambient: [none]}
 
 required:
   mask:

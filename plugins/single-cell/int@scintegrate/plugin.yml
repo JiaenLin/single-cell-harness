@@ -24,6 +24,14 @@ hands_on: {joint: null}
 # The design sheet's column naming each library, where scIntegrate takes it; the driver writes
 # the request's keys.sample here (harness W042, GAP-C92).
 library_key: integrate.design_sample_col
+# The escape scIntegrate declares as the user's (`scintegrate describe` escapes[], cli.py:1385): passed
+# only as an answer recorded with who gave it; unanswered, nothing is withheld (harness W042 fix 1, D).
+decisions:
+  - name: drop_labels
+    param: integrate.drop_labels
+    escape: "withholding labels from the integration"
+    unanswered: tool-default
+    what: "the labels whose cells are withheld from the integration (comma-separated), or null"
 
 wraps:
   tool: scIntegrate

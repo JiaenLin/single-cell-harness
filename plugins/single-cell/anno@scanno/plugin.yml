@@ -24,6 +24,39 @@ hands_on: {libraries: null, joint: embed}
 # from each library's name into a joint object that lacks it (scanno/embed.py). The driver
 # writes the request's keys.sample here when `embed` is declared (harness W042, GAP-C92).
 library_key: embed.sample_key
+# The context's facts scAnno takes as its own flags: a stage that states one differently is refused by
+# the driver (harness W042 fix 1); the same word, stated twice, is the same fact.
+context_params: {species: annotate.species, tissue: annotate.tissue}
+# The escapes scAnno declares as the user's (`scanno describe` escapes[], scanno/cli.py:3227-3231): each
+# lifts one of scAnno's refusals, so the driver passes it only as an answer recorded with who gave
+# it, never as a plain param; unanswered, the flag is not passed - scAnno's own default (harness W042
+# fix 1, D).
+decisions:
+  - name: no_exclude
+    param: annotate.no_exclude
+    escape: "--no-exclude"
+    unanswered: tool-default
+    what: "lifts the upstream exclusion: flagged observations are annotated"
+  - name: background_from_clusters
+    param: annotate.background_from_clusters
+    escape: "--background-from-clusters"
+    unanswered: tool-default
+    what: "lifts the calibrated store: the background is read from the clusters"
+  - name: gap_min
+    param: annotate.gap_min
+    escape: "--gap-min"
+    unanswered: tool-default
+    what: "lifts the descent threshold"
+  - name: tissue_fallback
+    param: annotate.tissue_fallback
+    escape: "--tissue-fallback"
+    unanswered: tool-default
+    what: "lifts the declared tissue: every tissue of the species is read"
+  - name: marker_species
+    param: annotate.marker_species
+    escape: "--marker-species"
+    unanswered: tool-default
+    what: "lifts the declared species, for markers only"
 
 wraps:
   tool: scAnno

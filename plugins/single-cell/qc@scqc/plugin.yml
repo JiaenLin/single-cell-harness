@@ -23,11 +23,16 @@ hands_on: {libraries: null, joint: null}
 decisions:
   - name: mode
     param: mode
+    escape: "the apply step"
     what: "evidence (measure, remove nothing) or apply (remove what scQC's gates allow); scQC's escape for the apply step"
   - name: decisions
     param: decisions
+    escape: "a DERIVED threshold"
     what: "scQC's approved-threshold record (decisions.yml), or null; a derived threshold is applied only with a recorded human decision"
 
+# scQC's escapes the driver passes nothing for, each with why (`scqc describe` escapes[]).
+escapes_not_asked:
+  "a REVIEW finding": "scQC proceeds and keeps the finding in gates[]; no decision is recorded against it"
 wraps:
   tool: scQC
   version: "0.4.0"

@@ -486,6 +486,14 @@ def _need(cfg: dict) -> dict:
             "walltime": _seconds(cfg.get("walltime") or "")}
 
 
+def _select_words(sel: str) -> list:
+    """[(word, value)] of a select's chunk, in its order: `1:ncpus=4:mem=8gb` -> ncpus, mem."""
+    parts = [x for x in str(sel).split(":") if x.strip()]
+    if parts and parts[0].strip().isdigit():
+        parts = parts[1:]
+    return [tuple(x.split("=", 1)) for x in parts if "=" in x]
+
+
 def sized(cfg: dict, over: dict | None = None) -> dict:
     """ONE JOB'S RESOURCES AND QUEUE FROM THREE DECLARATIONS (autodev W042, ROUTE R03 run 2).
     The site file gives the queues, each with its ceilings (`pbs.queues`: [{queue, walltime, ncpus,
@@ -500,7 +508,12 @@ def sized(cfg: dict, over: dict | None = None) -> dict:
     cfg = dict(cfg)
     if any(k in over for k in SIZE) and "select" not in over or (
             "select" not in cfg and any(k in cfg for k in SIZE)):
-        cfg["select"] = ":".join(["1"] + [f"{k}={cfg[k]}" for k in SIZE if cfg.get(k)])
+        # A SIZE THE REQUEST DOES NOT STATE KEEPS THE SITE'S VALUE (autodev W042 fix 1, F): the
+        # site's `select` is read into its words and the stated ones are laid over them, so a size
+        # that names only ncpus keeps the site's memory, and the queue is chosen with it.
+        words = dict(_select_words(cfg.get("select") or ""))
+        words.update({k: str(cfg[k]) for k in SIZE if cfg.get(k)})
+        cfg["select"] = ":".join(["1"] + [f"{k}={v}" for k, v in words.items()])
     queues = cfg.get("queues")
     if not queues or "queue" in over:
         return cfg
