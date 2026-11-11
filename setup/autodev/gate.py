@@ -10,7 +10,7 @@ submit, in one call: (1) the job file is read from the cohort folder, `bash -n`,
 (2) each --tool checkout is moved to its commit (`keep` records where it is), refused while a live watched job uses that
 tool at another commit; (3) the site's validator; (4) the submit recipe in the job's own header is run on the login
 node: the lines between `# SUBMIT-BEGIN` and `# SUBMIT-END`, or, in an older job, the commented lines after the last
-header line that says "Submit", up to its qsub. Every `... && echo X-CLEAN` line is made fatal when it does not hold;
+header line that says "Submit", up to its qsub. Every check line (`... && echo X-CLEAN`, `... && echo PIPELINE-SAME`) is made fatal when it does not hold;
 (5) the watch row, a RUNLOG entry, and its copy on the cluster. Without --go it prints what it would run and stops.
 
 grade: reads the mirror's verdict file, writes the job's own lines verbatim into the RUNLOG, comments the watch row and
@@ -155,7 +155,7 @@ def recipe_of(text, job_name, sets):
             line = re.sub(rf"\b{re.escape(name)}=<[^>]*>", f"{name}={value}", line)
         if "<" in line and re.search(r"=<[^>]+>", line):
             sys.exit(f"the recipe has an unfilled placeholder: {line.strip()[:120]} (use --set NAME=VALUE)")
-        if re.search(r"&& echo \S+-CLEAN\s*$", line):
+        if re.search(r"&& echo [A-Z][A-Z0-9-]+\s*$", line):   # a check line: X-CLEAN, PIPELINE-SAME, ...
             line = f'{{ {line}; }} || {{ echo "REFUSED: not clean: {line.split("echo")[-1].strip()}"; exit 9; }}'
         out.append(line)
     out.append('echo "RUNDIR=$RUNDIR"')

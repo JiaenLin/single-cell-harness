@@ -54,7 +54,8 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## The queue: [`ROUTE.md`](ROUTE.md)
 
-- **Running now (launched 2026-11-11):** verifiers R01 (harness: W029 + W034 on `autodev/train-harness-1`), R12 (scQC: W020), R19 (scIntegrate: W012 + W025), R22 (scProfile: W013 + W032 + W023); builders R23 = W035 (the maker's prose verb) and R02 = W036 (`prof@scprofile`).
+- **Running now:** verifiers R12 (scQC: W020), R19 (scIntegrate: W012 + W025), R22 (scProfile: W013 + W032 + W023); builders R23 = W035 (the maker's prose verb), R02 = W036 (`prof@scprofile`) and R41 = W037 run A (Studio's design, the PI's direction).
+- **R01 (harness: W029 + W034): verifier PASS** for both waves and the train head; one README line fixed. The gate at the head that merges, `autodev/train-harness-1` @ `0670f3e`: stage 1 **PBS 788583**, stage 2 **PBS 788586**, stage 3 **PBS 788587** (re-pinned copies 36t, 29t, 31t; predictions unchanged). All AS PREDICTED, then the train merges into `main`. scAnno's cluster checkout is at `d0ee926` for 29t and returns to `main` after it.
 - **Next, as each verifier passes:** its merge (the harness through its train's three jobs), then that repository's next route item; R16 (scAnno) and R40 (C46's records) at the first free slots.
 - **The PI's steps** are in ROUTE section 3; none is askable yet.
 - **Parked:** W030 (Service; uncommitted work in its clone), W022 as a wave of its own, the B1 register's queued rows.

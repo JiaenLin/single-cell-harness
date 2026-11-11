@@ -42,7 +42,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 
 | id | repository | the item | moves | waits for | size | status |
 |---|---|---|---|---|---|---|
-| R01 | harness | verify W029 + W034 as one batch on `autodev/train-harness-1`; re-run their three jobs at the train head; merge | A1.1 on `main` | - | v + 3 jobs | verifying |
+| R01 | harness | verify W029 + W034 as one batch on `autodev/train-harness-1`; re-run their three jobs at the train head; merge | A1.1 on `main` | - | v + 3 jobs | gating |
 | R12 | scQC | verify W020 (`b255e45`); merge | unblocks R13 R14 R15 | - | v | verifying |
 | R19 | scIntegrate | verify W012 + W025 (`b148030`); merge; then ask the PI about stage 3's moved ranking | A2.1 3/4 | - | v | verifying |
 | R22 | scProfile | verify W013 + W032 + W023 (`6f970e5`); merge | A3.2 (direction) | - | v | verifying |
