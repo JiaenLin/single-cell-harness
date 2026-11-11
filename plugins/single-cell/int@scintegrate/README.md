@@ -26,9 +26,16 @@ what scIntegrate changed, read back from its object against the part by identity
 - every obs column likewise: `columns/<name>.csv`.
 
 An entry the part already carries with the same values is the observation's own and stays out of the
-layer, even where scIntegrate copied it (the uncorrected PCA, the obs columns it keeps). What the object
-no longer carries, such as the obs columns scIntegrate's slim leaves out, is recorded as `dropped` and is
-never removed from the view.
+layer, even where scIntegrate copied it (the obs columns it keeps; the uncorrected PCA when it is kept as
+delivered). What the object no longer carries, such as the obs columns scIntegrate's slim leaves out, is
+recorded as `dropped` and is never removed from the view.
+
+Since scIntegrate 0.6.0, when `--drop-labels` withholds cells that have rows in the part's `X_pca`, the PCA
+is refit on the retained cells: `X_pca` is then in the layer as rewritten, NaN on the withheld rows
+(`keep_input_pca` keeps the part's). Since 0.7.0 the design's key column travels under the design's own
+name, last: the batch column itself when the key is `batch_key` (nothing added), added from the batch
+column when the part lacks it, the part's own kept when it equals the batch column. This adapter means
+state version 2, which is 0.7.0's.
 
 ```console
 $ sch init stack --profile single-cell/1.0 --observations joint.tsv \
@@ -42,10 +49,10 @@ $ sch unmount int@scintegrate --stack stack --dry-run
 ### Parameters
 - `scintegrate` (the checkout holding `scintegrate/cli.py`, used verbatim) and `integrate` are required.
 - `integrate` is an object of `scintegrate integrate`'s own flags, written in scIntegrate's parser order
-  (0.5.0):
+  (0.7.0):
   - a list on `label_sentinel` or `bio_factor` repeats the flag; a list elsewhere is joined with commas;
-  - `true` writes a flag that takes no argument, and nothing else does: `coarse_from_path` and
-    `no_fast_leiden`;
+  - `true` writes a flag that takes no argument, and nothing else does: `coarse_from_path`,
+    `keep_input_pca` and `no_fast_leiden`;
   - `false` or `null` leaves the flag out, so it keeps scIntegrate's default;
   - `object_name`, when declared, is a file name ending `.h5ad`.
 - A name `integrate` does not have is refused, including `lisi_subsample`, which 0.5.0 removed.
@@ -69,7 +76,9 @@ written bare, and no value begins with `-`, the checkout and the stack's axes in
 - after `describe`: a `state_version` that is not this adapter's, and an assay scIntegrate's own
   declaration does not accept.
 
-scIntegrate itself refuses a species the object's gene identifiers contradict.
+scIntegrate itself refuses a species the object's gene identifiers contradict, and, before anything is
+computed, a design key whose column the object holds with other values and a name the object's writer
+forbids (a `/`, `_index`, an empty name); each becomes the mount's refusal, with scIntegrate's words.
 
 ### The stage record
 scIntegrate's `STATUS.json` and seal are adopted, provided the record names the call's own argv and

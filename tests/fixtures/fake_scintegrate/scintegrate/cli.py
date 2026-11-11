@@ -2,26 +2,44 @@
 `int@scintegrate` through `sch` without scanpy, anndata or any integration method.
 
 It honours the parts of scIntegrate's contract the adapter relies on, and nothing more, as
-`fake_scanno.py` stands in for scAnno:
+`fake_scanno.py` stands in for scAnno. It is held to scIntegrate 0.7.0 (2fc7a6c, state version 2):
+where a harness test relies on a behaviour, the tool's is copied here, its words included, and
+`TheRealScintegrate` runs this stand-in and the real tool on the same inputs and compares what
+each writes, because a stand-in laxer than its tool passes where the tool refuses (ATTACKS 1).
 
     describe        the declaration, as JSON: `state_version`, and the assays `axes` accepts
     doctor          one line; exit 0
-    integrate       parsed with the flags scIntegrate's own parser declares for it (0.5.0,
-                    b148030), so a flag scIntegrate does not have fails here as it would there,
+    integrate       parsed with the flags scIntegrate's own parser declares for it (0.7.0,
+                    2fc7a6c), so a flag scIntegrate does not have fails here as it would there,
                     and `--lisi-subsample` stops at the parser with exit 2
 
 `integrate` keeps scIntegrate's status contract in `--out`: `STATUS.json` written first as
 `partial` with `sys.argv`, `RUNNING.txt`, then the outcome with its products and `SEALED.txt` or
-`FAILED.txt`. Its object, `objects/<--object-name>`, is an `.h5ad` written with h5py in anndata's
-on-disk encodings, made as scIntegrate makes its own:
-  - obs: the batch, label and l1 columns, the colour columns and every design column, COPIED from
-    the input node by node (so they are the input's own), a design column the input lacks joined
-    on by the batch value; every other obs column left out (scIntegrate's slim);
-  - obsm: the input's PCA copied (scIntegrate keeps it as the uncorrected baseline); one
-    embedding per method that has one (NaN rows for cells `--drop-labels` withholds); a 2-D view
-    per method; and the chosen method's view again under the input's 2-D key, so that entry is a
-    rewrite when the input carries one;
+`FAILED.txt`. BEFORE ANYTHING IS COMPUTED it refuses by name - exit 2, STATUS `refused`, the
+tool's fix - what the tool refuses there: a key the object's obs lacks; a design table with no
+rows, without its `--design-sample-col`, without a row for a batch, or without a `--bio-factor`; a
+design column named like a column another option carries, differing from it; a design key whose
+column the object holds with other values; a name the object's writer forbids (`/` in it,
+`_index`, empty, `.`, a NUL, a column without a name, the index's own name on other values)
+among the columns the object would carry or the input's var; an `--object-name` that is not a
+file name ending `.h5ad`. Its object, `objects/<--object-name>`, is an `.h5ad` written with h5py
+in anndata's on-disk encodings, made as scIntegrate makes its own:
+  - obs, in the tool's order: the batch, label and l1 columns and the colour columns, COPIED from
+    the input node by node (so they are the input's own); every design column, copied when the
+    input has it, else joined on by the batch value (`withheld_from_integration` on the cells
+    `--drop-labels` withholds); last, the design's key under the design's own name: nothing added
+    when it IS the batch key, added from the batch column (the withheld cells included) when the
+    input lacks it, the input's own kept when it equals the batch column; every other obs column
+    left out (scIntegrate's slim);
+  - obsm: X_pca, the input's as delivered when no withheld cell has a row in it or with
+    `--keep-input-pca`, else a fixed pattern standing for the refit on the retained cells (centred
+    over them), NaN on the withheld rows; one embedding per method that has one, made from that
+    PCA (NaN rows for the withheld cells); a 2-D view per method; and the chosen method's view again
+    under the input's 2-D key, so that entry is a rewrite when the input carries one;
   - obsp: a graph method's two graphs, when one is among `--methods`.
+`report.json` carries `chosen`, `design_key` (the tool's record, word for word) and `pca` (which
+PCA was used, in the tool's words for its source). The input must carry X_pca: the stand-in
+computes no PCA.
 
 What it computes is a fixed pattern of the input's numbers, never an integration: a test using it
 checks the harness around scIntegrate, never scIntegrate. The obsm keys it writes are scIntegrate's
@@ -31,7 +49,7 @@ Environment:
     FAKE_SCINTEGRATE_LOG              append {"argv", "argv0", "cwd", "pythonpath"} per call
     FAKE_SCINTEGRATE_MODE             ok (default) | refuse | fail | unsealed | short | other_argv |
                                       reversed (rows written last first) | relabel (l1 rewritten)
-    FAKE_SCINTEGRATE_STATE_VERSION    what `describe` and STATUS report (default 1)
+    FAKE_SCINTEGRATE_STATE_VERSION    what `describe` and STATUS report (default 2, 2fc7a6c's)
 """
 import argparse
 import csv
@@ -43,11 +61,14 @@ import time
 from pathlib import Path
 
 MODE = os.environ.get("FAKE_SCINTEGRATE_MODE", "ok")
-STATE_VERSION = int(os.environ.get("FAKE_SCINTEGRATE_STATE_VERSION", "1"))
+STATE_VERSION = int(os.environ.get("FAKE_SCINTEGRATE_STATE_VERSION", "2"))
 VERSION, COMMIT = "0.0.0-fake", "e" * 40
 ASSAYS = ("scrna", "snrna")
 GRAPH_METHODS = ("bbknn",)
 PCA, VIEW = "X_pca", "X_umap"
+WITHHELD = "withheld_from_integration"
+#: the tool's fix on every refusal it records (scintegrate/cli.py, the status wrapper)
+REFUSAL_FIX = "change the input the refusal names, or the flag it asks for"
 
 
 def log_call():
@@ -134,11 +155,26 @@ def _strings(raw):
 
 
 def _column_text(node):
+    """An obs column (or the index) as text, in the encodings anndata writes: a categorical, a
+    string array, a nullable array (values and a mask: pandas' string columns under anndata 0.13),
+    a number array."""
     import h5py
     if isinstance(node, h5py.Group):
-        cats = _strings(node["categories"][()])
-        return [cats[k] if k >= 0 else None for k in node["codes"][()]]
+        if "codes" in node:
+            cats = _column_text(node["categories"])
+            return [cats[k] if k >= 0 else None for k in node["codes"][()]]
+        vals = _strings(node["values"][()])
+        mask = node["mask"][()].tolist() if "mask" in node else [False] * len(vals)
+        return [None if m else v for v, m in zip(vals, mask)]
     return _strings(node[()])
+
+
+def _columns(g):
+    """A dataframe group's column names, in its own order."""
+    if g is None:
+        return []
+    order = g.attrs.get("column-order", [])
+    return [c.decode() if isinstance(c, bytes) else str(c) for c in list(order)]
 
 
 # ---------------------------------------------------------------------------- the status contract
@@ -179,6 +215,162 @@ def _finish(out, rec, status, rc, headline, refusal=None, seal=True):
     return rc
 
 
+class Refuse(Exception):
+    """A refusal the tool makes before anything is computed: exit 2, STATUS refused."""
+
+
+def _refused(out, rec, why):
+    print(f"scintegrate: REFUSE - {why}", file=sys.stderr)
+    return _finish(out, rec, "refused", 2, f"refused: {str(why)[:300]}",
+                   refusal={"reason": str(why), "fix": REFUSAL_FIX})
+
+
+# ---------------------------------------------------------------------------- before anything is computed
+def _what_is_wrong(name):
+    """scIntegrate's reader's reason for a name the writer refused, word for word (cli.py)."""
+    if not isinstance(name, str):
+        return (f"it is {name!r}, not text: a design row with more fields than its header gives a "
+                "column without a name")
+    if name == "":
+        return "it is empty: a design header ending in a comma gives such a column"
+    if "/" in name:
+        return "it holds '/', which the file format reads as a path separator"
+    if name == "_index":
+        return "the file format reserves it for a table's index"
+    if name == ".":
+        return "the file format reads '.' as the table itself"
+    if "\x00" in name:
+        return "it holds a NUL character"
+    return "see the writer's words"
+
+
+def _forbidden(name):
+    """What the object's writer refuses as a column name (anndata 0.13 over h5py, as W046 measured
+    it): a column without a name, an empty one, a '/' anywhere, exactly `_index`, `.`, a NUL."""
+    return not isinstance(name, str) or name in ("", "_index", ".") or "/" in name or "\x00" in name
+
+
+def _read_design(path, samples, sample_col):
+    rows = list(csv.DictReader(open(path, newline="", encoding="utf-8-sig")))
+    if not rows:
+        raise Refuse(f"design table {path} has no rows")
+    cols = list(rows[0].keys())
+    key = sample_col or cols[0]
+    if key not in cols:
+        raise Refuse(f"--design-sample-col {key!r} not in {path}: columns are " + ", ".join(map(repr, cols)))
+    table = {r[key]: r for r in rows}
+    unmatched = [s for s in sorted(set(map(str, samples))) if s not in table]
+    if unmatched:
+        raise Refuse(f"{len(unmatched)} batch(es) in the object have no row in {path}: "
+                     + ", ".join(map(repr, unmatched)))
+    return table, key, [c for c in cols if c != key]
+
+
+def _design_key(text, key, batch_key, n):
+    """scIntegrate's three cases for the design's key column (inputs.design_key), word for word."""
+    if key == batch_key:
+        return {"column": key, "how": "the batch column itself", "added": False}
+    if key in text:
+        mine, batch = text[key], text[batch_key]
+        off = [i for i in range(n) if str(mine[i]) != str(batch[i])]
+        if off:
+            i = off[0]
+            raise Refuse(
+                f"the design is keyed on {key!r}, whose rows are named by {batch_key!r} values, but the "
+                f"object's own {key!r} column differs from {batch_key!r} on {len(off):,} of {n:,} "
+                f"cells (the first: {mine[i]!r} where {batch_key!r} is {batch[i]!r}). The deliverable "
+                f"cannot carry both under one name. Rename the design's key column or the object's, or "
+                f"pass --batch-key {key} if that column is the batch.")
+        return {"column": key, "how": f"the object's own column, equal to {batch_key!r} on every cell",
+                "added": False}
+    return {"column": key, "how": f"added from {batch_key!r}: each cell's {batch_key} value, the withheld "
+                                  f"cells included", "added": True}
+
+
+def _carried(a, g, n):
+    """Every obs column the object will carry, in the tool's order, each with the option naming it
+    (cli._carried_obs), and the values of the ones it adds; refused here when two would claim one
+    name or the writer forbids one. Returns (keep, named, added, design_key, design, factors)."""
+    cols = _columns(g)
+    for role, k in (("--batch-key", a.batch_key), ("--label-key", a.label_key), ("--l1-key", a.l1_key)):
+        if k is not None and k not in cols:
+            raise Refuse(f"{role} {k!r} is not in obs. obs carries {len(cols)} column(s): "
+                         + ", ".join(repr(c) for c in cols))
+    text = {c: _column_text(g[c]) for c in cols}
+    asked = [c.strip() for c in (a.colour_by or "").split(",") if c.strip()]
+    for c in asked:
+        if c not in cols:
+            raise Refuse(f"--colour-by names {c!r}, which is not an obs column. "
+                         f"Present: {', '.join(map(str, cols[:20]))}")
+    colour = {c: "named in --colour-by" for c in asked} or {
+        c: f"{w} (pass --colour-by to draw more label columns)"
+        for c, w in ((a.l1_key, "--l1-key"), (a.label_key, "--label-key")) if c and c in cols}
+    named = {}
+    for c, why in ([(a.batch_key, "--batch-key"), (a.label_key, "--label-key")]
+                   + ([(a.l1_key, "--l1-key")] if a.l1_key else [])
+                   + [(c, f"a colour column ({w})") for c, w in colour.items()]):
+        named.setdefault(c, []).append(why)
+    keep, added, design, dk, factors = list(named), {}, {}, None, []
+    batch = text[a.batch_key]
+    if a.design:
+        table, key, factors = _read_design(a.design, batch, a.design_sample_col)
+        dk = _design_key(text, key, a.batch_key, n)
+        bad = [f for f in (a.bio_factor or []) if f not in factors]
+        if bad:
+            raise Refuse(f"--bio-factor {bad} not in {a.design}: it offers {factors}")
+        for f in factors:
+            v = [table[b][f] for b in batch]
+            design[f] = v
+            why = "a column of --design"
+            if f in named:
+                off = [i for i in range(n) if str(text[f][i]) != str(v[i])]
+                if off:
+                    i = off[0]
+                    raise Refuse(
+                        f"{why}, {f!r}, has the name of the column {' and '.join(named[f])} carries, and "
+                        f"differs from it on {len(off):,} of {n:,} cells (the first: {v[i]!r} where the "
+                        f"object holds {text[f][i]!r}). The object cannot carry both under one name; "
+                        f"rename the design's column.")
+                named[f].append(why + ", equal to it on every cell")
+                continue
+            named.setdefault(f, []).append(why)
+            keep.append(f)
+            if f not in cols:
+                added[f] = v
+        why = "the design's key (--design-sample-col, or the design's first column)"
+        if dk["column"] in named:
+            named[dk["column"]].append(why)
+        else:
+            named[dk["column"]] = [why]
+            keep.append(dk["column"])
+            if dk["added"]:
+                added[dk["column"]] = [str(b) for b in batch]
+    return keep, named, added, dk, design, text
+
+
+def _check_writable(a, f, keep, named, text, index):
+    """Refuse, before anything is computed, a run whose object the writer would refuse to write."""
+    name = a.object_name
+    if Path(name).name != name or name in ("", ".", "..") or not name.endswith(".h5ad"):
+        raise Refuse(f"--object-name {name!r} is not a file name ending in .h5ad: the object is "
+                     f"written into objects/ under it, and the run lists its .h5ad files as its products")
+    idx = f["obs"].attrs.get("_index", "_index")
+    idx = idx.decode() if isinstance(idx, bytes) else str(idx)
+    lines = []
+    for c in keep:
+        if _forbidden(c) or (c == idx != "_index" and c in text and text[c] != list(index)):
+            lines.append(f"{c!r}, {' and '.join(named.get(c, ['a column']))}: {_what_is_wrong(c)} "
+                         f"(the writer's rule, as this stand-in holds it)")
+    for c in _columns(f.get("var")):
+        if _forbidden(c):
+            lines.append(f"{c!r}, a column of the input's var: {_what_is_wrong(c)} "
+                         f"(the writer's rule, as this stand-in holds it)")
+    if lines:
+        raise Refuse("the object's writer refuses " + ("this name" if len(lines) == 1 else
+                     f"these {len(lines)} names") + ", so nothing was computed: "
+                     + "; ".join(lines) + ". Rename each in the design or the input.")
+
+
 # ---------------------------------------------------------------------------- integrate
 def integrate(a):
     import h5py
@@ -191,30 +383,41 @@ def integrate(a):
                                           f"identifiers", "fix": "declare the species the cells came from"})
     if MODE == "fail":
         return _finish(out, rec, "failed", 1, "RuntimeError: a method failed")
-    design = {}
-    if a.design:
-        with open(a.design, newline="", encoding="utf-8-sig") as fh:
-            rows = list(csv.DictReader(fh))
-        key = a.design_sample_col or (list(rows[0]) if rows else [""])[0]
-        design = {r[key]: r for r in rows}
-        dcols = [c for c in (list(rows[0]) if rows else []) if c != key]
-    else:
-        dcols = []
     methods = ["none"] + [m for m in (a.methods or "").split(",") if m.strip() and m != "none"]
     with h5py.File(a.h5ad, "r") as f:
         g = f["obs"]
         key = g.attrs.get("_index", "_index")
-        index = _strings(g[key.decode() if isinstance(key, bytes) else key][()])
-        batch = _column_text(g[a.batch_key])
-        labels = _column_text(g[a.label_key])
-        keep = list(dict.fromkeys([a.batch_key, a.label_key] + ([a.l1_key] if a.l1_key else [])
-                                  + [c for c in (a.colour_by or "").split(",") if c.strip()]))
-        obs = {c: ("copy", g[c]) for c in keep}
-        for c in dcols:
-            obs[c] = ("copy", g[c]) if c in g else ("str", [design[b][c] for b in batch])
-        pca = np.asarray(f["obsm"][PCA][()], dtype="float32")
+        index = [v if v is not None else "" for v in _column_text(g[key.decode() if isinstance(key, bytes) else key])]
         n = len(index)
+        try:
+            keep, named, added, dk, design, text = _carried(a, g, n)
+            _check_writable(a, f, keep, named, text, index)
+        except Refuse as e:
+            return _refused(out, rec, e)
+        labels = text[a.label_key]
         drop = np.isin(np.array(labels, dtype=object), [x for x in (a.drop_labels or "").split(",") if x])
+        obs = {}
+        for c in keep:
+            if c in added:
+                v = list(added[c])
+                if c in design and drop.any():          # a design column the input lacks
+                    v = [WITHHELD if d else x for x, d in zip(v, drop)]
+                obs[c] = ("str", v)
+            else:
+                obs[c] = ("copy", g[c])
+        p_in = np.asarray(f["obsm"][PCA][()], dtype="float32")
+        n_w = int(drop.sum())
+        in_fit = int((~np.isnan(p_in[drop].astype("float64")).any(axis=1)).sum()) if n_w else 0
+        pca_rec = {"source": "input", "declared": None, "n_withheld_not_fitted": n_w, "n_withheld_in_fit": 0}
+        if in_fit and not a.keep_input_pca:
+            pca = (p_in - p_in[~drop].mean(axis=0)).astype("float32")     # stands for the refit
+            pca[drop] = np.nan
+            pca_rec["source"] = "refit"
+        else:
+            pca = p_in
+            if in_fit:
+                pca_rec.update(declared="--keep-input-pca", n_withheld_not_fitted=n_w - in_fit,
+                               n_withheld_in_fit=in_fit)
         emb = {}
         for m in methods:
             if m in GRAPH_METHODS:
@@ -247,14 +450,14 @@ def integrate(a):
             obs = {c: ("str", _column_text(v[1])[1:] if v[0] == "copy" else v[1][1:]) for c, v in obs.items()}
             obsm = {k: v[1:] for k, v in obsm.items()}
             obsp = {}
-        name = a.object_name
-        write_object(out / "objects" / name, index, obs, obsm, obsp)
+        write_object(out / "objects" / a.object_name, index, obs, obsm, obsp)
     (out / "tables").mkdir(parents=True, exist_ok=True)
     (out / "tables" / "scib_aggregate.csv").write_text(
         "method,total\n" + "".join(f"{m},{0.5 + i / 100:.6f}\n" for i, m in enumerate(methods)))
     (out / "report.json").write_text(json.dumps({"version": VERSION, "command": "integrate",
                                                  "chosen": {"default": chosen}, "species": a.species,
-                                                 "assay": a.assay, "methods": methods}, indent=1))
+                                                 "assay": a.assay, "methods": methods,
+                                                 "design_key": dk, "pca": pca_rec}, indent=1))
     if MODE == "unsealed":
         rec.update({"status": "ok", "products": _products(out)})
         (out / "STATUS.json").write_text(json.dumps(rec, indent=1) + "\n")
@@ -262,7 +465,7 @@ def integrate(a):
     return _finish(out, rec, "ok", 0, "every method compared and the object written")
 
 
-# ---------------------------------------------------------------------------- the parser (b148030's flags)
+# ---------------------------------------------------------------------------- the parser (2fc7a6c's flags)
 class _Removed(argparse.Action):
     def __call__(self, parser, _ns, _values, option_string=None):
         parser.error(f"{option_string} was removed in 0.5.0")
@@ -294,6 +497,7 @@ def parser():
     g.add_argument("--min-dist", type=float, default=0.2)
     g.add_argument("--indicates-below", type=float, default=0.80)
     g.add_argument("--methods", default="none,harmony,scvi,scanvi")
+    g.add_argument("--keep-input-pca", action="store_true")
     g.add_argument("--n-latent", type=int, default=30)
     g.add_argument("--max-epochs", type=int, default=None)
     g.add_argument("--w-bio", type=float, default=0.6)

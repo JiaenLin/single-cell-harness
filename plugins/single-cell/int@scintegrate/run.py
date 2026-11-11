@@ -60,18 +60,18 @@ protocol = _protocol()
 #: The numbers this adapter's layer means. It must equal `state_version` in plugin.yml AND the
 #: STATE_VERSION scIntegrate declares (`scintegrate describe`): an object whose embeddings moved
 #: without this moving would be served from a cached view keyed on the old ones (D6).
-STATE_VERSION = 1
+STATE_VERSION = 2
 #: scIntegrate's command line, as a stage-3 job runs it: `python -m scintegrate.cli`, with the
 #: checkout on PYTHONPATH.
 MODULE = "scintegrate.cli"
 #: `scintegrate integrate`'s flags, in the order its parser declares them (scintegrate/cli.py at
-#: 0.5.0: `_common`, then integrate's own), `-` written `_`. The flags the adapter sets itself are
+#: 0.7.0: `_common`, then integrate's own), `-` written `_`. The flags the adapter sets itself are
 #: in the list, so every call is written in scIntegrate's order.
 FLAGS = ("h5ad", "out", "batch_key", "label_key", "species", "assay", "l1_key", "drop_labels",
          "score_against", "colour_by", "scanvi_max_epochs", "coarse_from_path", "label_sentinel",
          "design", "design_sample_col", "bio_factor", "k", "n_pcs", "seed", "min_per_k", "min_dist",
-         "indicates_below", "methods", "n_latent", "max_epochs", "w_bio", "n_cores",
-         "scib_resolutions", "no_fast_leiden", "object_name")
+         "indicates_below", "methods", "keep_input_pca", "n_latent", "max_epochs", "w_bio",
+         "n_cores", "scib_resolutions", "no_fast_leiden", "object_name")
 #: The flags the adapter sets and a parameter may not, each with the reason.
 OWNED = {"h5ad": "the stack's one part, which scIntegrate reads in place",
          "out": "a path inside the run, which the adapter sets",
@@ -83,7 +83,7 @@ APPEND = ("label_sentinel", "bio_factor")
 #: takes only true, false or null. Any other value would be written after the flag and argparse
 #: would read it as an option of its own (verifier W026 D1, through scAnno). For the same reason no
 #: value at all may begin with "-".
-BARE = ("coarse_from_path", "no_fast_leiden")
+BARE = ("coarse_from_path", "keep_input_pca", "no_fast_leiden")
 #: Flags an earlier scIntegrate had, with what happened to them: a declaration written for 0.4.x is
 #: told why, not only that the flag is unknown.
 REMOVED = {"lisi_subsample": "it was removed in scIntegrate 0.5.0, which scores iLISI and cLISI on "
