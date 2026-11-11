@@ -69,10 +69,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   - Opus 5.5 max: the verifier of **the scProfile batch's fix**, a lean re-check (head `95ed6bd`: the rewrite verb refuses a
     tampered copy and writes a trace the check validates; every record field held to its form); the builder of **W052** (the harness: the scIntegrate adapter at state version 2, its stand-in
     as the tool, the first cohort's stage 3 through the harness re-pinned: what scIntegrate's merge waits on).
-  - Fable 5.2: the designer of **W051**, run 6 and the last (the Studio's words): the review said "not yet": nothing
-    damaged and no number moved, but seven shortened strings now claim something else, the correction's denominator was
-    cut, retired terms survive on the first screen, and too-tight budgets forced fragments. Review:
-    `<scratchpad>/autodev/w051-review/REVIEW.md`. Then a short check and the PI's go for a re-deploy.
+  - Fable 5.2: the reviewer of **W051's run 6** (the Studio's words, built at `192057b`: the seven moved claims rewritten
+    against their code lines; three breaking renames of saved files for the PI to accept): the final check. Then the
+    PI's go for a re-deploy.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary".** Applied: W048's last round
   narrowed while it runs; scIntegrate's merge decoupled from its installer's defect; the queue re-ordered.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
