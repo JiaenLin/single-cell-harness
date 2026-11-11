@@ -1,0 +1,490 @@
+#!/bin/bash
+#PBS -N sch_dev_W035
+#PBS -q short
+#PBS -l select=1:ncpus=8:mem=32gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#
+# ============================================================================================
+# AUTODEV W035 (2026-11-11): THE GATE OF THE MAKER'S PROSE VERB - A DATED COPY OF dev_suite.pbs
+# ============================================================================================
+# jobs/dev_suite.pbs as it stands at autodev/train-harness-1 (fb1de93), with four changes: this
+# header, TERMS required (the prediction is about the two generated lists), step 3b (scProfile
+# scanned whole with TERMS and SHAPES, untruncated) and step 5 (the prediction graded, GATE).
+#
+# THE PREDICTION, WRITTEN BEFORE SUBMISSION by W035's builder. It holds for scProfile at the head
+# that merges autodev/W035-maker-prose, with TERMS = the two cohorts' generated lists (built
+# 2026-11-10T02:05:56Z by `sch conform terms build`) and SHAPES = their joint shapes (both.shapes).
+#   P1 scprofile.cellchat, leak: FAIL, and its hits are exactly four, all in held-out plugins:
+#      kernels/abundance.py (aged, young), kernels/decoupler.py (2,139), kernels/velocity.py
+#      (47 cells); none in kernels/cellchat.py. At the base 6f970e5 there were five, the fifth
+#      cellchat's (30.56, an R comment at kernels/cellchat.py:4874).
+#   P2 scprofile.cellchat, contract: FAIL, on S1.
+#   P3 step 3b: no hit anywhere in kernels/cellchat.py (terms or shapes; at the base two lines,
+#      :190 a bare job id and :4874), and the term hits are exactly the four of P1.
+#   P4 declaration: ok for scprofile.cellchat and for scprofile.de.
+#   P5 rules: ok for scprofile (the held-out plugins untouched since f127a2b; no copied block).
+#   P6 unit: ok for scprofile (its suite; measured green on the workstation, 2026-11-11).
+#   NOT PREDICTED: the other four repositories, and scProfile's fixture_a, fixture_b, agree and
+#   baseline - W035 changes prose and no code (its verb refuses a change to code). The seal is
+#   FAILED by design: P1 and P2 are failures, predicted.
+#   A4.1 STAYS 0/9 ON THIS RUN: leak and contract are asked of the whole repository, so the four
+#   held-out hits keep every scProfile name red until their own waves (ROUTE R24-R30).
+#
+# SUBMIT-BEGIN
+#   RUNDIR=<a new run directory>; mkdir -p "$RUNDIR/logs"
+#   qsub -o "$RUNDIR/logs/" -v RUNDIR="$RUNDIR",TOOLS=<the directory holding the four tools>,REPO=<the harness checkout>,PY=<a python with anndata>,TERMS=<the two generated lists joined by a colon>,SHAPES=<the joint shapes file> jobs/dev_suite_20261111_W035.pbs
+# SUBMIT-END
+#
+# ============================================================================================
+# DOES THE DEVELOPMENT SUITE WORK ON THE MACHINE THE DEVELOPMENT HAPPENS ON?
+# ============================================================================================
+#
+# `sch dev` was written on a workstation with no anndata, so every tier that needs a real
+# object - the fixture, both shapes, the baseline - has never executed. Shipping a suite whose
+# central mechanism has only been reasoned about would be the exact failure the suite exists to
+# prevent, one level up.
+#
+# THE PREDICTION, WRITTEN BEFORE THE RUN:
+#   the fixture writes two shapes whose digests are EQUAL and whose column names differ in all
+#     seven roles. If the digests differ, the two-shape comparison is worthless and every
+#     conclusion drawn from it must be withdrawn.
+#   all sixteen hazards are present in the written object, not only in the in-memory build.
+#   `sch dev check` runs to completion on all five repositories and NO TIER FAILS. When this was
+#     first written a failing tier was expected - these fixture commands had never been executed
+#     and the point of the run was to find out - so the loop printed each exit code and threw it
+#     away. They work now, so a failing tier is a regression and seals FAILED; the run still visits
+#     all five rather than stopping at the first, and every failure names its command and code.
+#     A tier that COULD NOT RUN (exit 3) is not a failure and does not seal FAILED; it is recorded
+#     in the seal as `incomplete_checks`, because a run that checked less is a weaker statement
+#     and that belongs where somebody reading the seal will see it.
+#   nothing outside this run directory is written.
+#
+# THE PREDICTION FOR HARNESS ADR-0027 (steps 1 and 3), WRITTEN BEFORE THE RUN, 2026-10-02 - the
+# first run of this job with the shapes differing in VALUES and with the `agree` tier:
+#   the three new invariants hold (b's control sorts last, a's first; the same mito genes).
+#   contract FAILS for scqc and scanno: S13, four literal `assay` defaults each - the defects the
+#     round fixes in step 4. scintegrate, scprofile and sch pass S13.
+#   agree FAILS for scprofile/abundance: scCODA's formula takes the alphabetically first level as
+#     baseline (ADR-0027 P2), `ctrl` on a and `treated` on b, so its effects change sign. Not
+#     necessarily an exact SIGN FLIPPED: the chains are drawn on a different design matrix.
+#   agree passes for scintegrate/harmony and scanno/rescue (neither reads the control level, and
+#     scAnno reads both mitochondrial spellings); scqc writes no numbers (`describe`).
+#   leak FAILS for sch: with both projects' word lists supplied, the harness's own jobs/ and
+#     ADRs 0017-0019 name the first cohort (since 2026-09-12) and ADR-0027 names the second.
+#     Documents of record - flagged here, not exempted, and decided in the ADR.
+#   so the seal is FAILED by design, and each failure must be one of those named above.
+#
+# THE PREDICTION FOR AUTODEV W019 (GAP-C44), WRITTEN BEFORE THE RUN, 2026-11-09, by its builder.
+# This job checked scProfile by one name written into it - `--name abundance`, a held-out plugin -
+# so no plugin migrated through the maker was ever on this ladder, and no baseline was recorded
+# where the plugins run. It now asks the repository which plugins its own rules leave as maker
+# output (`sch.dev.rules.maker_output`, from `rules.held_out` in the deployed DEVPOINTS.yaml):
+#   step 3 checks EVERY such plugin and NO held-out one. The list is logs/scprofile.names.txt;
+#     with de still held out in the deployed checkout it is `cellchat`, and at autodev
+#     W013-de-through-maker it is `cellchat de`. Each has checks/scprofile.<name>.txt; the
+#     repository's own tiers (rules, contract, unit, leak) run once, with the first name.
+#   with SCPROFILE_PREFIX given (the site's prefix holding the plugins' built environments), each
+#     plugin RUNS on both shapes, and `agree` reports - never judges - the fields the deployed
+#     DEVPOINTS.yaml declares as the run's execution record (`fixture.execution_record`).
+#     de: agree green WHERE THAT DECLARATION IS DEPLOYED (W019 measured 329 comparisons agreeing and
+#     24 fields reported, on the workstation, on de's locked interpreter, with it); where it is not,
+#     agree FAILS on the run's own times, cores and memory, as before W019 - expected, and named.
+#     cellchat on agree: NOT PREDICTED. It has never been compared across the shapes with its
+#     environment, and its net embedding's UMAP is not seeded (measured 2026-09-10), so a
+#     disagreement there is a finding about the plugin, recorded, and not a failure of this job's
+#     purpose.
+#   without SCPROFILE_PREFIX each plugin refuses as declared on both shapes, and its `agree` and
+#     `baseline` are not applicable (GAP-C41): no scprofile check is INCOMPLETE for want of a
+#     baseline. A refusal on ONE shape fails `agree`, naming the shape.
+#   with RECORD=1 (step 4) baselines are recorded the way job 29 of W012 recorded harmony's: into
+#     $RUNDIR/record/<tool>/tests/baselines/, never under $TOOLS, for scintegrate/harmony,
+#     scanno/rescue and each scprofile name, each followed by a recheck that exits 0. A name whose
+#     fixture refused records nothing, and its record step exits 3. The tools' committed baseline
+#     files are md5-identical before and after (a mismatch seals FAILED as `baselines-touched`).
+#     The coordinator commits a recorded file into its tool from the workstation; the cluster
+#     originates no code.
+#   nothing outside this run directory is written.
+#
+# NOT A REPRODUCTION and nothing here is about the biology. No result from this run may be
+# quoted: the cohort is synthetic and says so in its own manifest.
+#
+# rule-one: no-removal. Reads five checkouts, writes only inside $RUNDIR.
+# Authored on the workstation and pushed (rule H1). No `git` runs below.
+#
+#   qsub -o "$RUNDIR/logs/" -v RUNDIR=...,TOOLS=...,REPO=...,PY=... jobs/dev_suite.pbs
+#   optional: SCPROFILE_PREFIX=<where scProfile's plugin environments are built>, RECORD=1,
+#             TERMS=<word list>, SHAPES=<site shapes>
+
+set -euo pipefail
+cd "$PBS_O_WORKDIR"
+
+RUNDIR="${RUNDIR:?pass -v RUNDIR=<run directory>}"
+REPO="${REPO:?pass -v REPO=<the harness checkout>}"
+TOOLS="${TOOLS:?pass -v TOOLS=<the directory holding scQC scAnno scIntegrate scProfile>}"
+PY="${PY:?pass -v PY=<a python with anndata>}"
+TERMS="${TERMS:?pass -v TERMS=<the two generated lists> - this copy predicts about them}"
+
+mkdir -p "$RUNDIR/logs" "$RUNDIR/fixture" "$RUNDIR/checks"
+
+# THE LOG LIVES IN THE RUN, whatever the qsub line said. This job carried no `#PBS -o` and its
+# usage line passed none, so PBS wrote `sch_dev_suite.o<jobid>` into the submitting directory -
+# the harness checkout under ~/tools, five times (707436 to 708052), outside every project
+# (LAYOUT 3.7). Found 2026-10-02 as five untracked files in the tool (ADR-0027, step 0) and moved
+# into the runs they belong to. A qsub without -o now leaves only this one pointer line behind.
+echo "driver log -> $RUNDIR/logs/driver.log"
+exec >> "$RUNDIR/logs/driver.log" 2>&1
+
+finish() { s=$?
+  set +e
+  # THE RECORDING ROOTS LINK INTO THE TOOLS (step 4); a sealed run must not point at an install
+  # that will move on, so the links go. The baselines recorded beside them stay.
+  [ -d "$RUNDIR/record" ] && find "$RUNDIR/record" -maxdepth 3 -type l -delete
+  missing=""
+  for p in fixture/FIXTURE_a.json fixture/FIXTURE_b.json hazards.json; do
+    [ -s "$RUNDIR/$p" ] || missing="$missing $p"
+  done
+  if [ "$s" -eq 0 ] && [ -z "$missing" ] && [ -z "${FAILED_CHECKS:-}" ]; then
+    seal="$RUNDIR/SEALED.txt"
+  else
+    seal="$RUNDIR/FAILED.txt"; [ "$s" -eq 0 ] && s=1
+  fi
+  { echo "exit=$s"; echo "jobid=${PBS_JOBID:-none}"; echo "host=$(hostname -s)"
+    echo "finished=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "purpose=exercise sch dev on a machine that has anndata"
+    echo "NOT PROMOTABLE, synthetic cohort, no number here is about the biology"
+    [ -n "$missing" ] && echo "missing=$missing"
+    [ -n "${FAILED_CHECKS:-}" ] && echo "failed_checks=$FAILED_CHECKS"
+    # SEALED, AND SAYING WHAT IT DID NOT CHECK. A run that could not run every tier is a weaker
+    # statement than one that did, and the seal is where that has to be written down - otherwise
+    # the only two readings are "fine" and "broken" and the third one goes missing.
+    [ -n "${INCOMPLETE_CHECKS:-}" ] && echo "incomplete_checks=$INCOMPLETE_CHECKS"
+    [ -s "$RUNDIR/logs/scprofile.names.txt" ] && \
+      echo "scprofile_checked=$(tr '\n' ' ' < "$RUNDIR/logs/scprofile.names.txt")"
+    ls "$RUNDIR/checks"/*.txt 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' '
+  } > "$seal"
+  rm -f "$RUNDIR/RUNNING.txt"
+  exit $s; }
+trap 'exit 143' TERM INT HUP   # a killed job seals FAILED, not SEALED (harness ADR-0022)
+trap finish EXIT
+{ echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)"; echo "host=$(hostname -s)"; } > "$RUNDIR/RUNNING.txt"
+
+FAILED_CHECKS=""
+INCOMPLETE_CHECKS=""
+# No bytecode: the checks run code from the five checkouts, and nothing may be written there.
+export PYTHONNOUSERSITE=1 PYTHONPATH="$REPO" PYTHONDONTWRITEBYTECODE=1
+# The leak tier's word list. It lives in the PROJECT, never in a tool - $SCH_FORBIDDEN_TERMS is
+# the fallback every tool's variable falls back to, so one export covers all five.
+[ -n "${TERMS:-}" ] && export SCH_FORBIDDEN_TERMS="$TERMS"
+[ -n "${SHAPES:-}" ] && export SCH_SITE_SHAPES="$SHAPES"
+export XDG_CACHE_HOME="$RUNDIR/cache" MPLCONFIGDIR="$RUNDIR/cache/mpl"
+export OMP_NUM_THREADS="${NCPUS:-1}" MKL_NUM_THREADS="${NCPUS:-1}" OPENBLAS_NUM_THREADS="${NCPUS:-1}"
+mkdir -p "$RUNDIR/cache"
+echo "node $(hostname -s)  cores ${NCPUS:-unset}  $(date -u)"
+"$PY" -c "from importlib.metadata import version; print('anndata', version('anndata'), '| numpy', version('numpy'), '| pandas', version('pandas'))"
+
+# ------------------------------------------------------------------ 1. the fixture, both shapes
+echo; echo "=== fixture"
+"$PY" -m sch dev fixture "$RUNDIR/fixture" > "$RUNDIR/logs/fixture.txt" 2>&1 || {
+  echo "fixture FAILED:"; cat "$RUNDIR/logs/fixture.txt"; exit 1; }
+cat "$RUNDIR/logs/fixture.txt"
+
+# ---------------------------------------------- 2. the invariant the two-shape trick rests on
+echo; echo "=== the two shapes are the same cohort"
+# NOT PIPED. `set -o pipefail` would make a pipe correct here, and that is exactly why it is
+# tempting; a job whose subject is the pipeline-exit-code trap should not depend on remembering
+# the flag that disarms it. Redirect, then print.
+"$PY" - "$RUNDIR" > "$RUNDIR/hazards.txt" 2>&1 <<'PYCODE' || { cat "$RUNDIR/hazards.txt"; exit 1; }
+import json, sys
+from pathlib import Path
+import anndata as ad, numpy as np
+from sch.dev import fixture as F
+
+out = Path(sys.argv[1]); fx = out / "fixture"
+a = json.loads((fx / "FIXTURE_a.json").read_text())
+b = json.loads((fx / "FIXTURE_b.json").read_text())
+A = ad.read_h5ad(fx / "fixture_a.h5ad"); B = ad.read_h5ad(fx / "fixture_b.h5ad")
+# THE ROLES THIS SHAPE ACTUALLY CARRIES. Walking every entry of `F.ROLES` demanded `timepoint`
+# of a fixture whose own declaration says it is written only in the crossed form - so this job
+# failed at step 0, before a single tier ran, from the commit that added that role. The fixture
+# declares which roles belong to which shape; ask it.
+R = {r: (n["a"], n["b"]) for r, n in F.roles(crossed=False).items()}
+
+checks = {
+  "digests are equal":        a["digest"] == b["digest"],
+  "counts are identical":     bool(np.array_equal(np.asarray(A.X), np.asarray(B.X))),
+  "embeddings are identical": bool(np.array_equal(A.obsm["X_pca"], B.obsm["X_pca"])),
+  "every role is renamed":    all(x != y for x, y in R.values()),
+  "shape a carries a names":  all(x in A.obs for x, _ in R.values() if x != "counts"),
+  "shape b carries b names":  all(y in B.obs for _, y in R.values() if y != "raw_counts"),
+  "a's names absent from b":  not any(x in B.obs for x, y in R.values() if x != y and x != "counts"),
+  "counts layer renamed":     "counts" in A.layers and "raw_counts" in B.layers,
+  # THE VALUES (harness ADR-0027): shape b's control is its LAST category, as a string and as a
+  # factor level, and both shapes flag the same genes as mitochondrial under their own spelling.
+  "b's control sorts last":   list(B.obs[R["condition"][1]].cat.categories)[-1] == F.VALUES["control"]["b"],
+  "a's control sorts first":  list(A.obs[R["condition"][0]].cat.categories)[0] == F.VALUES["control"]["a"],
+  "same mito genes, spelled per shape": A.var["mt"].tolist() == B.var["mt"].tolist()
+                              and all(g.startswith(F.VALUES["mt_prefix"]["b"]) for g in B.var_names[B.var["mt"].values]),
+}
+o = A.obs; X = np.asarray(A.X); g = list(A.var_names)
+haz = {
+  "tiny_sample": int((o["sample"] == "S12").sum()) == 7,
+  "arm_exclusive_type": "Type_zeta" not in set(o.loc[o["condition"] == "ctrl", "cell_type"]),
+  "singleton_type": int((o["cell_type"] == "Type_eta").sum()) == 1,
+  "nan_in_numeric_obs": bool(o["pct_counts_mt_like"].isna().any()),
+  "unused_category": int((o["sample"] == "S99").sum()) == 0 and "S99" in list(o["sample"].cat.categories),
+  "duplicate_barcodes": bool(o["barcode"].duplicated().any()),
+  "empty_cell": float(X[0].sum()) == 0.0,
+  "empty_gene": float(X[:, -1].sum()) == 0.0,
+  "constant_gene": len(set(X[1:, -2].tolist())) == 1 and X[1, -2] != 0,
+  "gene_named_like_obs": "condition" in g,
+  "prefix_sample_names": {"S1", "S10"} <= set(map(str, o["sample"].unique())),
+  "awkward_label": any(" " in t and "/" in t for t in map(str, o["cell_type"].unique())),
+  "mixed_object_obs": bool(o["free_note"].isna().any()) and bool(o["free_note"].notna().any()),
+  "design_row_without_cells": int((o["sample"] == "S98").sum()) == 0,
+  "mito_genes": int(A.var["mt"].sum()) >= 3,
+  "constant_covariate_in_arm": float(o.loc[o["condition"] == "treated", "age_weeks"].std()) == 0.0,
+}
+for k, v in {**checks, **haz}.items():
+    print(("  ok   " if v else "  FAIL ") + k)
+checks = {k: bool(v) for k, v in checks.items()}      # numpy.bool_ is not JSON-serialisable,
+haz = {k: bool(v) for k, v in haz.items()}            # and every numpy comparison yields one
+rec = {"invariants": checks, "hazards": haz, "declared": sorted(F.HAZARDS),
+       "obs_names_unique": bool(A.obs_names.is_unique),
+       "all_pass": all(checks.values()) and all(haz.values()) and sorted(haz) == sorted(F.HAZARDS)}
+(out / "hazards.json").write_text(json.dumps(rec, indent=1) + "\n")
+print("\nALL PASS:", rec["all_pass"])
+sys.exit(0 if rec["all_pass"] else 1)
+PYCODE
+cat "$RUNDIR/hazards.txt"
+
+# ------------------------------- 3a. which of scProfile's plugins are the maker's output
+# EVERY ONE, AND NO HELD-OUT ONE (autodev W019, GAP-C44). This job named `--name abundance`, a
+# held-out plugin, so the plugins migrated through the maker were never on this ladder. The
+# repository says which are held out (`rules.held_out`); every other artefact at the point is
+# maker output, read from the same declaration the maker's status and `sch dev rules` read.
+echo; echo "=== scprofile: the plugins its own rules leave as maker output"
+"$PY" - "$TOOLS/scProfile" kernel > "$RUNDIR/logs/scprofile.names.txt" \
+      2> "$RUNDIR/logs/scprofile.names.err" <<'NAMES' || { cat "$RUNDIR/logs/scprofile.names.err"; exit 1; }
+import sys
+from sch.dev import points, rules
+names = rules.maker_output(points.load(sys.argv[1]), sys.argv[2])
+if not names:
+    sys.exit("no artefact at point %r is maker output, so there is nothing to check" % sys.argv[2])
+print("\n".join(names))
+NAMES
+SCPROFILE_NAMES=()
+while IFS= read -r n; do
+  if [ -n "$n" ]; then SCPROFILE_NAMES+=("$n"); fi
+done < "$RUNDIR/logs/scprofile.names.txt"
+echo "  ${SCPROFILE_NAMES[*]}"
+
+# ------------------------------------------------------- 3. the ladder, on all five checkouts
+echo; echo "=== sch dev check"
+for spec in "sch:$REPO:" \
+            "scqc:$TOOLS/scQC:criterion" \
+            "scanno:$TOOLS/scAnno:mechanism" \
+            "scintegrate:$TOOLS/scIntegrate:method" \
+            "scprofile:$TOOLS/scProfile:kernel"; do
+  name="${spec%%:*}"; rest="${spec#*:}"; root="${rest%%:*}"; point="${rest#*:}"
+  case "$name" in
+    scintegrate) names=(harmony) ;;
+    scprofile)   names=("${SCPROFILE_NAMES[@]}") ;;
+    scqc)        names=(fail_umi_floor) ;;
+    scanno)      names=(rescue) ;;
+    *)           names=("") ;;
+  esac
+  first=1
+  for nm in "${names[@]}"; do
+    label="$name${nm:+.$nm}"
+    echo; echo "--- $label  ($root)"
+    args=(dev check --root "$root" --keep-going --fixture-dir "$RUNDIR/fixture")
+    [ -n "$point" ] && args+=(--point "$point")
+    [ -n "$nm" ] && args+=(--name "$nm")
+    # THE REPOSITORY'S OWN TIERS ONCE PER REPOSITORY: rules, contract, unit and leak say the same
+    # thing whichever plugin is named, and unit is the slowest tier. The other names run what is
+    # theirs.
+    [ "$first" -eq 1 ] || args+=(--only declaration --only fixture_a --only fixture_b
+                                 --only agree --only baseline)
+    first=0
+    set +e
+    # WHERE scProfile'S PLUGIN ENVIRONMENTS ARE BUILT is the site's fact (harness ADR-0026, the
+    # open items): given, the plugins run on the fixture; not given, they refuse as declared.
+    if [ "$name" = "scprofile" ] && [ -n "${SCPROFILE_PREFIX:-}" ]; then
+      SCH_DEV_PREFIX="$SCPROFILE_PREFIX" "$PY" -m sch "${args[@]}" > "$RUNDIR/checks/$label.txt" 2>&1
+    else
+      "$PY" -m sch "${args[@]}" > "$RUNDIR/checks/$label.txt" 2>&1
+    fi
+    rc=$?
+    set -e
+    echo "  exit $rc"
+    # AND THE EXIT CODE IS KEPT. It was captured into an echo and discarded, so a failing tier was
+    # printed into the log and the job sealed SEALED anyway. PBS 708048 did exactly that: the
+    # harness's own unit tier failed, every summary line said so, and the seal said exit=0. A
+    # validation job that can report success while a check failed is not a validation job.
+    #
+    # This was deliberate ONCE, and the header above still says so: the first run existed to find
+    # out whether these fixture commands worked at all, and a crash was the only interesting
+    # failure. They work now, and a failing tier is a regression.
+    # TWO AND THREE ARE NOT THE SAME ANSWER, and the first version of this treated them as one.
+    # `sch dev check` exits 2 when a tier FAILED and 3 when one COULD NOT RUN - a distinction built
+    # into the ladder deliberately, because "an exit code that is always the same is not read".
+    # scQC has no baseline and never will, so folding 3 into failure would seal this job FAILED
+    # for ever and teach everyone to ignore it: the same defect, pointing the other way.
+    case "$rc" in
+      0) ;;
+      3) INCOMPLETE_CHECKS="$INCOMPLETE_CHECKS $label" ;;
+      *) FAILED_CHECKS="$FAILED_CHECKS $label" ;;
+    esac
+    tail -n 40 "$RUNDIR/checks/$label.txt"
+  done
+done
+
+# ------------------ 3b. (W035) scProfile scanned whole, TERMS and SHAPES, untruncated
+# The leak tier asks terms only; the contract tier's S1 shows its first 25 hits. This is the same
+# scan (`sch.conform.checks.leak_scan`, the generic shapes and SHAPES with TERMS), every hit kept.
+echo; echo "=== W035: scProfile scanned whole (TERMS and SHAPES, untruncated)"
+"$PY" - "$TOOLS/scProfile" > "$RUNDIR/checks/w035.scan.txt" 2>&1 <<'SCAN' || true
+import os, sys
+from sch.conform import checks as C
+C._forget_listing()
+words = C._load_terms(os.environ.get("SCH_FORBIDDEN_TERMS"))
+shapes = [x for x in C._load_shapes(os.environ.get("SCH_SITE_SHAPES")) if x[0] is not None]
+scan = C.leak_scan(sys.argv[1], words, C.GENERIC_PATTERNS + shapes)
+seen = list(dict.fromkeys(f"{h.rel}:{h.line} {h.label}" for h in scan["hits"]))
+print(f"terms {len(words)}; shapes {len(shapes)}; files read {scan['read']}; hits {len(seen)}")
+for row in seen:
+    print("HIT " + row)
+SCAN
+head -1 "$RUNDIR/checks/w035.scan.txt"
+grep '^HIT kernels/' "$RUNDIR/checks/w035.scan.txt" || true
+
+# ----------------------------- 4. baselines, recorded where the plugins run (RECORD=1)
+# THE WAY JOB 29 OF AUTODEV W012 RECORDED harmony's (GAP-C12, GAP-C44). `--record-baseline` writes
+# <root>/tests/baselines/, and the root used to be the tool's own checkout - an install under
+# ~/tools that is never edited (LAYOUT). So the root is a directory INSIDE this run: the tool's
+# DEVPOINTS.yaml copied and cmp-checked, every other entry linked (tests/ entry by entry, with
+# tests/baselines a real directory), and the links removed when the job ends. The code runs from
+# the tools; the record lands here. Then a RECHECK against what was just recorded: recording and
+# checking kept disagreeing - three times, each found a run later than the change that caused it -
+# so the round trip is exercised in one job rather than inferred from two.
+if [ -n "${RECORD:-}" ]; then
+  echo; echo "=== baselines, recorded into $RUNDIR/record"
+  shopt -s nullglob
+  mkdir -p "$RUNDIR/record"
+  REC=("scintegrate|$TOOLS/scIntegrate|method|harmony" "scanno|$TOOLS/scAnno|mechanism|rescue")
+  for n in "${SCPROFILE_NAMES[@]}"; do REC+=("scprofile|$TOOLS/scProfile|kernel|$n"); done
+  for spec in "${REC[@]}"; do
+    IFS='|' read -r tool src point nm <<< "$spec"
+    rroot="$RUNDIR/record/$tool"
+    if [ ! -d "$rroot" ]; then
+      mkdir -p "$rroot/tests/baselines"
+      cp "$src/DEVPOINTS.yaml" "$rroot/DEVPOINTS.yaml"
+      cmp "$src/DEVPOINTS.yaml" "$rroot/DEVPOINTS.yaml"
+      for e in "$src"/*; do
+        b="${e##*/}"
+        case "$b" in tests|DEVPOINTS.yaml) continue ;; esac
+        ln -s "$e" "$rroot/$b"
+      done
+      for e in "$src"/tests/*; do
+        [ "${e##*/}" = "baselines" ] || ln -s "$e" "$rroot/tests/${e##*/}"
+      done
+      committed=("$src"/tests/baselines/*)
+      if [ "${#committed[@]}" -gt 0 ]; then
+        md5sum "${committed[@]}" > "$RUNDIR/record/$tool.committed.md5"
+      fi
+    fi
+    # THE FIXTURE BUILT IN STEP 1, reused: the cohort is a pure function of its arguments, and the
+    # ladder's second execution of a recording already writes somewhere else (run_a2), which is
+    # what shows a value that embeds its own path to be not execution-stable.
+    tiers=(--point "$point" --name "$nm" --only fixture_a --only fixture_b --only agree
+           --only baseline --keep-going)
+    for step in record recheck; do
+      extra=()
+      [ "$step" = "record" ] && extra=(--record-baseline)
+      set +e
+      if [ "$tool" = "scprofile" ] && [ -n "${SCPROFILE_PREFIX:-}" ]; then
+        SCH_DEV_PREFIX="$SCPROFILE_PREFIX" "$PY" -m sch dev check --root "$rroot" "${tiers[@]}" \
+          ${extra[@]+"${extra[@]}"} --fixture-dir "$RUNDIR/fixture" \
+          > "$RUNDIR/checks/$step.$tool.$nm.txt" 2>&1
+      else
+        "$PY" -m sch dev check --root "$rroot" "${tiers[@]}" ${extra[@]+"${extra[@]}"} \
+          --fixture-dir "$RUNDIR/fixture" \
+          > "$RUNDIR/checks/$step.$tool.$nm.txt" 2>&1
+      fi
+      rc=$?
+      set -e
+      echo "  $step $tool.$nm exit $rc"
+      case "$rc" in
+        0) ;;
+        3) INCOMPLETE_CHECKS="$INCOMPLETE_CHECKS $step:$tool.$nm" ;;
+        *) FAILED_CHECKS="$FAILED_CHECKS $step:$tool.$nm" ;;
+      esac
+      grep -E "^  (ok  |FAIL|skip) baseline" "$RUNDIR/checks/$step.$tool.$nm.txt" || true
+    done
+  done
+  # THE TOOLS' OWN BASELINES ARE UNTOUCHED: the record went into this run, or it went nowhere.
+  for f in "$RUNDIR"/record/*.committed.md5; do
+    md5sum -c --quiet "$f" || FAILED_CHECKS="$FAILED_CHECKS baselines-touched"
+  done
+  shopt -u nullglob
+fi
+
+# --------------------------------------- 5. (W035) the prediction, graded by the job itself
+echo; echo "=== W035: the prediction"
+"$PY" - "$RUNDIR" <<'GRADE' || echo "GATE: MISSED (the grader did not run)"
+import re, sys
+from pathlib import Path
+run = Path(sys.argv[1])
+HELD = {"kernels/abundance.py", "kernels/decoupler.py", "kernels/velocity.py"}
+TIER = re.compile(r"^  (ok  |FAIL|skip) (\S+)\s")
+
+
+def block(label, tier):
+    p = run / "checks" / f"{label}.txt"
+    lines = p.read_text(errors="replace").splitlines() if p.is_file() else []
+    for i, ln in enumerate(lines):
+        m = TIER.match(ln)
+        if m and m.group(2) == tier:
+            ev = []
+            for x in lines[i + 1:]:
+                if TIER.match(x) or not x.startswith("           "):
+                    break
+                ev.append(x.strip())
+            return m.group(1).strip(), ev
+    return None, []
+
+
+miss = 0
+
+
+def verdict(pid, ok, said):
+    global miss
+    miss += 0 if ok else 1
+    print(f"VERDICT {pid} {'AS PREDICTED' if ok else 'MISSED'} - {said}")
+
+
+st, ev = block("scprofile.cellchat", "leak")
+files = {e.split(":")[0] for e in ev}
+verdict("P1", st == "FAIL" and files == HELD and len(ev) == 4
+        and not any("cellchat" in e for e in ev), f"leak {st}: {ev}")
+st, ev = block("scprofile.cellchat", "contract")
+verdict("P2", st == "FAIL" and any(e.startswith("S1") for e in ev), f"contract {st}")
+p = run / "checks" / "w035.scan.txt"
+rows = [x[4:] for x in p.read_text(errors="replace").splitlines() if x.startswith("HIT ")] \
+    if p.is_file() else None
+terms = [r for r in rows or [] if "site term" in r]
+verdict("P3", rows is not None and not any(r.startswith("kernels/cellchat.py") for r in rows)
+        and {r.split(":")[0] for r in terms} == HELD and len(terms) == 4,
+        f"{len(rows or [])} hit(s); term hits {terms}")
+d1, _ = block("scprofile.cellchat", "declaration")
+d2, _ = block("scprofile.de", "declaration")
+verdict("P4", d1 == "ok" and d2 == "ok", f"declaration cellchat {d1}, de {d2}")
+st, ev = block("scprofile.cellchat", "rules")
+verdict("P5", st == "ok", f"rules {st} {ev[:2]}")
+st, ev = block("scprofile.cellchat", "unit")
+verdict("P6", st == "ok", f"unit {st} {ev[:2]}")
+print("GATE: AS PREDICTED" if not miss else f"GATE: MISSED ({miss})")
+GRADE
+
+echo; echo "finished $(date -u)"
