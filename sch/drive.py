@@ -16,11 +16,14 @@ stops before that stage, naming it, and resumes from the answer, recorded with w
 escape that lifts one of the tool's refusals (`unanswered: tool-default`) does not stop the run -
 unanswered, its flag is not passed, the tool's own default, and the stage's events say so.
 A run is its request and every file it reads (`run_inputs`: the samplesheet and every path in it,
-the design, every path a param names, every file under a directory named, an adapter the harness does
-not ship): the set is recomputed and compared at the plan, at each stage's start and its seal, and on a
-resume for every sealed stage, and a generated job carries it; a seal is trusted only on the run's own
-record, and a seal that record names is never missing (the sealed stages are the first, in order). Rule 2 is read from the
-profile this harness ships and from every place a step is declared, and the places must agree.
+the design, every path a param or an answer names, every file under a directory named (links
+followed), every path a named document holds, the site layer, each tool's checkout and the harness's
+own code, an adapter the harness does not ship): the set is recomputed and compared at the plan, at
+each stage's start and its seal, and on a resume for every sealed stage, and a generated job carries
+it and checks it with the run's answers; a seal is trusted only on the run's own record, and a seal
+that record names is never missing (the sealed stages are the first, in order). What may have run
+upstream of an assay is what the first stage's tool accepts there (its adapter's `upstream_accepts:`);
+rule 2 over it is read from the profile this harness ships, and every place a step is declared must agree.
 
 Nothing about a cohort or a site is here. The request is data that lives with the cohort; this
 module holds its schema (FIELDS) and `docs/request.example.yml` a synthetic example.
@@ -82,7 +85,7 @@ VERSION = re.compile(r"v?\d+(\.\d+)*([a-z]|[._-]?(a|b|c|rc|alpha|beta|dev|post|p
 #: A stage's name, a job's stage directory and its purpose: each is written into the generated job as it
 #: is (a path, the run key, a shell line), so each is a plain word (autodev W042 fix 2, ATTACKS 6).
 STAGE_WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*", re.ASCII)
-#: The answers to the user's decision on a step the profile asks about (`upstream.ask`, D-031).
+#: The answers to the user's decision on a step the profile asks about (`ask_when_delivered`, D-031).
 ASK_VALUES = ("accept", "decline")
 #: THE RUN'S INPUTS (autodev W042 fix 2, B), named limits, each said in the run's record. A file larger
 #: than HASH_LIMIT bytes is not hashed at every step: its size, modification time and the sha256 of its
@@ -94,14 +97,30 @@ TREE_LIMIT = 5000
 EXCLUDED = {".git": "a checkout's history, not what its tool reads (its work tree is hashed)",
             "__pycache__": "the interpreter's compiled cache, written when a tool runs",
             "*.pyc": "the same cache, as single files"}
+#: A DOCUMENT A PARAM, AN ANSWER OR THE SITE NAMES IS READ FOR THE PATHS IN IT (autodev W049, route 13):
+#: a table or a YAML/JSON file up to DOC_LIMIT bytes, one level deep (a document it names is pinned as
+#: its text). A relative path in it is pinned beside it, as the stack reads a samplesheet's.
+DOCS = {".tsv": "\t", ".txt": "\t", ".csv": ",", ".yml": None, ".yaml": None, ".json": None}
+DOC_LIMIT = 4 << 20
+#: An upstream step's tool is one plain name (autodev W049): printable ASCII once NFKC has folded it, so no
+#: zero-width, control or look-alike character can make two names read as one; a command, a note or a
+#: second tool joined by `;` or a newline is not a name.
+TOOL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._+|/()-]{0,79}", re.ASCII)
+#: What an adapter's `upstream_columns:` says of a step (PLUGIN_FORMAT): the column naming its tool and the
+#: one naming its release, and the columns saying it was performed or declined (each a list: True).
+COLUMN_FIELDS = {"tool": False, "version": False, "performed": True, "declined": True}
+#: What a tool accepts upstream when its declaration names no list: any plain name (autodev W049).
+ANY = "any"
 POLICY = {"hash_limit_bytes": HASH_LIMIT, "sample_bytes": SAMPLE, "tree_limit_files": TREE_LIMIT,
-          "excluded": EXCLUDED,
+          "excluded": EXCLUDED, "document_limit_bytes": DOC_LIMIT, "documents": sorted(DOCS),
           "open": "a file over the hash limit is compared by size, modification time and its first and last "
                   "bytes, so an edit of its middle that keeps its size and modification time is not seen; a "
                   "directory over the tree limit is not compared at all; a change made and undone while one "
                   "stage's tool runs, between that stage's start and its seal, is seen only if the tool records "
-                  "what it read; a file another file names (a registry's paths) is pinned only as that file's "
-                  "text; records rewritten consistently everywhere are not told from true ones (no signature)"}
+                  "what it read; a path inside a named document is pinned one level deep, a relative one beside "
+                  "that document (a tool that resolves it from elsewhere reads a file the set does not hold); a "
+                  "git checkout (the harness, a tool's) is its commit and its tracked changes, not its untracked "
+                  "files; records rewritten consistently everywhere are not told from true ones (no signature)"}
 
 
 class RequestError(ValueError):
@@ -178,9 +197,20 @@ def _add(files: dict, role: str, p: Path):
     if not p.is_dir():
         files[role] = {"path": str(p), "absent": True}
         return
-    found = []
-    for root, dirs, names in os.walk(p):
-        dirs[:] = sorted(d for d in dirs if d not in EXCLUDED)
+    found, seen = [], {os.path.realpath(p)}
+    # A LINKED DIRECTORY IS WALKED TOO (autodev W049, route 5): what a tool reads through a link is a file
+    # it reads. Each directory is walked once, by its real path; a link back to one already walked is a
+    # loop, kept in the set as the link and its target, so retargeting it is a change.
+    for root, dirs, names in os.walk(p, followlinks=True):
+        keep = []
+        for d in sorted(x for x in dirs if x not in EXCLUDED):
+            real = os.path.realpath(os.path.join(root, d))
+            if real in seen:
+                found.append((Path(root) / d, real))
+            else:
+                seen.add(real)
+                keep.append(d)
+        dirs[:] = keep
         found += [Path(root) / n for n in sorted(names) if not n.endswith(".pyc")]
         if len(found) > TREE_LIMIT:
             files[role] = {"path": str(p), "unpinned": f"more than TREE_LIMIT ({TREE_LIMIT}) files: not "
@@ -188,6 +218,9 @@ def _add(files: dict, role: str, p: Path):
             return
     files[role] = {"path": str(p), "dir": len(found)}
     for f in found:
+        if isinstance(f, tuple):                 # a loop: the link, and where it leads
+            files[f"{role}/{f[0].relative_to(p).as_posix()}"] = {"path": str(f[0]), "loop": f[1]}
+            continue
         rel = f.relative_to(p).as_posix()
         try:
             files[f"{role}/{rel}"] = _entry(f) if f.is_file() else {"path": str(f), "absent": True}
@@ -195,10 +228,11 @@ def _add(files: dict, role: str, p: Path):
             files[f"{role}/{rel}"] = {"path": str(f), "unreadable": f"{type(e).__name__}: {e}"}
 
 
-def _paths(v, base: Path | None) -> list:
+def _paths(v, base: Path | None, words: bool = False) -> list:
     """The paths a value names, the way its reader resolves them: absolute or `~/`; with `base` (a
     samplesheet's directory, as the stack reads a parts column), also a relative path that is there or
-    that has a `/` in it. A comma-separated list of paths is each of them."""
+    that has a `/` in it. A comma-separated list of paths is each of them. `words` (a document's values,
+    which are mostly words): a bare word is a path only when a FILE of that name is beside it."""
     if not isinstance(v, str) or not v.strip():
         return []
     pieces = [x.strip() for x in v.split(",")] if "," in v else [v.strip()]
@@ -206,7 +240,7 @@ def _paths(v, base: Path | None) -> list:
     def one(x):
         if x.startswith(("/", "~/")):
             return Path(os.path.expanduser(x))
-        if base is not None and x and ("/" in x or (base / x).exists()):
+        if base is not None and x and ("/" in x or ((base / x).is_file() if words else (base / x).exists())):
             return base / x
         return None
     got = [one(x) for x in pieces]
@@ -215,15 +249,61 @@ def _paths(v, base: Path | None) -> list:
     return [g for g in got if g is not None]
 
 
-def run_inputs(req: dict) -> dict:
-    """THE COMPLETE SET OF FILES A RUN READS (autodev W042 fix 2, B), {role: entry}: the request, its
-    samplesheet, its design, every path-valued cell of the samplesheet (any column), every path-valued
-    stage param, every file under any directory one of them names, and every file of an adapter the
-    harness does not ship (its code is read like any input). ONE function, so the plan, each
+def _git_state(d: Path, pathspec=()) -> dict | None:
+    """A git work tree as the set holds it (autodev W049, routes 10 and 14): its top, its commit and a
+    digest of its tracked changes against that commit (limited to `pathspec`); None outside one. Read
+    with no optional lock, so two jobs reading one checkout never collide on its index."""
+    import subprocess
+
+    def g(*a):
+        r = subprocess.run(["git", "--no-optional-locks", "-C", str(d), *a], capture_output=True, timeout=120)
+        return r.stdout if r.returncode == 0 else None
+    try:
+        top, head = g("rev-parse", "--show-toplevel"), g("rev-parse", "HEAD")
+        if not top or not head:
+            return None
+        spec = ["--", *pathspec] if pathspec else []
+        st = g("status", "--porcelain=v1", "--untracked-files=no", *spec)
+        diff = g("diff", "--binary", "HEAD", *spec)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if st is None or diff is None:
+        return None
+    return {"path": top.decode().strip(), "git": head.decode().strip(),
+            "tracked_changes": hashlib.sha256(st + b"\0" + diff).hexdigest()}
+
+
+def _document(f: Path):
+    """[(where, value)] of a table or a YAML/JSON document, or None when it is not one the driver reads."""
+    sep = DOCS.get(f.suffix.lower(), False)
+    if sep is False or f.stat().st_size > DOC_LIMIT:
+        return None
+    try:
+        if sep:
+            with open(f, newline="", encoding="utf-8") as fh:
+                rows = list(csv.reader(fh, delimiter=sep))
+            return [(f"[{i}.{j}]", v) for i, r in enumerate(rows) for j, v in enumerate(r)]
+        doc = json.loads(f.read_text(encoding="utf-8")) if f.suffix.lower() == ".json" else yamlish.load(f)
+    except Exception:                            # noqa: BLE001 - not a document: pinned as its text
+        return None
+    return list(_leaves(doc))
+
+
+def run_inputs(req: dict, answers: dict | None = None) -> dict:
+    """THE COMPLETE SET OF FILES A RUN READS (autodev W042 fix 2, B; W049), {role: entry}: the request,
+    its samplesheet, its design, every path-valued cell of the samplesheet (any column), every path-valued
+    stage param and ANSWER (`answer[<decision>]`: set into a stage's params at run time, read by its tool
+    as a param is), the site layer every stage's stack is composed over and every path it names, every
+    file under any directory one of them names (links followed), every path a document among them names
+    (one level), each stage's tool checkout and the harness's own code (their commit and tracked
+    changes), and every file of an adapter the harness does not ship. ONE function, so the plan, each
     stage's start and seal, a resume and the generated job compare the same set the same way. The roles
     are the request's own words, the same on every machine; a path is where the file was found."""
     from .services.dataset import read_manifest
     files: dict = {}
+    root = Path(__file__).resolve().parent.parent
+    files["harness"] = _git_state(root, ("sch", "plugins")) or {   # route 10: its code, as it runs
+        "path": str(root), "git": None, "tracked_changes": _tree_digest(root / "sch") + _tree_digest(root / "plugins")}
     _add(files, "request", Path(req["path"]))
     sheet = Path(req["observations"])
     _add(files, "observations", sheet)
@@ -244,12 +324,64 @@ def run_inputs(req: dict) -> dict:
             got = _paths(v, sheet.parent)
             for j, f in enumerate(got):
                 _add(files, f"observations.{col}[{lib}]" + (f"#{j}" if len(got) > 1 else ""), f)
+    named = []                                   # the roles a param, an answer or the site names
     for p in req["stages"]:
         for path, v in _leaves(p["params"]):
             got = _paths(v, None)
             for j, f in enumerate(got):
-                _add(files, f"{p['stage']}.{path}" + (f"#{j}" if len(got) > 1 else ""), f)
+                named.append(f"{p['stage']}.{path}" + (f"#{j}" if len(got) > 1 else ""))
+                _add(files, named[-1], f)
+        tool = p.get("tool_param")               # route 14: the checkout around the file naming its tool
+        got = _paths(dict(_leaves(p["params"])).get(tool), None) if tool else []
+        if got and got[0].exists():
+            d = got[0] if got[0].is_dir() else got[0].parent
+            files[f"{p['stage']}.{tool}@checkout"] = _git_state(d) or (
+                {"path": str(d), "git": None, "tracked_changes": _tree_digest(d)} if got[0].is_file() else
+                {"path": str(d), "git": None, "tracked_changes": "the directory itself, walked as the param"})
+    for name in sorted(answers or {}):           # route 6: an answer is read by its tool as a param is
+        a = answers[name]
+        for path, v in _leaves(a.get("value") if isinstance(a, dict) else a):
+            got = _paths(v, None)
+            for j, f in enumerate(got):
+                named.append(f"answer[{name}]" + (f".{path}" if path else "") + (f"#{j}" if len(got) > 1 else ""))
+                _add(files, named[-1], f)
+    site = os.environ.get("SCH_SITE")            # route 11: the layer beneath every stage's stack.yml
+    if site:
+        f = Path(site) / "stack.yml"
+        _add(files, "site.stack.yml", f)
+        layer = yamlish.load(f) if f.is_file() else None
+        for path, v in _leaves(layer if isinstance(layer, dict) else {}):
+            for j, g in enumerate(got := _paths(v, None)):
+                named.append(f"site.{path}" + (f"#{j}" if len(got) > 1 else ""))
+                _add(files, named[-1], g)
+    for role in named:                           # route 13: a document's paths, one level, beside it
+        e = files.get(role) or {}
+        if not e.get("sha256"):
+            continue
+        f = Path(e["path"])
+        for where, v in _document(f) or []:
+            got = _paths(v, f.parent, words=True)
+            for j, g in enumerate(got):
+                _add(files, f"{role}>{where}" + (f"#{j}" if len(got) > 1 else ""), g)
     return files
+
+
+def _tree_digest(d: Path) -> str:
+    """A directory's files (sorted, EXCLUDED left out) as one digest: what stands for a checkout's state
+    where git cannot say it. Over TREE_LIMIT files it is said, not hashed."""
+    h, n = hashlib.sha256(), 0
+    for r, dirs, names in os.walk(d):
+        dirs[:] = sorted(x for x in dirs if x not in EXCLUDED)
+        for x in sorted(names):
+            if x.endswith(".pyc"):
+                continue
+            n += 1
+            if n > TREE_LIMIT:
+                return f"unpinned: more than TREE_LIMIT ({TREE_LIMIT}) files"
+            f = Path(r) / x
+            h.update(f.relative_to(d).as_posix().encode() + b"\0")
+            h.update((_digest(_entry(f)) if f.is_file() else "absent").encode() + b"\n")
+    return h.hexdigest()
 
 
 def _digest(e: dict | None, mtime: bool = True) -> str | None:
@@ -267,6 +399,10 @@ def _digest(e: dict | None, mtime: bool = True) -> str | None:
         return "unpinned"
     if e.get("unreadable"):
         return "unreadable"
+    if e.get("loop"):
+        return f"loop:{e['loop']}"
+    if "tracked_changes" in e:                   # a checkout: its commit and its tracked changes
+        return f"git:{e.get('git')}:{e['tracked_changes']}"
     return f"dir:{e.get('dir')}"
 
 
@@ -285,7 +421,7 @@ def differ(then: dict, now: dict, here_only: bool = False) -> list:
         if a == b:
             continue
         if here_only and (a == "absent" or (a is None and any(
-                then.get(k[:i]) == "absent" for i in range(len(k)) if k[i] in "/."))):
+                then.get(k[:i]) == "absent" for i in range(len(k)) if k[i] in "/.>"))):
             continue
         out.append((k, a, b))
     return out
@@ -356,20 +492,38 @@ def _vword(v) -> str:
     return str(v).strip().casefold().lstrip("v")
 
 
+def _family(prof_id: str, plan: list) -> list:
+    """Every adapter of this profile the harness ships, and the request's own: (name, manifest data)."""
+    out, seen = [], set()
+    for f in sorted((Path(__file__).resolve().parent.parent / "plugins").glob("*/*/plugin.yml")):
+        m = yamlish.load(f) or {}
+        if str(m.get("profile", "")).split("/")[0] == prof_id.split("/")[0]:
+            out.append((str(m.get("name")), m))
+            seen.add(str(m.get("name")))
+    out += [(p["plugin"], {"upstream_columns": p.get("upstream_columns"), "runs_upstream": p.get("runs_upstream")})
+            for p in plan if p["plugin"] not in seen]
+    return out
+
+
 def _upstream(doc: dict, prof, assay: str, plan: list, keys: dict, where) -> tuple:
-    """RULE 2 OVER EVERY PLACE A STEP IS DECLARED (autodev W042 fix 2, A): (upstream, the run's own
-    decisions). Every key of every step is read; each assay lists what may run upstream of it, so nothing
-    is allowed by silence; a name the profile asks about (`upstream.ask`, D-031) becomes the user's
-    decision, never a silent pass; the family's own tools never perform a step the assay allows only as
-    `none`; and what the first stage's samplesheet says (its adapter's `upstream_columns:`) must agree."""
+    """RULE 2 OVER WHAT THE STAGE-1 TOOL ACCEPTS (autodev W049; W042 fix 2, A): (upstream, the run's own
+    decisions). What may have run upstream of an assay is what the first stage's tool accepts there (its
+    adapter's `upstream_accepts:`, held by a drift test against the tool's own code), never a hand list.
+    Over it, rule 2, the shipped profile's: on an assay where the family never performs a step
+    (`never_performed`) a family tool's param that would perform it is refused, and libraries delivered
+    with it performed (`ask_when_delivered`) - under any name, or a name carrying the tool the family
+    runs only elsewhere - stop before stage 1 at the user's decision (D-031), never a silent pass. What
+    the samplesheet says (every family adapter's `upstream_columns:`) must agree, whatever stage starts."""
     up = doc["upstream"]
     rule = dict(prof.data.get("upstream") or {})
     steps = [str(x) for x in rule.get("steps") or []]
     if not isinstance(up, dict):
         raise RequestError("upstream: is not a mapping of steps")
-    if "never" in rule:
-        raise RequestError(f"{prof.id}: upstream.never is not read; rule 2 is written as what may run "
-                           f"(upstream.allowed.<assay>.<step>: [names])")
+    stale = sorted({"never", "allowed", "ask"} & set(rule))
+    if stale:
+        raise RequestError(f"{prof.id}: upstream.{stale[0]} is not read; what may run upstream is what the first "
+                           f"stage's tool accepts (its adapter's upstream_accepts:), and rule 2 is written as "
+                           f"never_performed and ask_when_delivered")
     for step in steps:
         v = up.get(step)
         if not isinstance(v, dict) or v.get("tool") is None or not str(v.get("tool")).strip():
@@ -379,12 +533,22 @@ def _upstream(doc: dict, prof, assay: str, plan: list, keys: dict, where) -> tup
     other = sorted(set(map(str, up)) - set(steps))
     if other:
         raise RequestError(f"upstream: {', '.join(other)} is not an upstream step ({', '.join(steps)})")
-    allowed = (rule.get("allowed") or {}).get(assay)
-    ask = dict((rule.get("ask") or {}).get(assay) or {})
-    if not isinstance(allowed, dict):
-        raise RequestError(f"{prof.id} lists nothing that may run upstream of {assay} (upstream.allowed.{assay}); "
-                           f"nothing is allowed by silence")
-    decisions = []
+    first = plan[0]
+    accepts = (first.get("upstream_accepts") or {}).get(assay) if isinstance(first.get("upstream_accepts"), dict) \
+        else None
+    if first["reads"] != "libraries":            # the chain refuses it next, by name; nothing here is read
+        accepts = {step: ANY for step in steps}
+    if not isinstance(accepts, dict):
+        raise RequestError(f"{first['plugin']} declares nothing of what its tool accepts upstream of {assay} "
+                           f"(upstream_accepts.{assay}); nothing is allowed by silence")
+    never = [str(x) for x in (rule.get("never_performed") or {}).get(assay) or []]
+    ask = [str(x) for x in (rule.get("ask_when_delivered") or {}).get(assay) or []]
+    family = _family(prof.id, plan)
+    runs = {}                                    # step -> the tools the family runs it with (their own words)
+    for _n, m in family:
+        for step, entries in dict(m.get("runs_upstream") or {}).items():
+            runs.setdefault(str(step), []).extend(str(e.get("tool")) for e in entries or [] if isinstance(e, dict))
+    decisions, asked = [], {}
     for step in steps:
         v = up[step]
         extra = sorted(set(map(str, v)) - set(STEP_FIELDS))
@@ -393,68 +557,98 @@ def _upstream(doc: dict, prof, assay: str, plan: list, keys: dict, where) -> tup
                                f"what ran upstream is its tool's name and its release, and free text (a command "
                                f"line, a flag, a note) is not read, so it is not accepted")
         tool, ver = v["tool"], v.get("version")
-        if not isinstance(tool, str):
-            raise RequestError(f"upstream.{step}.tool is {tool!r}; it is one tool's name, or none")
+        if not isinstance(tool, str) or not TOOL_NAME.fullmatch(unicodedata.normalize("NFKC", tool).strip()):
+            raise RequestError(f"upstream.{step}.tool is {tool!r}; it is one tool's name, or none: printable "
+                               f"letters, digits, spaces and . _ + | / ( ) -, nothing hidden and no second line")
         if ver is not None and (isinstance(ver, (bool, list, dict)) or not VERSION.fullmatch(str(ver).strip())):
             raise RequestError(f"upstream.{step}.version is {ver!r}, not a release number (digits and dots, as "
                                f"0.3.0 or v7.1.0); the tool is named in `tool`, once")
-        if _word(tool) == "none" and ver is not None:
+        none = _word(tool) == "none"
+        if none and ver is not None:
             raise RequestError(f"upstream.{step}: tool none, version {ver!r}; a step nothing performed has no version")
-        if step not in allowed:
-            raise RequestError(f"{prof.id} lists nothing that may run as {step} upstream of {assay} "
-                               f"(upstream.allowed.{assay}.{step}); nothing is allowed by silence")
-        names = [str(n) for n in allowed[step] or []]
-        if _word(tool) in map(_word, names):
-            continue
-        if _word(tool) in map(_word, ask.get(step) or []):
-            decisions.append({"name": f"upstream.{step}", "param": None, "values": list(ASK_VALUES),
-                              "unanswered": "stop", "step": step, "tool": tool, "version": ver,
-                              "what": f"this cohort's {assay} libraries arrive with {step} already performed by "
-                                      f"{tool}{' ' + str(ver) if ver is not None else ''}, which {prof.id} does not "
-                                      f"allow on {assay} (rule 2: a remover calibrated on nuclei is not lent to "
-                                      f"cells) and asks about (upstream.ask.{assay}.{step}): accept them for this "
-                                      f"run, or decline; the family never runs it on {assay}"})
-            continue
-        raise RequestError(f"upstream: {step} by {tool!r} on {assay}: not a tool {prof.id} allows there "
-                           f"(upstream.allowed.{assay}.{step}: {', '.join(names) or 'nothing'}"
-                           + (f"; asked about: {', '.join(map(str, ask[step]))}" if ask.get(step) else "")
-                           + f"); rule 2: a remover calibrated on nuclei is not lent to cells, and what may run "
-                             f"upstream of {assay} is what the profile names - deliver the aligner's call "
-                             f"(`tool: none`), or add a tool made for {assay} to the profile, reviewed")
-    for p in plan:                               # the family never performs it where only `none` may run
-        for step, ps in (p.get("runs_upstream") or {}).items():
-            if [_word(n) for n in allowed.get(step) or []] == ["none"]:
-                for x in ps or []:
-                    got = _has(p["params"], str(x))
-                    if got:
-                        raise RequestError(f"{p['stage']} ({p['plugin']}): params set {got[0]}, with which its tool "
-                                           f"performs {step} itself; on {assay} {prof.id} allows no {step} "
-                                           f"(upstream.allowed.{assay}.{step}: none) and the family never runs one "
-                                           f"there (rule 2) - no decision lifts this: drop it")
-    first = plan[0]
-    cols = first.get("upstream_columns")
+        acc = accepts.get(step)
+        if acc is None:
+            raise RequestError(f"{first['plugin']} declares nothing of what its tool accepts as {step} upstream of "
+                               f"{assay} (upstream_accepts.{assay}.{step}); nothing is allowed by silence")
+        if not none and acc != ANY and _word(tool) not in map(_word, acc or []):
+            raise RequestError(f"upstream: {step} by {tool!r} on {assay}: not a tool {first['plugin']}'s tool accepts "
+                               f"there (upstream_accepts.{assay}.{step}: {', '.join(map(str, acc or [])) or 'nothing'})")
+        # D-031: delivered performed where the family never performs it, or a name carrying a tool the
+        # family runs for such a step - the user's decision, by name, whatever the spelling
+        why = None
+        if not none and step in ask:
+            why = f"{step} already performed by {tool}{' ' + str(ver) if ver is not None else ''}"
+        for o in never:
+            hit = [t for t in runs.get(o) or [] if o != step and _word(t) and _word(t) in _word(tool)]
+            if hit and o in ask:
+                asked.setdefault(o, []).append(f"its {step} named {tool!r}, which carries {hit[0]}, a {o} tool "
+                                               f"the family runs only where {prof.id} allows it")
+        if why:
+            asked.setdefault(step, []).insert(0, why)
+    for step, whys in asked.items():
+        decisions.append({"name": f"upstream.{step}", "param": None, "values": list(ASK_VALUES),
+                          "unanswered": "stop", "step": step, "tool": up[step]["tool"],
+                          "version": up[step].get("version"),
+                          "what": f"this cohort's {assay} libraries arrive with " + "; and ".join(whys) + f": on "
+                                  f"{assay} the family never performs {step} ({prof.id} never_performed; rule 2: a "
+                                  f"remover calibrated on nuclei is not lent to cells) and asks whether to accept "
+                                  f"libraries delivered so (ask_when_delivered, D-031): accept them for this run, "
+                                  f"or decline"})
+    for p in plan:                               # the family never performs a step where it may not
+        for step, entries in (p.get("runs_upstream") or {}).items():
+            for e in entries or []:
+                got = _has(p["params"], str(e.get("param")))
+                where_ok = assay in [str(x) for x in e.get("assays") or []] and str(step) not in never
+                if got and not where_ok:
+                    raise RequestError(f"{p['stage']} ({p['plugin']}): params set {got[0]}, with which its tool "
+                                       f"performs {step} itself ({e.get('tool')}, run on "
+                                       f"{', '.join(map(str, e.get('assays') or [])) or 'no assay'} by its own "
+                                       f"policy); on {assay} the family never runs it (rule 2) - no decision lifts "
+                                       f"this: drop it")
     if first["reads"] != "libraries":            # the chain refuses it next, by name
         return up, decisions
-    if not isinstance(cols, dict):
+    cols, reads = {}, dict(first.get("upstream_columns") or {}) if isinstance(first.get("upstream_columns"), dict) \
+        else None
+    if reads is None:
         raise RequestError(f"{first['plugin']} reads the request's samplesheet and declares nothing of where it says "
                            f"what ran upstream (upstream_columns:, {{}} if nowhere); provenance is read from every "
                            f"place it can be declared")
+    for _n, m in family:                         # every column a family tool reads as upstream provenance
+        for step, c in dict(m.get("upstream_columns") or {}).items():
+            got = cols.setdefault(str(step), {k: [] if many else None for k, many in COLUMN_FIELDS.items()})
+            for k, many in COLUMN_FIELDS.items():
+                v = (c or {}).get(k)
+                if not many and v and got[k] and v != got[k]:   # two columns for one fact: never a pick
+                    raise RequestError(f"{_n} reads {step}'s {k} from the samplesheet's {v!r} and another family "
+                                       f"adapter from {got[k]!r}; one fact is one column - correct the adapter")
+                got[k] = got[k] + [x for x in v or [] if x not in got[k]] if many else got[k] or v
     if where is not None:
-        _sheet_agrees(Path(where("observations")), cols, up, keys, first)
+        _sheet_agrees(Path(where("observations")), cols, up, keys, first, set(map(str, reads)))
     return up, decisions
 
 
-def _sheet_agrees(sheet: Path, cols: dict, up: dict, keys: dict, first: dict):
-    """Every row of the first stage's samplesheet against the request's upstream block. The request is
-    the run's record of what ran upstream, so it states every claim the samplesheet makes; where the
-    samplesheet is silent, the request's word stands."""
+def _sheet_agrees(sheet: Path, cols: dict, up: dict, keys: dict, first: dict, reads: set):
+    """Every row of the request's samplesheet against the request's upstream block. The request is the
+    run's record of what ran upstream, so it states every claim the samplesheet makes. For a step the
+    first stage's tool reads from the sheet (`reads`), a column it lacks is that tool's reading (no
+    `ambient_h5`: not performed); for one it does not, only the columns the sheet holds speak (autodev
+    W049: the sheet is read whatever stage starts), and where the sheet is silent the request's word stands."""
     from .services.dataset import read_manifest
     try:
-        _head, rows = read_manifest(sheet)
+        head, rows = read_manifest(sheet)
     except Exception:                            # noqa: BLE001 - the stack's own init refuses it by name
         return
+    head = set(map(str, head or (rows[0] if rows else {})))
     for step, c in cols.items():
+        if step not in up:
+            continue
         c = dict(c or {})
+        mine = step in reads
+        if not mine:
+            c = {"tool": c.get("tool") if c.get("tool") in head else None,
+                 "version": c.get("version") if c.get("version") in head else None,
+                 "performed": [k for k in c.get("performed") or [] if k in head],
+                 "declined": [k for k in c.get("declined") or [] if k in head]}
         tool, ver = up[str(step)]["tool"], up[str(step)].get("version")
         none = _word(tool) == "none"
         for i, r in enumerate(rows, 1):
@@ -468,15 +662,15 @@ def _sheet_agrees(sheet: Path, cols: dict, up: dict, keys: dict, first: dict):
                    f"{done[0]}={cell(done[0])!r}, which its tool reads as {step} performed" if none and done else
                    f"{skip[0]}={cell(skip[0])!r}, {step} declined" if not none and skip else
                    f"none of {', '.join(c['performed'])}, so no {step} performed" if not none and c.get("performed")
-                   and not done else
+                   and not done and mine else
                    f"{c['version']}={sv!r}" if sv and (ver is None or _vword(sv) != _vword(ver)) else None)
             if why:
                 raise RequestError(f"upstream.{step}: the request says {tool!r}"
                                    + (f" version {ver!r}" if ver is not None else " with no version")
                                    + f", and the samplesheet's row {lib} says {why}; what ran upstream is read from "
-                                     f"every place it is declared - the request and {first['plugin']}'s samplesheet "
-                                     f"columns (its upstream_columns:) - and the places must agree: correct the one "
-                                     f"that is wrong")
+                                     f"every place it is declared - the request and the samplesheet's columns a "
+                                     f"family tool reads as {step} (their upstream_columns:) - and the places must "
+                                     f"agree: correct the one that is wrong")
 
 
 # ---------------------------------------------------------------------------- the request
@@ -597,8 +791,8 @@ def load(path, files: bool = True) -> dict:
         # pinned, so refused too.
         for path, v in _leaves(params):
             for x in ([y.strip() for y in v.split(",")] if isinstance(v, str) else []):
-                out_of = bool(re.search(r"(^|/)\.\.(/|$)", x) or re.match(r"~[^/\s]+/", x))
-                if x and not x.startswith(("/", "~/")) and (out_of or (base / x).exists()):
+                out_of = _climbs(x)
+                if _relative_path(x, [base]):
                     raise RequestError(f"stages[{i}] ({m.name}): {path} is {x!r}, a relative path"
                                        + (" out of its tool's working directory" if out_of else f" to {base / x}")
                                        + f"; {m.name}'s tool reads its params from its own working directory (the "
@@ -630,8 +824,21 @@ def load(path, files: bool = True) -> dict:
                      "library_key": [paths] if isinstance(paths, str) else list(paths),
                      "resources": dict(m.data.get("resources") or {}),
                      "upstream_columns": m.data.get("upstream_columns"),
+                     "upstream_accepts": m.data.get("upstream_accepts"), "tool_param": m.data.get("tool_param"),
                      "runs_upstream": dict(m.data.get("runs_upstream") or {}),
                      "cannot_show": list(m.data.get("cannot_show") or [])})
+
+    # A TOOL'S FLAGS ARE THE REQUEST'S (autodev W049, route 11): the site layer every stage's stack is
+    # composed over declares where stages run, not a tool's flags - one it laid beneath a stage's params
+    # would reach the tool unchecked (an escape, an owned flag, a path) and unpinned
+    site = os.environ.get("SCH_SITE")
+    layer = yamlish.load(Path(site) / "stack.yml") if site and (Path(site) / "stack.yml").is_file() else None
+    for p in plan:
+        got = dict(((layer or {}).get("plugins") or {}).get(p["plugin"]) or {}) if isinstance(layer, dict) else {}
+        if got:
+            raise RequestError(f"{site}/stack.yml declares plugins.{p['plugin']} ({', '.join(sorted(map(str, got)))}); "
+                               f"a site layer declares where the stages run (executor, pbs), and a tool's flags are "
+                               f"the request's (stages[].params), verbatim - move them there")
 
     # ---- the sizes: the cohort's, per stage and for the driver; a tool's own default beneath them
     res = doc.get("resources") or {}
@@ -650,6 +857,10 @@ def load(path, files: bool = True) -> dict:
         bad = sorted(set(size) - set(SIZE_WORDS))
         if bad:
             raise RequestError(f"resources.{who}: {', '.join(bad)} is not a size word ({', '.join(SIZE_WORDS)})")
+        hidden = [k for k, v in size.items() if not LINE.fullmatch(str(v))]
+        if hidden:                               # a size is written into the job's header as it is (W049)
+            raise RequestError(f"resources.{who}.{hidden[0]} is {size[hidden[0]]!r}; a size is one line of "
+                               f"printable text - it is written into the generated job as it is")
         from .services.executor import ExecutorError, check_size
         try:
             check_size(size)
@@ -758,6 +969,75 @@ def _leaves(v, path=""):
         yield path, v
 
 
+#: An answer and who gave it are one line each: they are recorded, and written into a generated job's
+#: header and shell lines as they are (autodev W049, ATTACKS 6).
+LINE = re.compile(r"[^\x00-\x1f\x7f\x85\u2028\u2029]+")
+
+
+def _climbs(x: str) -> bool:
+    """A relative path out of its tool's working directory (`..`), or into another account's home."""
+    return bool(re.search(r"(^|/)\.\.(/|$)", x) or re.match(r"~[^/\s]+/", x))
+
+
+def _relative_path(x: str, bases) -> bool:
+    """A value its tool would read as a relative path, from its own working directory, and which names
+    something the driver would not pin there (autodev W049): one climbing out, one naming a FILE beside
+    the request (or where `sch` was run), or one with a `/` naming a directory there. A bare word naming a
+    directory is a word - a method, a kernel or a key named like a folder of results is common - and a
+    tool meant to read that folder refuses it where it runs."""
+    if not x or x.startswith(("/", "~/")):
+        return False
+    return _climbs(x) or any((b / x).is_file() or ("/" in x and (b / x).is_dir()) for b in bases)
+
+
+def answers_of(req: dict, given: list | None, by: str | None, recorded: dict | None = None) -> tuple:
+    """(answers, the names answered now): the recorded answers and each `--answer NAME=VALUE` given now,
+    read alike by the run, the plan and a generated job (autodev W049): a declared name, an allowed value,
+    a recorded one never rewritten, who gave it a name on one line, and a value naming a file only
+    absolute or `~/` - its tool reads a relative path from its own working directory, where the set
+    would not pin what was meant."""
+    names = {d["name"]: d for p in req["stages"] for d in p["decisions"]}
+    names.update({d["name"]: d for d in req.get("decisions") or []})
+    answers, new = dict(recorded or {}), []
+    if given and (by is None or not str(by).strip()):
+        raise RequestError("--answer needs --by: a decision is recorded with who made it, by name (a blank is no name)")
+    for what, v in [("--by", by)] + [("--answer", a) for a in given or []]:
+        if v is not None and not LINE.fullmatch(str(v)):
+            raise RequestError(f"{what} {str(v)!r}: an answer and who gave it are one line of printable text; they "
+                               f"are recorded and written into a generated job as they are")
+    bases = [Path(req["path"]).parent, Path.cwd()]
+    for a in given or []:
+        name, sep, raw = str(a).partition("=")
+        if not sep or name not in names:
+            raise RequestError(f"--answer {a!r}: no stage declares a user's decision {name!r}; "
+                               f"declared: {', '.join(names) or 'none'}")
+        try:
+            value = json.loads(raw)
+        except ValueError:
+            value = raw
+        allowed_values = names[name].get("values")
+        if allowed_values and value not in allowed_values:
+            raise RequestError(f"--answer {a!r}: {name} is answered {' or '.join(allowed_values)}")
+        for _path, v in _leaves(value):
+            for x in ([y.strip() for y in v.split(",")] if isinstance(v, str) else []):
+                if _relative_path(x, bases):
+                    raise RequestError(f"--answer {a!r}: {x!r} is a relative path; {name}'s tool reads it from its "
+                                       f"own working directory (the stage's run directory), not from here, and "
+                                       f"what it names there would not be pinned: write it absolute, or ~/")
+        if name in answers and answers[name]["value"] != value:
+            raise RequestError(f"{name} is already answered {json.dumps(answers[name]['value'])} by "
+                               f"{answers[name]['by']}; a recorded decision is not rewritten: start a new --out")
+        if name not in answers:
+            answers[name] = {"value": value, "by": str(by).strip(), "at": _now(), "verbatim": a}
+            new.append(name)
+    return answers, new
+
+
+def _answer_of(role: str):
+    """The decision an `answer[<name>]...` role was named by, else None."""
+    return role[len("answer["):role.index("]")] if role.startswith("answer[") and "]" in role else None
+
+
 #: What in a run directory says a run was there: a directory holding any of them and no record of its
 #: inputs is refused, never started afresh (autodev W042 fix 2, B).
 TRACES = ("request.json", "DRIVE.json", "decisions.json", "SEALED.json")
@@ -775,16 +1055,11 @@ def _refuse_trace(out: Path, req: dict):
                            f"is not a fresh start - start a new --out")
 
 
-def _pinned(out: Path, req: dict, dfile: Path) -> tuple:
-    """(the run's record, the set now). The set is recorded when the run starts; on a resume it must
-    equal the record, and every sealed stage must be one this run sealed, on the same set (`_trust`)."""
-    now = run_inputs(req)
+def _ledger(out: Path, dfile: Path):
+    """The run's record, checked before anything it names is read: None for a new run directory."""
     rec_f = out / INPUTS
     if not rec_f.exists():
-        rec = {"started_at": _now(), "out": str(out), "policy": POLICY, "files": now,
-               "decisions_sha256": None, "seals": {}}
-        rec_f.write_text(json.dumps(rec, indent=1) + "\n")
-        return rec, now
+        return None
     if not (out / "request.json").exists():
         raise RequestError(f"{out} records {INPUTS} and no request.json: the run's record is incomplete, "
                            f"and a missing record is not a fresh start - start a new --out")
@@ -795,7 +1070,28 @@ def _pinned(out: Path, req: dict, dfile: Path) -> tuple:
     if rec.get("out") != str(out):
         raise RequestError(f"{rec_f} records the run directory {rec.get('out')!r}, not {out}: a record copied "
                            f"from another run is not this run's - start a new --out")
+    if (dfile.exists() and _sha(dfile) != rec.get("decisions_sha256")) or (
+            not dfile.exists() and rec.get("decisions_sha256")):    # removed is changed too (W049)
+        raise RequestError(f"{dfile} was changed outside `sch run` (sha256 "
+                           f"{_sha(dfile)[:12] if dfile.exists() else 'none: it is gone'}, recorded "
+                           f"{str(rec.get('decisions_sha256'))[:12]}); a recorded decision is not rewritten: "
+                           f"restore it, or start a new --out")
+    return rec
+
+
+def _pinned(out: Path, req: dict, rec, answers: dict, new: list) -> tuple:
+    """(the run's record, the set now). The set is recorded when the run starts; on a resume it must
+    equal the record - but for the files an answer given now names, which enter it now (autodev W049) -
+    and every sealed stage must be one this run sealed, on the same set (`_trust`)."""
+    now = run_inputs(req, answers)
+    if rec is None:
+        rec = {"started_at": _now(), "out": str(out), "policy": POLICY, "files": now,
+               "decisions_sha256": None, "seals": {}}
+        (out / INPUTS).write_text(json.dumps(rec, indent=1) + "\n")
+        return rec, now
     d = differ(flat(rec.get("files") or {}), flat(now))
+    fresh = [k for k, a, _b in d if a is None and _answer_of(k) in new]
+    d = [x for x in d if x[0] not in fresh]
     if d:
         raise RequestError(f"{out} was started on other files: {said(d, {**(rec.get('files') or {}), **now})}. "
                            f"A run is one request and every file it reads; a stage sealed on the old ones would "
@@ -818,10 +1114,7 @@ def _pinned(out: Path, req: dict, dfile: Path) -> tuple:
                                f"start a new --out")
         else:
             gap = gap or s
-    if dfile.exists() and _sha(dfile) != rec.get("decisions_sha256"):
-        raise RequestError(f"{dfile} was changed outside `sch run` (sha256 {_sha(dfile)[:12]}, recorded "
-                           f"{str(rec.get('decisions_sha256'))[:12]}); a recorded decision is not rewritten: "
-                           f"restore it, or start a new --out")
+    rec.setdefault("files", {}).update({k: now[k] for k in fresh})
     return rec, now
 
 
@@ -838,7 +1131,9 @@ def _trust(out: Path, stage: str, rec: dict, now: dict) -> dict:
     seal = json.loads(f.read_text())
     if seal.get("out") != str(out):
         raise RequestError(f"{stage} was sealed in {seal.get('out')!r}, not {out}: start a new --out")
-    d = differ(seal.get("inputs") or {}, flat(now))
+    known = set(seal.get("answers_known") or [])  # an answer given after this seal: a file it never read
+    d = [x for x in differ(seal.get("inputs") or {}, flat(now))
+         if not (x[1] is None and _answer_of(x[0]) is not None and _answer_of(x[0]) not in known)]
     if d:
         raise RequestError(f"{stage} was sealed on other files: {said(d, now)}. Restore each file as it was, "
                            f"or start a new --out")
@@ -914,36 +1209,17 @@ def run(req: dict, out, answers_given: list | None = None, by: str | None = None
                            f"{json.loads(prior.read_text())['sha256'][:12]}); a run is one request: "
                            f"start a new --out")
     dfile = out / "decisions.json"
-    pins, _now_set = _pinned(out, req, dfile)
+    led = _ledger(out, dfile)                    # decisions.json's hash checked before its answers are read
+    answers, new = answers_of(req, answers_given, by, json.loads(dfile.read_text()) if dfile.exists() else {})
+    pins, _now_set = _pinned(out, req, led, answers, new)
     prior.write_text(json.dumps(req, indent=1, default=str) + "\n")
-    names = {d["name"]: (p, d) for p in req["stages"] for d in p["decisions"]}
-    names.update({d["name"]: (None, d) for d in req.get("decisions") or []})
-    answers = json.loads(dfile.read_text()) if dfile.exists() else {}
-    for a in answers_given or []:
-        name, sep, raw = str(a).partition("=")
-        if not sep or name not in names:
-            raise RequestError(f"--answer {a!r}: no stage declares a user's decision {name!r}; "
-                               f"declared: {', '.join(names) or 'none'}")
-        if not by:
-            raise RequestError("--answer needs --by: a decision is recorded with who made it")
-        try:
-            value = json.loads(raw)
-        except ValueError:
-            value = raw
-        allowed_values = names[name][1].get("values")
-        if allowed_values and value not in allowed_values:
-            raise RequestError(f"--answer {a!r}: {name} is answered {' or '.join(allowed_values)}")
-        if name in answers and answers[name]["value"] != value:
-            raise RequestError(f"{name} is already answered {json.dumps(answers[name]['value'])} by "
-                               f"{answers[name]['by']}; a recorded decision is not rewritten: start a new --out")
-        answers.setdefault(name, {"value": value, "by": by, "at": _now(), "verbatim": a})
     dfile.write_text(json.dumps(answers, indent=1) + "\n")
     pins["decisions_sha256"] = _sha(dfile)
     (out / INPUTS).write_text(json.dumps(pins, indent=1) + "\n")
     inputs = flat(pins["files"])
 
-    # THE RUN'S OWN DECISIONS (D-031): single cells delivered already denoised by a remover the profile
-    # asks about are neither passed silently nor refused without recourse - nothing runs until the user
+    # THE RUN'S OWN DECISIONS (D-031): single cells delivered already denoised, by any remover (W049), are
+    # neither passed silently nor refused without recourse - nothing runs until the user
     # accepts them, by name, recorded with who; declined, the run is refused.
     for d in req.get("decisions") or []:
         if d["name"] not in answers:
@@ -1026,7 +1302,7 @@ def _stage(p, sd, req, handed, params, answers, done, failed) -> tuple:
         """THE SET AT THIS STAGE'S START AND AT ITS SEAL (autodev W042 fix 2, B): recomputed, never
         copied, and compared with the run's record; a difference fails the stage, naming each file."""
         rec = json.loads((out / INPUTS).read_text())
-        now = run_inputs(req)
+        now = run_inputs(req, answers)
         d = differ(flat(rec.get("files") or {}), flat(now))
         if d:
             return now, (f"the files the run reads changed {when}: {said(d, {**rec['files'], **now})}",
@@ -1089,6 +1365,7 @@ def _stage(p, sd, req, handed, params, answers, done, failed) -> tuple:
     _seal(sd, rd, {"stage": p["stage"], "plugin": p["plugin"], "hands_on": handed,
                    "report": str(sd / "report" / "report.json"), "numbers": len(rep.get("numbers") or []),
                    "request_sha256": req["sha256"], "out": str(out), "inputs": flat(now),
+                   "answers_known": sorted(answers),
                    "handed_sha256": {x: _digest(_entry(Path(x))) for x in
                                      [*handed["libraries"].values(), handed["joint"],
                                       str(sd / "report" / "report.json")] if x and Path(x).is_file()},
@@ -1100,15 +1377,21 @@ def _stage(p, sd, req, handed, params, answers, done, failed) -> tuple:
     return None, handed
 
 
-def expected(req: dict, file) -> tuple:
-    """(holds, lines, differences): the run's set now against the set a job was generated for
-    (autodev W042 fix 2, C), content only (a copy keeps no modification time); a file absent where the
-    job was generated is checked here for the first time, and said."""
+#: What a job pins otherwise: the harness it runs, by its commit and a clean checkout (EXPECT_HARNESS and
+#: the recipe's HARNESS-CLEAN), not by the work tree it was generated from.
+JOB_UNPINNED = ("harness",)
+
+
+def expected(req: dict, file, answers: dict | None = None) -> tuple:
+    """(holds, lines, differences): the run's set now - with the job's answers (autodev W049) - against
+    the set a job was generated for (autodev W042 fix 2, C), content only (a copy keeps no modification
+    time); a file absent where the job was generated is checked here for the first time, and said."""
     try:
         then = json.loads(Path(file).read_text())["files"]
     except (OSError, ValueError, KeyError) as e:
         return False, [f"  differs: the job's record {file} cannot be read ({e})"], [("record", None, None)]
-    now = run_inputs(req)
+    now = {k: v for k, v in run_inputs(req, answers).items() if k not in JOB_UNPINNED}
+    then = {k: v for k, v in then.items() if k not in JOB_UNPINNED}
     a, b = flat(then, mtime=False), flat(now, mtime=False)
     d = differ(a, b, here_only=True)
     bad = {k for k, _x, _y in d}
@@ -1192,6 +1475,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
            (Path(predict).read_text(encoding="utf-8").splitlines() if predict else
             ["NO PREDICTION WAS GIVEN (--predict): this job's GATE can only read MISSED."])]
     argv = ["sch", "run", "--request", "$REQUEST", "--out", "$RUNDIR"]
+    given, _new = answers_of(req, answers, by)   # refused here, not on the cluster (autodev W049)
     tail = "".join(f" --answer {q(a)}" for a in (answers or [])) + (f" --by {q(by)}" if by else "")
     hn = str(job["harness"])
     hn_sh = ('"$HOME"/' + q(hn[2:])) if hn.startswith("~/") else q(hn)
@@ -1204,7 +1488,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
     reports = " ".join(f'"$RUNDIR"/{p["stage"]}/report/report.json' for p in req["stages"])
     # THE JOB PINS THE RUN'S WHOLE SET (autodev W042 fix 2, C): B's set as it is where the job is
     # generated; what is absent here is named, and checked only where the job runs.
-    pins = run_inputs(req)
+    pins = {k: v for k, v in run_inputs(req, given).items() if k not in JOB_UNPINNED}
     absent = [k for k, v in pins.items() if v.get("absent")]
     # by role, without where the file lies here: the roles are the same on every machine, and a path of
     # this workstation's has no place in a job that runs on another
@@ -1223,8 +1507,9 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"#   site      {os.path.relpath(site, jobs)}  (stack.yml sha256 {_sha(site / 'stack.yml')[:16]}, "
         f"job.yml sha256 {_sha(site / 'job.yml')[:16]})",
         f"#   harness   {commit or 'not a git checkout: unpinned'}" + (f" (the job refuses another)" if commit else ""),
-        f"#   inputs    {len(pins) - len(absent)} files the run reads, pinned as generated (the job refuses another "
-        f"set: `sch plan --request REQUEST --expect PINS.json`); {len(absent)} checked only where it runs" + (":" if absent else ""),
+        f"#   inputs    {len(pins) - len(absent)} files the run reads, pinned as generated, its answers' among them (the "
+        f"job refuses another set: `sch plan --request REQUEST --answer ... --expect PINS.json`); {len(absent)} checked "
+        f"only where it runs" + (":" if absent else ""),
         *[re.sub(r"[\x00-\x1f\x7f]", "?", f"#     on the cluster only: {k} {os.path.relpath(pins[k]['path'], jobs) if not str(pins[k]['path']).startswith(str(Path.home())) else '~/' + os.path.relpath(pins[k]['path'], Path.home())}"
                  ) for k in absent],
         f"#   stages    " + ", ".join(f"{p['stage']} {p['plugin']}" + (f" [{', '.join(f'{k}={v}' for k, v in sorted(p['resources'].items()))}]" if p.get("resources") else "") for p in req["stages"]),
@@ -1300,7 +1585,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"check_pin 'site job.yml' \"$SCH_SITE/job.yml\" {_sha(site / 'job.yml')}",
         "cat > \"$RUNDIR/PINS.json\" <<'SCH_PINS_END'", pins_doc, "SCH_PINS_END",
         "set +e",
-        "PYTHONPATH=\"$HARNESS\" \"$PY\" -m sch plan --request \"$REQUEST\" --expect \"$RUNDIR/PINS.json\" "
+        "PYTHONPATH=\"$HARNESS\" \"$PY\" -m sch plan --request \"$REQUEST\"" + tail + " --expect \"$RUNDIR/PINS.json\" "
         "> \"$RUNDIR/PINS.txt\" 2>&1",
         "prc=$?",
         "set -e",

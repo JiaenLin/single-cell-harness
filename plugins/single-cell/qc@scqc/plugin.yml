@@ -43,10 +43,24 @@ upstream_columns:
     version: ambient_version
     performed: [ambient_h5, ambient_params, ambient_produced_by]
     declined: [ambient_skip_reason, ambient_skip_approved_by]
-# The params with which scQC performs an upstream step itself: on an assay whose profile allows only
-# `none` for that step, the driver refuses them (scQC's own policy never runs CellBender on cells either).
+# WHAT scQC ACCEPTS AS PERFORMED UPSTREAM OF EACH ASSAY (autodev W049), read from scQC's own code and
+# held by a drift test (tests/test_the_driver_follows_the_tools.py; the real scQC with SCH_REAL_TOOLS):
+# an aligner by any name - scQC reads the matrix an aligner wrote (`matrix`, `aligner_cells`) and no
+# column naming an aligner (engine/steps.py NOT_FACTORS) - and an ambient remover by any name, a
+# library supplied denoised with its provenance (modules/01_ambient/ambient.py plan_ambient, SUPPLIED:
+# tool, version, params, produced_by; one missing is a refusal), on both of its ASSAYS. Rule 2 over it
+# is the profile's (never_performed, ask_when_delivered), never this list's.
+upstream_accepts:
+  scrna: {alignment: any, ambient: any}
+  snrna: {alignment: any, ambient: any}
+# The params with which scQC performs an upstream step itself, the tool each runs, and the assays scQC's
+# own policy runs it on (modules/01_ambient/ambient.py CELLBENDER_RUNS; drift-tested): set on any other
+# assay, or where the profile says the family never performs the step, the driver refuses them.
 runs_upstream:
-  ambient: [cellbender]
+  ambient:
+    - {param: cellbender, tool: CellBender, assays: [snrna]}
+# The param naming scQC itself: the checkout holding it is in the run's set (autodev W049, route 14).
+tool_param: scqc
 # The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
 owned: [project, samplesheet]
 wraps:

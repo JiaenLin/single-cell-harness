@@ -237,10 +237,11 @@ contract**, do not write three more adapters against it.
 > A request (`docs/request.example.yml`; schema `sch/drive.py` FIELDS) names the samplesheet, the
 > design, the context once (one assay word, `scrna`/`snrna`, that every stage's adapter declares; the
 > species once, as `species`), the upstream steps by name (alignment, ambient removal: each a tool and
-> its release, nothing else; every assay lists what may run, `upstream.allowed.<assay>.<step>`, read only
-> from the profile the harness ships, and the first adapter's samplesheet columns must agree; single
-> cells delivered denoised by a remover the profile asks about stop at the user's `upstream.ambient`;
-> rule 2, W042 fixes 1 and 2) and each stage's tool flags verbatim.
+> its release, nothing else; what may have run is what the first stage's tool accepts, its adapter's
+> `upstream_accepts:`, drift-tested against the tool (W049); rule 2 over it is read only from the profile
+> the harness ships - the family never performs ambient removal on single cells, and single cells
+> delivered denoised, by any name, stop at the user's `upstream.ambient`; the samplesheet's upstream
+> columns must agree whatever stage starts; W042 fixes 1 and 2, W049) and each stage's tool flags verbatim.
 > `sch plan --request FILE` plans it; `sch run --request FILE --out DIR` runs it as one stack per
 > stage, each stage's observations a manifest of what the stage before it handed on (each adapter's
 > `hands_on`, read from that stage's own out.json), the stage's plugin declared in its `stack.yml` and

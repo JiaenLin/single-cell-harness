@@ -39,6 +39,10 @@ ROLES = {"a": {"sample": "sample", "condition": "condition"},
          "b": {"sample": "library_id", "condition": "arm"}}
 ANSWERS = ["--answer", "qc.mode=apply", "--answer", "qc.decisions=null"]
 CONTROL = "prof.control=[\"{c}=control\"]"
+#: What scQC requires of a library supplied already denoised (modules/01_ambient/ambient.py SUPPLIED_REQUIRED),
+#: as the request's default upstream says it (W049: the stand-in refuses a supplied library without it).
+PROVENANCE = {"ambient_tool": "CellBender", "ambient_version": "0.3.0", "ambient_params": "defaults",
+              "ambient_produced_by": "a core facility"}
 
 
 def cli(*argv):
@@ -55,6 +59,8 @@ def cohort(dest: Path, shape: str, libraries: int = 4, droplets: int = 40, assay
     columns, {column: value or a function of the library}."""
     r = ROLES[shape]
     extra = dict(extra or {})
+    if assay == "snrna" and "ambient_tool" not in extra:   # supplied denoised: scQC requires its provenance
+        extra = {**PROVENANCE, **extra}
     dest.mkdir(parents=True)
     head = ["sample"] + ([r["sample"]] if r["sample"] != "sample" else []) + ["assay", "ambient_h5", r["condition"]] \
         + list(extra)
@@ -172,7 +178,9 @@ class TheRequestIsRefusedBeforeAnyTool(_Base):
                  ({"context": {"assay": "nucleus", "species": "species_x"}}, "scrna, snrna"),
                  ({"context": {"assay": "snrna", "organism": "x"}}, "declared once as `species`"),
                  ({"context": {"assay": "scrna"}, "upstream": {"alignment": {"tool": "cellranger"},
-                                                               "ambient": {"tool": "remover_x"}}}, "rule 2"),
+                                                               "ambient": {"tool": "none"}},
+                   "stages": [{**stages(c)[0], "params": {**stages(c)[0]["params"], "cellbender": "/opt/cb"}},
+                              *stages(c)[1:]]}, "rule 2"),
                  ({"upstream": {"alignment": {"tool": "cellranger"}}}, "declares no ambient"),
                  ({"stages": bad_stages}, "prof.control"),
                  ({"stages": stages(c)[2:]}, "the first stage must read libraries"),
@@ -192,7 +200,7 @@ class TheRequestIsRefusedBeforeAnyTool(_Base):
 
     def test_nuclei_after_cellbender_are_planned_and_the_upstream_is_said(self):
         c = cohort(self.tmp / "c", "a")
-        req = request(c, upstream={"alignment": {"tool": "cellranger"}, "ambient": {"tool": "CellBender"}})
+        req = request(c, upstream={"alignment": {"tool": "cellranger"}, "ambient": {"tool": "CellBender", "version": "0.3.0"}})
         rc, text = cli("plan", "--request", str(req))
         self.assertEqual(rc, 0, text)
         self.assertIn("ambient: CellBender", text)
@@ -387,7 +395,7 @@ class AFailedStageSaysWhereAndResumes(_Base):
         rc, rec = self.drive(req, out, "--answer", "qc.nothing=1", "--by", "a tester")
         self.assertIn("no stage declares", rec["reason"])
         rc, rec = self.drive(request(c, name="other.yml", upstream={"alignment": {"tool": "starsolo"},
-                                                                    "ambient": {"tool": "cellbender"}}), out)
+                                                                    "ambient": {"tool": "cellbender", "version": "0.3.0"}}), out)
         self.assertIn("another request", rec["reason"])
 
 
@@ -1071,11 +1079,9 @@ class TheDriverHoldsItsRulesRound2(_Base):
                    ({"tool": "none", "ran": True, "command": "cellbender remove-background"}, cr,
                     "command, ran is not a step field"),
                    ({"tool": ["none"]}, cr, "it is one tool's name"),
-                   ({"tool": "none; cellbender ran"}, cr, "upstream.allowed.scrna.ambient: none"),
-                   ({"tool": "none\u200b"}, cr, "upstream.allowed.scrna.ambient: none"),
-                   ({"tool": "remover_x"}, cr, "upstream.allowed.scrna.ambient: none"),
-                   ({"tool": "none"}, {"tool": "cellranger count + cellbender remove-background"},
-                    "upstream.allowed.scrna.alignment"),
+                   ({"tool": "none; cellbender ran"}, cr, "it is one tool's name"),
+                   ({"tool": "none\u200b"}, cr, "it is one tool's name"),
+                   ({"tool": "none\nCellBender"}, cr, "it is one tool's name"),
                    ({"tool": "none"}, {"tool": "cellranger", "version": "7.1.0-cellbender"}, "not a release number")]
         for i, (amb, aln, said) in enumerate(refused):
             with self.subTest(said=said, amb=amb):
@@ -1084,6 +1090,12 @@ class TheDriverHoldsItsRulesRound2(_Base):
                 self.assertIn(said, why)
         for i, (amb, aln) in enumerate([({"tool": "NONE "}, cr), ({"tool": "none"}, {"tool": "Cell Ranger", "version": "v7.1.0"})]):
             self.assertEqual(self.plan(req(f"ok{i}.yml", amb, aln)), (0, ""))
+        # W049: a remover by any name on cells, or a step's name carrying the one the family runs on nuclei
+        # only, is the user's decision (D-031) - never a silent pass, never a flat refusal
+        for i, (amb, aln) in enumerate([({"tool": "none"}, {"tool": "cellranger count + cellbender remove-background"})]):
+            rc, text = cli("plan", "--request", str(req(f"ask{i}.yml", amb, aln)))
+            self.assertEqual(rc, 0, text)
+            self.assertIn("the user's: upstream.ambient", text)
         st = stages(c)                           # the family never runs the remover on cells: no decision
         st[0]["params"]["cellbender"] = "/path/to/cellbender"
         rc, why = self.plan(req("cb.yml", {"tool": "none"}, stages=st))
@@ -1101,10 +1113,11 @@ class TheDriverHoldsItsRulesRound2(_Base):
         rc, why = self.plan(req("byp.yml", {"tool": "cellbender"}, stages=st))
         self.assertEqual(rc, 2, why)
         self.assertIn("only from a profile this harness ships", why)
-        sn = cohort(self.tmp / "sn", "a")        # nuclei list what may run too: nothing by silence
-        rc, why = self.plan(request(sn, name="sn.yml", upstream={"alignment": cr, "ambient": {"tool": "remover_x"}}))
-        self.assertEqual(rc, 2, why)
-        self.assertIn("upstream.allowed.snrna.ambient: none, cellbender", why)
+        sn = cohort(self.tmp / "sn", "a", extra={"ambient_tool": "remover_x", "ambient_version": "1.0"})
+        # W049: on nuclei scQC accepts a library supplied by any remover with its provenance: it plans
+        self.assertEqual(self.plan(request(sn, name="sn.yml", upstream={"alignment": cr, "ambient": {
+            "tool": "remover_x", "version": "1.0"}})), (0, ""))
+        sn = cohort(self.tmp / "sn0", "a")
         self.sheet(c, cols={"ambient_tool": lambda lib: "CellBender", "ambient_version": lambda lib: "0.3.0"})
         rc, why = self.plan(req("a7.yml", {"tool": "none"}))   # the re-check's A7: the samplesheet says it
         self.assertEqual(rc, 2, why)
@@ -1117,7 +1130,7 @@ class TheDriverHoldsItsRulesRound2(_Base):
         self.assertEqual(self.calls(), [])
 
     def test_A3_single_cells_denoised_elsewhere_stop_the_run_at_the_users_decision(self):
-        c = cohort(self.tmp / "c", "a", assay="scrna", extra={"ambient_tool": "CellBender", "ambient_version": "0.3.0"})
+        c = cohort(self.tmp / "c", "a", assay="scrna", extra=PROVENANCE)
         req = request(c, context=scrna(), upstream={"alignment": {"tool": "cellranger", "version": "7.1.0"},
                                                      "ambient": {"tool": "CellBender", "version": "0.3.0"}})
         rc, text = cli("plan", "--request", str(req))

@@ -32,12 +32,20 @@ everything downstream knows when one does.
 > declares, or, for scProfile, which has none, its parser's escapes listed by hand; an escape that lifts
 > a tool's refusal does not stop the run and is passed only as an answer, recorded with who, never as a
 > param under any spelling) until it is answered by name, and sealing each stage and the run. Every
-> file the run reads (the samplesheet and the paths in it, the design, each path a param names, every
-> file under a named directory, an adapter the harness does not ship) is one set, recomputed and compared
-> at the plan, at each stage's start and seal and on every resume (not in it: a path given only as an
-> answer, as `--answer qc.decisions=FILE`; files under a symlinked subdirectory; files named inside a
-> named file; a file over 1 GiB is sampled and a directory over 5,000 files is not compared, each said in
-> the run's INPUTS.json); a seal is trusted only on the run's own
+> file the run reads is one set (W049): the samplesheet and the paths in it, the design, each path a
+> param or an ANSWER names (`--answer qc.decisions=FILE` is pinned as a param is; a relative one is
+> refused), every file under a named directory with its links followed, each path a named table or
+> YAML/JSON document holds (one level; a relative one pinned beside it), the site layer and the paths it
+> names (a site that lays a tool's flags beneath a stage's is refused), each tool's checkout and the
+> harness's own code (their commit and tracked changes), and an adapter the harness does not ship. The
+> set is recomputed and compared at the plan, at each stage's start and seal, on every resume (an answer
+> given at a resume enters it then) and in a generated job's pins and check, which give the run's
+> answers; a file over 1 GiB is sampled and a directory over 5,000 files is not compared, each said in
+> the run's INPUTS.json. What may have run upstream of an assay is what the first stage's tool accepts
+> there (its adapter's `upstream_accepts:`, drift-tested against the tool's own code), with rule 2 over
+> it from the profile: no family tool performs ambient removal on single cells, and single cells
+> delivered denoised, by any remover's name, stop at the user's `upstream.ambient` (D-031), whatever
+> stage the request starts at. A seal is trusted only on the run's own
 > record, and one it names is never missing; `sch plan --request FILE`
 > shows the plan and runs nothing (`--expect` compares the set with a generated job's). It is graded on the synthetic fixture with the
 > stand-ins. Run 2 (W042) is the cluster path: under a site file declaring `executor: pbs`, each stage

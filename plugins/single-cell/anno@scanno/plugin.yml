@@ -62,6 +62,15 @@ decisions:
 upstream_columns: {}
 # The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
 owned: [cluster.h5ad, cluster.out, cluster.out_dir, cluster.split_by, cluster.status_dir, annotate.h5ad, annotate.assay, annotate.out, annotate.out_h5ad, annotate.report, annotate.status_dir, rescue.h5ad, rescue.out_dir, rescue.out, rescue.out_table, rescue.out_report, rescue.status_dir, embed.h5ad, embed.out, embed.status_dir]
+# What scAnno accepts upstream when a request starts at annotation (autodev W049): it reads each
+# library's object and no column naming an aligner or a remover (upstream_columns: {}), so any
+# name; rule 2 over it is the profile's, and the samplesheet's upstream columns are read with
+# every family tool's meaning whatever stage starts.
+upstream_accepts:
+  scrna: {alignment: any, ambient: any}
+  snrna: {alignment: any, ambient: any}
+# The param naming the tool itself: the checkout holding it is in the run's set (autodev W049, route 14).
+tool_param: scanno
 wraps:
   tool: scAnno
   version: "0.12.0"

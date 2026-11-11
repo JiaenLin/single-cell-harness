@@ -71,6 +71,12 @@ def describe():
     return 0
 
 
+#: As scQC (modules/01_ambient/ambient.py): a library supplied already denoised (`ambient_h5`) names who
+#: denoised it, how and by whom, or it is refused; CellBender itself runs on nuclei only (CELLBENDER_RUNS).
+SUPPLIED_REQUIRED = ("tool", "version", "params", "produced_by")
+CELLBENDER_RUNS = {"snrna": True, "scrna": False}
+
+
 def run(a):
     project = Path(a.project)
     rows = read_sheet(a.samplesheet)
@@ -102,6 +108,18 @@ def run(a):
         (res / "RUNNING.txt").unlink()
         (res / name).write_text(f"exit={code}\nstatus={status['status']}\njobid=none\n{extra}")
 
+    supplied = [(r.get("sample"), [k for k in SUPPLIED_REQUIRED if not str(r.get(f"ambient_{k}") or "").strip()])
+                for r in rows if str(r.get("ambient_h5") or "").strip()]
+    bad = [(s_, m) for s_, m in supplied if m]
+    if bad:                                      # scQC's 01_ambient refusal (plan_ambient), before any step
+        why = (f"01_ambient ({bad[0][0]}): a SUPPLIED ambient correction is missing {', '.join(bad[0][1])}; an "
+               f"object merely asserted to be denoised is an anonymous matrix")
+        status.update(status="refused", headline=why, refusal={
+            "reason": why, "fix": "name ambient_tool, ambient_version, ambient_params and ambient_produced_by"})
+        (res / "STATUS.json").write_text(json.dumps(status, indent=1))
+        seal("FAILED.txt", 2)
+        print("REFUSED\n" + why)
+        return 2
     if MODE == "refuse":
         status.update(status="refused", headline="05_quality: no valley in one library",
                       refusal={"reason": "05_quality: no valley in one library",

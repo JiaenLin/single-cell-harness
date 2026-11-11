@@ -53,6 +53,8 @@ decisions:
 # The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
 owned: [run.h5ad, run.out, run.design, run.assay, run.organism]
 
+# The param naming the tool itself: the checkout holding it is in the run's set (autodev W049, route 14).
+tool_param: scprofile
 wraps:
   tool: scProfile
   version: "0.1.0"

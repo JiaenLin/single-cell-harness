@@ -13,10 +13,12 @@ context:                             # what the dataset is, declared once; one w
   species: species_x                 # one axis for the species; each adapter writes its tool's word
   tissue: tissue_x
 upstream:                            # the steps the family does not perform, each by name
-  alignment: {tool: cellranger, version: "7.1.0"}   # a name the profile lists (upstream.allowed), and its release
+  alignment: {tool: cellranger, version: "7.1.0"}   # one tool's plain name and its release; any name the first
+                                                    # stage's tool accepts (qc@scqc's upstream_accepts: any)
   ambient: {tool: cellbender, version: "0.3.0"}     # as the samplesheet's ambient_* columns say; `none` if nothing
-                                                    # ran. On scrna the profile allows none, and asks the user
-                                                    # about cells denoised elsewhere (upstream.ask)
+                                                    # ran. On scrna the family never performs it, and cells
+                                                    # delivered denoised, by any remover, stop at the user's
+                                                    # upstream.ambient (the profile's ask_when_delivered, D-031)
 stages:                              # in order; params are each tool's own flags, verbatim
   - plugin: qc@scqc
     params: {scqc: /path/to/scQC/scqc_cli.py, registry: /path/to/registry.tsv}

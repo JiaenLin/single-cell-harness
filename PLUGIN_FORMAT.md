@@ -569,5 +569,9 @@ as the user's: `name`, `param`, `escape`, `what`, `unanswered: stop | tool-defau
 `run.py` sets itself, its OWNED, refused when the plan is made; a test ties the two); `upstream_columns`
 (where its tool's samplesheet says what ran upstream, per step: `tool`, `version`, the `performed` and
 `declined` columns; a first stage must declare it, `{}` if nowhere, and every row must agree with the
-request); `runs_upstream` (the params with which its tool performs an upstream step itself, refused on an
-assay whose profile allows only `none` for that step).
+request; read with every family adapter's meaning whatever stage starts); `upstream_accepts` (what its
+tool accepts as performed upstream, per assay and step: `any` or a list of names, read from the tool's own
+code and held by a drift test; a first stage that reads libraries must declare it); `runs_upstream` (per
+step, each `{param, tool, assays}` with which its tool performs the step itself and the assays its own
+policy runs it on: refused elsewhere, and on an assay whose profile says the family never performs the
+step); `tool_param` (the param naming its tool: the checkout holding it is in the run's set).

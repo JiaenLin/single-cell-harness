@@ -118,13 +118,18 @@ def cmd_plan(a):
             req = load(a.request)
         except RequestError as e:
             return _drive_refused(a, e)
+        from .drive import answers_of
+        try:                                     # the answers a run or a job would give (W049)
+            answers, _new = answers_of(req, a.answer, a.by)
+        except RequestError as e:
+            return _drive_refused(a, e)
         if a.expect:                             # the set a job was generated for (W042 fix 2, C)
             from .drive import expected
-            ok, lines, d = expected(req, a.expect)
+            ok, lines, d = expected(req, a.expect, answers)
             _emit(a, {"status": "pinned" if ok else "differs", "lines": lines,
-                      "differs": [list(x) for x in d]}, "\n".join(plan_lines(req) + lines))
+                      "differs": [list(x) for x in d]}, "\n".join(plan_lines(req, answers) + lines))
             return 0 if ok else 2
-        _emit(a, req, "\n".join(plan_lines(req)))
+        _emit(a, req, "\n".join(plan_lines(req, answers)))
         return 0
     st = _stack(a)
     p = st.plan(a.plugin, _kv(a.param), a.name)
@@ -1525,6 +1530,9 @@ def build_parser():
     p.add_argument("--request", help="a request file: the plan of every stage it asks for (harness W041)")
     p.add_argument("--expect", metavar="FILE", help="with --request: compare the files the run reads with the set "
                    "a generated job recorded (its PINS.json); exit 2 on any difference (harness W042)")
+    p.add_argument("--answer", action="append", metavar="NAME=VALUE", help="with --request: an answer the run or "
+                   "its job gives, so the plan and its set are the run's (harness W049)")
+    p.add_argument("--by", help="with --answer: who made the decision")
     p.set_defaults(fn=cmd_plan)
     p = sub.add_parser("mount"); stackable(p); p.add_argument("plugin"); p.add_argument("--param", action="append")
     p.add_argument("--name"); p.add_argument("--escape", action="append", metavar="GATE")
