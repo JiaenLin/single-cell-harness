@@ -136,6 +136,11 @@ Check:
 (8) Added 2026-11-11: <HARNESS>/autodev/ATTACKS.md lists the attacks that broke earlier waves. Run the ones that apply.
     If you break this wave a way that is not on the list, append one line to its Inbox (the defect, the attack, the
     wave) and leave the file uncommitted. A claimed measured gain with no ablation is a FAIL reason (RULES item 17).
+(9) Added 2026-11-11 (D-040), for a wave that removes a cohort's values: FAIL on a hit under a cohort's generated lists; on a
+    number the wave removed that survives as the same token in a file it touched and is a cohort's measurement; on a
+    cohort's value a user of another cohort would see or get, or that a test's pass depends on. COUNT and report, do not
+    fail on: a count in words in a comment or a developer document, a synthetic value of a removed one's magnitude, files
+    never read whole. If such a line misleads a user, class it as a failure and say why.
 Verdict: PASS or FAIL, with each reason and its evidence, in at most 30 lines.
 ```
 
