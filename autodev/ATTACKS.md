@@ -43,6 +43,7 @@ ledger. Of the 9 new waves verified that day, 5 failed first verification, on ca
 | 31 | A field separator inside a value that becomes a header or a key | Put the format's own separators (a TAB, a newline, the delimiter) inside every id that is written into a table or a header, and count fields per row | W017 and the Studio batch (a TAB in a condition level) |
 | 32 | An answer accepted at a moment its decision can no longer apply, and recorded as taken | Answer each earlier stage's decision at a later resume, change one, remove one; compare the run's record with each stage's own seal | the driver batch (a sealed stage's escape given at a resume) |
 | 33 | A check that compares against the machine it was written on; a role that exists only when its source exists | Generate where a tool is absent or at another commit and run where it is right: a correct run must not read a miss | the driver batch (a job pinning the generating machine's checkouts) |
+| 34 | A measured value kept under another form: rounded and relabelled synthetic, or written in words | Compare every number a fix ADDS with what it removed at two significant figures, and read every count written in words beside a counted noun (`survivors.py --near`, `--words`) | W048 fix 1 (two tests' rounded values; nine counts in words) |
 
 ## Inbox (a verifier appends here; one line each: the defect, the attack, the wave)
 

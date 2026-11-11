@@ -67,8 +67,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   wrote. The heartbeat's prompt and RULES item 6 carry the cap.
 - **Running now (2 Opus + 1 Fable):**
   - Opus 5.5 max: the builder of **W047 run 3** (scProfile: the survivors outside the held-out plugins; then ONE
-    verification of the whole scProfile batch); the verifier of **W048's fix round 1** (scQC, `ed9fe18`; its jobs 790475
-    and 790476 are on the cluster; A3.1 goes over the bar when it merges).
+    verification of the whole scProfile batch); the builder of **W048's fix round 2**, the last (scQC: the re-check FAILED on a short
+    list: a cohort's measurements written in words, two tests holding rounded real values, the fixture's record naming
+    declared factors; both jobs at the fix head read AS PREDICTED). A3.1 goes over the bar when it merges.
   - Fable 5.2: the designer of **W051**, run 5 on the Studio: every word and every element measured, a written standard
     (word budgets, one term per concept), every element brought to it; a saved figure names uncalled cells.
 - **QUEUED for an Opus slot, in this order** (the next is the one that moves a test under its bar soonest):
@@ -125,7 +126,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **The scale cohort:** the data is in place and inventoried (1,263,676 cells x 30,172 genes, 88 pooled libraries holding both
   arms; PBS 789057, 789058, 789168). Stage 1 waits for W045 and the driver's fix: a subset job (2 of the 88) before the full one.
 - **The improvement plan of 2026-11-11** ([`IMPROVEMENT_PLAN.md`](IMPROVEMENT_PLAN.md); RULES items 14-19): a job over 2 hours runs on a subset first (`gate.py` refuses otherwise); every builder runs [`ATTACKS.md`](ATTACKS.md) (24 lines) against its own change before hand-back; items that search try at least two candidates and keep a pool; a claimed gain needs its ablation; a plugin's source is a DOI that resolves (R45). The measure: `passrate.py`, 4 of 9 waves built on 2026-11-11 passed first verification.
-- **A preflight for removed numbers** (`setup/autodev/survivors.py`, 2026-11-11): every number a wave's diff removed that is
+- **A preflight for removed numbers** (`setup/autodev/survivors.py`, 2026-11-11; since W048's re-check also `--words` for counts written in words and `--near` for rounded copies): every number a wave's diff removed that is
   still at the head, one line each. W035 (twice) and W048 failed verification on exactly this; a builder runs it before
   hand-back (BRIEFS section 0) and the coordinator before launching a verifier. To run on W047's head before its batch verification.
 - **A records commit says whether it landed** (`setup/autodev/commit.sh`, 2026-11-11): two records commits were blocked by
