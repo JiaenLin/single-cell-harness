@@ -69,8 +69,6 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   - the verifier (Opus 5.5 max) of **W048's fix round 1** (scQC, built at `ed9fe18`: 144 cohort numbers removed across 38
     files, the survivors each read and classed; the gates record the assay and factors they received and the fixture
     check reads those records). A3.1 goes over the bar when it merges.
-  - the verifier (Opus 5.5 max) of **Lab's W017**, its last fix-only re-check (fix-up 5 at `243783f`); a PASS brings the
-    PI the deploy question for Lab.
   - the builder (Opus 5.5 max) of **W048's fix round 1** (scQC: its verification FAILED on two reasons while both gate jobs
     read AS PREDICTED: about 51 lines still hold one cohort's measured numbers where no list looks; the fixture check
     stays green when the factor never reaches the gates).
@@ -81,8 +79,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     the cluster: two metrics absent, exit 0; the promoted one was rebuilt by hand). The installer now has to build it.
   - the verifier (Opus 5.5 max) of **the driver batch, W041 + W042 + W049** (W049 built at `dbdc028`: an answer's file and
     four more routes are in the one pinned set; the profile's hand lists replaced by a drift test against scQC's own code).
-  - the verifier (Opus 5.5 max) of **the Studio batch, W028 + W037** (head `f7dab0c`), code only: the Run card on Lab's
-    fixture, the split-id parser, every changed test hunk, and whether the uncalled-cells finding blocks a deploy.
+  - the builder (Opus 5.5 max) of **Lab's W017 fix-up 6** (small: the converter reads one file and never follows a link out
+    of it; records on null-prototype objects). W017's last re-check FAILED on three exotic-input defects while its real
+    fix holds (a crossed design keeps every cell's condition; the live Lab mislabels 120 of 240 cells on such a fixture).
+  - the verifier (Opus 5.5 max) of **W050** (scAnno `f456431`; its job 790463 reads GATE: AS PREDICTED beside the model
+    job's own 4 untraced differences, which the verifier must place).
 - **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
@@ -90,10 +91,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **Built, waiting for a verifier slot:** **W050** (scAnno `f456431`: `embed` names a library from the object, a manifest or
-  the upstream record, never a file name); its reproduction job is on the cluster (790463).
-- **On PBS:** **790475** and **790476** (scQC's two reproductions at W048's fix head); **790463** (W050's reproduction of
-  the first cohort's promoted stage 2). **Landed MISSED, both of W046's:** **790442** (the fresh-prefix build: the install
+- **On PBS:** **790475** and **790476** (scQC's two reproductions at W048's fix head). **790463** (W050's reproduction of
+  the first cohort's promoted stage 2) sealed with GATE: AS PREDICTED; beside it the model job's own record lines read a
+  miss with 4 untraced differences against the promoted run, which W050's verifier must place (before this wave or not). **Landed MISSED, both of W046's:** **790442** (the fresh-prefix build: the install
   and the five-method run HELD, but one suite contains a skip on the cluster where the prediction said none) and
   **790443** (the subset reproduction: its own premise check failed, since the seeded draw holds no withheld cell, so it
   cannot show what W039 changed). Both go to W046's next round with its re-check's verdict; the full reproduction
@@ -146,6 +146,12 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   publish) finished with success and the live site answers with the new build. The go covered the Studio only: Lab's W017 is asked when its re-check has passed. The batch's
   code verification was still running when `main` moved; it continues, and a blocking finding goes to the PI at once.
   Told to the PI: six limits (the first: a saved figure drops the note about uncalled cells) and four taste calls.
+  **The batch's code verification PASSED afterwards** (the Run card under 23 rewritten run sections, the parser under 13
+  probes, no existing check weakened); it judged the uncalled-cells finding a limit, to fix before the next deploy (R48).
+- **ASKED OF THE PI, 2026-11-11: Lab's deploy.** W017 failed its last re-check on three defects that need a hand-made
+  input (a link out of the file followed; two files of one name confused; a field named `__proto__` dropped); its
+  verifier says Lab's users are better off with the branch than with `main`, which silently relabels cells in every
+  crossed design. Deploy now with the three known defects, or after fix-up 6 and its re-check: the PI's call.
 - **The PI's steps** (ROUTE section 3): stage 3's re-promotion waits for scIntegrate's batch to merge (D-034); the second
   cohort's tree is not ready (D-036); the scale cohort's doublet threshold waits for the subset run's numbers.
 - **Parked:** W030 (Service; uncommitted work in its clone), W022 as a wave of its own, the B1 register's queued rows.
