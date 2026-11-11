@@ -77,11 +77,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   - the builder (Opus 5.5 max) of **W046's fix round 2**, the last (scIntegrate): round 1 PASSED its re-check, but its gate
     MISSED and found that the fresh environment is not the promoted one (scIB's prebuilt LISI helper does not run on
     the cluster: two metrics absent, exit 0; the promoted one was rebuilt by hand). The installer now has to build it.
-  - the verifier (Opus 5.5 max) of **the driver batch, W041 + W042 + W049** (W049 built at `dbdc028`: an answer's file and
-    four more routes are in the one pinned set; the profile's hand lists replaced by a drift test against scQC's own code).
   - the builder (Opus 5.5 max) of **Lab's W017 fix-up 6** (small: the converter reads one file and never follows a link out
-    of it; records on null-prototype objects). W017's last re-check FAILED on three exotic-input defects while its real
-    fix holds (a crossed design keeps every cell's condition; the live Lab mislabels 120 of 240 cells on such a fixture).
+    of it; records on null-prototype objects), for the second deploy.
+  - the builder (Opus 5.5 max) of **W049's fix round 1** (the driver: the batch's verification FAILED on one reason that
+    predates W049, an answer for an already-sealed stage recorded as taken; and a job pins the wrong machine's tools).
   - the verifier (Opus 5.5 max) of **W050** (scAnno `f456431`; its job 790463 reads GATE: AS PREDICTED beside the model
     job's own 4 untraced differences, which the verifier must place).
 - **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
@@ -103,7 +102,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
-- **The tally: 7.19 of 20** (mean 0.359; 0.292 this morning, 0.271 at audit pass 0004): A1.1 5/8, A1.2 7/10, A1.3 3/5, A2.1 3/4, A3.2 3/4, A3.1 0.41 moved today.
+- **The tally: 7.69 of 20** (mean 0.384; 0.292 this morning, 0.271 at audit pass 0004): A1.1 5/8, A1.2 7/10, A1.3 3/5, A2.1 3/4, A3.2 3/4, A3.1 0.41, A6.2 1/2 moved today. Counting on a merge, not yet on `main`: A3.1 +0.1 each for scIntegrate and scQC.
 - **Merged 2026-11-11, five batches before those:** scIntegrate `b148030` (W012 + W025), scProfile `6f970e5` (W013 + W032 + W023), scQC `46ffe90`
   (W020), scAnno `779fd08` (W038), and **the harness `a677e8f` (W029 + W034)**: its train's three jobs all AS PREDICTED at the
   merged commit (stages 1, 2 and 3; PBS 788583, 788586, 788587), the merged tree's runtime files equal the gated head's, the
@@ -148,10 +147,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   Told to the PI: six limits (the first: a saved figure drops the note about uncalled cells) and four taste calls.
   **The batch's code verification PASSED afterwards** (the Run card under 23 rewritten run sections, the parser under 13
   probes, no existing check weakened); it judged the uncalled-cells finding a limit, to fix before the next deploy (R48).
-- **ASKED OF THE PI, 2026-11-11: Lab's deploy.** W017 failed its last re-check on three defects that need a hand-made
-  input (a link out of the file followed; two files of one name confused; a field named `__proto__` dropped); its
-  verifier says Lab's users are better off with the branch than with `main`, which silently relabels cells in every
-  crossed design. Deploy now with the three known defects, or after fix-up 6 and its re-check: the PI's call.
+- **Lab is DEPLOYED (D-038).** Asked with the facts on 2026-11-11, the PI chose "Deploy now": scrnaseq-lab's `main` went
+  from `51a00fa` to `ca0cc73` (W017) at 14:05Z. It stops the silent relabelling of cells in crossed designs. LIVE AND
+  KNOWN (GAP-C119): three defects that need a hand-made HDF5 file. Fix-up 6 is being built; after its re-check the PI is
+  asked for a second deploy. The Pages run succeeded and the site answers with the new build: A6.2 is 1/2 from now.
 - **The PI's steps** (ROUTE section 3): stage 3's re-promotion waits for scIntegrate's batch to merge (D-034); the second
   cohort's tree is not ready (D-036); the scale cohort's doublet threshold waits for the subset run's numbers.
 - **Parked:** W030 (Service; uncommitted work in its clone), W022 as a wave of its own, the B1 register's queued rows.

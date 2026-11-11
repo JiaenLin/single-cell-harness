@@ -41,6 +41,8 @@ ledger. Of the 9 new waves verified that day, 5 failed first verification, on ca
 | 29 | A suffix or prefix a safe write adds pushes a name the base accepted past a limit, found only at the write | For every user-given name that becomes a path, add what the write appends and give a name at the limit; count what ran before the failure | W046 fix 1 (a temporary name longer than the final one) |
 | 30 | A reader whose file library follows links on the host's own filesystem: another file's content enters the output as the input's own, unnamed | Give the input a link that leaves it (external, dangling, to a file of the same name elsewhere); change only the linked file and compare the outputs | W017 fix-up 5 (the run section's records) |
 | 31 | A field separator inside a value that becomes a header or a key | Put the format's own separators (a TAB, a newline, the delimiter) inside every id that is written into a table or a header, and count fields per row | W017 and the Studio batch (a TAB in a condition level) |
+| 32 | An answer accepted at a moment its decision can no longer apply, and recorded as taken | Answer each earlier stage's decision at a later resume, change one, remove one; compare the run's record with each stage's own seal | the driver batch (a sealed stage's escape given at a resume) |
+| 33 | A check that compares against the machine it was written on; a role that exists only when its source exists | Generate where a tool is absent or at another commit and run where it is right: a correct run must not read a miss | the driver batch (a job pinning the generating machine's checkouts) |
 
 ## Inbox (a verifier appends here; one line each: the defect, the attack, the wave)
 
