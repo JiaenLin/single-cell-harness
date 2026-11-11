@@ -63,9 +63,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   before the stop: 16.3 M output tokens, 46 launches.
 - **Running now (6 agents), as of 2026-11-11T11:34:24Z:**
   - builders (Opus 5.5 max): **W047 run 2** (scProfile: `de` through the maker, the record's declaration copies as a maker
-    defect, the rest of the host read file by file; run 1 is built at `4c5b3ad`); **W044's fix round 2**, the last
-    (scAnno's tree rule; branch `autodev/W044-fix2`); **W048** (scQC leak-clean and the fixture's axes: A3.1 0.41 to 0.51 on
-    merge; ROUTE R13 run 2).
+    defect, the rest of the host read file by file; run 1 is built at `4c5b3ad`); **W048** (scQC leak-clean and the
+    fixture's axes: A3.1 0.41 to 0.51 on merge; ROUTE R13 run 2).
+  - the verifier (Opus 5.5 max) of **W044's last re-check** (scAnno's tree rule, fix round 2 built at `20ad3f6`: six
+    candidates in a pool, the winner counts healthy-only studies; it writes a fresh expectation set before any run).
   - the builder (Opus 5.5 max) of **W046's fix round 1** (scIntegrate: its verification FAILED on two points: a key or
     factor name the writer forbids is refused only after every method trained; the batch moves numbers at state version 1).
   - the verifier (Opus 5.5 max) of **the driver's last re-check** (W041 + W042, fix round 2 built at `174d890`: PASS may
@@ -77,9 +78,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
-- **On PBS:** nothing. **789561** (scIntegrate's job 32, W039's gate at `1901611`) sealed AS PREDICTED: the PCA refit on
-  exactly the retained nuclei, every output that reads it moved, harmony identical to a second run in the job. The cluster's
-  harness and scQC checkouts are at `main`; scIntegrate's is at `1901611` and scAnno's at `9fb561c` (= `main`).
+- **On PBS:** **790197**, the second cohort's tree re-propose at W044's fix-2 head (`20ad3f6`): it grades the line the
+  first job missed (glial cells walked in every library) and a bound on where they land. Sealed AS PREDICTED today:
+  789561 (scIntegrate's job 32, W039's gate). The cluster's harness and scQC checkouts are at `main`; scIntegrate's is at
+  `1901611`; scAnno's is at `20ad3f6` while 790197 runs.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
@@ -96,10 +98,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   nothing wrong can be served; but the contract needs version 2 in the tool AND in the harness's adapter. Order: W046's
   fix round, its re-check and jobs; a small harness wave (GAP-C109: the adapter at 2, the stand-in as strict as the tool);
   the first cohort's stage 3 through the harness at both new heads; both mains in one step. The PI's stage-3 question follows.
-- **Failed verification, in its last fix round:** the driver (W041 + W042; round 1's re-check broke four of its six fixes by
-  attacking the family of each case); **W044's tree rule** (the re-check: no gain on 59 expectations the builder did not
-  write; the disease test sets aside five tissues' defining cells; a release that cannot tell health is drafted unchecked;
-  the job's graded line cannot fail; GAP-C106, C107, C108).
+- **In their last re-checks:** the driver (W041 + W042, fix round 2 at `174d890`) and W044's tree rule (fix round 2 at
+  `20ad3f6`). Neither has a third round: a PASS may carry stated limits, a FAIL names blocking reasons and the residue is a gap.
 - **Held:** the scProfile batch, W035 + W040 (D-032: the last re-check failed on one point, cellchat's own remaining run
   values); W047 carries that residue, and one verification of the whole batch follows it.
 - **The second cohort's tree** is not yet one to take to the PI: the first job missed (PBS 789434, MISSED (2)), and the job
