@@ -39,7 +39,9 @@ effect is measured.
 - **The change:** such an item keeps a pool file (`autodev/pools/<item>.tsv`: candidate, where it came from, its
   predicted effect, tested or not, result). A round is the candidates evolved from every earlier trace plus at least
   one untried one. Each is tested on a subset first with a three-way call: good, bad, or engineer (at most 2 tuning
-  passes, then bad). The item stops at its registered S or K, both written in its registration.
+  passes, then bad). The item stops at its registered S or K, both written in its registration. "Bad" is a verdict on a
+  variant, never on the idea: an item that reaches K goes back to the route with what its traces showed, as a gap, and
+  can be registered again (the same rule VCC's owner holds: one failed variant never closes an idea).
 - **Measured by:** each such item's registration states S and K, and its pool file exists when it hands back.
 
 ### 4. Ablation before a gain is kept
@@ -76,7 +78,7 @@ fits any loop with a verifier. That repository belongs to its own session, so th
 | 5 | The pass-rate meter | `setup/autodev/passrate.py` | done 2026-11-11 (baseline 4 of 9) |
 | 6 | The route: the scale cohort's subset run; S and K for R09 and R36; the reference check as R45 and inside R24-R30 and R39 | ROUTE.md | done 2026-11-11 |
 | 7 | Tests that keep the above from decaying | `tests/test_autodev.py` | done 2026-11-11 |
-| 8 | The proposal to the VCC session | a message to that session | sent 2026-11-11 |
+| 8 | The proposal to the VCC session | a message to that session | sent 2026-11-11; answered the same day: VCC took ablation (narrowly: a composite arm registers its leave-one-out arm) and its own attacks list (18 attacks from its records, run by every builder); it already had subset-before-full (a launcher-checked smoke and a cheap entry test) and an idea pool; it did NOT take the K-round stop, which conflicts with its owner's standing rule that an idea is a direction and one failed variant never closes it |
 | 9 | The scale cohort's stage-1 job written as a subset job and a full job | the wave after W045 | open: waits for W045 and the driver |
 | 10 | R45 built: DOIs recorded and checked | a harness and scProfile wave | open: after W035 + W040 merge |
 | 11 | First reading of the pass rate after 15 more waves; rework the attacks list if under 60 % | the daily check | open |

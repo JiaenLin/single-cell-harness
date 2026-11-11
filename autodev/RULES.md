@@ -273,7 +273,8 @@ names; nothing in tiers I to III changes.
 16. **A pool for items that search.** An item that has to find something (a rule, a hypothesis, a tool to convert) keeps
     `autodev/pools/<item>.tsv` and registers S (successes that end it) and K (rounds that end it). A round is the
     candidates evolved from every earlier trace plus at least one untried one; each is tried on a subset first and
-    called good, bad, or engineer (at most 2 tuning passes, then bad).
+    called good, bad, or engineer (at most 2 tuning passes, then bad). Bad is a verdict on a variant, never on the idea: an
+    item that reaches K returns to the route as a gap, with what its traces showed, and can be registered again.
 17. **Ablation before a gain is kept.** A wave that claims a measured gain (time, memory, a metric) reports the gain per
     component, measured by removing each, and keeps only what carries it. A claimed gain with no ablation is a verifier's
     FAIL reason.
