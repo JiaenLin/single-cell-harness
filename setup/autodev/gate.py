@@ -171,9 +171,9 @@ def recipe_of(text, job_name, sets):
     lines = text.splitlines()
     header = []
     for line in lines[1:]:
-        if not line.startswith("#"):
-            break
-        header.append(line)
+        if line.strip() and not line.startswith("#"):
+            break  # a blank line does not end a header (a job of 2026-11-12 had one above its recipe)
+        header.append(line.rstrip())
     if "# SUBMIT-BEGIN" in header:
         body = header[header.index("# SUBMIT-BEGIN") + 1:header.index("# SUBMIT-END")]
     else:

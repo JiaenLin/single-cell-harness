@@ -67,8 +67,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   wrote. The heartbeat's prompt and RULES item 6 carry the cap.
 - **Running now (2 Opus + 1 Fable):**
   - Opus 5.5 max: the verifier of **the scProfile batch's fix**, a lean re-check (head `95ed6bd`: the rewrite verb refuses a
-    tampered copy and writes a trace the check validates; every record field held to its form); the builder of **W052** (the harness: the scIntegrate adapter at state version 2, its stand-in
-    as the tool, the first cohort's stage 3 through the harness re-pinned: what scIntegrate's merge waits on).
+    tampered copy and writes a trace the check validates; every record field held to its form); the verifier of **W052** (the harness at `26db35d`: scIntegrate `2fc7a6c` mounts and its
+    old main is refused by name; the stand-in agrees with the tool; its subset job 790835 is on the cluster).
   - Fable 5.2: the reviewer of **W051's run 6** (the Studio's words, built at `192057b`: the seven moved claims rewritten
     against their code lines; three breaking renames of saved files for the PI to accept): the final check. Then the
     PI's go for a re-deploy.
@@ -94,8 +94,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **790813**, the DE gate job at the scProfile batch's head `95ed6bd` (its model ran 18 minutes). Checkouts on the
-  cluster: the harness and scQC at `main`; scAnno `f456431`; scIntegrate `2fc7a6c`; scProfile `95ed6bd`.
+- **On PBS:** **790835**, the subset of the first cohort's stage 3 through the harness at both new heads (W052 + scIntegrate
+  `2fc7a6c`); the full job (4 h) follows it. **790813** (the DE gate at the scProfile batch's head `95ed6bd`) landed AS
+  PREDICTED: the batch merges when its lean re-check passes. Checkouts on the cluster: the harness `26db35d`; scQC at
+  `main`; scAnno `f456431`; scIntegrate `2fc7a6c`; scProfile `95ed6bd`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
