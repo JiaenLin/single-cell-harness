@@ -39,6 +39,8 @@ SEARCH (only when your wave has to find a rule, a design or a hypothesis, not fo
 you expect BEFORE you try anything; try at least 2 candidates at the cheapest test that can tell them apart; keep the
 current one unless the challenger is strictly better on the registered measure; record every candidate tried and its
 result in <HARNESS>/autodev/pools/<wave>.tsv and say in the hand-back how many the winner was chosen from.
+WALLTIME: a job asks for the time its model's run measured, with a margin, never a queue's maximum (two 15- and 30-minute
+jobs asking for 24 h tripped the subset rule on 2026-11-11).
 SUBSET: a job you write that asks for more than 2 hours comes with `<name>.subset.pbs`: the same steps on a declared
 subset, its own prediction, minutes long. The coordinator runs it first.
 GAPS: name at most 3 new gaps, and only ones that block a ROUTE item (<HARNESS>/autodev/ROUTE.md) or are a wrong
