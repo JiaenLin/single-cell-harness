@@ -38,6 +38,7 @@ ledger. Of the 9 new waves verified that day, 5 failed first verification, on ca
 | 26 | A file that reaches a tool through another channel than the one the check walks | Name every path-valued input through every channel (params, answers, decisions, site files, an adapter's defaults, paths inside a named file) and edit each between two moments | the driver's fix round 2 (an answered thresholds file in no pinned set) |
 | 27 | A threshold that switches its own test off (0, a negative, NaN) accepted and recorded as the test applied; a record read back from one field only | Give each threshold 0, a negative, NaN; then remove or blank each field the consumer reads and see what it records | W044 fix 2 (a draft with every test vacuous read as checked) |
 | 28 | A measured number removed where a list found it and kept where no list looks (a sibling doc, further down the file, a runtime message, another noun) | Take every number on the diff's removed lines and look for it at the head (`setup/autodev/survivors.py`), then read each survivor | W048 (51 lines); W035 (twice) |
+| 29 | A suffix or prefix a safe write adds pushes a name the base accepted past a limit, found only at the write | For every user-given name that becomes a path, add what the write appends and give a name at the limit; count what ran before the failure | W046 fix 1 (a temporary name longer than the final one) |
 
 ## Inbox (a verifier appends here; one line each: the defect, the attack, the wave)
 
