@@ -54,7 +54,8 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## The queue: [`ROUTE.md`](ROUTE.md)
 
-- **Running now:** verifiers R12 (scQC: W020), R19 (scIntegrate: W012 + W025), R22 (scProfile: W013 + W032 + W023); builders R23 = W035 (the maker's prose verb), R02 = W036 (`prof@scprofile`) and R41 = W037 run A (Studio's design, the PI's direction).
+- **Running now (6):** the verifier R12 (scQC: W020); builders R23 = W035 (the maker's prose verb), R02 = W036 (`prof@scprofile`), R41 = W037 run A (Studio's design, the PI's direction), R16 = W038 (scAnno: the lock, a fresh-prefix build, one reader of gene symbols) and R20 = W039 (scIntegrate: withheld cells out of the PCA, GAP-128).
+- **Merged 2026-11-11:** scIntegrate `main` = `b148030` (W012 + W025; verifier PASS, no fix, the gate at that commit) and scProfile `main` = `6f970e5` (W013 + W032 + W023; verifier PASS, no fix, the gate at that commit). Verifier scores: A2.1 3/4, A3.2 3/4. The cluster's scProfile checkout is on the new main.
 - **R01 (harness: W029 + W034): verifier PASS** for both waves and the train head; one README line fixed. The gate at the head that merges, `autodev/train-harness-1` @ `0670f3e`: stage 1 **PBS 788583**, stage 2 **PBS 788586**, stage 3 **PBS 788587** (re-pinned copies 36t, 29t, 31t; predictions unchanged). All AS PREDICTED, then the train merges into `main`. scAnno's cluster checkout is at `d0ee926` for 29t and returns to `main` after it.
 - **Next, as each verifier passes:** its merge (the harness through its train's three jobs), then that repository's next route item; R16 (scAnno) and R40 (C46's records) at the first free slots.
 - **The PI's steps** are in ROUTE section 3; none is askable yet.

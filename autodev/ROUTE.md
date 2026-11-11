@@ -44,14 +44,15 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 |---|---|---|---|---|---|---|
 | R01 | harness | verify W029 + W034 as one batch on `autodev/train-harness-1`; re-run their three jobs at the train head; merge | A1.1 on `main` | - | v + 3 jobs | gating |
 | R12 | scQC | verify W020 (`b255e45`); merge | unblocks R13 R14 R15 | - | v | verifying |
-| R19 | scIntegrate | verify W012 + W025 (`b148030`); merge; then ask the PI about stage 3's moved ranking | A2.1 3/4 | - | v | verifying |
-| R22 | scProfile | verify W013 + W032 + W023 (`6f970e5`); merge | A3.2 (direction) | - | v | verifying |
+| R19 | scIntegrate | verify W012 + W025 (`b148030`); merge; then ask the PI about stage 3's moved ranking | A2.1 3/4 | - | v | merged |
+| R22 | scProfile | verify W013 + W032 + W023 (`6f970e5`); merge | A3.2 (direction) | - | v | merged |
 | R40 | cohort C46 | verify W033's jobs and records (no tool change) | A1.1 (stands) | - | v, S | open |
 | R23 | scProfile | **W035**: the maker's prose verb; cellchat's leak hit; cellchat and de through the cluster's dev suite | A4.1 2/9 | - (stacked on `6f970e5`) | M + job | building |
 | R31 | scProfile | isolated groups' x86_64 locks, a cluster build, `selftest` (GAP-C88) | A4.1 (the suite needs the environments) | R23 | S + job | open |
 | R24-R30 | scProfile | the seven held-out plugins through the maker, one wave each (abundance, cellcycle, decoupler, liana, pseudotime, scenic, velocity): migrate, DOI and pin, comment hits, the cluster's dev suite | A4.1 +7/9, A4.3 +6/9, A3.1 | R23 R31; one at a time until two in a row need no maker change, then in pairs | S-M each + job | open |
-| R32 | scProfile | designs: the interaction contrast, covariates modelled or refused by name (GAP-040) | A3.2 4/4 | R22 | M + job | open |
+| R32 | scProfile | designs: the interaction contrast. The verifier found the rest done at `6f970e5` (a covariate modelled or refused by name; the declared-control direction); what is left is abundance fitting one factor at a time, and abundance is held out, so this is part of abundance's own wave (R24), through the maker | A3.2 4/4 | R24 | in R24 | open |
 | R33 | scProfile | assay rule sets, not captions (GAP-050, GAP-C51) | A3.3 5/5 | R22 | S-M | open |
+| R42 | scProfile | leak-clean under the generated site shapes (GAP-C89: 101 and 95 hits, bare job ids and queue names in the host's docs, runner, cli, setup, tests and DEVPOINTS); the 12 in kernels/ go through the prose verb, the held-out ones in their own waves | A3.1 +0.1 | R23 | S-M | open |
 | R34 | scProfile + SAMBO | a full stage-4 run at merged `main`; ask the PI to promote; reproduce it | A2.1 4/4 | R22 R02 | 2 jobs + the PI | open |
 | R02 | harness | **W036**: `prof@scprofile`, SAMBO stage 4 through the harness (DE, abundance, the plugins the design admits), with the run-alone twin | A1.1 5/8, A1.2 9/10 | - (stacked on the train head; scProfile at `6f970e5`) | M + job | building |
 | R03 | harness | the stage driver: one request (matrices + design sheet) plans and runs the four mounts in order, user-owned decisions declared, ambient removal declared upstream by name; a job generated, not hand-written | A1.2 10/10; needed by R04 R07 R08 R15 | R02 (starts on three stages) | M, split in two | open |
@@ -66,9 +67,9 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R13 | scQC | leak-clean under the generated lists (GAP-C78), the fixture's axes; the removal audit can stop a run (GAP-119, a wrong-result defect) | A3.1 +0.1 | R12 | M, split in two | open |
 | R14 | cohort C46 | stage 1 through the harness | A1.1 +1/8 | R12 | job | open |
 | R15 | cohort (scale) + scQC | **W031**: stage the 1,263,676-cell cohort; stage 1, then each next stage as its adapter lands | A3.4 0.316 a stage | R12; R03 for the later stages | jobs, S-M | registered |
-| R16 | scAnno | the environment pin (GAP-C82), a fresh-prefix build and self-test; leak-clean (36 hits), the fixture's axes; `build-markers` field (GAP-C83) | A1.3 +1/5, A3.1 +0.1 | - | M, split in two + job | open |
+| R16 | scAnno | the environment pin (GAP-C82), a fresh-prefix build and self-test; leak-clean (36 hits), the fixture's axes; `build-markers` field (GAP-C83) | A1.3 +1/5, A3.1 +0.1 | - | M, split in two + job | building |
 | R17 | scAnno | `tree propose` keeps the tissue's own lineages (GAP-C85); C46's tree re-proposed; ask the PI to approve it | C46's labels | R16 | S-M + the PI | open |
-| R20 | scIntegrate | a fresh-prefix build and self-test; leak-clean (12 hits), the fixture's axes; withheld cells out of the PCA (GAP-128, a wrong-result defect, with its predicted difference); W022's constraints only where a wave meets them | A1.3 +1/5, A3.1 +0.1 | R19 | M, split in two + job | open |
+| R20 | scIntegrate | a fresh-prefix build and self-test; leak-clean (12 hits), the fixture's axes; withheld cells out of the PCA (GAP-128, a wrong-result defect, with its predicted difference); W022's constraints only where a wave meets them | A1.3 +1/5, A3.1 +0.1 | R19 | M, split in two + job | building |
 | R21 | cohort C46 | stage 3 through the harness (labels marked draft until R17's approval) | A1.1 +1/8 | R01 R19 | job | open |
 | R35 | cohort C46 | stage 4 through the harness (one factor, n = 2) | A1.1 +1/8 | R02 R21 | job | open |
 | R36 | harness + scProfile | a draw rule over the scRNA-tools catalogue; five never-seen tools converted by agents alone, each passing the dev suite and its published example | A4.2 (0.2 a tool) | R24-R30 mostly done (the maker stable) | 5 x M + jobs | open |
@@ -83,7 +84,7 @@ own, the 73 queued constraints of the B1 register (removed by the wave that meet
 
 | step | precondition | test |
 |---|---|---|
-| stage 3: re-promote or keep, now that harmony is deterministic and its rank moved (2nd to 5th; the top method unchanged) | R19 merged | A2.1 |
+| stage 3: re-promote or keep, now that harmony is deterministic and its rank moved (2nd to 5th; the top method unchanged) | R19 merged (done 2026-11-11) AND W039 merged (withheld cells out of the PCA, GAP-128), so one re-promotion carries both | A2.1 |
 | stage 4: promote a run | R22 and R02 merged, R34's run sealed | A2.1 |
 | C46's cell-type tree: approve the re-proposed tree | R17 built | A1.1's labels, A3.1 |
 | deploy Lab, then Studio (with R41's before-and-after gallery) | R38's verifications PASS; R41 verified by looking | A6.2, the PI's direction |
