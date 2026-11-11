@@ -47,13 +47,13 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R19 | scIntegrate | verify W012 + W025 (`b148030`); merge; then ask the PI about stage 3's moved ranking | A2.1 3/4 | - | v | verifying |
 | R22 | scProfile | verify W013 + W032 + W023 (`6f970e5`); merge | A3.2 (direction) | - | v | verifying |
 | R40 | cohort C46 | verify W033's jobs and records (no tool change) | A1.1 (stands) | - | v, S | open |
-| R23 | scProfile | **W035**: the maker's prose verb; cellchat's leak hit; cellchat and de through the cluster's dev suite | A4.1 2/9 | - (stacked on `6f970e5`) | M + job | registered |
+| R23 | scProfile | **W035**: the maker's prose verb; cellchat's leak hit; cellchat and de through the cluster's dev suite | A4.1 2/9 | - (stacked on `6f970e5`) | M + job | building |
 | R31 | scProfile | isolated groups' x86_64 locks, a cluster build, `selftest` (GAP-C88) | A4.1 (the suite needs the environments) | R23 | S + job | open |
 | R24-R30 | scProfile | the seven held-out plugins through the maker, one wave each (abundance, cellcycle, decoupler, liana, pseudotime, scenic, velocity): migrate, DOI and pin, comment hits, the cluster's dev suite | A4.1 +7/9, A4.3 +6/9, A3.1 | R23 R31; one at a time until two in a row need no maker change, then in pairs | S-M each + job | open |
 | R32 | scProfile | designs: the interaction contrast, covariates modelled or refused by name (GAP-040) | A3.2 4/4 | R22 | M + job | open |
 | R33 | scProfile | assay rule sets, not captions (GAP-050, GAP-C51) | A3.3 5/5 | R22 | S-M | open |
 | R34 | scProfile + SAMBO | a full stage-4 run at merged `main`; ask the PI to promote; reproduce it | A2.1 4/4 | R22 R02 | 2 jobs + the PI | open |
-| R02 | harness | **W036**: `prof@scprofile`, SAMBO stage 4 through the harness (DE, abundance, the plugins the design admits), with the run-alone twin | A1.1 5/8, A1.2 9/10 | - (stacked on the train head; scProfile at `6f970e5`) | M + job | registered |
+| R02 | harness | **W036**: `prof@scprofile`, SAMBO stage 4 through the harness (DE, abundance, the plugins the design admits), with the run-alone twin | A1.1 5/8, A1.2 9/10 | - (stacked on the train head; scProfile at `6f970e5`) | M + job | building |
 | R03 | harness | the stage driver: one request (matrices + design sheet) plans and runs the four mounts in order, user-owned decisions declared, ambient removal declared upstream by name; a job generated, not hand-written | A1.2 10/10; needed by R04 R07 R08 R15 | R02 (starts on three stages) | M, split in two | open |
 | R04 | harness | the Service request as the driver's input (GAP-P06) | A6.3 3/3 | R03 | S | open |
 | R05 | harness | an installer and a lock; a fresh-prefix build and self-test on the cluster (GAP-127) | A1.3 +1/5 | R01 | S-M + job | open |

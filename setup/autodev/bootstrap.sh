@@ -16,7 +16,7 @@ check)
   fi
   echo "watch list: $(grep -vc '^#' "$P/watch.tsv" 2>/dev/null) job(s); verdict/held files: $(ls "$P"/*.verdict "$P"/*.held 2>/dev/null | wc -l | tr -d ' ')"
   echo "Monitor: arm in the session: bash setup/autodev/monitor_verdicts.sh $P (30 min; re-arm at expiry)"
-  echo "reminders: CronList must show LOOP TICK (7 */3), BLOCKER SWEEP (41 */3), PERIODIC CHECK (23 */6); prompts in autodev/README.md"
+  echo "reminders: CronList must show one HEARTBEAT (17 */2); its prompt is in autodev/README.md (the three older prompts are retired, RULES 2026-11-11)"
   echo "open waves (last status):"
   awk -F'\t' 'NR>1{s[$2]=$10} END{for (w in s) if (s[w]!="merged" && s[w]!="done" && s[w]!="failed") print "  " w ": " s[w]}' "$H/autodev/ledger/waves.tsv" | sort
   echo "questions for the PI in STATE: $(sed -n '/^## Decisions needed/,/^## /p' "$H/autodev/STATE.md" | grep -c '^[0-9][0-9]*\. ')"

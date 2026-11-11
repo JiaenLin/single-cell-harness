@@ -63,11 +63,11 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 | job | id | cron | created | expires |
 |---|---|---|---|---|
-| LOOP TICK | paused (TOKEN-LIMITED; was `ebc3fb6b`) | `7 */3 * * *` (the 2026-11-10 prompt: mirror files first, the pre-decider sweep, 2 builders on opus/max, 1 verifier per batch) | 2026-11-10 | 2026-11-17 |
-| PERIODIC CHECK | stopped 15:42Z (PAUSED; was `f256d66a`, the short token-limited prompt) | `23 */6 * * *` (adds the budget meter) | 2026-11-10 | 2026-11-17 |
-| BLOCKER SWEEP | paused (TOKEN-LIMITED; was `8fbcd2dc`) | `41 */3 * * *` | 2026-11-10 | 2026-11-17 |
-| the PBS mirror | stopped 15:42Z (PAUSED, no job of ours on PBS; was `b8ggoear2`, reports SEALED, FAILED or GONE, BLK-012) | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300` (the stable, git-ignored path); watch.tsv holds 783740 (W013) | 2026-11-10 | with the session |
-| the verdict Monitor | off (TOKEN-LIMITED; the mirror's files are read at each wake-up) | `bash setup/autodev/monitor_verdicts.sh <HARNESS>/autodev/.machinery/pbs`, 30 min | 2026-11-10 | re-arm |
+| HEARTBEAT | `d3695b30` | `17 */2 * * *` (the prompt in README's reminders table) | 2026-11-11 | 2026-11-18 |
+| LOOP TICK, BLOCKER SWEEP, PERIODIC CHECK | retired 2026-11-11 (RULES, item 9) | - | - | - |
+| the PBS mirror | background task `bt2f5k07v` | `bash setup/autodev/pbs_mirror.sh <HARNESS>/autodev/.machinery/pbs 300`; watch.tsv's 4th column is the tool commits a job uses | 2026-11-11 | until the session ends |
+| the gate runner | `python3 -I setup/autodev/gate.py submit ... --go`, `grade <id> --status ...` | site facts in `autodev/.machinery/site.env` (git-ignored) | 2026-11-11 | - |
+| the verdict waiters | one background `until [ -f <id>.verdict ]` per submitted job | re-invoke the coordinator when a job lands | per job | - |
 | bootstrap | `bash setup/autodev/bootstrap.sh check` / `print` | what runs, what is missing, the start lines | 2026-11-10 | - |
 
 ## Decisions needed from the PI
