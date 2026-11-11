@@ -54,7 +54,7 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## The queue: [`ROUTE.md`](ROUTE.md)
 
-- **Running now (6):** the Fable 5.2 designer on R41 = W037 (Studio's design); builders R03 = W042 (the driver's cluster path), W035's fix round 1 (the prose verb's bypass and its record) and R13 = W043 (scQC: a failed removal audit stops the run); R17 = W044 (scAnno: the proposed tree keeps to the tissue; its leak hits); the verifier of W039 (scIntegrate: withheld cells out of the PCA, built at `1901611`).
+- **Running now (6):** the Fable 5.2 designer on R41 = W037 (Studio's design); builders W035's fix round 1 (the prose verb's bypass and its record) and R13 = W043 (scQC: a failed removal audit stops the run); R17 = W044 (scAnno: the proposed tree keeps to the tissue; its leak hits); the verifiers of W039 and of the driver (W041 + W042: built at `4e10656`, 891 tests; the first cohort's chained run returned with three unknowns to look up) (scIntegrate: withheld cells out of the PCA, built at `1901611`).
 - **Merged 2026-11-11 (the fourth today):** scAnno `main` = `779fd08` (W038: the lock pins its closure, the installer works with the site's conda, one gene reader; the fresh-prefix build PBS 789141 AS PREDICTED; verifier PASS). A1.3 is 3/5 by the verifier's row.
 - **The scale cohort's inventory (PBS 789168) AS PREDICTED:** 1,263,676 cells x 30,172 genes, integer counts in raw/X, 261 donors, 88 libraries each a pool of donors. The data stage is done; stage 1 waits for R43 and W042.
 - **Verdicts 2026-11-11:** W036 (`prof@scprofile`) PASS, waits for its job at the head that merges; W040 PASS; **W035 FAIL** (two ways past the prose rule), in fix round 1.
