@@ -66,8 +66,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   Opus agents were stopped at once; their briefs are in `<scratchpad>/relaunch/q_*.txt` and their clones keep what they
   wrote. The heartbeat's prompt and RULES item 6 carry the cap.
 - **Running now (2 Opus + 1 Fable):**
-  - Opus 5.5 max: the verifier of **the scProfile batch** (W035 + W040 + W047, head `945549f`; W047's run 3 cleared 65
-    survivor lines), under D-040's bound; the verifier of **W048's last re-check** (scQC `f57bc6e`: each gate records the
+  - Opus 5.5 max: the builder of **the scProfile batch's fix round** (small: its ONE verification FAILED on the maker's
+    record: the new rewrite verb leaves no trace and tidies a tampered copy away; unread fields can carry a planted
+    value. Everything else held, and no DE result can change. A third reason, two-digit survivors, is a counted limit
+    under D-040); the verifier of **W048's last re-check** (scQC `f57bc6e`: each gate records the
     design it computed on, and a dropped factor is told to the user; its jobs 790672 and 790673 are on the cluster).
     A3.1 goes over the bar when scQC merges.
   - Fable 5.2: the reviewer of **W051** (the Studio's words and elements, built at `d51bf41`: 198 strings reworded and 14
@@ -76,8 +78,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary".** Applied: W048's last round
   narrowed while it runs; scIntegrate's merge decoupled from its installer's defect; the queue re-ordered.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
-  0. (running) the scProfile batch's ONE verification; on a PASS its gate (the DE job and the dev-suite job at the
-     head), the merge, then the plugin line, abundance first (A4.1, A4.3, A3.2). (running) W048's last fix round; then
+  0. (running) the scProfile batch's fix round; then a LEAN re-check of its two reasons, the gate (the DE job and the
+     dev-suite job at the head), the merge, then the plugin line, abundance first (A4.1, A4.3, A3.2). (running) W048's last fix round; then
      its re-check under D-040, its two jobs, the merge (A3.1 over the bar).
   1. **W052** (the harness: the scIntegrate adapter at state version 2, the stand-in as the tool, the first cohort's
      stage 3 through the harness re-pinned): brief `<scratchpad>/relaunch/q_w052build.txt`. Then its verification, the

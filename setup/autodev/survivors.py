@@ -11,7 +11,9 @@ before hand-back and the coordinator before spending a verifier.
 
 It prints `file:line: text` for every line at <head> that holds a number the diff removed, then one last line
 `SURVIVORS <lines> lines, <numbers> of <removed> removed numbers, in <files> files`. It judges nothing: a survivor may
-be a default, a version or a date. The reader says what each is. Exit status is always 0.
+be a default, a version or a date. The reader says what each is. Exit status is always 0. The default reads numbers of
+three or more digits: `--min-digits 2` is wider and mostly coincidence (836 lines on one batch), so two-digit survivors
+are a counted limit (D-040), not this pass.
 
 Two more passes, each from a verifier's finding the digit grep could not see (W048's re-check, 2026-11-11):
 `--near` lists numbers the diff ADDED that equal a removed number at two significant figures without being it (a
