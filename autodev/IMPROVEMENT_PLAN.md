@@ -100,4 +100,5 @@ fits any loop with a verifier. That repository belongs to its own session, so th
 | 11 | First reading of the pass rate after 15 more waves; rework the attacks list if under 60 % | the daily check | open |
 | 13 | The search rules (breadth first, the incumbent, a fresh candidate in a fix round, every candidate counted) | RULES item 16 | done 2026-11-11 |
 | 14 | The route's first sufficiency check, by an independent agent | RULES item 19; at the next free slot | open |
+| 15 | The search part passed to the VCC session (the PI: "also update vcc on the search part") | a second message to that session: breadth first, the incumbent, a fresh candidate in a fix round, every candidate counted, a sufficiency check of its queue | sent 2026-11-11; its answer is recorded here when it comes |
 | 12 | Agents already running were briefed before this plan; they get the attacks list at their next fix round or re-check | the coordinator, at each launch | open |
