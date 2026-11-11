@@ -35,6 +35,7 @@ ledger. Of the 9 new waves verified that day, 5 failed first verification, on ca
 | 23 | A graded line that is true by construction, or a line that missed demoted to a record | For each graded line, name a tool output that would fail it; a line that missed stays graded, as a bound written before the run | W044 fix 1 (the job's walk lines) |
 | 24 | A score taken on a capped output; a laxer result for less evidence | Grade the rule's verdict, not the truncated list (read what the cap cut); order inputs by how much evidence they hold and check the tool never gets laxer as evidence drops | W044 fix 1 (3 hidden by the cap; a no-health release drafted unchecked) |
 | 25 | A user-given name the output format forbids, accepted at input and refused only at the write, after the expensive work | Give each name that becomes a key in a written file one the format reserves or forbids (a slash, a reserved column name) and count what ran before the failure | W046 (the design's key and factors) |
+| 26 | A file that reaches a tool through another channel than the one the check walks | Name every path-valued input through every channel (params, answers, decisions, site files, an adapter's defaults, paths inside a named file) and edit each between two moments | the driver's fix round 2 (an answered thresholds file in no pinned set) |
 
 ## Inbox (a verifier appends here; one line each: the defect, the attack, the wave)
 

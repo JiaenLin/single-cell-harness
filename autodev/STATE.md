@@ -71,8 +71,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     candidates in a pool, the winner counts healthy-only studies; it writes a fresh expectation set before any run).
   - the builder (Opus 5.5 max) of **W046's fix round 1** (scIntegrate: its verification FAILED on two points: a key or
     factor name the writer forbids is refused only after every method trained; the batch moves numbers at state version 1).
-  - the verifier (Opus 5.5 max) of **the driver's last re-check** (W041 + W042, fix round 2 built at `174d890`: PASS may
-    carry stated limits, FAIL names only blocking reasons).
+  - the builder (Opus 5.5 max) of **W049** (the harness: the driver's residue after its last re-check FAILED on one
+    reason: a file given as a decision's answer is in no pinned set; also correct requests the driver now refuses).
   - the designer (Fable 5.2), **run 4 on Studio** (W037), the last fix round: the second review said "not yet", close (10 of
     the first thirteen closed, 3 in part; truth held; run 3 damaged one figure's names; saved figures incomplete and their
     stated width untrue). The review: `<scratchpad>/autodev/w037-review2/REVIEW2.md`. Four taste calls wait for the PI.
@@ -100,8 +100,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   nothing wrong can be served; but the contract needs version 2 in the tool AND in the harness's adapter. Order: W046's
   fix round, its re-check and jobs; a small harness wave (GAP-C109: the adapter at 2, the stand-in as strict as the tool);
   the first cohort's stage 3 through the harness at both new heads; both mains in one step. The PI's stage-3 question follows.
-- **In their last re-checks:** the driver (W041 + W042, fix round 2 at `174d890`) and W044's tree rule (fix round 2 at
-  `20ad3f6`). Neither has a third round: a PASS may carry stated limits, a FAIL names blocking reasons and the residue is a gap.
+- **Held (D-035): the driver, W041 + W042.** Its last re-check failed on ONE reason and judged all eight of the builder's
+  left items limits; five of the first verifier's six reasons are closed. W049 carries the residue, then one verification
+  of the whole batch. **In its last re-check:** W044's tree rule (fix round 2 at `20ad3f6`; job 790197).
 - **Held:** the scProfile batch, W035 + W040 (D-032: the last re-check failed on one point, cellchat's own remaining run
   values); W047 carries that residue, and one verification of the whole batch follows it.
 - **The second cohort's tree** is not yet one to take to the PI: the first job missed (PBS 789434, MISSED (2)), and the job
