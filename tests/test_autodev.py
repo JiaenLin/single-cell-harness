@@ -181,7 +181,7 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
     def test_the_tools_exist_and_the_shell_ones_parse(self):
         import subprocess
         tools = ROOT / "setup" / "autodev"
-        for name in ("usage.py", "pbs_mirror.sh", "monitor_verdicts.sh", "bootstrap.sh", "agent_models.sh"):
+        for name in ("usage.py", "pbs_mirror.sh", "monitor_verdicts.sh", "bootstrap.sh", "agent_models.sh", "gate.py", "costs.py"):
             self.assertTrue((tools / name).is_file(), name)
             if name.endswith(".sh"):
                 rc = subprocess.run(["bash", "-n", str(tools / name)], capture_output=True)
@@ -189,7 +189,7 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
 
     def test_the_method_files_carry_their_sections(self):
         readme = (ROOT / "autodev" / "README.md").read_text(encoding="utf-8")
-        for name in ("LOOP TICK", "BLOCKER SWEEP", "PERIODIC CHECK"):
+        for name in ("LOOP TICK", "BLOCKER SWEEP", "PERIODIC CHECK", "HEARTBEAT"):
             self.assertIn(f"| {name} |", readme, f"README's reminders table lacks {name}")
         self.assertIn("## The machinery", readme)
         briefs = (ROOT / "autodev" / "BRIEFS.md").read_text(encoding="utf-8")
@@ -199,6 +199,32 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
             self.assertIn(sec, pre, f"PRE_DECIDER.md lacks {sec}")
         rules = (ROOT / "autodev" / "RULES.md").read_text(encoding="utf-8")
         self.assertIn("## Added 2026-11-10 by the PI's", rules)
+        self.assertIn("## Added 2026-11-11 by the PI:", rules)
+
+    def test_the_route_names_only_real_tests_and_every_test(self):
+        """ROUTE.md is the queue (RULES 2026-11-11): its first table has one row per layer-3 test, in order, and every
+        item row's `moves` cell names tests that exist."""
+        route = (ROOT / "autodev" / "ROUTE.md").read_text(encoding="utf-8")
+        first = route.split("## 1.", 1)[1].split("\n## ", 1)[0]
+        self.assertEqual(re.findall(r"^\| (A\d\.\d) ", first, flags=re.M), layer3_tests(), "ROUTE section 1 is not the layer-3 list")
+        items = route.split("## 2.", 1)[1].split("\n## ", 1)[0]
+        rows = [r for r in items.splitlines() if re.match(r"^\| R\d", r)]
+        self.assertGreater(len(rows), 20, "ROUTE section 2 lost its items")
+        known = set(layer3_tests())
+        for row in rows:
+            cells = [c.strip() for c in row.strip("|").split("|")]
+            self.assertEqual(len(cells), 7, f"a ROUTE item row is not 7 cells: {row[:60]}")
+            for test_id in re.findall(r"A\d\.\d", cells[3]):
+                self.assertIn(test_id, known, f"ROUTE item {cells[0]} moves an unknown test {test_id}")
+            self.assertIn(cells[6].split(" ")[0], {"open", "registered", "building", "verifying", "gating", "merged", "done", "struck"},
+                          f"ROUTE item {cells[0]} has an unknown status")
+
+    def test_the_gate_runner_names_no_site(self):
+        """gate.py reads its site facts from the git-ignored site.env, and its dry run needs no network."""
+        text = (ROOT / "setup" / "autodev" / "gate.py").read_text(encoding="utf-8")
+        self.assertIn("site.env", text)
+        for word in ("/data/", "/Users/", "@nus", "Dropbox"):
+            self.assertNotIn(word, text, f"gate.py names a site: {word}")
 
 
 if __name__ == "__main__":

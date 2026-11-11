@@ -187,3 +187,64 @@ word resumes validation):
 **Housekeeping corrected (2026-11-10):** before deleting a merged wave's scratch, grep the open waves' records
 (waves/W0xx.md of every wave not merged) and the running agents' briefs for the path; a path any of them names stays.
 The 05:02Z pass deleted verify_W010c while W029's verifier was reading W010's probes there.
+
+## Added 2026-11-11 by the PI: "evaluate and improve current development harness towards our goal ... after that, launch full development"
+
+The diagnosis is [audits/DIAGNOSIS_20261111_efficiency.md](audits/DIAGNOSIS_20261111_efficiency.md) (measured with
+`setup/autodev/costs.py`). All tier IV (C) unless a line quotes the PI. This block supersedes the 2026-11-10 lines it
+names; nothing in tiers I to III changes.
+
+1. **Mode FULL (the PI: "launch full development to reach our goal!").** The pause (D-020) and TOKEN-LIMITED (D-017) end;
+   validation runs again. There is no daily cap in this mode; the meter is read at every heartbeat and written into
+   STATE, with `costs.py`'s table by role once a day. The PI's words switch it back ("save tokens", "token limited",
+   "pause"). The account's weekly limit can stop every agent at any moment, so rule 9 holds always.
+2. **The queue is [ROUTE.md](ROUTE.md)** (supersedes "the queue follows the score" and the lane rotation). It is the
+   finite list of items that take the 20 scores to HAPPY. A wave is registered from a route item when what it waits for
+   is done. A gap enters a wave only if it blocks a route item or is a wrong result in a promoted output; every other
+   gap is recorded and parked. A builder's hand-back names at most 3 new gaps of those two kinds; other observations go
+   in the wave file. The B1 register's queued constraints are removed by the wave that meets one (the PI's standing
+   order of 2026-11-09 is the authority); there is no constraints-only wave and no blocker sweep.
+3. **Small runs.** A builder run is sized for about 150 tool calls (measured: a run's context reads grow with the square
+   of its length; the 5 runs over 300 calls were 29 % of all builders' context reads). A registration bigger than that
+   is split before launch. A builder that reaches about 150 calls commits, pushes, hands back what is done and returns
+   the rest as a follow-up; that is a normal hand-back, not a failure.
+4. **Verify first; gate at the head that merges** (supersedes the order "gate, then verify" and rule 4's per-fix-up
+   resubmission). The order is build, preflight (the suite, the test that fails on the base, the shadowing package,
+   `sch conform` with both lists, the fixture), verify, then ONE gate run on the commit that becomes `main`. When a
+   repository takes more than one branch, the coordinator merges them into `autodev/train-<repo>-N` (merge commits only)
+   and the member waves' jobs run at the train head, re-pinned as dated copies with their predictions unchanged; all AS
+   PREDICTED, then `main` fast-forwards to it. A job before verification is written only when the wave adds a new
+   cluster path, or the builder needs the cluster's answer to finish. A gate result at exactly the merged commit, or at a
+   commit whose runtime-file manifest equals it, stands (the manifest rule, unchanged).
+5. **Verification in parallel, with a pen for the mechanical** (supersedes "1 verifier"). One verifier per repository
+   batch, every repository at once. A verifier may fix what is mechanical (a doc line, a missing assertion, a leaked
+   string, a job-header line), at most 20 lines in all, each listed in its verdict; anything that changes behaviour goes
+   back to a builder (at most 2 rounds, then a gap). Each verifier writes the score rows of the tests its batch moves
+   (`scores.tsv`, pass `v-W###`), by GOALS's formulas, with evidence.
+6. **Lanes in parallel** (supersedes "2 builders" and "lanes take turns"). One builder per repository at a time; a
+   second in the same repository only when the two registrations name disjoint files. At most 6 development agents at
+   once (builders and verifiers together). Every one is launched fresh with model opus and effort max (tier II), never
+   resumed under another session model, and measured with `agent_models.sh` at launch.
+7. **The cluster by script.** `setup/autodev/gate.py submit` and `grade` are how a job goes in and how its result is
+   recorded: the checks, the copy and md5, the checkout move (refused while a live watched job uses that tool at
+   another commit), the validator, the job's own submit recipe, the watch row, the RUNLOG entry with the job's lines
+   verbatim, and the ledger row. A new job carries its recipe between `# SUBMIT-BEGIN` and `# SUBMIT-END` and prints one
+   final line `GATE: AS PREDICTED` or `GATE: MISSED (n)`; the coordinator still reads a MISSED run's lines itself.
+8. **Audits at checkpoints** (supersedes "the next pass after 3 more merges or 24 h"). A full scored pass runs when the
+   tally says HAPPY is near (mean at least 0.85 and no test under 0.5) or after every 10 merges. Between passes the
+   verifiers' rows are the score; the coordinator's `coord` rows are provisional.
+9. **Stop-proof.** Agents push after every commit. ROUTE and STATE always say what is next. The coordinator commits
+   records at every hand-back. One HEARTBEAT every 2 hours replaces the LOOP TICK, the BLOCKER SWEEP and the PERIODIC
+   CHECK; hand-backs and verdict files drive everything else.
+10. **The PI's steps are asked once, early** (ROUTE section 3): each becomes an ASK row, with the numbers and a
+    recommendation, the moment its precondition is met. No lane waits on one.
+11. **The PI, 2026-11-11: "also, improve the studio UI design and layout to be top level".** A direction of the PI's
+    (tier III in weight): ROUTE item R41, wave W037. "Top level" is the ten-point rubric in `waves/W037.md`; the builder
+    designs to it and a verifier judges it by looking. It is built on a branch from the synthetic fixture only; Studio's
+    `main` is still the PI's go (BLK-005), asked with the before-and-after gallery. It launches at the first free slot (corrected the same day: at 6
+    agents the workstation measured saturated, so the cap of 6 holds for it too; D-024).
+12. **Threads (measured 2026-11-11: 6 agents plus another session put the 12-core workstation at a load average of
+    140 to 163).** Every agent runs its tests and tools with `OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2
+    VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2` exported, and runs one suite at a time. The coordinator commits records
+    at hand-backs, not after every step: the harness's commit gate runs the whole suite on each commit (ROUTE R06 narrows
+    it for record-only commits).

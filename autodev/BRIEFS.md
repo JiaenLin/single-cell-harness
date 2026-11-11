@@ -25,6 +25,23 @@ THE CAP: one wave, one hand-back, within about 1.5 M output tokens including ver
 rounds the residue is a gap, not a third round. Push your branch after every commit.
 ```
 
+Added 2026-11-11 (RULES, the block of that date), part of the block for every builder and verifier:
+
+```
+SIZE: this run is sized for about 150 tool calls. Keep tool output short (tail, head, cut, a line range); read only
+the lines a change touches. At about 150 calls: commit, push, hand back what is done, and return the rest as a
+follow-up. That is a normal hand-back.
+THREADS: this workstation is shared by up to 6 agents. Before any test or tool, export OMP_NUM_THREADS=2
+OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2, and run one suite at a time.
+GAPS: name at most 3 new gaps, and only ones that block a ROUTE item (<HARNESS>/autodev/ROUTE.md) or are a wrong
+result in a promoted output. Put every other observation in the wave file's as-built note.
+A NEW JOB FILE carries its submit recipe as shell lines between `# SUBMIT-BEGIN` and `# SUBMIT-END` in its header
+(each line prefixed `#   `; it creates RUNDIR and ends with the qsub of this file), and its last act is to print one
+line, `GATE: AS PREDICTED` or `GATE: MISSED (n)`, into the run's log beside its VERDICT lines.
+ORDER (RULES 2026-11-11, item 4): build, preflight, verify, then one gate at the head that merges. Write a
+reproduction job when the wave changes a promoted path or adds a cluster path; the coordinator submits it.
+```
+
 For the auditor (2b) the block adds: write one row per test into `autodev/ledger/scores.tsv` (stamp, pass, test_id,
 score, numerator, denominator, evidence), by the formulas in GOALS.md; the verdict is HAPPY when the mean is at least 0.9
 and no test is below 0.5. For the verifier (2a) it adds: one verification per merge batch per repository, the fix-only
@@ -75,7 +92,7 @@ Do not summarise what you did not do as done.
 
 ## 2. Audit team
 
-### 2a. Verifier (one per wave, after its gate)
+### 2a. Verifier (one per repository batch; since 2026-11-11 before the gate, every repository in parallel)
 
 ```
 You are the VERIFIER for wave <W###>. You are read-only and adversarial. You have not seen the
@@ -94,6 +111,11 @@ Check:
 (4) Rules 1 and 2: is there a silent assay default, or an in-house script standing in for the tool?
 (5) Are the docs still true?
 (6) Does the acceptance check now pass, on evidence?
+(7) Added 2026-11-11: you may FIX what is mechanical (a doc line, a missing assertion, a leaked string, a job-header
+    line), at most 20 lines in all, committed and pushed on the wave's branch, each listed in your verdict. Anything
+    that changes behaviour is a FAIL reason for a builder. Then write one row per test this batch moves into
+    <HARNESS>/autodev/ledger/scores.tsv (stamp, pass `v-<W###>`, test_id, score, numerator, denominator, evidence) by
+    the formulas in GOALS.md "Layer 3, scored"; leave the ledger uncommitted for the coordinator.
 Verdict: PASS or FAIL, with each reason and its evidence, in at most 30 lines.
 ```
 
