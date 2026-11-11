@@ -89,15 +89,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **790475** and **790476** (scQC's two reproductions at W048's fix head). **790463** (W050's reproduction of
-  the first cohort's promoted stage 2) sealed with GATE: AS PREDICTED; beside it the model job's own record lines read a
-  miss with 4 untraced differences against the promoted run, which W050's verifier must place (before this wave or not). **Landed MISSED, both of W046's:** **790442** (the fresh-prefix build: the install
-  and the five-method run HELD, but one suite contains a skip on the cluster where the prediction said none) and
-  **790443** (the subset reproduction: its own premise check failed, since the seeded draw holds no withheld cell, so it
-  cannot show what W039 changed). Both go to W046's next round with its re-check's verdict; the full reproduction
-  stays unsubmitted. Earlier today: 790201 and 790222 (W048's first gate) AS PREDICTED; 790197 (the second cohort's
-  tree) MISSED (1); 789561 (W039's gate) AS PREDICTED. Checkouts on the cluster: the harness at `main`; scAnno
-  `f456431`; scIntegrate `2fc7a6c`; scQC `ed9fe18`.
+- **On PBS:** nothing. Landed AS PREDICTED: **790475** and **790476** (both cohorts' stage 1 at W048's fix head `ed9fe18`,
+  identical to the promoted runs): W048's gate is passed and it waits only for its re-check. **790463** (W050) sealed with
+  GATE: AS PREDICTED beside the model job's own 4 untraced differences, which its verifier must place. Both of W046's
+  (790442, 790443) MISSED, as recorded. Checkouts on the cluster: the harness at `main`; scAnno `f456431`; scIntegrate
+  `2fc7a6c`; scQC `ed9fe18`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
