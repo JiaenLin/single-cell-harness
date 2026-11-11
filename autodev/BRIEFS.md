@@ -43,6 +43,8 @@ WALLTIME: a job asks for the time its model's run measured, with a margin, never
 jobs asking for 24 h tripped the subset rule on 2026-11-11).
 SUBSET: a job you write that asks for more than 2 hours comes with `<name>.subset.pbs`: the same steps on a declared
 subset, its own prediction, minutes long. The coordinator runs it first.
+THE WAVE FILE you append to is inside the harness repository and its leak guard reads it: write no site path into it (a dated
+scratch folder, a scheduler job id with its host suffix, a queue name). Say "a dated scratch folder on the cluster".
 GAPS: name at most 3 new gaps, and only ones that block a ROUTE item (<HARNESS>/autodev/ROUTE.md) or are a wrong
 result in a promoted output. Put every other observation in the wave file's as-built note.
 A NEW JOB FILE carries its submit recipe as shell lines between `# SUBMIT-BEGIN` and `# SUBMIT-END` in its header

@@ -30,6 +30,10 @@ ledger. Of the 9 new waves verified that day, 5 failed first verification, on ca
 | 18 | A silent pick among candidates | Give it two candidates, or none, where it expects one: it must refuse by name | W041 (`hands_on`), GAP-C103 |
 | 19 | A fix round that only patches the design that failed | In a wave that has to FIND something: bring one fresh candidate to the fix round and score both on the same expectations | W044 (one tree rule, patched); carried from VCC's list |
 | 20 | A winner reported as if it were the only thing tried | Say how many candidates the result was chosen from, and keep every one in the pool with its result | carried from VCC's list |
+| 21 | A fix that closes the one case shown and leaves the door it was in | After a fix, attack the family: the same fact through another field, another file, another route; the same check at another moment (start, seal, resume, generation) | the driver's fix round 1 (four of six fixes) |
+| 22 | A check that trusts the history it reads | Rewrite what the check reads back (`git replace` on the commits a record names; an edited cache; a moved ref) and see whether it still passes | W035 (a record check that honours replace refs; found in the last re-check) |
+| 23 | A graded line that is true by construction, or a line that missed demoted to a record | For each graded line, name a tool output that would fail it; a line that missed stays graded, as a bound written before the run | W044 fix 1 (the job's walk lines) |
+| 24 | A score taken on a capped output; a laxer result for less evidence | Grade the rule's verdict, not the truncated list (read what the cap cut); order inputs by how much evidence they hold and check the tool never gets laxer as evidence drops | W044 fix 1 (3 hidden by the cap; a no-health release drafted unchecked) |
 
 ## Inbox (a verifier appends here; one line each: the defect, the attack, the wave)
 

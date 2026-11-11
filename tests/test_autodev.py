@@ -182,7 +182,7 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
     def test_the_tools_exist_and_the_shell_ones_parse(self):
         import subprocess
         tools = ROOT / "setup" / "autodev"
-        for name in ("usage.py", "pbs_mirror.sh", "monitor_verdicts.sh", "bootstrap.sh", "agent_models.sh", "gate.py", "costs.py", "passrate.py"):
+        for name in ("usage.py", "pbs_mirror.sh", "monitor_verdicts.sh", "bootstrap.sh", "agent_models.sh", "gate.py", "costs.py", "passrate.py", "commit.sh"):
             self.assertTrue((tools / name).is_file(), name)
             if name.endswith(".sh"):
                 rc = subprocess.run(["bash", "-n", str(tools / name)], capture_output=True)
@@ -217,7 +217,7 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
             self.assertEqual(len(cells), 7, f"a ROUTE item row is not 7 cells: {row[:60]}")
             for test_id in re.findall(r"A\d\.\d", cells[3]):
                 self.assertIn(test_id, known, f"ROUTE item {cells[0]} moves an unknown test {test_id}")
-            self.assertIn(cells[6].split(" ")[0], {"open", "registered", "building", "verifying", "gating", "merged", "done", "struck"},
+            self.assertIn(cells[6].split(" ")[0], {"open", "registered", "building", "verifying", "gating", "merged", "done", "struck", "held"},
                           f"ROUTE item {cells[0]} has an unknown status")
 
     def test_the_improvement_plan_is_wired_in(self):

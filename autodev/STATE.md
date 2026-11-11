@@ -54,42 +54,50 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## The queue: [`ROUTE.md`](ROUTE.md)
 
-Rewritten whole at 2026-11-11T09:05:50Z (earlier piecemeal edits had left the running line garbled).
+Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone stale).
 
-- **Running now (6 agents), as of 2026-11-11T09:55:38Z:**
-  - the builder (Opus 5.5 max) of **W046** (scIntegrate: keeps the cohort's library column; a fresh-prefix build; the first wave
-    briefed with the attacks list and the subset rule).
-  - re-checks (Opus 5.5 max): **the driver's fix round 1**; **W035's fix round 2**, the last; **W043's fix round 1** (scQC: the
-    audit's integrity checks can no longer be accepted by name); **W044's fix round 1** (scAnno: the tree rule now counts
-    studies; 101 of 112 tissue expectations against the first rule's 88).
+- **Running now (6 agents), as of 2026-11-11T10:23:25Z:**
+  - builders (Opus 5.5 max): **W046** (scIntegrate: keeps the cohort's library column; a fresh-prefix build); **the driver's
+    fix round 2**, the last (W041 + W042); **W047** (scProfile carries no cohort's measured value: W035's one residue and
+    the host's counts); **W044's fix round 2**, the last (scAnno's tree rule: at least two candidates for the disease
+    test with one fresh, scored on both expectation sets, a pool file; branch `autodev/W044-fix2` from `main`).
   - the designer (Fable 5.2), **run 3 on Studio** (W037).
-  - Waiting for a slot: the route's first sufficiency check (RULES item 19).
+  - No verifier is running. Waiting for a slot: the route's first sufficiency check (RULES item 19).
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
-- **On PBS:** **789593**, the first cohort's stage 4 through the harness (W036, resubmitted); **789561**, scIntegrate's job 32 (W039); **789688**, the build job that gates scAnno's leak fixes; **789673** and **789675**, scQC's two W043 jobs at the fixed head.
-  job 32 (W039, withheld cells out of the PCA, at `1901611`); (scQC's two W043 jobs, 789344 and 789345, landed AS PREDICTED.)
-- **Merged 2026-11-11, five batches:** scIntegrate `b148030` (W012 + W025), scProfile `6f970e5` (W013 + W032 + W023), scQC `46ffe90`
+- **On PBS:** **789561**, scIntegrate's job 32 (W039, withheld cells out of the PCA, at `1901611`); **789673**, scQC's 37b
+  for the first cohort at W043's fixed head. Landed AS PREDICTED since the last rewrite: 789675 (scQC's 17b, the second
+  cohort, IDENTICAL to the promoted run) and 789688 (scAnno's fresh-prefix build at `9fb561c`).
+- **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
+  own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
+- **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
+- **The tally: 7.19 of 20** (mean 0.359; 0.292 this morning, 0.271 at audit pass 0004): A1.1 5/8, A1.2 7/10, A1.3 3/5, A2.1 3/4, A3.2 3/4, A3.1 0.41 moved today.
+- **Merged 2026-11-11, five batches before those:** scIntegrate `b148030` (W012 + W025), scProfile `6f970e5` (W013 + W032 + W023), scQC `46ffe90`
   (W020), scAnno `779fd08` (W038), and **the harness `a677e8f` (W029 + W034)**: its train's three jobs all AS PREDICTED at the
   merged commit (stages 1, 2 and 3; PBS 788583, 788586, 788587), the merged tree's runtime files equal the gated head's, the
-  suite OK. The first cohort's stages 1 to 3 through the harness are on `main`.
-- **Verified, on the cluster now:** **W036** (`prof@scprofile`, PASS) and **W039** (scIntegrate, PASS).
-- **Failed verification, in a fix round:** the driver (W041 + W042: the rule-2 ban spelled around, a resume that mixes two
-  designs, tool-declared decisions never asked, the library column lost at stage 3, a size that drops the site's memory, a
-  job that does not pin its request); W035 (round 1 failed its re-check: a cohort's run counts still in cellchat, removed
-  text kept in an earlier record row, a validate rule that blocks true sentences). **W040** passed but merges only with W035. **W044** (scAnno's tree rule: a health test on claim counts that one disease panel outvotes; one-study classes drafted as lineages; its leak fixes passed and are being split out to merge, D-028).
-- **Graded MISSED:** scAnno's tree re-propose for the second cohort (PBS **789434**, MISSED (2)): the lineages that entered the
-  draft take the cells ("Golgi membrane fusion", a curator artefact, takes over a thousand in two libraries). The draft is not
-  one to take to the PI; W044's verifier has this, and a fix round follows its verdict.
+  suite OK.
+- **Verified, waiting for a job:** **W043** (scQC: the audit's integrity checks are never acceptable by name; the re-check
+  PASSED, head `de62f78`; it merges when 789673 reads AS PREDICTED) and **W039** (scIntegrate, PASS; job 789561). W039's
+  merge is followed by ONE question to the PI: stage 3's re-promotion.
+- **Failed verification, in its last fix round:** the driver (W041 + W042; round 1's re-check broke four of its six fixes by
+  attacking the family of each case); **W044's tree rule** (the re-check: no gain on 59 expectations the builder did not
+  write; the disease test sets aside five tissues' defining cells; a release that cannot tell health is drafted unchecked;
+  the job's graded line cannot fail; GAP-C106, C107, C108).
+- **Held:** the scProfile batch, W035 + W040 (D-032: the last re-check failed on one point, cellchat's own remaining run
+  values); W047 carries that residue, and one verification of the whole batch follows it.
+- **The second cohort's tree** is not yet one to take to the PI: the first job missed (PBS 789434, MISSED (2)), and the job
+  copy written in fix round 1 was NOT submitted, because its re-check found it could not fail where the first one missed.
 - **The scale cohort:** the data is in place and inventoried (1,263,676 cells x 30,172 genes, 88 pooled libraries holding both
-  arms; PBS 789057, 789058, 789168). Stage 1 waits for W045 and the driver's fix.
-- **Scores by verifiers' rows today:** A1.3 3/5, A2.1 3/4, A3.2 3/4 (merged); A1.2 7/10 and A1.1 5/8 wait for the driver and
-  for W036's job.
-- **The improvement plan of 2026-11-11** ([`IMPROVEMENT_PLAN.md`](IMPROVEMENT_PLAN.md); RULES items 14-18): a job over 2 hours runs on a subset first (`gate.py` refuses otherwise); every builder runs [`ATTACKS.md`](ATTACKS.md) against its own change before hand-back; items that search keep a pool with S and K; a claimed gain needs its ablation; a plugin's source is a DOI that resolves (R45). The measure: `passrate.py`, 4 of 9 waves built on 2026-11-11 passed first verification. Agents launched before the plan get the attacks list at their next round.
-- **Next free slots, in order:** W044's fix round (after its verdict); R44 (scProfile's host carries no cohort measurement,
-  GAP-C100); the scProfile plugin line (abundance first) once W035 + W040 merge; R05 and R06 (harness: installer and lock;
-  small fixes) once the train merges; the first cohort's chained run (three values to look up) and the scale cohort's stage 1
-  once the driver passes; a final Studio designer run from the reviewer's list.
+  arms; PBS 789057, 789058, 789168). Stage 1 waits for W045 and the driver's fix: a subset job (2 of the 88) before the full one.
+- **The improvement plan of 2026-11-11** ([`IMPROVEMENT_PLAN.md`](IMPROVEMENT_PLAN.md); RULES items 14-19): a job over 2 hours runs on a subset first (`gate.py` refuses otherwise); every builder runs [`ATTACKS.md`](ATTACKS.md) (24 lines) against its own change before hand-back; items that search try at least two candidates and keep a pool; a claimed gain needs its ablation; a plugin's source is a DOI that resolves (R45). The measure: `passrate.py`, 4 of 9 waves built on 2026-11-11 passed first verification.
+- **A records commit says whether it landed** (`setup/autodev/commit.sh`, 2026-11-11): two records commits were blocked by
+  the suite's leak guard (a site path an agent wrote into a wave file) and were reported as landed. The helper stages only
+  the paths it is given and prints `COMMITTED <sha> pushed` or `BLOCKED: <reason>`; every brief now says a wave file takes no site path.
+- **Next free slots, in order:** the route's sufficiency check; the re-checks of the driver's and W044's last rounds as they
+  hand back; one verification of the scProfile batch after W047; then the scProfile plugin line (abundance first), R05 and
+  R06 (harness: installer and lock; small fixes), the first cohort's chained run and the scale cohort's stage 1 once the
+  driver passes.
 - **The PI's steps** (ROUTE section 3): none is askable yet. Stage 3's re-promotion waits for W039's job and merge; the second
-  cohort's tree waits for a draft worth showing; Studio's deploy waits for the review and the final run.
+  cohort's tree waits for a draft worth showing; Studio's deploy waits for run 3 and its review.
 - **Parked:** W030 (Service; uncommitted work in its clone), W022 as a wave of its own, the B1 register's queued rows.
 
 ## Machinery (session-only; re-create on resume, see README)
