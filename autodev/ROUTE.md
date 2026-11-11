@@ -69,7 +69,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R14 | cohort C46 | stage 1 through the harness (with R21 and R35 this becomes ONE chained run from C46's request once W042 lands) | A1.1 +1/8 | R12 | job | open |
 | R15 | cohort (scale) + scQC | **W031**: stage the 1,263,676-cell cohort; stage 1, then each next stage as its adapter lands | A3.4 0.316 a stage | R12; R03 for the later stages | jobs, S-M | gating |
 | R16 | scAnno | the environment pin (GAP-C82), a fresh-prefix build and self-test; leak-clean (36 hits), the fixture's axes; `build-markers` field (GAP-C83) | A1.3 +1/5, A3.1 +0.1 | - | M, split in two + job | merged (run 1); building (run 2, W044) |
-| R17 | scAnno | `tree propose` keeps the tissue's own lineages (GAP-C85); C46's tree re-proposed; ask the PI to approve it | C46's labels | R16 | S-M + the PI | building |
+| R17 | scAnno | `tree propose` keeps the tissue's own lineages (GAP-C85); C46's tree re-proposed; ask the PI to approve it | C46's labels | R16 | S-M + the PI | gating |
 | R20 | scIntegrate | a fresh-prefix build and self-test; leak-clean (12 hits), the fixture's axes; withheld cells out of the PCA (GAP-128, a wrong-result defect, with its predicted difference); W022's constraints only where a wave meets them | A1.3 +1/5, A3.1 +0.1 | R19 | M, split in two + job | gating |
 | R21 | cohort C46 | stage 3 through the harness (labels marked draft until R17's approval) | A1.1 +1/8 | R01 R19 | job | open |
 | R35 | cohort C46 | stage 4 through the harness (one factor, n = 2) | A1.1 +1/8 | R02 R21 | job | open |
