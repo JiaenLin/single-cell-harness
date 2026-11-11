@@ -30,6 +30,10 @@ idc = run.inp.get("identity", {}).get("column", "barcode")
 subject = run.inp.get("subject") or {}
 masks = subject.get("masks") or {}
 sample_key = run.keys.get("sample")
+# THE UNIT THE DESIGN IS KEYED ON (harness W045): the replicate where the request declares one - a
+# pooled library holds several, of both arms, so an arm is joined per observation through its
+# replicate - and the library where it does not (each library one replicate, as declared).
+unit_key = run.keys.get("replicate") or sample_key
 
 
 def _decode(x):
@@ -53,28 +57,39 @@ def read_strings(node):
 if str(run.data).endswith(".csv"):
     with open(run.data, newline="", encoding="utf-8") as fh:
         view = csv.DictReader(fh)
-        has_sample = bool(sample_key) and sample_key in (view.fieldnames or [])
+        has_sample = bool(unit_key) and unit_key in (view.fieldnames or [])
         rows = list(view)
     ids = [r[idc] for r in rows]
-    sample = [r[sample_key] for r in rows] if has_sample else None
+    sample = [r[unit_key] or None for r in rows] if has_sample else None
 else:
     import h5py
     with h5py.File(run.data, "r") as f:
         obs = f["obs"]
         idx = _decode(obs.attrs.get("_index", "_index"))
         ids = read_strings(obs[idx])
-        sample = read_strings(obs[sample_key]) if sample_key and sample_key in obs else None
+        sample = read_strings(obs[unit_key]) if unit_key and unit_key in obs else None
 
 arm_of = {}
 factor = run.params.get("factor")
 if sample is not None and run.design:
     design = run.read_design()
-    cols = [c for c in (design[0].keys() if design else []) if c != sample_key]
+    if design and unit_key not in design[0]:
+        sys.exit(run.refuse(f"the design has no column {unit_key!r}, the unit its rows are keyed on "
+                            f"(its columns: {', '.join(design[0])})",
+                            fix="key the design sheet on the request's keys.replicate (or keys.sample)"))
+    cols = [c for c in (design[0].keys() if design else []) if c not in (sample_key, unit_key)]
     factor = factor or (cols[0] if cols else None)
-    unit_arm = {d[sample_key]: d.get(factor) for d in design} if factor else {}
+    unit_arm = {}
+    for d in design if factor else []:
+        if d[unit_key] in unit_arm and unit_arm[d[unit_key]] != d.get(factor):
+            sys.exit(run.refuse(f"the design names {unit_key} {d[unit_key]!r} in two rows with two "
+                                f"{factor}s ({unit_arm[d[unit_key]]!r}, {d.get(factor)!r})",
+                                fix="one row per replicate: a replicate is in one arm"))
+        unit_arm[d[unit_key]] = d.get(factor)
     for i, s in zip(ids, sample):
         arm_of[i] = unit_arm.get(s)
-answer = {"masks": {}, "max_ratio": None, "arms_known": bool(arm_of), "factor": factor}
+answer = {"masks": {}, "max_ratio": None, "arms_known": bool(arm_of), "factor": factor, "unit": unit_key,
+          "unknown_arm": sum(1 for v in arm_of.values() if v is None)}
 for name, path in masks.items():
     with open(path, newline="", encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh))

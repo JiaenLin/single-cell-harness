@@ -389,7 +389,10 @@ class OneLibraryColumn(_Base):
         integ = [a for k, a in calls if k == "FAKE_SCINTEGRATE_LOG" and "library_id" in a]
         self.assertEqual(len(integ), 1, [a for k, a in calls if k == "FAKE_SCINTEGRATE_LOG"])
         rc, text = cli("plan", "--request", str(req))
-        self.assertIn("the library column: keys.sample=library_id -> run.sample_key", text)
+        # scProfile's --sample-key names the replicate (W045); with no keys.replicate it is the library
+        self.assertIn("the replicate column: keys.sample=library_id (no keys.replicate: each library one "
+                      "replicate) -> run.sample_key", text)
+        self.assertIn("the library column: keys.sample=library_id -> embed.sample_key", text)
 
     def test_a_stage_that_names_another_library_column_is_refused_before_any_tool(self):
         c = cohort(self.tmp / "c", "b")

@@ -36,3 +36,15 @@ stages:                              # in order; params are each tool's own flag
 resources:                             # the cohort's sizes; on pbs the site file's pbs.queues picks each queue
   drive: {ncpus: 2, mem: 16gb, walltime: "12:00:00"}
   qc: {ncpus: 8, mem: 64gb, walltime: "12:00:00"}
+
+# ONE OBJECT HOLDING EVERY LIBRARY (harness W045), as public atlases deliver a cohort: `observations`
+# names the .h5ad, and the driver runs the parts step as stage 00 - one read-only part per library,
+# the counts unchanged, and the samplesheet the first stage mounts. Every name is the request's:
+#   observations: atlas.h5ad
+#   parts: matrix                          # the samplesheet column each part's path is written into
+#   object:
+#     counts: raw/X                        # the slot holding the integer counts (X, raw/X, layers/<name>)
+#     symbols: symbol_x                    # the column of that slot's genes naming each gene's symbol
+#     carry: [arm_x]                       # further obs columns carried into every part
+#   keys: {sample: library_x, replicate: donor_x}   # the library, and the unit the design is keyed on
+#   resources: {parts: {ncpus: 2, mem: 8gb, walltime: "06:00:00"}}

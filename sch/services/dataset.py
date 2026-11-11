@@ -216,6 +216,13 @@ class H5adReader(Reader):
                                f"the identity scope before mounting")
         return ids
 
+    def column(self, path, name):
+        """One obs column's values as strings, or None when the part carries no such column."""
+        with self._open(path) as f:
+            if name not in f["obs"]:
+                return None
+            return self.read_strings(f["obs"][name])
+
     def inventory(self, path):
         with self._open(path) as f:
             obs_keys = [k for k in f["obs"].keys() if not k.startswith("_")]
@@ -363,7 +370,7 @@ class Dataset(Service):
     """
 
     def __init__(self, observations, profile, stack_dir, design=None, parts=None, scope=None,
-                 prov=None, check_pin=True):
+                 prov=None, check_pin=True, replicate=None):
         # THE DECLARED PATH IS KEPT AS DECLARED, and resolved again at every check (autodev W029,
         # GAP-C57): a pin keyed to what the path resolved to at init never saw a `latest` symlink
         # re-pointed at another delivery, and every command read the new one under the old digest.
@@ -374,6 +381,11 @@ class Dataset(Service):
         self.design = Path(design).resolve() if design else None
         self.parts = str(parts) if parts else None
         self.scope = str(scope) if scope else None
+        # THE REPLICATE, WHERE IT IS NOT THE LIBRARY (harness W045): a pooled library holds several
+        # replicates, so the design's unit is a per-observation column of each part, read from the
+        # part and carried in the view beside the scope; a part without it leaves it empty, unguessed.
+        self.replicate = str(replicate) if replicate and str(replicate) != self.scope else None
+        self._replicate_of = {}
         self.joiner = str(profile.identity.get("joiner") or "")
         # Where a first-read pin of a stack older than pins is recorded; and whether a pin applies
         # at all - not to the probe `init` reads a manifest through, before there is a stack.
@@ -456,10 +468,14 @@ class Dataset(Service):
             if self.parts:
                 ids, scope_of = [], {}
                 for s, path in self.part_files():
-                    for i in self.reader.identities(path):
+                    own = self.reader.identities(path)
+                    reps = self.reader.column(path, self.replicate) if self.replicate else None
+                    for n, i in enumerate(own):
                         ident = f"{s}{self.joiner}{i}"
                         ids.append(ident)
                         scope_of[ident] = s
+                        if reps is not None and reps[n] is not None:
+                            self._replicate_of[ident] = reps[n]
                 self._ids, self._scope_of = ids, scope_of
             else:
                 if not self.observations.exists():
@@ -793,13 +809,14 @@ class Dataset(Service):
         extra, mask_cols = sorted(columns), sorted(masks)
         with open(path, "w", newline="", encoding="utf-8") as fh:
             w = csv.writer(fh, lineterminator="\n")
-            w.writerow([idc, self.scope] + [f"column__{c}" for c in extra] + ["keep"]
+            rep = [self.replicate] if self.replicate else []
+            w.writerow([idc, self.scope] + rep + [f"column__{c}" for c in extra] + ["keep"]
                        + [f"mask__{m}" for m in mask_cols])
             for i in ids:
                 k = keep.get(i, True)
                 if filtered and not k:
                     continue
-                w.writerow([i, self._scope_of[i]]
+                w.writerow([i, self._scope_of[i]] + [self._replicate_of.get(i, "") for _ in rep]
                            + ["" if columns[c].get(i) is None else columns[c].get(i) for c in extra]
                            + ["1" if k else "0"]
                            + ["1" if masks[m].get(i, True) else "0" for m in mask_cols])

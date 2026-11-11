@@ -58,7 +58,8 @@ class Stack:
             self.dataset = Dataset(self._abs(obs, resolve=False), self.profile, self.dir,
                                    self._abs(design) if design else None,
                                    parts=parts, scope=self._scope_column() if parts else None,
-                                   prov=self.prov)
+                                   prov=self.prov,
+                                   replicate=(self.decl.get("keys") or {}).get("replicate") if parts else None)
         except DatasetError as e:
             raise StackError(str(e)) from None
         self.ctx.provide("dataset", self.dataset)

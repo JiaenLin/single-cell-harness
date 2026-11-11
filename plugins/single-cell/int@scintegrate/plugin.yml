@@ -24,6 +24,10 @@ hands_on: {joint: null}
 # The design sheet's column naming each library, where scIntegrate takes it; the driver writes
 # the request's keys.sample here (harness W042, GAP-C92).
 library_key: integrate.design_sample_col
+# The design sheet scIntegrate reads keyed on that library column (`--design`, scintegrate/inputs.py
+# read_design: one row per batch). A request whose design is keyed on a replicate a pooled library
+# shares cannot be joined there: the driver refuses it before any tool (harness W045).
+library_design: [integrate.design]
 
 wraps:
   tool: scIntegrate

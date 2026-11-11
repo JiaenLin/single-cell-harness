@@ -1,0 +1,47 @@
+contract: "1.0"
+profile: single-cell/1.0
+name: parts
+version: 0.1.0
+summary: one object holding every library becomes the per-library parts and the samplesheet the stages read - the counts unchanged, nothing guessed
+when_to_use: >
+  a cohort arrives as ONE object holding every library, as public atlases deliver it - the counts
+  in a slot that may not be X, stable gene ids as var_names, the symbols in a column - and its
+  stages read libraries. The driver runs this step as stage 00 when a request declares `object:`;
+  every value it writes is the object's, and every name it reads is the request's.
+
+class: method
+layer: stack
+reversible: true
+state_version: 1
+
+# It reads the request's one object (the driver's `joint` shape: a one-row manifest naming it) and
+# hands on the libraries with their samplesheet, which the next stage reads as its observations.
+# It changes no assay rule and sends nothing to an ambient remover (rule 2): both assays, one step.
+assays: [scrna, snrna]
+reads: joint
+hands_on: {libraries: null}
+# The library is the request's keys.sample and the replicate its keys.replicate; the driver writes
+# them here, and refuses a request that names other columns for them (W042, W045).
+library_key: library
+replicate_key: replicate
+
+inject: [dataset]
+needs: [observations/raw]
+provides:
+  - object/*
+  - table/*
+optional: []
+sourceable: []
+sees: []
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: high}
+invariant: invariant.py
+
+cannot_show:
+  - A part is the object's rows for one library, as the object holds them; whatever the publisher did to the cells before publishing (its cell call, its filters) is in every part and is not visible here.
+  - The library and the replicate are the columns the request names; a library column that does not name the physical library, or a replicate column that does not name the biological unit, is carried through as declared.
+  - A gene symbol is the column the request names; the k-th repeat of a symbol is written SYMBOL-k by the stated rule, so a symbol shared by two genes is two names here, and which gene a tool's marker list meant is not decided.
+  - Counts that are integers are not therefore raw; an object whose integer counts were already filtered or capped is passed on as it is.
