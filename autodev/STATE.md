@@ -72,18 +72,23 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     head read AS PREDICTED). A3.1 goes over the bar when scQC merges.
   - Fable 5.2: the designer of **W051**, run 5 on the Studio: every word and every element measured, a written standard
     (word budgets, one term per concept), every element brought to it; a saved figure names uncalled cells.
-- **QUEUED for an Opus slot, in this order** (the next is the one that moves a test under its bar soonest):
-  0. (running) the scProfile batch's ONE verification; on a PASS its gate (the DE job and the dev-suite job at the head),
-     the merge, then the plugin line, abundance first (A4.1, A4.3, A3.2);
-  2. **W046's fix round 2**, the last (scIntegrate: the installer builds scIB's LISI helper; the subset draws withheld
-     cells), continued from its clone; then its re-check and jobs, the harness's adapter at state version 2 (GAP-C109),
-     the merge with W039, and the PI's stage-3 question (A1.3 +1/5, A3.1 +0.1);
-  3. **W049's fix round 1** (the driver: an answer for a sealed stage refused; a job states the tools it expects), then
-     its re-check, W045 brought onto it, and the first cohort's chained run as the gate (A1.2, A6.3, A7.1, A3.4);
-  4. **W050's verification** (scAnno `f456431`; its job reads GATE: AS PREDICTED beside the model job's own 4 untraced
-     differences, which the verifier must place);
-  5. **Lab's W017 fix-up 6** (the three known defects that are live since D-038), continued from its clone; then one
-     fix-only re-check and the PI's second go.
+- **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary".** Applied: W048's last round
+  narrowed while it runs; scIntegrate's merge decoupled from its installer's defect; the queue re-ordered.
+- **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
+  0. (running) the scProfile batch's ONE verification; on a PASS its gate (the DE job and the dev-suite job at the
+     head), the merge, then the plugin line, abundance first (A4.1, A4.3, A3.2). (running) W048's last fix round; then
+     its re-check under D-040, its two jobs, the merge (A3.1 over the bar).
+  1. **W052** (the harness: the scIntegrate adapter at state version 2, the stand-in as the tool, the first cohort's
+     stage 3 through the harness re-pinned): brief `<scratchpad>/relaunch/q_w052build.txt`. Then its verification, the
+     job, BOTH mains in one step (scIntegrate `2fc7a6c` first), A3.1 +0.1, and the PI's stage-3 question.
+  2. **W049's fix round 1** (the driver: an answer for a sealed stage refused; a job states the tools it expects):
+     brief `q_w049fix1.txt`. Then its re-check, W045 brought onto it, the first cohort's chained run as the gate.
+  3. **W050's verification** (scAnno `f456431`; job 790463 read GATE: AS PREDICTED beside the model job's own 4 untraced
+     differences): brief `q_w050verify.txt`.
+  4. **scIntegrate's installer** (GAP-C116: build scIB's LISI helper and run it in the strict check; the subset draws
+     withheld cells; three residues), a follow-up for A1.3: brief `q_w046fix2.txt`, clone `W046g-scIntegrate` (uncommitted
+     work kept), to be re-based on scIntegrate's `main` after the merge.
+  5. **Lab's W017 fix-up 6** (the three defects live since D-038): brief `q_w017fix6.txt`, clone `W017g-lab`.
 - **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
