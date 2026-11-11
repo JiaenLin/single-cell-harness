@@ -56,23 +56,22 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 Rewritten whole at 2026-11-11T09:05:50Z (earlier piecemeal edits had left the running line garbled).
 
-- **Running now (6 agents):**
+- **Running now (6 agents), as of 2026-11-11T09:15:45Z:**
   - builders (Opus 5.5 max): **W045** (R43: one published object becomes per-library parts); **the driver's fix round 1** (W041 +
-    W042, six defects from its verifier); **W035's fix round 2**, the last (the maker's prose verb).
-  - verifiers (Opus 5.5 max): **W043** (scQC: a failed removal audit stops the run); **W044** (scAnno: the proposed tree, the
-    leak hits).
-  - the design reviewer (Fable 5.2): **W037**, Studio, judged by looking and by use after designer runs 1 and 2.
-- **On PBS:** the harness train's stage 3 (**788587**, the last of the train's three; stages 1 and 2 AS PREDICTED); scQC's two
-  W043 jobs (**789344**, **789345**: each promoted stage-1 run's audit verdicts under the old module and the new).
-- **Merged 2026-11-11, each by fast-forward after a verifier's PASS and a gate at the merged commit:** scIntegrate `b148030`
-  (W012 + W025), scProfile `6f970e5` (W013 + W032 + W023), scQC `46ffe90` (W020), scAnno `779fd08` (W038).
-- **Verified, waiting only for a cluster checkout:** the harness batch W029 + W034 (train `0670f3e`, waits for 788587);
-  **W036** (`prof@scprofile`, `6756aaa`, PASS: its stage-4 job runs at the head that merges, after the train); **W039**
-  (scIntegrate, `75ab03a`, PASS: job 32 runs at `1901611` once 788587 leaves the scIntegrate checkout).
+    W042); **W035's fix round 2**, the last; **W044's fix round 1** (scAnno: the leak fixes split out first, then the tree rule).
+  - the verifier (Opus 5.5 max) of **W043** (scQC: a failed removal audit stops the run).
+  - the design reviewer (Fable 5.2) of **W037**, Studio.
+- **On PBS:** **789570**, the first cohort's stage 4 through the harness (W036, at `8e06a95` = main + W036); **789561**, scIntegrate's
+  job 32 (W039, withheld cells out of the PCA, at `1901611`); scQC's two W043 jobs (**789344**, **789345**).
+- **Merged 2026-11-11, five batches:** scIntegrate `b148030` (W012 + W025), scProfile `6f970e5` (W013 + W032 + W023), scQC `46ffe90`
+  (W020), scAnno `779fd08` (W038), and **the harness `a677e8f` (W029 + W034)**: its train's three jobs all AS PREDICTED at the
+  merged commit (stages 1, 2 and 3; PBS 788583, 788586, 788587), the merged tree's runtime files equal the gated head's, the
+  suite OK. The first cohort's stages 1 to 3 through the harness are on `main`.
+- **Verified, on the cluster now:** **W036** (`prof@scprofile`, PASS) and **W039** (scIntegrate, PASS).
 - **Failed verification, in a fix round:** the driver (W041 + W042: the rule-2 ban spelled around, a resume that mixes two
   designs, tool-declared decisions never asked, the library column lost at stage 3, a size that drops the site's memory, a
   job that does not pin its request); W035 (round 1 failed its re-check: a cohort's run counts still in cellchat, removed
-  text kept in an earlier record row, a validate rule that blocks true sentences). **W040** passed but merges only with W035.
+  text kept in an earlier record row, a validate rule that blocks true sentences). **W040** passed but merges only with W035. **W044** (scAnno's tree rule: a health test on claim counts that one disease panel outvotes; one-study classes drafted as lineages; its leak fixes passed and are being split out to merge, D-028).
 - **Graded MISSED:** scAnno's tree re-propose for the second cohort (PBS **789434**, MISSED (2)): the lineages that entered the
   draft take the cells ("Golgi membrane fusion", a curator artefact, takes over a thousand in two libraries). The draft is not
   one to take to the PI; W044's verifier has this, and a fix round follows its verdict.

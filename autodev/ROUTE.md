@@ -14,7 +14,7 @@ A3.4 past two stages at scale (0.63), A4.2 past three tools (0.6), A2.1's fourth
 
 | test | now | closes with | items |
 |---|---|---|---|
-| A1.1 one request, every stage | 4/8 | SAMBO stage 4; C46 stages 1, 3, 4 | R02 R14 R21 R35 |
+| A1.1 one request, every stage | 4/8 (the first cohort's stages 1 to 3 on `main` since 2026-11-11) | SAMBO stage 4; C46 stages 1, 3, 4 | R02 R14 R21 R35 |
 | A1.2 ten steps mapped | 6/10 | DE, DA and the plugins through the adapter; ambient removal declared upstream by name | R02 R03 |
 | A1.3 fresh environments | 3/5 (scAnno, 2026-11-11) | scAnno, scIntegrate, the harness build from `main` on a fresh prefix | R05 R16 R20 |
 | A2.1 promoted runs reproduced | 2/4 | stage 3 counts when W012 + W025 merge; stage 4 needs a promoted run (the PI) | R19 R34 |
@@ -42,7 +42,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 
 | id | repository | the item | moves | waits for | size | status |
 |---|---|---|---|---|---|---|
-| R01 | harness | verify W029 + W034 as one batch on `autodev/train-harness-1`; re-run their three jobs at the train head; merge | A1.1 on `main` | - | v + 3 jobs | gating |
+| R01 | harness | verify W029 + W034 as one batch on `autodev/train-harness-1`; re-run their three jobs at the train head; merge | A1.1 on `main` | - | v + 3 jobs | merged |
 | R12 | scQC | verify W020 (`b255e45`); merge | unblocks R13 R14 R15 | - | v | merged |
 | R19 | scIntegrate | verify W012 + W025 (`b148030`); merge; then ask the PI about stage 3's moved ranking | A2.1 3/4 | - | v | merged |
 | R22 | scProfile | verify W013 + W032 + W023 (`6f970e5`); merge | A3.2 (direction) | - | v | merged |
@@ -70,7 +70,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R14 | cohort C46 | stage 1 through the harness (with R21 and R35 this becomes ONE chained run from C46's request once W042 lands) | A1.1 +1/8 | R12 | job | open |
 | R15 | cohort (scale) + scQC | **W031**: stage the 1,263,676-cell cohort; stage 1, then each next stage as its adapter lands | A3.4 0.316 a stage | R12; R03 for the later stages | jobs, S-M | gating |
 | R16 | scAnno | the environment pin (GAP-C82), a fresh-prefix build and self-test; leak-clean (36 hits), the fixture's axes; `build-markers` field (GAP-C83) | A1.3 +1/5, A3.1 +0.1 | - | M, split in two + job | merged (run 1); building (run 2, W044) |
-| R17 | scAnno | `tree propose` keeps the tissue's own lineages (GAP-C85); C46's tree re-proposed; ask the PI to approve it | C46's labels | R16 | S-M + the PI | gating |
+| R17 | scAnno | `tree propose` keeps the tissue's own lineages (GAP-C85); C46's tree re-proposed; ask the PI to approve it | C46's labels | R16 | S-M + the PI | building (fix round 1 after the verifier's FAIL) |
 | R20 | scIntegrate | a fresh-prefix build and self-test; leak-clean (12 hits), the fixture's axes; withheld cells out of the PCA (GAP-128, a wrong-result defect, with its predicted difference); W022's constraints only where a wave meets them | A1.3 +1/5, A3.1 +0.1 | R19 | M, split in two + job | gating |
 | R21 | cohort C46 | stage 3 through the harness (labels marked draft until R17's approval) | A1.1 +1/8 | R01 R19 | job | open |
 | R35 | cohort C46 | stage 4 through the harness (one factor, n = 2) | A1.1 +1/8 | R02 R21 | job | open |
