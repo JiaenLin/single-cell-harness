@@ -57,13 +57,15 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone stale).
 
 - **Running now (6 agents), as of 2026-11-11T10:23:25Z:**
-  - builders (Opus 5.5 max): **W046** (scIntegrate: keeps the cohort's library column; a fresh-prefix build); **the driver's
+  - builders (Opus 5.5 max): **the driver's
     fix round 2**, the last (W041 + W042); **W047** (scProfile carries no cohort's measured value: W035's one residue and
     the host's counts); **W044's fix round 2**, the last (scAnno's tree rule: at least two candidates for the disease
     test with one fresh, scored on both expectation sets, a pool file; branch `autodev/W044-fix2` from `main`).
   - the designer (Fable 5.2), **run 3 on Studio** (W037).
   - an independent reader (Opus 5.5 max): **the route's first sufficiency check** (RULES item 19; it writes
-    `audits/ROUTE_SUFFICIENCY_20261111.md`). No verifier is running.
+    `audits/ROUTE_SUFFICIENCY_20261111.md`).
+  - the verifier (Opus 5.5 max) of **W046** (scIntegrate: the object keeps the design's key column; the lock pins its whole
+    closure, 120 pins; built at `e811372`, three jobs written, none submitted), on the batch W039 + W046.
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
 - **On PBS:** **789561**, scIntegrate's job 32 (W039, withheld cells out of the PCA, at `1901611`). The cluster's harness
   checkout is at `main` (`1d1031b`); scQC's is at `2f25e72` and scIntegrate's at `1901611` (each returns to `main` when free).
@@ -78,8 +80,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Merged 2026-11-11, the eighth: scQC `de62f78`** (W043: a failed removal audit stops the run before any object is written;
   its integrity checks are never acceptable by name). Both cohorts' promoted stage-1 runs reproduced IDENTICAL at the gated
   commit (PBS 789673, 789675). GAP-119, a wrong-result defect, is closed. scQC's leak-clean half of R13 is still open.
-- **Verified, waiting for a job:** **W039** (scIntegrate, PASS; job 789561). Its merge is followed by ONE question to the
-  PI: stage 3's re-promotion.
+- **Verified, waiting for a job AND for one measurement:** **W039** (scIntegrate, PASS; job 789561). D-033: its merge also
+  waits for W046's verifier to measure whether the batch moves embeddings without the tool's state version moving (then the
+  harness could serve a stale cached view). Its merge is followed by ONE question to the PI: stage 3's re-promotion.
 - **Failed verification, in its last fix round:** the driver (W041 + W042; round 1's re-check broke four of its six fixes by
   attacking the family of each case); **W044's tree rule** (the re-check: no gain on 59 expectations the builder did not
   write; the disease test sets aside five tissues' defining cells; a release that cannot tell health is drafted unchecked;
