@@ -34,7 +34,7 @@ with the two stops (mean 0.953), 19.82 with none. So the slack is about 1.0 poin
 | A5.1 claims that survive review | 12/13 | nothing: kept | - |
 | A5.2 hypotheses | 0 | hypothesis records, a falsifying test, a follow-up run through the loop | R09 |
 | A6.1 the UI's five acts | 0/5 | a local UI over the driver | R08 |
-| A6.2 the object opens in Studio | 0/2 | W017 and W028 verified and deployed (the PI's go); the family's final object converted | R38 |
+| A6.2 the object opens in Studio | 0/2 | W017 and W028 verified and deployed (the PI's go); the family's final object converted verifying (Studio's batch W028 + W037; Lab's W017 re-check at the next free slot) |
 | A6.3 the request runs | 2/3 | the harness takes the request as the driver's input | R04 |
 | A7.1 agents drive it | 0/5 | a cohort-run skill, then a cold agent on a held-out cohort | R07 |
 
@@ -83,7 +83,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R36 | harness + scProfile | a draw rule over the scRNA-tools catalogue, kept as a pool with S = 5 and K registered (RULES item 16); five never-seen tools converted by agents alone, each passing the dev suite and its published example | A4.2 (0.2 a tool) | R24-R30 mostly done (the maker stable) | 5 x M + jobs | open |
 | R38 | Lab + Studio | W017's last re-check, W028's verification; the family's final object through Lab's converter (GAP-P20); ask the PI's deploy go | A6.2 2/2 | - | v x 2, S + the PI | open |
 | R39 | all eight | a docs-truth pass per repository (the audit's known-false lines first, then a claim sweep; every cited source resolved and one cited claim per document read against it) | A2.2 8/8 | each repository's last route item | S each | open |
-| R41 | Studio | **W037** (the PI, 2026-11-11: "improve the studio UI design and layout to be top level"): an audit against a written rubric, a design file with tokens and a layout model, the shell and every screen rebuilt to it, a before-and-after gallery; runs by a Fable 5.2 designer since the PI's "use fable 5.2 level designer to design all ui" (run A was an Opus builder's draft) | the PI's direction (PLAT.3, G6; A6.2's surface) | - (stacked on W028's `099a085`); the deploy is the PI's go | M x 3 + a verifier by looking | building |
+| R41 | Studio | **W037** (the PI, 2026-11-11: "improve the studio UI design and layout to be top level"): an audit against a written rubric, a design file with tokens and a layout model, the shell and every screen rebuilt to it, a before-and-after gallery; runs by a Fable 5.2 designer since the PI's "use fable 5.2 level designer to design all ui" (run A was an Opus builder's draft) | the PI's direction (PLAT.3, G6; A6.2's surface) | - (stacked on W028's `099a085`); the deploy is the PI's go | M x 3 + a verifier by looking | verifying (the design: READY FOR THE PI by its final check, six limits to tell; the code: in the Studio batch's verification) |
 
 Parked (not on the route; they stay in the ledgers): W030 (Service local reads: moves no score), W022 as a wave of its
 own, the 73 queued constraints of the B1 register (removed by the wave that meets one), every gap not named above.

@@ -73,9 +73,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     written through the real writer before anything is computed; state version 2; the fixture's design reaches the tool).
   - the builder (Opus 5.5 max) of **W049** (the harness: the driver's residue after its last re-check FAILED on one
     reason: a file given as a decision's answer is in no pinned set; also correct requests the driver now refuses).
-  - the reviewer (Fable 5.2) of **Studio's designer run 4** (W037, head `f7dab0c`: by the designer's account the names are
-    whole, every saved figure carries its key and n, and a file's stated width is its own): the final fix-only check.
-    Then the PI's deploy question with the gallery. Four taste calls wait for the PI.
+  - the verifier (Opus 5.5 max) of **the Studio batch, W028 + W037** (head `f7dab0c`), code only: the Run card on Lab's
+    fixture, the split-id parser, every changed test hunk, and whether the uncalled-cells finding blocks a deploy.
 - **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
@@ -129,8 +128,12 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   hand back; one verification of the scProfile batch after W047; then the scProfile plugin line (abundance first), R05 and
   R06 (harness: installer and lock; small fixes), the first cohort's chained run and the scale cohort's stage 1 once the
   driver passes.
-- **The PI's steps** (ROUTE section 3): none is askable yet. Stage 3's re-promotion waits for W039's job and merge; the second
-  cohort's tree waits for a draft worth showing; Studio's deploy waits for run 3 and its review.
+- **Studio's design is READY FOR THE PI** (the final check, 2026-11-11; `<scratchpad>/autodev/w037-review3/REVIEW3.md`; the
+  gallery is `docs/design/gallery.html` on the branch). Six limits to tell, the first that a saved figure drops the note
+  about uncalled cells; four taste calls are the PI's. The deploy question is asked ONCE, when the Studio batch's code
+  verification and Lab's W017 re-check have passed (ROUTE R38): Lab first, then Studio.
+- **The PI's steps** (ROUTE section 3): stage 3's re-promotion waits for scIntegrate's batch to merge (D-034); the second
+  cohort's tree is not ready (D-036); the scale cohort's doublet threshold waits for the subset run's numbers.
 - **Parked:** W030 (Service; uncommitted work in its clone), W022 as a wave of its own, the B1 register's queued rows.
 
 ## Machinery (session-only; re-create on resume, see README)
