@@ -513,7 +513,10 @@ def shape_comparison(fa, fb, unstable=(), record=()) -> dict:
                    them. REPORTED, NEVER JUDGED (autodev W019, GAP-C41): two shapes are two
                    executions on a shared machine, and de's agreed on every number DE writes while
                    this tier failed on wall time, CPU time and resident memory. Nothing undeclared
-                   is excused, whatever its name (`bl.execution_record` says why).
+                   is excused, whatever its name (`bl.execution_record` says why); and the
+                   declaration is bounded - JSON leaves only, a literal first key segment - so a
+                   glob that could excuse a result raises `bl.RecordError` before anything is
+                   compared (autodev W029, GAP-C63).
 
     REPAIRED ONLY WHERE IT DOES NOT ALREADY MATCH. A product, key or column of shape b is
     translated into shape a's vocabulary only when it has no partner as written, so a tool's own
@@ -527,7 +530,9 @@ def shape_comparison(fa, fb, unstable=(), record=()) -> dict:
     vocab = _vocabulary()
     rtol, atol = bl.RTOL, bl.ATOL
     skip = set(unstable)
-    declared = bl.execution_record(record)
+    rec = record if isinstance(record, bl.ExecutionRecord) else bl.ExecutionRecord(record)
+    rec.require(fa.get("products"), fb.get("products"))
+    declared = rec.excuses
 
     def fix(name, partners):
         if name in partners:
@@ -560,10 +565,7 @@ def shape_comparison(fa, fb, unstable=(), record=()) -> dict:
             for col in sorted(set(an) & set(bn)):
                 if f"{rel}::{col}" in skip:
                     continue
-                x, y = an[col], bn[col]
-                if declared(f"{rel}::{col}"):
-                    resources.append((f"{rel}::{col}", [x.get("sum")], [y.get("sum")]))
-                    continue
+                x, y = an[col], bn[col]             # every column judged: a CSV is a result
                 compared += [f"{rel}::{col}.{s}" for s in ("n", "nan", "sum", "min", "max")]
                 stats = [s for s in ("n", "nan", "sum", "min", "max")
                          if not bl._close(y.get(s), x.get(s), rtol, atol)]
@@ -633,6 +635,14 @@ def t_agree(doc, point_name, name, fixdir, results):
     if not spec.get("command"):
         return _t(results, "agree", True, ["no `fixture.command` declared - nothing ran to compare"],
                   skipped=True, applicable=False)
+    # A DECLARATION THAT COULD EXCUSE A RESULT IS AN ERROR, whatever the shapes did (autodev
+    # W029, GAP-C63): `["*"]` excused every field of de's runs, all 32 DE columns among them.
+    record = bl.ExecutionRecord(spec.get("execution_record") or [])
+    if record.errors:
+        return _t(results, "agree", False,
+                  ["fixture.execution_record is misdeclared:"] + [f"  {e}" for e in record.errors],
+                  cannot="anything about the numbers until the declaration is bounded",
+                  seconds=time.time() - t0)
     shapes = {r["tier"]: r for r in results if r["tier"] in ("fixture_a", "fixture_b")}
     ran_ok = [t for t in ("fixture_a", "fixture_b") if t in shapes and shapes[t]["ok"]
               and not shapes[t]["skipped"]]
@@ -671,8 +681,12 @@ def t_agree(doc, point_name, name, fixdir, results):
             unstable = json.loads(ref.read_text(encoding="utf-8")).get("not_execution_stable") or []
         except (OSError, ValueError):
             unstable = []
-    record = list(spec.get("execution_record") or [])
-    cmp_ = shape_comparison(bl.fingerprint(run_a), bl.fingerprint(run_b), unstable, record)
+    try:
+        cmp_ = shape_comparison(bl.fingerprint(run_a), bl.fingerprint(run_b), unstable, record)
+    except bl.RecordError as e:            # a glob matching a CSV column: judged, and an error
+        return _t(results, "agree", False, [str(e)],
+                  cannot="anything about the numbers until the declaration is bounded",
+                  seconds=time.time() - t0)
     found = cmp_["disagree"]
     # WHAT IS WRONG FIRST, then how much was looked at: a green says how much it covered, so that
     # a green over nothing cannot read like a green over everything.
@@ -788,7 +802,7 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
     execution-stable is named with its spread rather than predicted identical.
     """
     spec = _fixture_spec(doc, point_name or "")
-    declared = list(spec.get("execution_record") or [])
+    declared = bl.ExecutionRecord(spec.get("execution_record") or [])
     bdir = Path(doc["_root"]) / (doc.get("baseline_dir") or "tests/baselines")
     path = bdir / f"{name}.baseline.json"
     run = Path(fixdir) / "run_a"
@@ -801,6 +815,12 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
         return _t(results, "baseline", True,
                   ["no fixture run to fingerprint - this point's fixture writes no products"],
                   skipped=True, applicable=False)
+    # A DECLARATION THAT COULD EXCUSE A RESULT IS AN ERROR here as in `agree` (GAP-C63): a
+    # baseline that never judges a result passes every change to it.
+    if declared.errors:
+        return _t(results, "baseline", False,
+                  ["fixture.execution_record is misdeclared:"] + [f"  {e}" for e in declared.errors],
+                  cannot="anything about the numbers until the declaration is bounded")
     # AND NOT ONE THAT DID NOT RUN THIS TIME (the verifier of autodev W019): a shape skipped -
     # its fixture was not generated - leaves `run_a` as an earlier check wrote it, and that run
     # is not this check's to hold to a baseline, or to record one from.
@@ -835,6 +855,11 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
         # below writes to run_a2, so run_a is untouched and can be read here instead: the same
         # comparison, paid for only by the runs that actually record it.
         first = bl.fingerprint(run)["products"]
+        try:
+            declared.require(first)
+        except bl.RecordError as e:
+            return _t(results, "baseline", False, ["refusing to record a baseline: " + str(e)],
+                      cannot="anything about the numbers until the declaration is bounded")
         second = []
         # THE SECOND EXECUTION WRITES SOMEWHERE ELSE, on purpose. Two runs into one directory
         # cannot tell a stable value from one that merely embeds its own output path - and a
@@ -854,7 +879,11 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
                        "wrote nothing to show stable; refusing to record a baseline from one run"]
                       + second[0]["evidence"][:6], skipped=True)
         fp = bl.fingerprint(again)
-        drift = bl.compare(fp, {"rtol": bl.RTOL, "atol": bl.ATOL, "products": first}, declared)
+        try:
+            drift = bl.compare(fp, {"rtol": bl.RTOL, "atol": bl.ATOL, "products": first}, declared)
+        except bl.RecordError as e:
+            return _t(results, "baseline", False, ["refusing to record a baseline: " + str(e)],
+                      cannot="anything about the numbers until the declaration is bounded")
         # NAMED, NOT DELETED. `compare` skips these; removing them from the record would make the
         # next check report each one as a NEW field, and would miss opaque files entirely, whose
         # identity is a sha256 rather than a number.
@@ -882,6 +911,9 @@ def t6_baseline(doc, fixdir, results, name, record=False, point_name=None):
     except bl.StaleBaseline as e:
         return _t(results, "baseline", False, [str(e)],
                   cannot="anything about the numbers until the baseline is re-recorded")
+    except bl.RecordError as e:
+        return _t(results, "baseline", False, [str(e)],
+                  cannot="anything about the numbers until the declaration is bounded")
     ev = [f"{d['product']}: {d['what']} {d['detail']}" for d in diffs[:15]]
     note = bl.elsewhere(ref)
     if diffs and note:

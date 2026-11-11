@@ -288,15 +288,29 @@ identity-level view, and a plugin that needs the matrices reads them from the pa
 E2 then rests on two things. Permissions alone hold only against in-place writes.
 - **Permissions.** The kernel runs no plugin, and `init` pins no stack, while the manifest or
   any part is writable by the running user. It names the files and a remedy a shell can run:
-  `chmod a-w`, quoted. For a file someone else owns, where chmod fails (EPERM), the remedy is the
-  owner, or a read-only copy.
-- **A fingerprint.** Every observation file, on any stack, is pinned at init by its digest and
-  its (dev, inode, size, mtime_ns, ctime_ns). The fingerprint is re-checked after every plugin
-  run, whatever its outcome. This catches what permissions cannot: a part renamed over through
-  its writable directory, or chmod'ed and written by its owner. A change is an A1 error naming the
-  file, from then on. Nothing re-baselines a stack: a changed file means restoring it or
-  initialising a new stack. `dev` is recorded but not compared on its own, because an NFS client
-  assigns it per host.
+  `chmod a-w`, quoted - and, on a pinned stack, that a new `init` must follow, because a file
+  made writable after `init` has had its ctime moved, which the pin compares (autodev W029).
+  For a file someone else owns, where chmod fails (EPERM), the remedy is the owner, or a
+  read-only copy.
+- **A pin.** Every stack is pinned at `init` (`observations.pin.json`): ONE digest over all its
+  observation files (one file's own sha256; on a parts stack, the sha256 of each file's sha256,
+  in manifest order), and, per file, its (dev, inode, size, mtime_ns, ctime_ns). `init` records the pin as an `observations/pinned` event. Checked
+  before a command first reads the observations (their identities, their inventory, a view -
+  opening a stack with plugins mounted included) and after every plugin run, whatever its
+  outcome: each file's fingerprint - not its digest, which reads every byte - what the declared
+  path resolves to NOW (a `latest -> v2` symlink re-pointed after `init` is a change naming the
+  file now read), and the pin itself (missing or rewritten while the event records one is a
+  change). The digest - every byte, read again - is compared after a mount's plugin returns a
+  result, before its gates, and after every scratch run (A1). This catches what
+  permissions cannot: a part renamed over through its writable directory, chmod'ed and written by
+  its owner, or re-pointed; a pin deleted by a plugin that then died. A change is an A1 error
+  naming the file, from then on. A pin is written by `init`, and once, on its first read, for a
+  stack from before pins existed (no pin, no event; recorded as the event then); it is never
+  rewritten: a changed file means restoring it or initialising a new stack. When only ctime moved
+  - a chmod, a chown or a new hard link to the file (a `cp -al` tree is hard links) moves it
+  without changing a byte, and so does a rewrite with size and mtime restored, which the pin
+  cannot tell apart - the refusal says so, and the remedy is a new stack over the same files.
+  `dev` is recorded but not compared on its own, because an NFS client assigns it per host.
 
 **`out.json`**
 

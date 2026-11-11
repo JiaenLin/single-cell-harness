@@ -459,7 +459,11 @@ def leak_scan(root, terms=(), shapes=(), scope=True) -> dict:
         else:
             present, gated = specs, [(rx, why) for rx, why, _ in compiled]
         guard = _is_guard(p)
-        attribution = p.name in ("CITATION.cff", "pyproject.toml")
+        # ATTRIBUTION, NOT LEAKAGE: an address that names a person to credit. The citation file
+        # and a package's metadata, wherever they are; and git's own author map, which git reads
+        # at the top of the working tree and nowhere else, so that `.mailmap` alone is one
+        # (autodev W029, GAP-C71: S1 read it as a site string, and it was withdrawn).
+        attribution = p.name in ("CITATION.cff", "pyproject.toml") or rel == ".mailmap"
         own = rel == SCOPE_FILE
         # THE SCOPE FILE IS READ LIKE ANY OTHER, EXCEPT WHAT AN ENTRY MUST SPELL. Its path repeats
         # a file name the tree already has - S1 reads contents, not names - and its list names

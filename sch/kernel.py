@@ -24,7 +24,8 @@ from .core import Context
 from .profile import load_profile, Profile
 from .registry import Manifest, MountResult, Registry, fold_key, FoldCache
 from .registry.manifest import load_manifest, parse_capability, ManifestError
-from .services.dataset import Dataset, Contribution, DatasetError, PIN, remedy
+from .services.dataset import (Dataset, Contribution, DatasetError, ObservationsChanged, PIN,
+                               PINNED, pin_digest, remedy)
 from .services.executor import make_executor
 from .services.gate import GateService
 from .services.invariant import InvariantService, InvariantFailure
@@ -52,9 +53,12 @@ class Stack:
         self.ctx.provide("provenance", self.prov)
         parts = self.decl.get("observation_parts")
         try:
-            self.dataset = Dataset(self._abs(obs), self.profile, self.dir,
+            # the declared path UNRESOLVED: the dataset resolves it again at every check, so a
+            # `latest` symlink re-pointed after init is a change it names (autodev W029, GAP-C57)
+            self.dataset = Dataset(self._abs(obs, resolve=False), self.profile, self.dir,
                                    self._abs(design) if design else None,
-                                   parts=parts, scope=self._scope_column() if parts else None)
+                                   parts=parts, scope=self._scope_column() if parts else None,
+                                   prov=self.prov)
         except DatasetError as e:
             raise StackError(str(e)) from None
         self.ctx.provide("dataset", self.dataset)
@@ -101,9 +105,11 @@ class Stack:
                 self.dataset.add(c)
 
     # ------------------------------------------------------------- helpers
-    def _abs(self, p) -> Path:
+    def _abs(self, p, resolve: bool = True) -> Path:
         p = Path(str(p))
-        return p if p.is_absolute() else (self.dir / p).resolve()
+        if p.is_absolute():
+            return p
+        return (self.dir / p).resolve() if resolve else self.dir / p
 
     def _scope_column(self):
         """The column scoping identities, through the key map: the profile says `{sample}`, the
@@ -173,7 +179,8 @@ class Stack:
             scope = str(prof.identity.get("scope") or "").strip("{}")
             try:
                 probe = Dataset(Path(str(observations)).resolve(), prof, Path(stack_dir), parts=parts,
-                                scope=(keys or {}).get(scope) if scope else None)
+                                scope=(keys or {}).get(scope) if scope else None,
+                                check_pin=False)     # there is no stack, and no pin, yet
                 probe.ids
             except DatasetError as e:
                 raise StackError(str(e)) from None
@@ -211,8 +218,7 @@ class Stack:
         st = cls(d)
         st.prov.append("stack/init", profile=prof.id, observations=str(observations),
                        kernel=__version__)
-        pin = st.dataset.pin()
-        st.prov.append("observations/pinned", files=len(pin["files"]), sha256=pin["sha256"])
+        st.dataset.pin()                 # and the `observations/pinned` event that records it
         return st
 
     # ------------------------------------------------------------- persistence
@@ -276,7 +282,7 @@ class Stack:
         f = cache_dir / ("view.csv" if filtered else "view_full.csv")
         if not f.exists():
             f = cache_dir / ("view.h5ad" if filtered else "view_full.h5ad")
-        return View(self.dataset.ids, keep, columns, masks, f)
+        return View(self.dataset.ids, keep, columns, masks, f, carried=self.dataset.carried(contribs))
 
     # ------------------------------------------------------------- running plugins
     def _run_argv(self, argv, cwd, log) -> dict:
@@ -288,13 +294,16 @@ class Stack:
 
     def _observations_unchanged(self, who: str, facts: dict):
         """A1 after EVERY plugin run, whatever its outcome (harness W010b): each pinned file's
-        fingerprint, re-read. A plugin that replaced a library and then died used to leave the
-        next command to re-baseline the stack on the replaced file."""
-        bad = self.dataset.changed()
+        fingerprint, re-read; what the declared path resolves to; and the pin itself, which must
+        still be the one this command verified (autodev W029). A plugin that replaced a library -
+        or re-pointed the path to it, or deleted the pin - and then died used to leave the next
+        command to read the replaced file as the delivery."""
+        bad = self.dataset.changes()
         if bad:
+            note, _fix = self.dataset.explain(bad)
             self.inv.fail("kernel", "A1 no write reaches the dataset outside a declared contribution",
-                          "; ".join(bad) + f" - after {who} ran (exit {facts.get('exit')}); the "
-                          f"stack's pin is never re-baselined")
+                          "; ".join(self.dataset.changed()) + f" - after {who} ran (exit "
+                          f"{facts.get('exit')}); {note}")
 
     def _run_plugin(self, manifest: Manifest, params: dict, extra: dict, run_dir: Path,
                     upstream: dict | None = None, view=None, scrub: bool = False,
@@ -389,10 +398,15 @@ class Stack:
                                f"{', '.join(Path(x).name for x in writable[:5])}"
                                f"{' ...' if len(writable) > 5 else ''}; a plugin reads them in "
                                f"place, so only their permissions keep it from writing them (E2)",
-                        fix=remedy(writable))
+                        fix=self.dataset.remedy_for_writable(writable))
+            return plan
+        try:
+            caps = self.dataset.observation_capabilities()
+        except ObservationsChanged as e:      # the pin, checked before anything is read
+            plan.update(admitted=False, reason=str(e), fix=e.fix)
             return plan
         resolved, reads_from, missing = self.registry.resolve(
-            m, self.keymap(), self.dataset.observation_capabilities(), self.profile.capabilities)
+            m, self.keymap(), caps, self.profile.capabilities)
         plan["needs"] = [c.raw for c in resolved]
         plan["reads_from"] = reads_from
         plan["missing"] = [{"need": n, "fix": f} for n, f in missing]
@@ -687,10 +701,16 @@ class Stack:
         if decl["plugin_paths"] is None:
             decl.pop("plugin_paths")
         yamlish.dump(decl, new / "stack.yml")
-        if (self.dir / PIN).exists():          # the same observations, pinned once, at the root
+        pin = (self.dir / PIN).exists()
+        if pin:                                # the same observations, pinned once, at the root
             shutil.copyfile(self.dir / PIN, new / PIN)
         st = Stack(new)
         st.prov.append("stack/fork", from_stack=str(self.dir), without=sorted(without))
+        if pin:
+            # and recorded as pinned, so the fork's pin is held as its parent's is (GAP-C58)
+            rec = json.loads((new / PIN).read_text())
+            st.prov.append(PINNED, files=len(rec.get("files") or {}), sha256=rec.get("sha256"),
+                           pin_sha256=pin_digest(new / PIN), from_stack=str(self.dir))
         return st
 
     def run_declared(self) -> list:

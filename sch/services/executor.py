@@ -23,15 +23,28 @@ it) submits each run as a PBS job:
     `wait` stops with `stopped: false` and leaves the handle live (W010 F2);
   - a stop is a qdel (with the same timeout) CONFIRMED by qstat or by the job's seal (E5). A job
     that cannot be confirmed ended within `pbs.stop_grace_s` reports `stopped: false`, and the
-    kernel fails the disposal on it, as an error the command reports.
+    kernel fails the disposal on it, as an error the command reports;
+  - qsub itself has a timeout (`pbs.qsub_timeout_s`, 120). One that times out - or exits 0 and
+    prints no job id - may already have queued the job, so nothing is submitted again until the
+    scheduler is asked BY JOB NAME (`qstat -x -w -u <user>`), each job of that name confirmed by
+    the submission's own token (`#PBS -v SCH_SUBMISSION=...`, in `qstat -x -f`) - or, for a job
+    that has already ended where the server keeps no history, by the seal it wrote in the run.
+    Found, that job is the run's. Absent - twice in a row, from a listing that showed the user's
+    jobs - it is submitted again, at most `pbs.qsub_retries` (2) times. If the scheduler cannot
+    say, nothing is resubmitted: the run is refused naming the job and the token, and the executor
+    keeps the submission, so its disposer asks again and qdels the job if it is there, or fails E5
+    (autodev W029, GAP-C59). A qsub refused with an exit status - a full queue - created no job,
+    and is retried as before.
 
 The kernel itself still runs inside a scheduler job (nothing computes on a login node); `pbs`
 sends each plugin run to its own job, the shape a tool's own `--executor pbs` has.
 """
 from __future__ import annotations
 
+import getpass
 import os
 import re
+import secrets
 import shlex
 import shutil
 import subprocess
@@ -183,6 +196,35 @@ SEALS = ("SEALED.txt", "FAILED.txt")
 #: when any of the user's jobs leaves the queue, so it is waited for (scQC's lesson: ADR-0027 Q11).
 QUEUE_FULL = re.compile(r"would exceed|maximum number of jobs", re.I)
 _JOB_ID = re.compile(r"^\s*(\d+\S*)\s*$", re.M)
+#: A job id as qstat's listing writes it in its first column: `1234.server`, an array's `1234[]`.
+_JOB_ROW = re.compile(r"^\d+(\[\d*\])?(\.[\w.-]+)?$")
+#: The environment variable a job's script declares (`#PBS -v`) to carry its submission's token.
+SUBMISSION = "SCH_SUBMISSION"
+#: A HOLD THE SCHEDULER PUTS ON A JOB IT COULD NOT START, measured on the program's cluster
+#: (autodev BLK-009, 2026-11-10): after four failed attempts to run it, PBS Pro held it
+#: (`job_state = H`, `comment = job held, too many failed attempts to run`), and it stays held
+#: until a person releases or deletes it. Waiting on it is waiting for ever: the handle returns at
+#: once with the hold in its facts and the exit unknown, which the kernel reads as a death, and the
+#: disposer qdels it, which a held job allows.
+HELD_FOR_GOOD = re.compile(r"too many failed attempts", re.I)
+
+
+def _sealed_job(jobdir) -> str | None:
+    """The job id the seal in a run's job directory names, or None. The directory is made for ONE
+    submission (a bare mkdir in `launch`), and only a job running that submission's script writes
+    a seal into it - so a seal there says that this submission's job ran and ended, whatever the
+    scheduler can still be asked (a server that keeps no history forgets an ended job at once)."""
+    if jobdir is None:
+        return None
+    for n in SEALS:
+        try:
+            text = (Path(jobdir) / n).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        m = re.search(r"^jobid=(\S+)\s*$", text, re.M)
+        if m and m.group(1) != "none":
+            return m.group(1)
+    return None
 
 
 class PbsHandle:
@@ -204,6 +246,7 @@ class PbsHandle:
         self.started = time.perf_counter()
         self.log = None
         self.done = False
+        self.comment = None             # the scheduler's last `comment` on the job, if any
         self.facts = {"requested": False, "stopped": False, "timed_out": False, "exit": None,
                       "seconds": None, "executor": "pbs", "job": job, "seal": None}
 
@@ -221,7 +264,9 @@ class PbsHandle:
             return None, None, False
         st = re.search(r"job_state\s*=\s*(\w)", r.stdout or "")
         ex = re.search(r"Exit_status\s*=\s*(-?\d+)", r.stdout or "")
+        cm = re.search(r"^\s*comment\s*=\s*(.+?)\s*$", (r.stdout or "").replace("\n\t", ""), re.M)
         if st or ex:
+            self.comment = cm.group(1) if cm else None
             return (st.group(1) if st else None), (int(ex.group(1)) if ex else None), True
         said = ((r.stderr or "") + (r.stdout or "")).lower()
         return None, None, r.returncode != 0 and "unknown job" in said
@@ -278,6 +323,13 @@ class PbsHandle:
             st, ex, known = self.state()
             if self._over(st, ex, known):
                 break
+            if st == "H" and self.comment and HELD_FOR_GOOD.search(self.comment):
+                # HELD BY THE SCHEDULER FOR GOOD (autodev BLK-009): not ended, never going to run.
+                # The handle stays live with the exit unknown, so the kernel reads a death and the
+                # disposer qdels the job and confirms it, instead of waiting for ever.
+                self.facts["held"] = self.comment
+                self.facts["seconds"] = round(time.perf_counter() - self.started, 3)
+                return dict(self.facts)
             unknown = unknown + 1 if not known else 0
             if unknown >= self.outage_polls:
                 # THE SCHEDULER CANNOT SAY, which is not the job ending (verifier W010 F2). Give up
@@ -321,6 +373,40 @@ class PbsHandle:
         return dict(self.facts)
 
 
+class PendingSubmission:
+    """A qsub whose outcome nobody could establish: it may have queued a job, which then runs with
+    nothing watching it (autodev W029, GAP-C59). Kept by the executor so that its disposer asks the
+    scheduler again: the job, found by its token, is stopped and confirmed like any other; found
+    absent, there is nothing to stop; and while the scheduler still cannot say, `stopped` is false
+    and E5 fails the disposal, loudly."""
+
+    def __init__(self, executor, qstat, qdel, cfg, name, token, jobdir):
+        self.executor, self.qstat, self.qdel, self.cfg = executor, qstat, qdel, cfg
+        self.name, self.token, self.jobdir = name, token, jobdir
+        self.log = None
+        self.facts = {"requested": False, "stopped": False, "timed_out": False, "exit": None,
+                      "seconds": None, "executor": "pbs", "job": None, "submission": token}
+
+    def running(self) -> bool:
+        return True                     # not known to have ended, so a disposer must ask
+
+    def stop(self, grace: float | None = None) -> dict:
+        self.facts["requested"] = True
+        verdict, jobs, said = self.executor._reconcile(self.qstat, self.cfg, self.name, self.token,
+                                                       self.jobdir)
+        self.facts["reconcile"] = said
+        if verdict == "absent":
+            self.facts["stopped"] = True
+        elif verdict == "found":
+            stops = [PbsHandle(j, self.jobdir, self.qstat, self.qdel, None, self.cfg).stop(grace)
+                     for j in jobs]
+            self.facts.update(job=",".join(jobs), stopped=all(f["stopped"] for f in stops),
+                              exit=stops[0]["exit"])
+        else:
+            self.facts["stopped"] = False
+        return dict(self.facts)
+
+
 class PbsExecutor(LocalExecutor):
     kind = "pbs"
 
@@ -346,13 +432,19 @@ class PbsExecutor(LocalExecutor):
     def _job_name(name) -> str:
         return "sch_" + re.sub(r"[^A-Za-z0-9_]", "_", str(name or "run"))[:11]
 
-    def _script(self, argv, cwd, log_path, env, scrub, name, expect, cfg, jobdir) -> str:
+    def _script(self, argv, cwd, log_path, env, scrub, name, expect, cfg, jobdir,
+                token: str | None = None) -> str:
         q = shlex.quote
         lines = ["#!/bin/bash", f"#PBS -N {self._job_name(name)}", f"#PBS -q {cfg['queue']}",
                  f"#PBS -l select={cfg['select']}", f"#PBS -l walltime={cfg['walltime']}",
                  f"#PBS -o {jobdir}/", "#PBS -j oe"]
         if cfg.get("account"):
             lines.append(f"#PBS -P {cfg['account']}")
+        if token:
+            # WHICH SUBMISSION THIS IS, where qstat shows it (its Variable_List): a job name is
+            # shared by every run of one plugin, so a qsub that timed out is told apart from an
+            # earlier job of the same name by this, and by nothing else (GAP-C59)
+            lines.append(f"#PBS -v {SUBMISSION}={token}")
         if not scrub:
             lines.append("#PBS -V")     # the run sees the environment sch runs in, as `local`'s does
         products = " ".join(q(str(p)) for p in (expect or []))
@@ -387,23 +479,141 @@ class PbsExecutor(LocalExecutor):
         lines.append(" ".join(q(str(a)) for a in argv))
         return "\n".join(x for x in lines if x != "") + "\n"
 
-    def _submit(self, qsub: list, script: Path, cfg: dict) -> str:
+    def _by_name(self, qstat: list, cfg: dict, name, token) -> tuple:
+        """One look at the scheduler: ("found", job, said), ("absent", None, said) or
+        ("unknown", None, said). The user's jobs are listed (`qstat -x -w -u`, finished ones
+        included), those with this run's job name kept, and each confirmed by the submission's
+        token in its `qstat -x -f`. An empty listing says nothing: the kernel runs inside a job,
+        so its user always has one, and an answer with none in it may be an outage."""
+        limit = float(cfg.get("qstat_timeout_s", 60))
+        jobname = self._job_name(name)
+        user = os.environ.get("USER") or os.environ.get("LOGNAME")
+        if not user:
+            try:
+                user = getpass.getuser()
+            except (KeyError, OSError):
+                return "unknown", None, "no user to ask qstat about"
+        try:
+            r = subprocess.run(qstat + ["-x", "-w", "-u", user], capture_output=True, text=True,
+                               timeout=limit)
+        except subprocess.TimeoutExpired:
+            return "unknown", None, f"qstat -u {user} did not answer within {limit:g}s"
+        if r.returncode != 0:
+            return "unknown", None, (f"qstat -u {user} failed: "
+                                     f"{(r.stderr or r.stdout or '').strip()[:160]}")
+        rows = [ln.split() for ln in (r.stdout or "").splitlines()]
+        listed = [x for x in rows if x and _JOB_ROW.match(x[0])]
+        if not listed:
+            return "unknown", None, (f"qstat listed no job of {user}'s, and an answer with nothing "
+                                     f"in it may be an outage")
+        mine = []
+        for job in [x[0] for x in listed if len(x) > 3 and x[3] == jobname]:
+            try:
+                f = subprocess.run(qstat + ["-x", "-f", job], capture_output=True, text=True,
+                                   timeout=limit)
+            except subprocess.TimeoutExpired:
+                return "unknown", None, f"qstat -f {job} did not answer within {limit:g}s"
+            # a long attribute is wrapped onto lines that begin with a tab; joined, it is whole
+            text = (f.stdout or "").replace("\n\t", "")
+            if f.returncode != 0 or "Job_Name" not in text:
+                return "unknown", None, f"qstat -f {job} said nothing about it"
+            if re.search(rf"(^|[\s,=]){SUBMISSION}={re.escape(token)}(,|\s|$)", text):
+                mine.append(job)
+        mine.sort(key=lambda j: int(re.match(r"\d+", j).group(0)))
+        said = (f"{len(listed)} job(s) of {user}'s listed; {len(mine)} carry this submission's "
+                f"token {token}")
+        if mine:
+            return "found", mine, said
+        return "absent", None, said
+
+    def _reconcile(self, qstat: list, cfg: dict, name, token, jobdir=None) -> tuple:
+        """Ask the scheduler whether this submission queued a job, until it can say: found at
+        once (the jobs carrying its token, oldest first); absent only when two looks in a row say
+        so (a job a slow server has not yet listed must not be submitted twice); unknown after
+        `pbs.qstat_outage_polls` looks.
+
+        A LOOK THAT FINDS NOTHING IS FOLLOWED BY THE RUN'S OWN SEAL. The listing shows a job that
+        has ended only where the server keeps job history: on one that keeps none, a qsub that
+        timed out after its job had already run and ended read as absent twice, and the run was
+        submitted again - the double this reconcile exists to prevent. The job's seal in the
+        run's job directory names it (`_sealed_job`), so it is found either way."""
+        polls = max(2, int(cfg.get("qstat_outage_polls", 5)))
+        poll = float(cfg.get("poll_s", 30))
+        pause, absent, said = min(2.0, poll), 0, ""
+        for i in range(polls):
+            verdict, jobs, said = self._by_name(qstat, cfg, name, token)
+            if verdict == "found":
+                return verdict, jobs, said
+            sealed = _sealed_job(jobdir)
+            if sealed:
+                return "found", [sealed], (f"{said}; the run's own seal names job {sealed}, which "
+                                           f"ran and ended")
+            absent = absent + 1 if verdict == "absent" else 0
+            if absent >= 2:
+                return "absent", None, said
+            if i + 1 < polls:
+                time.sleep(pause)
+                pause = min(pause * 2, poll)
+        return "unknown", None, said
+
+    def _submit(self, qsub: list, script: Path, cfg: dict, qstat: list | None = None, name=None,
+                token: str | None = None, qdel: list | None = None) -> tuple:
+        """(job id, what reconciling found or None). A qsub refused with an exit status created no
+        job: a full queue is waited for and the job submitted again, as before. A qsub that timed
+        out, or exited 0 with no id, may have queued it, and is never followed by another before
+        the scheduler has been asked (`_reconcile`)."""
         budget = float(cfg.get("queue_full_wait_s", 6 * 3600))
         pause = float(cfg.get("queue_full_first_wait_s", 30))
+        limit = float(cfg.get("qsub_timeout_s", 120))
+        retries = max(0, int(cfg.get("qsub_retries", 2)))
         deadline = time.monotonic() + budget
+        unsure = 0
         while True:
-            r = subprocess.run(qsub + [str(script)], capture_output=True, text=True)
-            why = (r.stderr or r.stdout or "").strip()
-            if r.returncode == 0:
-                break
-            if not QUEUE_FULL.search(why) or time.monotonic() + pause > deadline:
-                raise ExecutorError(f"executor pbs: qsub refused {script}: {why}")
-            time.sleep(pause)
-            pause = min(pause * 2, 300.0)
-        m = _JOB_ID.search(r.stdout or "")
-        if not m:
-            raise ExecutorError(f"executor pbs: qsub printed no job id: {r.stdout!r}")
-        return m.group(1)
+            try:
+                r = subprocess.run(qsub + [str(script)], capture_output=True, text=True,
+                                   timeout=limit)
+            except subprocess.TimeoutExpired:
+                r, why = None, f"qsub did not answer within {limit:g}s (pbs.qsub_timeout_s)"
+            else:
+                why = (r.stderr or r.stdout or "").strip()
+                if r.returncode == 0:
+                    m = _JOB_ID.search(r.stdout or "")
+                    if m:
+                        return m.group(1), None
+                    r, why = None, f"qsub exited 0 and printed no job id: {r.stdout!r}"
+            if r is not None:                       # refused: the scheduler created no job
+                if not QUEUE_FULL.search(why) or time.monotonic() + pause > deadline:
+                    raise ExecutorError(f"executor pbs: qsub refused {script}: {why}")
+                time.sleep(pause)
+                pause = min(pause * 2, 300.0)
+                continue
+            if not (qstat and token):               # nothing to ask: never submit twice blind
+                raise ExecutorError(f"executor pbs: {why}; it may have queued the job, and "
+                                    f"nothing here can ask, so nothing was submitted again")
+            verdict, jobs, said = self._reconcile(qstat, cfg, name, token, script.parent)
+            if verdict == "found":
+                # two jobs of one submission would be a double already: the oldest is the run's,
+                # and every other is stopped now, and kept, so a disposer confirms it (E5)
+                for extra in jobs[1:]:
+                    h = PbsHandle(extra, script.parent, qstat, qdel or [], None, cfg)
+                    h.stop()
+                    self.handles.append(h)
+                return jobs[0], {"after": why, "found": jobs[0], "stopped": jobs[1:],
+                                 "said": said}
+            if verdict == "absent" and unsure < retries:
+                unsure += 1
+                continue
+            if verdict == "unknown":
+                self.handles.append(PendingSubmission(self, qstat, qdel or [], cfg, name, token,
+                                                      script.parent))
+                raise ExecutorError(
+                    f"executor pbs: {why}, and the scheduler cannot say whether it queued the job "
+                    f"({said}). Nothing was submitted again, so no job is doubled. Look for job "
+                    f"{self._job_name(name)} with {SUBMISSION}={token} (qstat -x -f): qdel it, or "
+                    f"let it end, before mounting again")
+            raise ExecutorError(f"executor pbs: {why}; the scheduler holds no such job ({said}), "
+                                f"and {unsure + 1} submission(s) have gone unanswered "
+                                f"(pbs.qsub_retries {retries})")
 
     def launch(self, argv: list, cwd, log_path, env: dict | None = None,
                timeout: float | None = None, scrub: bool = False, name: str | None = None,
@@ -425,9 +635,13 @@ class PbsExecutor(LocalExecutor):
             raise ExecutorError(f"executor pbs: {jobdir} exists; another job wrote this run, and a "
                                 f"run has one writer") from None
         script = jobdir / "job.pbs"
-        script.write_text(self._script(argv, cwd, log_path, env, scrub, name, expect, cfg, jobdir),
-                          encoding="utf-8")
-        h = PbsHandle(self._submit(qsub, script, cfg), jobdir, qstat, qdel, timeout, cfg)
+        token = secrets.token_hex(6)
+        script.write_text(self._script(argv, cwd, log_path, env, scrub, name, expect, cfg, jobdir,
+                                       token), encoding="utf-8")
+        job, reconciled = self._submit(qsub, script, cfg, qstat, name, token, qdel)
+        h = PbsHandle(job, jobdir, qstat, qdel, timeout, cfg)
+        if reconciled:                    # said in the run's facts; a plain submission is as before
+            h.facts["reconciled"] = reconciled
         self.handles.append(h)
         return h
 

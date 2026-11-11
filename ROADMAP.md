@@ -212,6 +212,26 @@ contract**, do not write three more adapters against it.
 >
 > Not yet graded: **numbers**, by the reference cohort's stage-2 reproduction through the harness
 > against scAnno run alone at the same commit (written before it runs).
+>
+> **BUILT, NOT YET GRADED ON THE COHORT, 2026-11-10 (W034, branch `autodev/W034-int-adapter`): the
+> third adapter, `int@scintegrate`.** `plugins/single-cell/int@scintegrate` runs scIntegrate's real
+> CLI (`python -m scintegrate.cli`, the declared checkout on PYTHONPATH and nothing else) over the
+> one object a parts stack declares, the cohort's joint object, read in place: `describe`, `doctor`,
+> then one `integrate`. Every flag is the stage's, by scIntegrate's name; the assay and the species
+> are the stack's `--context`. Its result is a **layer**: every obsm and obsp entry and every obs
+> column scIntegrate's object carries that the part did not, or carries with other values, read back
+> by identity with h5py (`embeddings/<key>.npy` and `graphs/<key>.npz`, each beside `barcodes.txt`).
+> scIntegrate's `STATUS.json` and seal are adopted when they name the call's own argv. The view's
+> digest now covers embedding and graph contributions by their content, so a layer of embeddings
+> alone is visible at mount and E4 can see it taken back; a view without them hashes as before.
+>
+> Graded on a synthetic object through the `sch` CLI (`tests/test_the_harness_runs_scintegrate.py`):
+> - against a stand-in scIntegrate: the exact calls and argv, the layer (added, rewritten, copied
+>   entries left out, compared by identity), rule 2 and the species, every refusal and every death;
+> - against the real scIntegrate 0.5.0: mounted, then unmounted to the pre-mount digest.
+>
+> Not yet graded: **numbers**, by the reference cohort's stage-3 run through the harness against
+> scIntegrate run alone at the same commit in the same job (written before it runs).
 
 ---
 
@@ -382,7 +402,17 @@ before Phase 10 builds on it.
 >   reports the job stopped only once qstat or the job's seal confirms it. Unconfirmed, it reports
 >   `stopped: false`, and the command ends in an E5 error, never a success;
 > - a full queue is waited for;
-> - a stop is a qdel confirmed through qstat or the job's seal.
+> - a stop is a qdel confirmed through qstat or the job's seal;
+> - qsub has a timeout (`pbs.qsub_timeout_s`), and a qsub that did not answer - it timed out, or
+>   exited 0 with no job id - is reconciled before anything is submitted again (autodev W029): the
+>   scheduler is asked by job name, each job confirmed by the submission's token
+>   (`#PBS -v SCH_SUBMISSION=...`) - or, for a job that has already ended on a server that keeps
+>   no history, by the seal it wrote in the run; found, that job is the run's; absent from two
+>   looks in a row, it is submitted again, at most `pbs.qsub_retries` (2) times; and when the
+>   scheduler cannot say, nothing is resubmitted, the mount is refused naming the job, and the
+>   disposer asks again or fails E5. A job the scheduler held for
+>   "too many failed attempts to run" is not waited for: the wait returns with the hold in its
+>   facts, and the disposer qdels it.
 >
 > Against a stand-in qsub/qstat/qdel (`tests/test_the_pbs_executor_submits_waits_and_seals.py`),
 > **E5** holds: an unconfirmable stop reports `stopped: false`, and the companion fails on it.

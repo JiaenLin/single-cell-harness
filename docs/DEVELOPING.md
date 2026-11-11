@@ -59,8 +59,9 @@ fixture:                     # may also be given per point, overriding this
             "--methods", "none,{name}"]
   products: ["report.json"]              # relative to {out}; checked for existence and size
   accepts_refusal: false                 # true where a refusal on the fixture is correct
-  execution_record: ["report.json::timings.*"]   # optional: the run's record of its own
-                                         # execution, reported by agree and the baseline, never judged
+  execution_record: ["report.json::timings.*"]   # optional: JSON leaves of the run's record of its
+                                         # own execution, reported by agree and the baseline, never
+                                         # judged; `product::key`, the key's first segment literal
   timeout: 1800
 
 points:
@@ -135,7 +136,7 @@ it cannot prove.
 | `unit` | the repository's own suite, run the way the repository runs it | seconds |
 | `fixture_a` | does it run end to end and leave a valid status behind? | seconds |
 | `fixture_b` | does it still, with every role renamed? | seconds |
-| `agree` | did the two shapes write the same numbers? It counts the values it compared, and reports - never judges - the fields the tool declares as its run's record of its own execution (`fixture.execution_record`). Not applicable when both shapes refused; one shape refusing fails it | ms |
+| `agree` | did the two shapes write the same numbers? It counts the values it compared, and reports - never judges - the JSON fields the tool declares as its run's record of its own execution (`fixture.execution_record`); a declaration that could excuse a result (a CSV column, a key beginning with `*`) fails it. Not applicable when both shapes refused; one shape refusing fails it | ms |
 | `leak` | any cohort or site term anywhere in the repository? | ms |
 | `baseline` | did a number move that was not supposed to? Not applicable on a declared refusal, from which nothing is ever recorded; could not run when shape a did not run in this check | ms |
 
@@ -183,14 +184,21 @@ object whose content is recorded unstable still shows that it doubled or lost a 
 volatile fields (times, job ids, paths, commits) excluded. Two kinds of number are RECORDED AND
 NEVER JUDGED (autodev W019): a byte count in a JSON product, which moves with the digits of every
 timing written into the file, and a field the TOOL DECLARES as its run's record of its own
-execution - `fixture.execution_record`, globs of `product::key` (`*` is the only wildcard; a CSV
-column is a key) - for its wall and CPU time, cores, memory, and the models fitted from them, which
-move between two executions of one input on a shared machine. `agree` reports the declared record
-and judges it no more. Nothing undeclared is excused, whatever it is called: a key's words decide
-nothing, and a result named `memory_score` is judged like any other. A fixture run that ended in a
-declared refusal on BOTH shapes has no products: neither tier applies to it, and no baseline is
-ever recorded from one; a refusal on one shape only fails `agree`, because one cohort written twice
-cannot be refused under one set of names and analysed under the other. Floats compare with a
+execution - `fixture.execution_record`, globs of `product::key` - for its wall and CPU time, cores,
+memory, and the models fitted from them, which move between two executions of one input on a
+shared machine. `agree` reports the declared record and judges it no more. Nothing undeclared is
+excused, whatever it is called: a key's words decide nothing, and a result named `memory_score` is
+judged like any other. And the declaration is BOUNDED (autodev W029), because unbounded it was the
+same guess by another hand - `["*"]` excused every field of every product, all of de's DE result
+columns among them, and `agree` stayed green: a glob has one `::`, and its two parts are matched
+apart; in the product `*` stays inside one path segment; the key's first segment (before its first
+`.` or `[`) is literal, so `measured.*` names a namespace the run writes and a key of `*` is
+refused; and it excuses JSON leaves only - a glob that matches a CSV or TSV column is a
+declaration error, the column is judged, and the error fails `agree`, the baseline's check and its
+recording, naming the glob. A fixture run that ended in a declared refusal on BOTH shapes has no
+products: neither tier applies to it, and no baseline is ever recorded from one; a refusal on one
+shape only fails `agree`, because one cohort written twice cannot be refused under one set of
+names and analysed under the other. Floats compare with a
 relative tolerance rather than bit-equality, because bit-equality across machines is not a property
 this family has — 0.214 was measured between two nodes of the same model on 2026-09-06.
 

@@ -42,19 +42,29 @@ aligner's call.
   companion sees.
 - **The view.** It is identity-level: `view.csv`, holding the identity, `{sample}`, the contributed
   columns, `keep` and every mask. Matrices stay in their parts and are read in place, and a
-  plugin finds them through `in.json` `observations`.
+  plugin finds them through `in.json` `observations`. A contributed embedding or graph stays in
+  its own file beside its identity file; the view's digest covers each by its content, so a layer
+  of embeddings alone is visible to a mount and to its unmount (W034).
+- **One part.** A cohort's joint object, its libraries already in one file, is a manifest of one
+  row: the object is then read in place like any part, and never copied into a view.
 - **Refused at `init`, before anything is written:** a manifest that names one sample twice, a
   missing part, a part in a form no reader is written for (a 10x `.h5` or a MEX directory, for
   now), or a missing scope key.
 - **Refused at `init` and at every plugin run:** a manifest or a part that the running user can
   write. A plugin is handed the parts themselves. Delivered data are immutable: `chmod a-w` them
   before `init`. The remedy is printed for a shell, and for a file someone else owns it names the
-  owner or a read-only copy.
-- **Pinned at `init`, never re-baselined:** each file's digest and (dev, inode, size, mtime_ns,
-  ctime_ns). The fingerprint is re-checked after every plugin run, whatever its outcome. It
-  catches what permissions cannot: a part renamed over through its directory, or chmod'ed and
-  written by its owner. A change is an A1 error naming the file, so a chmod after `init` is a
-  change too.
+  owner or a read-only copy. A file made writable after `init` has had its ctime moved, so the
+  printed remedy adds that a new `init` must follow the chmod.
+- **Pinned at `init`, never rewritten:** one digest over the manifest and every part, and each
+  file's (dev, inode, size, mtime_ns, ctime_ns), recorded as an `observations/pinned` event. The
+  fingerprint is checked before a command first reads any part and after every plugin run,
+  whatever its outcome, with what the declared path resolves to now and the pin itself: a
+  manifest reached through a re-pointed `latest` symlink, and a pin a plugin deleted or rewrote
+  before dying, are changes too. It catches what permissions cannot: a part renamed over through
+  its directory, or chmod'ed and written by its owner. A change is an A1 error naming the file,
+  so a chmod after `init` is a change too; where only ctime moved (a chmod, a chown, a new hard
+  link) the error says so and the remedy is a new stack over the same files. A stack from before
+  pins existed is pinned once, on its first read, and that is recorded.
 
 ## 2. Slot bindings
 
@@ -64,7 +74,7 @@ aligner's call.
 | `feature_column` | `var` — one value per gene | `features/<name>.csv`, `feature,value` |
 | `embedding` | `obsm` — observation × k | `embeddings/<name>.npy` + `barcodes.txt` |
 | `matrix` | `layers` — observation × feature, on the object's own feature set | `matrices/<name>.npz` |
-| `graph` | `obsp` — a neighbour graph | `graphs/<name>.npz` |
+| `graph` | `obsp` — a neighbour graph | `graphs/<name>.npz` (compressed sparse) + `barcodes.txt` |
 | `mask` | a boolean keep-vector with a reason | `masks/<name>.csv`, `barcode,keep,reason` |
 | `object` | a side-car `.h5ad` | `objects/<name>.h5ad` |
 | `table`, `figure`, `answer` | as the generic contract defines | |
