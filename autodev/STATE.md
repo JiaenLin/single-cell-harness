@@ -64,9 +64,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Running now (6 agents), as of 2026-11-11T11:34:24Z:**
   - the builder (Opus 5.5 max) of **W047 run 2** (scProfile: `de` through the maker, the record's declaration copies as a
     maker defect, the rest of the host read file by file; run 1 is built at `4c5b3ad`).
-  - the verifier (Opus 5.5 max) of **W048** (scQC, built at `55c9497`: leak hits 193 and 31 to 0 and 0 under the two
-    cohorts' lists, its own guard now reading them; the fixture's assay and factor told and read back; A3.1 0.41 to 0.51
-    on merge and on its two jobs).
+  - the builder (Opus 5.5 max) of **W048's fix round 1** (scQC: its verification FAILED on two reasons while both gate jobs
+    read AS PREDICTED: about 51 lines still hold one cohort's measured numbers where no list looks; the fixture check
+    stays green when the factor never reaches the gates).
   - the builder (Opus 5.5 max) of **W050** (scAnno, from `main`: `embed` names a library from the object or the manifest,
     never from a file name; GAP-C103, one of the two tool-side breaks that stop a chained stage 4; ROUTE R47).
   - the builder (Opus 5.5 max) of **W046's fix round 1** (scIntegrate: its verification FAILED on two points: a key or
@@ -80,8 +80,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
-- **On PBS:** **790201**, scQC's reproduction of the first cohort's stage 1 at W048's head. Landed: **790222** (the second
-  cohort's apply at W048's head) AS PREDICTED, IDENTICAL to the promoted run; **790197** (the second cohort's tree at
+- **On PBS:** nothing. Landed: **790201** and **790222** (both cohorts' stage 1 at W048's head) AS PREDICTED, kept cells,
+  criteria and names IDENTICAL to the promoted runs: W048's gate is passed and it waits only for its verifier; **790197** (the second cohort's tree at
   W044's fix-2 head) **MISSED (1)**: in one wild-type library 0 of 12,546 cells walk to Glial cell (the other wild-type
   library 1,053; the mutants 581 and 420, where the first job had 0). That library's radial-glia-like cells walk to
   Progenitor cell instead: two lineages of the draft compete for the same cells, and the replicates disagree. The mutant
@@ -118,6 +118,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **The scale cohort:** the data is in place and inventoried (1,263,676 cells x 30,172 genes, 88 pooled libraries holding both
   arms; PBS 789057, 789058, 789168). Stage 1 waits for W045 and the driver's fix: a subset job (2 of the 88) before the full one.
 - **The improvement plan of 2026-11-11** ([`IMPROVEMENT_PLAN.md`](IMPROVEMENT_PLAN.md); RULES items 14-19): a job over 2 hours runs on a subset first (`gate.py` refuses otherwise); every builder runs [`ATTACKS.md`](ATTACKS.md) (24 lines) against its own change before hand-back; items that search try at least two candidates and keep a pool; a claimed gain needs its ablation; a plugin's source is a DOI that resolves (R45). The measure: `passrate.py`, 4 of 9 waves built on 2026-11-11 passed first verification.
+- **A preflight for removed numbers** (`setup/autodev/survivors.py`, 2026-11-11): every number a wave's diff removed that is
+  still at the head, one line each. W035 (twice) and W048 failed verification on exactly this; a builder runs it before
+  hand-back (BRIEFS section 0) and the coordinator before launching a verifier. To run on W047's head before its batch verification.
 - **A records commit says whether it landed** (`setup/autodev/commit.sh`, 2026-11-11): two records commits were blocked by
   the suite's leak guard (a site path an agent wrote into a wave file) and were reported as landed. The helper stages only
   the paths it is given and prints `COMMITTED <sha> pushed` or `BLOCKED: <reason>`; every brief now says a wave file takes no site path.

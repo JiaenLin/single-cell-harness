@@ -35,6 +35,10 @@ THREADS: this workstation is shared by up to 6 agents. Before any test or tool, 
 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2, and run one suite at a time.
 SELF-ATTACK: before hand-back, read <HARNESS>/autodev/ATTACKS.md (one screen: the attacks that broke a wave here) and run
 every one that applies against your own change. Say in the hand-back which you ran and what each showed.
+REMOVED NUMBERS (only when your wave removes a cohort's values from a tool): before hand-back run
+`python3 -I <HARNESS>/setup/autodev/survivors.py <your clone> <base> HEAD` and read every line it prints: each is a number
+your diff removed that is still somewhere at the head. Say for each kind what it is (the method's, synthetic, a date or
+version) and give the tool's last line in the hand-back. Three waves failed verification on survivors on 2026-11-11.
 SEARCH (only when your wave has to find a rule, a design or a hypothesis, not for ordinary engineering): write down what
 you expect BEFORE you try anything; try at least 2 candidates at the cheapest test that can tell them apart; keep the
 current one unless the challenger is strictly better on the registered measure; record every candidate tried and its

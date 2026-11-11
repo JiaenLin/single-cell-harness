@@ -182,7 +182,7 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
     def test_the_tools_exist_and_the_shell_ones_parse(self):
         import subprocess
         tools = ROOT / "setup" / "autodev"
-        for name in ("usage.py", "pbs_mirror.sh", "monitor_verdicts.sh", "bootstrap.sh", "agent_models.sh", "gate.py", "costs.py", "passrate.py", "commit.sh"):
+        for name in ("usage.py", "pbs_mirror.sh", "monitor_verdicts.sh", "bootstrap.sh", "agent_models.sh", "gate.py", "costs.py", "passrate.py", "commit.sh", "survivors.py"):
             self.assertTrue((tools / name).is_file(), name)
             if name.endswith(".sh"):
                 rc = subprocess.run(["bash", "-n", str(tools / name)], capture_output=True)
