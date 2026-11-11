@@ -21,7 +21,11 @@ everything downstream knows when one does.
 > with nested jobs on a real scheduler (PBS 782922). The second adapter, `anno@scanno` (W026),
 > reproduced the reference cohort's stage 2 through the harness as predicted (W026's gate jobs).
 > The third, `int@scintegrate` (W034), is built and graded on a synthetic object against the real
-> scIntegrate; its stage-3 reproduction is written and not yet run. Phases 5–8 and 11 are not built.
+> scIntegrate; its stage-3 reproduction is written and not yet run. The fourth, `prof@scprofile`
+> (W036), runs scProfile's real CLI over the integrated object, scProfile's own plan choosing the
+> plugins (differential expression and abundance first); it is built and graded against a stand-in
+> and the real scProfile on the synthetic fixture, and its stage-4 reproduction is written and not yet
+> run. Phases 5–8 and 11 are not built.
 >
 > `sch conform` checks a child tool against
 > [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it; all four pass with
@@ -35,7 +39,8 @@ everything downstream knows when one does.
 > The family has one plugin format, the Universal Plugin Format: the maker's one-file layout,
 > adopted by [ADR-0030](docs/adr/0030-one-plugin-format.md). `sch catalogue` lists every plugin
 > of the harness and of scProfile in that format's terms, and reads each one without importing
-> it. Mounting a scProfile plugin through the harness is not built yet (ROADMAP Phase 6).
+> it. A scProfile run mounts through `prof@scprofile` (W036), scProfile's own CLI choosing its
+> plugins; mounting one scProfile plugin by reading its `PLUGIN` literal is not built (ROADMAP Phase 6).
 
 ---
 
