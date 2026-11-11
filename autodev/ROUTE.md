@@ -62,7 +62,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R06 | harness | leak-clean under its own generated shapes (GAP-C66), `anno@scanno` takes W021's flags (GAP-C84); the commit gate runs only the ledger tests and conform when a commit touches record paths alone (measured 2026-11-11: every records commit runs the whole suite, minutes each) | A3.1 +0.1 | R01 | S | open |
 | R10 | harness | the catalogue's dead `scprofile:<name>` rows (GAP-122); then the cold-agent trial of the four acts | A4.4 4/4 | R02 | S + trial | open |
 | R07 | harness | a cohort-run skill (assemble, submit, recover, audit, record: GAP-003); then a cold agent on a held-out cohort | A7.1 5/5 | R03 | M + trial | open |
-| R08 | harness | a local UI over the driver: ask, see the plan, approve, follow, open the reports and the record | A6.1 5/5 | R03 | M x 2 | open |
+| R08 | harness | a local UI over the driver, designed by a Fable 5.2 designer (the PI, 2026-11-11) to Studio's design file: ask, see the plan, approve, follow, open the reports and the record | A6.1 5/5 | R03 | M x 2 | open |
 | R09 | harness + scProfile | hypothesis records with evidence, a falsifying test and a runnable follow-up; one follow-up through the loop | A5.2 | R02 | M x 2 | open |
 | R11 | all | four cold reproductions of sealed stage runs from the record and the docs | A2.3 4/4 | R01 R12 R19 R22 merged | 4 trials + jobs | open |
 | R13 | scQC | leak-clean under the generated lists (GAP-C78), the fixture's axes; the removal audit can stop a run (GAP-119, a wrong-result defect) | A3.1 +0.1 | R12 | M, split in two | open |
@@ -76,7 +76,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R36 | harness + scProfile | a draw rule over the scRNA-tools catalogue; five never-seen tools converted by agents alone, each passing the dev suite and its published example | A4.2 (0.2 a tool) | R24-R30 mostly done (the maker stable) | 5 x M + jobs | open |
 | R38 | Lab + Studio | W017's last re-check, W028's verification; the family's final object through Lab's converter (GAP-P20); ask the PI's deploy go | A6.2 2/2 | - | v x 2, S + the PI | open |
 | R39 | all eight | a docs-truth pass per repository (the audit's known-false lines first, then a claim sweep) | A2.2 8/8 | each repository's last route item | S each | open |
-| R41 | Studio | **W037** (the PI, 2026-11-11: "improve the studio UI design and layout to be top level"): an audit against a written rubric, a design file with tokens and a layout model, the shell and every screen rebuilt to it, a before-and-after gallery; three runs | the PI's direction (PLAT.3, G6; A6.2's surface) | - (stacked on W028's `099a085`); the deploy is the PI's go | M x 3 + a verifier by looking | building |
+| R41 | Studio | **W037** (the PI, 2026-11-11: "improve the studio UI design and layout to be top level"): an audit against a written rubric, a design file with tokens and a layout model, the shell and every screen rebuilt to it, a before-and-after gallery; runs by a Fable 5.2 designer since the PI's "use fable 5.2 level designer to design all ui" (run A was an Opus builder's draft) | the PI's direction (PLAT.3, G6; A6.2's surface) | - (stacked on W028's `099a085`); the deploy is the PI's go | M x 3 + a verifier by looking | building |
 
 Parked (not on the route; they stay in the ledgers): W030 (Service local reads: moves no score), W022 as a wave of its
 own, the 73 queued constraints of the B1 register (removed by the wave that meets one), every gap not named above.

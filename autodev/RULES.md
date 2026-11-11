@@ -248,3 +248,11 @@ names; nothing in tiers I to III changes.
     VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2` exported, and runs one suite at a time. The coordinator commits records
     at hand-backs, not after every step: the harness's commit gate runs the whole suite on each commit (ROUTE R06 narrows
     it for record-only commits).
+13. **The PI, 2026-11-11: "use fable 5.2 level designer to design all ui".** Every UI item on the route is designed, and its
+    visual layer built, by a designer agent on Fable 5.2 (Agent model `fable`; measured `claude-fable-5-2` at launch with
+    `EXPECT_MODEL=claude-fable-5-2 EXPECT_EFFORT=any bash setup/autodev/agent_models.sh ...`). This is the one exception to
+    tier II's "Opus 5.5 at max" for development agents, by the PI's own words. It covers Studio (R41), the harness's UI
+    (R08) and any change to what a user sees in Lab or Service. The designer owns the design file and every screen; a
+    builder on Opus may do the non-visual work a UI needs (data, state, tests), to the designer's file. No effort was
+    named, so none is set (measured: xhigh). The Opus builder that had just started Studio's run B was stopped (it had
+    only confirmed the baseline) and the run relaunched under a designer.
