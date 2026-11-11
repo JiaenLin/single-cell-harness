@@ -20,7 +20,7 @@ The plugin names are the caller's; none is known here.
 
 Environment:
     FAKE_SCPROFILE_LOG              append {"argv", "argv0", "cwd", "pythonpath"} per call
-    FAKE_SCPROFILE_MODE             ok (default) | refuse | fail | unsealed | other_argv | skip (the last
+    FAKE_SCPROFILE_MODE             ok (default) | refuse | fail | unsealed | other_argv | other_cli | skip (the last
                                     plugin of --kernel is skipped with a reason) | merge | doctor_fail
     FAKE_SCPROFILE_STATE_VERSION    what STATUS.json and report.json record (default 1)
 """
@@ -95,6 +95,8 @@ def run(a):
     argv = list(sys.argv)
     if MODE == "other_argv":
         argv = argv[:1] + ["run", "--h5ad", "someone_else.h5ad"]
+    if MODE == "other_cli":     # this call's argv, recorded as run by another checkout's cli.py
+        argv[0] = str(Path(argv[0]).resolve().parents[2] / "elsewhere" / "scprofile" / "cli.py")
     rec = {"contract": "1.0", "tool": "scprofile", "command": "run", "version": VERSION,
            "commit": COMMIT, "state_version": STATE_VERSION, "status": "partial", "headline": "started",
            "argv": argv, "products": [], "refusal": None}

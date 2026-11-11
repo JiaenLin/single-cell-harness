@@ -28,7 +28,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from helpers import FIXTURES, HAVE_H5PY, ROOT
+from helpers import FIXTURES, HAVE_H5PY, PROTO_HEAD, ROOT, write_plugin
 from sch.cli import main
 from sch.kernel import Stack
 
@@ -311,6 +311,20 @@ class TheHarnessRunsScprofile(_Base):
         rc, r = self.mount(block())
         self.assertIn("is not a file", r["reason"])
         self.assertEqual(self.calls_of(), [])
+        write_plugin(self.tmp / "plugins", "drop_one", {"profile": "single-cell/1.0", "provides": ["mask/drop_one"]},
+                     PROTO_HEAD + """
+import csv
+idc = run.inp["identity"]["column"]
+run.mask("drop_one", {r[idc]: not r[idc].endswith("BC0000") for r in csv.DictReader(open(run.data))}, reason="1", id_field=idc)
+sys.exit(run.finish(headline="masked one"))
+""")
+        shutil.rmtree(self.stack)
+        self.init(self.manifest, *self.CONTEXT)
+        rc, m = cli("--json", "mount", "--stack", str(self.stack), str(self.tmp / "plugins" / "drop_one"))
+        self.assertEqual(json.loads(m)["status"], "mounted", m)
+        rc, r = self.mount(block())
+        self.assertIn("masked beneath this mount", r["reason"])
+        self.assertEqual(self.calls_of(), [])
 
     def test_scprofiles_refusal_is_the_mounts_refusal_with_its_fix_and_a_bad_run_is_a_death(self):
         self.init(self.manifest, *self.CONTEXT, design=self.design)
@@ -320,7 +334,7 @@ class TheHarnessRunsScprofile(_Base):
         self.assertEqual(r["status"], "refused", r)
         self.assertIn("scProfile run refused: the design table has no column", r["reason"])
         self.assertIn("declare --control", r["fix"])
-        for mode in ("fail", "unsealed", "other_argv"):
+        for mode in ("fail", "unsealed", "other_argv", "other_cli"):
             with self.subTest(mode=mode):
                 os.environ["FAKE_SCPROFILE_MODE"] = mode
                 rc, r = self.mount(block())
