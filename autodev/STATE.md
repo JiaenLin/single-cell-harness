@@ -57,13 +57,14 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 Rewritten whole at 2026-11-11T09:05:50Z (earlier piecemeal edits had left the running line garbled).
 
 - **Running now (6 agents), as of 2026-11-11T09:33:40Z:**
-  - builders (Opus 5.5 max): **W045** (R43: one published object becomes per-library parts); **W035's fix round 2**, the last;
+  - builders (Opus 5.5 max): **W046** (scIntegrate: keeps the cohort's library column, GAP-C102; a fresh-prefix build; the first wave briefed with the attacks list and the subset rule); **W035's fix round 2**, the last;
     **W044's fix round 1** (scAnno: the leak fixes split out, then the tree rule); **W043's fix round 1** (scQC: the audit's
     invariants cannot be accepted by name).
   - the verifier (Opus 5.5 max) re-checking **the driver's fix round 1** (W041 + W042, `b0918c0`, 902 tests; five of the six
     defects fixed, the sixth returned to scIntegrate and scAnno as GAP-C102 and GAP-C103).
   - the designer (Fable 5.2), **run 3 on Studio** (W037): the design review said NOT YET with 13 must-fix items (Save writes the
     wrong thing in three places; dark-theme exports lose their ink; two views cut at 1,280 px).
+- **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
 - **On PBS:** **789570**, the first cohort's stage 4 through the harness (W036, at `8e06a95` = main + W036); **789561**, scIntegrate's
   job 32 (W039, withheld cells out of the PCA, at `1901611`); (scQC's two W043 jobs, 789344 and 789345, landed AS PREDICTED.)
 - **Merged 2026-11-11, five batches:** scIntegrate `b148030` (W012 + W025), scProfile `6f970e5` (W013 + W032 + W023), scQC `46ffe90`
