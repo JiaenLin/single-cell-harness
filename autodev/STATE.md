@@ -70,8 +70,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     survivor lines), under D-040's bound; the verifier of **W048's last re-check** (scQC `f57bc6e`: each gate records the
     design it computed on, and a dropped factor is told to the user; its jobs 790672 and 790673 are on the cluster).
     A3.1 goes over the bar when scQC merges.
-  - Fable 5.2: the designer of **W051**, run 5 on the Studio: every word and every element measured, a written standard
-    (word budgets, one term per concept), every element brought to it; a saved figure names uncalled cells.
+  - Fable 5.2: the reviewer of **W051** (the Studio's words and elements, built at `d51bf41`: 198 strings reworded and 14
+    cut against a written standard of word budgets and terms; a saved figure names the cells not called): every changed
+    string read for a claim that moved. Then the PI's go for a re-deploy.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary".** Applied: W048's last round
   narrowed while it runs; scIntegrate's merge decoupled from its installer's defect; the queue re-ordered.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
