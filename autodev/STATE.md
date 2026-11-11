@@ -66,8 +66,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     defect, the rest of the host read file by file; run 1 is built at `4c5b3ad`); **W044's fix round 2**, the last
     (scAnno's tree rule; branch `autodev/W044-fix2`); **W048** (scQC leak-clean and the fixture's axes: A3.1 0.41 to 0.51 on
     merge; ROUTE R13 run 2).
-  - verifiers (Opus 5.5 max): **the driver's last re-check** (W041 + W042, fix round 2 built at `174d890`: PASS may carry
-    stated limits, FAIL names only blocking reasons); **W046** (scIntegrate, on the batch W039 + W046).
+  - the builder (Opus 5.5 max) of **W046's fix round 1** (scIntegrate: its verification FAILED on two points: a key or
+    factor name the writer forbids is refused only after every method trained; the batch moves numbers at state version 1).
+  - the verifier (Opus 5.5 max) of **the driver's last re-check** (W041 + W042, fix round 2 built at `174d890`: PASS may
+    carry stated limits, FAIL names only blocking reasons).
   - the designer (Fable 5.2), **run 4 on Studio** (W037), the last fix round: the second review said "not yet", close (10 of
     the first thirteen closed, 3 in part; truth held; run 3 damaged one figure's names; saved figures incomplete and their
     stated width untrue). The review: `<scratchpad>/autodev/w037-review2/REVIEW2.md`. Four taste calls wait for the PI.
@@ -75,8 +77,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
-- **On PBS:** **789561**, scIntegrate's job 32 (W039, withheld cells out of the PCA, at `1901611`). The cluster's harness
-  checkout is at `main` (`1d1031b`); scQC's is at `2f25e72` and scIntegrate's at `1901611` (each returns to `main` when free).
+- **On PBS:** nothing. **789561** (scIntegrate's job 32, W039's gate at `1901611`) sealed AS PREDICTED: the PCA refit on
+  exactly the retained nuclei, every output that reads it moved, harmony identical to a second run in the job. The cluster's
+  harness and scQC checkouts are at `main`; scIntegrate's is at `1901611` and scAnno's at `9fb561c` (= `main`).
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
@@ -88,9 +91,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Merged 2026-11-11, the eighth: scQC `de62f78`** (W043: a failed removal audit stops the run before any object is written;
   its integrity checks are never acceptable by name). Both cohorts' promoted stage-1 runs reproduced IDENTICAL at the gated
   commit (PBS 789673, 789675). GAP-119, a wrong-result defect, is closed. scQC's leak-clean half of R13 is still open.
-- **Verified, waiting for a job AND for one measurement:** **W039** (scIntegrate, PASS; job 789561). D-033: its merge also
-  waits for W046's verifier to measure whether the batch moves embeddings without the tool's state version moving (then the
-  harness could serve a stale cached view). Its merge is followed by ONE question to the PI: stage 3's re-promotion.
+- **Held to merge together (D-033, D-034):** **W039** (scIntegrate; verified PASS, its gate 789561 AS PREDICTED) moves
+  numbers at state version 1. W046's verifier measured that the harness cannot serve a stale view (a mismatch refuses), so
+  nothing wrong can be served; but the contract needs version 2 in the tool AND in the harness's adapter. Order: W046's
+  fix round, its re-check and jobs; a small harness wave (GAP-C109: the adapter at 2, the stand-in as strict as the tool);
+  the first cohort's stage 3 through the harness at both new heads; both mains in one step. The PI's stage-3 question follows.
 - **Failed verification, in its last fix round:** the driver (W041 + W042; round 1's re-check broke four of its six fixes by
   attacking the family of each case); **W044's tree rule** (the re-check: no gain on 59 expectations the builder did not
   write; the disease test sets aside five tissues' defining cells; a release that cannot tell health is drafted unchecked;
