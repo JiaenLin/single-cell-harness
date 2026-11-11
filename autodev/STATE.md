@@ -73,9 +73,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     factor name the writer forbids is refused only after every method trained; the batch moves numbers at state version 1).
   - the builder (Opus 5.5 max) of **W049** (the harness: the driver's residue after its last re-check FAILED on one
     reason: a file given as a decision's answer is in no pinned set; also correct requests the driver now refuses).
-  - the designer (Fable 5.2), **run 4 on Studio** (W037), the last fix round: the second review said "not yet", close (10 of
-    the first thirteen closed, 3 in part; truth held; run 3 damaged one figure's names; saved figures incomplete and their
-    stated width untrue). The review: `<scratchpad>/autodev/w037-review2/REVIEW2.md`. Four taste calls wait for the PI.
+  - the reviewer (Fable 5.2) of **Studio's designer run 4** (W037, head `f7dab0c`: by the designer's account the names are
+    whole, every saved figure carries its key and n, and a file's stated width is its own): the final fix-only check.
+    Then the PI's deploy question with the gallery. Four taste calls wait for the PI.
 - **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
