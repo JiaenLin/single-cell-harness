@@ -15,8 +15,11 @@ the escape its tool's `describe` declares) is never answered here and never a pl
 stops before that stage, naming it, and resumes from the answer, recorded with who gave it; an
 escape that lifts one of the tool's refusals (`unanswered: tool-default`) does not stop the run -
 unanswered, its flag is not passed, the tool's own default, and the stage's events say so.
-A run is its request and every file the request names: their hashes are recorded when it starts
-and in each stage's seal, and a resume that finds one changed is refused.
+A run is its request and every file it reads (`run_inputs`: the samplesheet and every path in it,
+the design, every path a param names, every file under a directory named): the set is recomputed and
+compared at the plan, at each stage's start and its seal, and on a resume for every sealed stage, and
+a generated job carries it; a seal is trusted only on the run's own record. Rule 2 is read from the
+profile this harness ships and from every place a step is declared, and the places must agree.
 
 Nothing about a cohort or a site is here. The request is data that lives with the cohort; this
 module holds its schema (FIELDS) and `docs/request.example.yml` a synthetic example.
@@ -73,7 +76,8 @@ JOB_REQUIRED = ("harness", "python", "runs")
 STEP_FIELDS = ("tool", "version")
 #: A release number, as an upstream step's `version` is written: digits and dots, a leading `v`, and a
 #: pre- or post-release tag of the usual kinds. A name, a command or a sentence is not a version.
-VERSION = re.compile(r"v?\d+(\.\d+)*([._-]?(a|b|rc|alpha|beta|dev|post|p)\d*)?", re.I)
+VERSION = re.compile(r"v?\d+(\.\d+)*([a-z]|[._-]?(a|b|c|rc|alpha|beta|dev|post|p)\d+|[._-]?(alpha|beta|dev|post|rc))?",
+                     re.I)
 #: The answers to the user's decision on a step the profile asks about (`upstream.ask`, D-031).
 ASK_VALUES = ("accept", "decline")
 #: THE RUN'S INPUTS (autodev W042 fix 2, B), named limits, each said in the run's record. A file larger
@@ -134,6 +138,15 @@ def _has(params: dict, path: str) -> list:
             if _key(k) == _key(rest) and v is not None and v is not False]
 
 
+def _keys(v, path: str = ""):
+    """(path, key) of every key of a params mapping, at every depth."""
+    if isinstance(v, dict):
+        for k, x in v.items():
+            here = f"{path}.{k}" if path else str(k)
+            yield here, k
+            yield from _keys(x, here)
+
+
 def _entry(p: Path) -> dict:
     """One file as the run's record holds it: its sha256, or, over HASH_LIMIT, a sample (said)."""
     st = p.stat()
@@ -151,8 +164,12 @@ def _entry(p: Path) -> dict:
 def _add(files: dict, role: str, p: Path):
     """A named path into the set: a file, every file under a directory (walked sorted, EXCLUDED left
     out), or the path as absent - so a file that appears later is a change too."""
-    if p.is_file():
-        files[role] = _entry(p)
+    try:
+        if p.is_file():
+            files[role] = _entry(p)
+            return
+    except OSError as e:                         # said, and compared as such: the tool cannot read it either
+        files[role] = {"path": str(p), "unreadable": f"{type(e).__name__}: {e}"}
         return
     if not p.is_dir():
         files[role] = {"path": str(p), "absent": True}
@@ -168,7 +185,10 @@ def _add(files: dict, role: str, p: Path):
     files[role] = {"path": str(p), "dir": len(found)}
     for f in found:
         rel = f.relative_to(p).as_posix()
-        files[f"{role}/{rel}"] = _entry(f) if f.is_file() else {"path": str(f), "absent": True}
+        try:
+            files[f"{role}/{rel}"] = _entry(f) if f.is_file() else {"path": str(f), "absent": True}
+        except OSError as e:
+            files[f"{role}/{rel}"] = {"path": str(f), "unreadable": f"{type(e).__name__}: {e}"}
 
 
 def _paths(v, base: Path | None) -> list:
@@ -204,6 +224,11 @@ def run_inputs(req: dict) -> dict:
     _add(files, "observations", sheet)
     if req.get("design"):
         _add(files, "design", Path(req["design"]))
+    shipped = (Path(__file__).resolve().parent.parent / "plugins").resolve()
+    for p in req["stages"]:                      # an adapter the harness does not ship (named by a path, or
+        d = Path(p["dir"]).resolve()             # found on SCH_PLUGINS) is read like any input: its code too
+        if not str(d).startswith(str(shipped) + os.sep):
+            _add(files, f"{p['stage']}.plugin", d)
     try:
         _head, rows = read_manifest(sheet) if sheet.is_file() else ([], [])
     except Exception:                            # noqa: BLE001 - the stack's own init says what is wrong
@@ -235,6 +260,8 @@ def _digest(e: dict | None, mtime: bool = True) -> str | None:
         return "absent"
     if e.get("unpinned"):
         return "unpinned"
+    if e.get("unreadable"):
+        return "unreadable"
     return f"dir:{e.get('dir')}"
 
 
@@ -244,15 +271,16 @@ def flat(files: dict, mtime: bool = True) -> dict:
 
 def differ(then: dict, now: dict, here_only: bool = False) -> list:
     """[(role, then, now)] where two sets disagree, each a flat digest. `here_only` (a job checked where
-    it runs): a role absent where the job was generated - or under a directory that was - is checked
-    here for the first time, not a difference."""
+    it runs): a role absent where the job was generated - or read from one that was: a file under a
+    directory, a cell of a samplesheet (`observations.<column>[<library>]`) - is checked here for the
+    first time, not a difference."""
     out = []
     for k in sorted(set(then) | set(now)):
         a, b = then.get(k), now.get(k)
         if a == b:
             continue
         if here_only and (a == "absent" or (a is None and any(
-                then.get(k[:i]) == "absent" for i in range(len(k)) if k[i] == "/"))):
+                then.get(k[:i]) == "absent" for i in range(len(k)) if k[i] in "/."))):
             continue
         out.append((k, a, b))
     return out
@@ -556,16 +584,27 @@ def load(path, files: bool = True) -> dict:
         # A RELATIVE PATH IS READ WHERE ITS TOOL RUNS (autodev W042 fix 2, B): a tool is given its params
         # verbatim and reads a relative path from its own working directory, the stage's run directory;
         # one that names a file beside the request would be pinned here and not be what the tool reads.
+        # That directory is the run's own and new, so a relative path names what the run made - unless it
+        # climbs out of it (`..`) or names another account's home (`~name/`): outside the run, and never
+        # pinned, so refused too.
         for path, v in _leaves(params):
             for x in ([y.strip() for y in v.split(",")] if isinstance(v, str) else []):
-                if x and not x.startswith(("/", "~")) and (base / x).exists():
-                    raise RequestError(f"stages[{i}] ({m.name}): {path} is {x!r}, a relative path to {base / x}; "
-                                       f"{m.name}'s tool reads its params from its own working directory (the "
-                                       f"stage's run directory), not from the request's: write it absolute, or ~/")
+                out_of = bool(re.search(r"(^|/)\.\.(/|$)", x) or re.match(r"~[^/\s]+/", x))
+                if x and not x.startswith(("/", "~/")) and (out_of or (base / x).exists()):
+                    raise RequestError(f"stages[{i}] ({m.name}): {path} is {x!r}, a relative path"
+                                       + (" out of its tool's working directory" if out_of else f" to {base / x}")
+                                       + f"; {m.name}'s tool reads its params from its own working directory (the "
+                                       f"stage's run directory), not from the request's, and what it names there "
+                                       f"would not be pinned: write it absolute, or ~/")
         decisions = []
         for d in m.data.get("decisions") or []:
-            if _has(params, str(d["param"])):
-                raise RequestError(f"stages[{i}] ({m.name}): params set {_has(params, str(d['param']))[0]}, "
+            # AN ESCAPE IS NEVER A PLAIN PARAM, WHEREVER IT IS PUT (autodev W042 fix 2, D): its name is
+            # compared with `-`/`_` and case folded, at its own place and at any other depth of the stage's
+            # params - an adapter declares each escape's flag under one command only
+            leaf = _key(str(d["param"]).split(".")[-1]).replace("_", "")
+            put = _has(params, str(d["param"])) + [x for x, k in _keys(params) if _key(k).replace("_", "") == leaf]
+            if put:
+                raise RequestError(f"stages[{i}] ({m.name}): params set {put[0]}, "
                                    f"which {m.name} declares "
                                    f"the user's decision {short}.{d['name']} ({d['what']}); the driver passes "
                                    f"it only as an answer recorded with who gave it: --answer "
@@ -753,9 +792,24 @@ def _pinned(out: Path, req: dict, dfile: Path) -> tuple:
         raise RequestError(f"{out} was started on other files: {said(d, {**(rec.get('files') or {}), **now})}. "
                            f"A run is one request and every file it reads; a stage sealed on the old ones would "
                            f"be read beside one run on the new. Restore each file as it was, or start a new --out")
+    # A MISSING SEAL IS NOT A FRESH START EITHER (autodev W042 fix 2, B): a stage the run's ledger names
+    # as sealed still holds its seal, and the sealed stages are the first ones, in order - a stage run
+    # again beneath a later one that stays sealed would hand on other files than that one read
+    gap = None
     for p in req["stages"]:
-        if (out / p["stage"] / "SEALED.json").exists():
-            _trust(out, p["stage"], rec, now)
+        s = p["stage"]
+        if (out / s / "SEALED.json").exists():
+            if gap:
+                raise RequestError(f"{s} is sealed and {gap}, before it, is not: {s} was made from what {gap} "
+                                   f"handed on then, and {gap} run again would hand on other files - a run is "
+                                   f"sealed in order: start a new --out")
+            _trust(out, s, rec, now)
+        elif (rec.get("seals") or {}).get(s):
+            raise RequestError(f"the run's {INPUTS} names {s}'s seal ({str(rec['seals'][s])[:12]}) and "
+                               f"{out / s / 'SEALED.json'} is not there: a missing seal is not a fresh start - "
+                               f"start a new --out")
+        else:
+            gap = gap or s
     if dfile.exists() and _sha(dfile) != rec.get("decisions_sha256"):
         raise RequestError(f"{dfile} was changed outside `sch run` (sha256 {_sha(dfile)[:12]}, recorded "
                            f"{str(rec.get('decisions_sha256'))[:12]}); a recorded decision is not rewritten: "
@@ -1028,7 +1082,8 @@ def _stage(p, sd, req, handed, params, answers, done, failed) -> tuple:
                    "report": str(sd / "report" / "report.json"), "numbers": len(rep.get("numbers") or []),
                    "request_sha256": req["sha256"], "out": str(out), "inputs": flat(now),
                    "handed_sha256": {x: _digest(_entry(Path(x))) for x in
-                                     [*handed["libraries"].values(), handed["joint"]] if x},
+                                     [*handed["libraries"].values(), handed["joint"],
+                                      str(sd / "report" / "report.json")] if x and Path(x).is_file()},
                    "decisions": {d["name"]: answers.get(d["name"]) for d in
                                  [*p["decisions"], *(req.get("decisions") or [])]}})
     led = json.loads((out / INPUTS).read_text())   # the run's ledger names every seal it made
@@ -1157,9 +1212,9 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"job.yml sha256 {_sha(site / 'job.yml')[:16]})",
         f"#   harness   {commit or 'not a git checkout: unpinned'}" + (f" (the job refuses another)" if commit else ""),
         f"#   inputs    {len(pins) - len(absent)} files the run reads, pinned as generated (the job refuses another "
-        f"set: `sch plan --expect`); {len(absent)} checked only where it runs" + (":" if absent else ""),
-        *[f"#     on the cluster only: {k} {os.path.relpath(pins[k]['path'], jobs) if not str(pins[k]['path']).startswith(str(Path.home())) else '~/' + os.path.relpath(pins[k]['path'], Path.home())}"
-          for k in absent],
+        f"set: `sch plan --request REQUEST --expect PINS.json`); {len(absent)} checked only where it runs" + (":" if absent else ""),
+        *[re.sub(r"[\x00-\x1f\x7f]", "?", f"#     on the cluster only: {k} {os.path.relpath(pins[k]['path'], jobs) if not str(pins[k]['path']).startswith(str(Path.home())) else '~/' + os.path.relpath(pins[k]['path'], Path.home())}"
+                 ) for k in absent],
         f"#   stages    " + ", ".join(f"{p['stage']} {p['plugin']}" + (f" [{', '.join(f'{k}={v}' for k, v in sorted(p['resources'].items()))}]" if p.get("resources") else "") for p in req["stages"]),
         f"#   this job  {cfg.get('queue_chosen') or 'the site block queue'}",
         f"#   answers   {tail.strip() or 'none'}",

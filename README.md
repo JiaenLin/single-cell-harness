@@ -29,10 +29,13 @@ everything downstream knows when one does.
 > (`docs/request.example.yml`; schema in `sch/drive.py`) as one stack per stage, each reading what
 > the stage before it handed on from that stage's record, stopping before a stage whose adapter declares
 > a choice as the user's (`decisions:` in its plugin.yml, each naming the escape its tool's `describe`
-> declares; an escape that lifts a tool's refusal does not stop the run and is passed only as an
-> answer, recorded with who) until it is answered by name, and sealing each stage and the run; a resume
-> is refused when any file the request names has changed since the run started; `sch plan
-> --request FILE` shows the plan and runs nothing. It is graded on the synthetic fixture with the
+> declares, or, for scProfile, which has none, its parser's escapes listed by hand; an escape that lifts
+> a tool's refusal does not stop the run and is passed only as an answer, recorded with who, never as a
+> param under any spelling) until it is answered by name, and sealing each stage and the run. Every
+> file the run reads (the samplesheet and the paths in it, the design, each path a param names, every
+> file under a named directory) is one set, recomputed and compared at the plan, at each stage's start
+> and seal and on every resume; a seal is trusted only on the run's own record; `sch plan --request FILE`
+> shows the plan and runs nothing (`--expect` compares the set with a generated job's). It is graded on the synthetic fixture with the
 > stand-ins. Run 2 (W042) is the cluster path: under a site file declaring `executor: pbs`, each stage
 > is a scheduler job sized by the request's `resources:` and queued by the site's `pbs.queues` (the
 > first queue whose ceilings hold it); every stage's report gives its cells, wall time and peak memory

@@ -558,3 +558,16 @@ def register(inv):
   is quotable (**A2**), and it declares its cost.
 - A check only checks if the regression actually fails it. Introduce the regression, watch it fail,
   revert — and if it cannot be made to fail, the check is decoration.
+
+## Driver keys (harness W041/W042)
+
+What `sch run --request` reads from an adapter's `plugin.yml`, beside the keys above:
+`reads` / `hands_on` (the shapes it takes and gives); `library_key` and `context_params` (where it takes
+the library column and a context axis as its tool's own flag); `decisions` (each choice its tool declares
+as the user's: `name`, `param`, `escape`, `what`, `unanswered: stop | tool-default`) and
+`escapes_not_asked` (a tool escape the driver passes nothing for, with why); `owned` (the params its
+`run.py` sets itself, its OWNED, refused when the plan is made; a test ties the two); `upstream_columns`
+(where its tool's samplesheet says what ran upstream, per step: `tool`, `version`, the `performed` and
+`declined` columns; a first stage must declare it, `{}` if nowhere, and every row must agree with the
+request); `runs_upstream` (the params with which its tool performs an upstream step itself, refused on an
+assay whose profile allows only `none` for that step).

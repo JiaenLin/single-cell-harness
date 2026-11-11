@@ -496,6 +496,8 @@ def _select_words(sel: str) -> list:
 
 #: A memory size as the scheduler reads it: a whole number and its unit (autodev W042 fix 2, F).
 MEM = re.compile(r"(\d+)([kmgtp]?b)")
+#: One word of a `select` chunk as the scheduler reads it (autodev W042 fix 2, F).
+SELECT_WORD = re.compile(r"[a-z][a-z0-9_]*=[A-Za-z0-9._-]+", re.ASCII)
 
 
 def check_size(size: dict) -> dict:
@@ -504,6 +506,18 @@ def check_size(size: dict) -> dict:
     tb), walltime [[h:]m:]s above zero - in its own word or inside a `select`. Returns the words as the
     scheduler is given them (mem's unit in lower case)."""
     words = {k: v for k, v in dict(size or {}).items() if v is not None}
+    sel = str(words.get("select") or "").strip()
+    if sel:                                      # written into the job's #PBS line as it is: each word is
+        parts = sel.split(":")                   # the scheduler's word=value, and nothing else (no newline,
+        if parts[0].isascii() and parts[0].isdigit():                      # `#`, quote or second key)
+            if int(parts[0]) <= 0:
+                raise ExecutorError(f"select {sel!r} asks for {parts[0]} chunks; a job is at least one")
+            parts = parts[1:]
+        bad = [x for x in parts if not SELECT_WORD.fullmatch(x)]
+        if bad:
+            raise ExecutorError(f"select {sel!r}: {bad[0]!r} is not a size word as the scheduler reads one "
+                                f"(word=value: lower-case letters, digits and `_`; the value letters, digits, "
+                                f"`.`, `_`, `-`)")
     for k, v in _select_words(words.get("select") or ""):
         words.setdefault(f"select.{k}", v)
     out = {}
@@ -519,7 +533,7 @@ def check_size(size: dict) -> dict:
                                        else ""))
             t = t.lower()
         if w == "walltime":
-            secs = _seconds(t) if re.fullmatch(r"\d+(:\d+){0,2}", t) else None
+            secs = _seconds(t) if re.fullmatch(r"[0-9]+(:[0-9]+){0,2}", t) else None   # ASCII digits only
             if not secs:
                 raise ExecutorError(f"{k} {v!r} is not a walltime above zero ([[h:]m:]s)")
         out[k] = t
@@ -531,7 +545,9 @@ def sized(cfg: dict, over: dict | None = None, base: dict | None = None) -> dict
     The site file gives the queues, each with its ceilings (`pbs.queues`: [{queue, walltime, ncpus,
     mem}, ...] in the order they are to be tried), and its defaults; a request or a tool gives a
     run's size as `ncpus`, `mem` and `walltime`. A size is written `select=1:ncpus=N:mem=M`, the
-    scheduler's own words, unless the most specific layer gives a `select`, which is used as it is.
+    scheduler's own words: every word a layer states - in its own word or inside its `select` - is
+    laid over the site's `select`, so a word it does not state keeps the site's value (W042 fix 2).
+    A size that is zero, negative, not a number or (mem) unit-less is refused (`check_size`).
     The queue is the FIRST declared one whose ceilings hold the job (the site's rule: the queue
     from the requirement, never the requirement from the queue), unless that layer names a queue;
     a job no declared queue can hold is refused before any qsub, naming every ceiling. With no

@@ -668,6 +668,30 @@ class TheClusterPath(_Base):
                     self.assertIn("resources.prof", rec["reason"])
                     self.assertEqual(len(self.calls()), n, "refused before any tool")
 
+    def test_C3_a_samplesheet_only_on_the_cluster_is_checked_there_with_its_cells(self):
+        c = cohort(self.tmp / "c", "a")
+        there = c["dir"] / "only_on_the_cluster.tsv"
+        f, _rec = self.job(c, request(c, name="absent.yml", observations=there.name, resources=self.SIZES))
+        self.assertIn("#     on the cluster only: observations ", f.read_text())
+        shutil.copy2(c["dir"] / "samplesheet.tsv", there)   # where the job runs, the sheet and its cells are
+        p, rundir = self.run_job(f, "sheet_there")
+        self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: AS PREDICTED", p.stdout[-2500:] + p.stderr[-800:])
+        self.assertIn("only here: observations.", (rundir / "PINS.txt").read_text())
+
+    def test_F3_a_size_word_is_the_schedulers_word_and_nothing_else(self):
+        c = cohort(self.tmp / "c", "a")
+        bad = [{"select": "1:ncpus=4:host=a\n#PBS -q other"}, {"select": "1:ncpus=4:mem=8gb #x"},
+               {"select": "0:ncpus=4"}, {"select": "1:ncpus=4:place='excl'"}, {"select": "1:NCPUS=4"},
+               {"walltime": "１:００:００"}]
+        for i, size in enumerate(bad):
+            with self.subTest(size=size):
+                n = len(self.calls())
+                rc, rec = self.drive(request(c, name=f"w{i}.yml", resources={"prof": size}), self.tmp / f"rw{i}",
+                                     *answered(c))
+                self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+                self.assertIn("resources.prof", rec["reason"])
+                self.assertEqual(len(self.calls()), n, "refused before any tool")
+
 
 def sha(path) -> str:
     import hashlib
@@ -945,7 +969,7 @@ class TheDriverHoldsItsRulesRound2(_Base):
             rc, rec = self.drive(req, out, *answered(c))
         finally:
             Stack.run_declared = real
-        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "03_int"), rec)
+        self.assertEqual((rc, rec["status"], rec.get("stage")), (2, "failed", "03_int"), rec)
         self.assertIn("changed while 03_int ran", rec["reason"])
         self.assertIn("design", rec["reason"])
         self.assertFalse((out / "03_int" / "SEALED.json").exists())
@@ -964,7 +988,7 @@ class TheDriverHoldsItsRulesRound2(_Base):
             rc, rec = self.drive(req, out)
         finally:
             D._stage = real_stage
-        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "04_prof"), rec)
+        self.assertEqual((rc, rec["status"], rec.get("stage")), (2, "failed", "04_prof"), rec)
         self.assertIn("before 04_prof started", rec["reason"])
         rc, rec = self.drive(req, out)
         self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
@@ -972,6 +996,52 @@ class TheDriverHoldsItsRulesRound2(_Base):
             self.assertEqual(json.loads((out / s / "SEALED.json").read_text())["inputs"]["design"], sha(c["design"]))
 
     # ---- A: rule 2 read from every place a step is declared, and the places agree
+    def test_B5_a_seal_the_ledger_names_is_never_missing_and_the_seals_are_in_order(self):
+        c = cohort(self.tmp / "c", "a")
+        req, out = request(c), self.tmp / "run"
+        rc, rec = self.drive(req, out, *ANSWERS, "--by", "a tester")
+        self.assertEqual((rc, rec.get("stage")), (3, "04_prof"), rec)
+        (out / "02_anno" / "SEALED.json").unlink()   # a middle stage's seal removed: 02 would run again
+        n = len(self.calls())                        # beneath 03, sealed on what 02 handed on before
+        rc, rec = self.drive(req, out, *CTRL)
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn("names 02_anno's seal", rec["reason"])
+        led = json.loads((out / "INPUTS.json").read_text())
+        del led["seals"]["02_anno"]                  # and the ledger edited to agree
+        (out / "INPUTS.json").write_text(json.dumps(led))
+        rc, rec = self.drive(req, out, *CTRL)
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn("03_int is sealed and 02_anno, before it, is not", rec["reason"])
+        self.assertEqual(len(self.calls()), n, "nothing ran again")
+
+    def test_B6_a_path_out_of_its_tools_directory_is_refused_and_an_adapter_not_shipped_is_pinned(self):
+        c = cohort(self.tmp / "c", "a")
+        for v, refused in (("../../../../../c/design.csv", True), ("x/../../design.csv", True),
+                           ("~nobody/design.csv", True), ("made_by_the_run/x.tsv", False), ("~ condition", False)):
+            st = stages(c)
+            st[3]["params"]["run"]["references"] = v
+            rc, reason = self.plan(request(c, name="rel.yml", stages=st))
+            with self.subTest(value=v):
+                self.assertEqual(rc, 2 if refused else 0, reason)
+                if refused:
+                    self.assertIn("out of its tool's working directory", reason)
+        plug = self.tmp / "adapters" / "qc@scqc"     # the first stage's adapter named by a path
+        shutil.copytree(Path(__file__).resolve().parent.parent / "plugins" / "single-cell" / "qc@scqc", plug,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        st = stages(c)
+        st[0]["plugin"] = str(plug)
+        req, out = request(c, name="bypath.yml", stages=st), self.tmp / "run"
+        rc, rec = self.drive(req, out, *ANSWERS, "--by", "a tester")
+        self.assertEqual((rc, rec.get("stage")), (3, "04_prof"), rec)
+        files = json.loads((out / "INPUTS.json").read_text())["files"]
+        self.assertIn("01_qc.plugin/run.py", files)
+        self.assertFalse([k for k in files if k.startswith("02_anno.plugin")], "a shipped adapter is the harness's")
+        with open(plug / "run.py", "a") as fh:      # its code edited after its stage sealed
+            fh.write("# edited\n")
+        rc, rec = self.drive(req, out, *CTRL)
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn("01_qc.plugin/run.py", rec["reason"])
+
     def test_A2_rule_2_reads_every_key_of_every_step_and_the_shipped_profile_only(self):
         c = cohort(self.tmp / "c", "a", assay="scrna")
         self.sheet(c, rename=("ambient_h5", "matrix"))   # the aligner's call, not a denoised object
@@ -1102,8 +1172,12 @@ class TheDriverHoldsItsRulesRound2(_Base):
         if (root / "scProfile").is_dir():        # no describe: each listed escape is a flag of its `run`
             src = (root / "scProfile" / "scprofile" / "cli.py").read_text()
             m = yamlish.load(plugins / "prof@scprofile" / "plugin.yml")
-            for x in [x for x in m["decisions"] if x.get("escape")]:
-                self.assertIn(f'r.add_argument("{x["escape"]}"', src, x)
+            listed = [x["escape"] for x in m["decisions"] if x.get("escape")]
+            for x in listed:
+                self.assertIn(f'r.add_argument("{x}"', src, x)
+            # the guard's escape scProfile names itself (kernels.py guard_verdict: "the escape is one flag away")
+            self.assertIn('f"--allow {kernel.name}"', (root / "scProfile" / "scprofile" / "kernels.py").read_text())
+            self.assertIn("--allow", listed, "scProfile's own escape is asked")
             compared.append("scProfile")
         self.assertTrue(compared, f"no tool checkout under {root}")
 
