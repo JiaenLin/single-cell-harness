@@ -677,6 +677,22 @@ class TheClusterPath(_Base):
         p, rundir = self.run_job(f, "sheet_there")
         self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: AS PREDICTED", p.stdout[-2500:] + p.stderr[-800:])
         self.assertIn("only here: observations.", (rundir / "PINS.txt").read_text())
+        plug = self.tmp / "adapters" / "q$(id)c@scqc"    # what is written into the job is a plain word
+        shutil.copytree(Path(__file__).resolve().parent.parent / "plugins" / "single-cell" / "qc@scqc", plug,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        (plug / "plugin.yml").write_text((plug / "plugin.yml").read_text().replace(
+            "name: qc@scqc", 'name: "q$(id)c@scqc"', 1))
+        st = stages(c)
+        st[0]["plugin"] = str(plug)
+        rc, text = cli("--json", "plan", "--request", str(request(c, name="named.yml", stages=st)))
+        self.assertEqual(rc, 2, text)
+        self.assertIn("names its stage", json.loads(text)["reason"])
+        bad = self.tmp / "st$(id)" / "jobs" / "j.pbs"
+        rc, text = cli("--json", "run", "--request", str(request(c, name="j.yml", resources=self.SIZES)),
+                       "--job", str(bad), *answered(c))
+        self.assertEqual(rc, 2, text)
+        self.assertIn("the job's stage directory", json.loads(text)["reason"])
+        self.assertFalse(bad.exists())
 
     def test_F3_a_size_word_is_the_schedulers_word_and_nothing_else(self):
         c = cohort(self.tmp / "c", "a")

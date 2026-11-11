@@ -16,9 +16,10 @@ stops before that stage, naming it, and resumes from the answer, recorded with w
 escape that lifts one of the tool's refusals (`unanswered: tool-default`) does not stop the run -
 unanswered, its flag is not passed, the tool's own default, and the stage's events say so.
 A run is its request and every file it reads (`run_inputs`: the samplesheet and every path in it,
-the design, every path a param names, every file under a directory named): the set is recomputed and
-compared at the plan, at each stage's start and its seal, and on a resume for every sealed stage, and
-a generated job carries it; a seal is trusted only on the run's own record. Rule 2 is read from the
+the design, every path a param names, every file under a directory named, an adapter the harness does
+not ship): the set is recomputed and compared at the plan, at each stage's start and its seal, and on a
+resume for every sealed stage, and a generated job carries it; a seal is trusted only on the run's own
+record, and a seal that record names is never missing (the sealed stages are the first, in order). Rule 2 is read from the
 profile this harness ships and from every place a step is declared, and the places must agree.
 
 Nothing about a cohort or a site is here. The request is data that lives with the cohort; this
@@ -78,6 +79,9 @@ STEP_FIELDS = ("tool", "version")
 #: pre- or post-release tag of the usual kinds. A name, a command or a sentence is not a version.
 VERSION = re.compile(r"v?\d+(\.\d+)*([a-z]|[._-]?(a|b|c|rc|alpha|beta|dev|post|p)\d+|[._-]?(alpha|beta|dev|post|rc))?",
                      re.I)
+#: A stage's name, a job's stage directory and its purpose: each is written into the generated job as it
+#: is (a path, the run key, a shell line), so each is a plain word (autodev W042 fix 2, ATTACKS 6).
+STAGE_WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*", re.ASCII)
 #: The answers to the user's decision on a step the profile asks about (`upstream.ask`, D-031).
 ASK_VALUES = ("accept", "decline")
 #: THE RUN'S INPUTS (autodev W042 fix 2, B), named limits, each said in the run's record. A file larger
@@ -214,7 +218,8 @@ def _paths(v, base: Path | None) -> list:
 def run_inputs(req: dict) -> dict:
     """THE COMPLETE SET OF FILES A RUN READS (autodev W042 fix 2, B), {role: entry}: the request, its
     samplesheet, its design, every path-valued cell of the samplesheet (any column), every path-valued
-    stage param, and every file under any directory one of them names. ONE function, so the plan, each
+    stage param, every file under any directory one of them names, and every file of an adapter the
+    harness does not ship (its code is read like any input). ONE function, so the plan, each
     stage's start and seal, a resume and the generated job compare the same set the same way. The roles
     are the request's own words, the same on every machine; a path is where the file was found."""
     from .services.dataset import read_manifest
@@ -542,6 +547,9 @@ def load(path, files: bool = True) -> dict:
         m = _resolve(str(s["plugin"]))
         params = dict(s.get("params") or {})
         short = m.name.split("@")[0]
+        if not re.fullmatch(STAGE_WORD, short):      # a directory, and a word of the generated job's shell
+            raise RequestError(f"stages[{i}]: {m.name!r} names its stage {short!r}; a stage's name is a "
+                               f"directory and is written into the generated job: letters, digits, `_`, `-`, `.`")
         if short in seen:
             raise RequestError(f"stages[{i}]: a second {short!r} stage; each stage runs once")
         seen.add(short)
@@ -1165,6 +1173,10 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         raise RequestError(f"--job {job_path}: a job lives in its stage's jobs/ directory (the run key "
                            f"takes the stage's name from it)")
     stage = jobs.parent.name
+    for what, v in (("the job's stage directory", stage), ("--purpose", purpose)):
+        if v is not None and not re.fullmatch(STAGE_WORD, v):   # spliced into the run key and shell lines
+            raise RequestError(f"--job: {what} is {v!r}; it is written into the job's run key and its shell "
+                               f"lines as it is: letters, digits, `_`, `-`, `.`")
     site, layer, job = _site()
     cfg = PbsExecutor(config={**dict(layer["pbs"]), "plugins": {DRIVE: req.get("drive_resources") or {}}}
                       ).settings(DRIVE)

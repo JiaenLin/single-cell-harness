@@ -33,8 +33,9 @@ everything downstream knows when one does.
 > a tool's refusal does not stop the run and is passed only as an answer, recorded with who, never as a
 > param under any spelling) until it is answered by name, and sealing each stage and the run. Every
 > file the run reads (the samplesheet and the paths in it, the design, each path a param names, every
-> file under a named directory) is one set, recomputed and compared at the plan, at each stage's start
-> and seal and on every resume; a seal is trusted only on the run's own record; `sch plan --request FILE`
+> file under a named directory, an adapter the harness does not ship) is one set, recomputed and compared
+> at the plan, at each stage's start and seal and on every resume; a seal is trusted only on the run's own
+> record, and one it names is never missing; `sch plan --request FILE`
 > shows the plan and runs nothing (`--expect` compares the set with a generated job's). It is graded on the synthetic fixture with the
 > stand-ins. Run 2 (W042) is the cluster path: under a site file declaring `executor: pbs`, each stage
 > is a scheduler job sized by the request's `resources:` and queued by the site's `pbs.queues` (the
