@@ -16,7 +16,7 @@ A3.4 past two stages at scale (0.63), A4.2 past three tools (0.6), A2.1's fourth
 |---|---|---|---|
 | A1.1 one request, every stage | 4/8 | SAMBO stage 4; C46 stages 1, 3, 4 | R02 R14 R21 R35 |
 | A1.2 ten steps mapped | 6/10 | DE, DA and the plugins through the adapter; ambient removal declared upstream by name | R02 R03 |
-| A1.3 fresh environments | 2/5 | scAnno, scIntegrate, the harness build from `main` on a fresh prefix | R05 R16 R20 |
+| A1.3 fresh environments | 3/5 (scAnno, 2026-11-11) | scAnno, scIntegrate, the harness build from `main` on a fresh prefix | R05 R16 R20 |
 | A2.1 promoted runs reproduced | 2/4 | stage 3 counts when W012 + W025 merge; stage 4 needs a promoted run (the PI) | R19 R34 |
 | A2.2 no false claim in the docs | 1/8 | a docs-truth pass per repository, after its code settles | R39 |
 | A2.3 cold reproduction | 0/4 | a context-free agent reproduces four sealed stage runs | R11 |
@@ -57,7 +57,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R02 | harness | **W036**: `prof@scprofile`, SAMBO stage 4 through the harness (DE, abundance, the plugins the design admits), with the run-alone twin | A1.1 5/8, A1.2 9/10 | - (stacked on the train head; scProfile at `6f970e5`) | M + job | gating |
 | R03 | harness | **W041** (run 1, built) and **W042** (run 2: the cluster path, each stage's cost, one library key, the first cohort's chained run), the stage driver: one request (matrices + design sheet) plans and runs the four mounts in order, user-owned decisions declared, ambient removal declared upstream by name; a job generated, not hand-written | A1.2 10/10; needed by R04 R07 R08 R15 | R02 (starts on three stages) | M, split in two | building |
 | R04 | harness | the Service request as the driver's input (GAP-P06) | A6.3 3/3 | R03 | S | open |
-| R43 | harness | one published object becomes per-library parts (GAP-C90): a declared library column, counts slot and symbol column; read-only parts and a samplesheet manifest that `qc@scqc` mounts; no cohort script | A3.4 (stage 1 cannot start without it), A6.3 | R03's run 1 (the request names the declarations) | M | open |
+| R43 | harness | one published object becomes per-library parts (GAP-C90): a declared library column, counts slot and symbol column, and the replicate unit as a second key (measured on the scale cohort, PBS 789168: its 88 libraries are each a pool of donors, so the QC unit and the replicate unit differ); read-only parts and a samplesheet manifest that `qc@scqc` mounts; no cohort script | A3.4 (stage 1 cannot start without it), A6.3 | R03's run 1 (the request names the declarations) | M | open |
 | R05 | harness | an installer and a lock; a fresh-prefix build and self-test on the cluster (GAP-127) | A1.3 +1/5 | R01 | S-M + job | open |
 | R06 | harness | leak-clean under its own generated shapes (GAP-C66), `anno@scanno` takes W021's flags (GAP-C84); the commit gate runs only the ledger tests and conform when a commit touches record paths alone (measured 2026-11-11: every records commit runs the whole suite, minutes each) | A3.1 +0.1 | R01 | S | open |
 | R10 | harness | the catalogue's dead `scprofile:<name>` rows (GAP-122); then the cold-agent trial of the four acts | A4.4 4/4 | R02 | S + trial | open |
@@ -68,8 +68,8 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R13 | scQC | leak-clean under the generated lists (GAP-C78), the fixture's axes; the removal audit can stop a run (GAP-119, a wrong-result defect) | A3.1 +0.1 | R12 | M, split in two | building |
 | R14 | cohort C46 | stage 1 through the harness (with R21 and R35 this becomes ONE chained run from C46's request once W042 lands) | A1.1 +1/8 | R12 | job | open |
 | R15 | cohort (scale) + scQC | **W031**: stage the 1,263,676-cell cohort; stage 1, then each next stage as its adapter lands | A3.4 0.316 a stage | R12; R03 for the later stages | jobs, S-M | gating |
-| R16 | scAnno | the environment pin (GAP-C82), a fresh-prefix build and self-test; leak-clean (36 hits), the fixture's axes; `build-markers` field (GAP-C83) | A1.3 +1/5, A3.1 +0.1 | - | M, split in two + job | gating |
-| R17 | scAnno | `tree propose` keeps the tissue's own lineages (GAP-C85); C46's tree re-proposed; ask the PI to approve it | C46's labels | R16 | S-M + the PI | open |
+| R16 | scAnno | the environment pin (GAP-C82), a fresh-prefix build and self-test; leak-clean (36 hits), the fixture's axes; `build-markers` field (GAP-C83) | A1.3 +1/5, A3.1 +0.1 | - | M, split in two + job | merged (run 1); building (run 2, W044) |
+| R17 | scAnno | `tree propose` keeps the tissue's own lineages (GAP-C85); C46's tree re-proposed; ask the PI to approve it | C46's labels | R16 | S-M + the PI | building |
 | R20 | scIntegrate | a fresh-prefix build and self-test; leak-clean (12 hits), the fixture's axes; withheld cells out of the PCA (GAP-128, a wrong-result defect, with its predicted difference); W022's constraints only where a wave meets them | A1.3 +1/5, A3.1 +0.1 | R19 | M, split in two + job | verifying |
 | R21 | cohort C46 | stage 3 through the harness (labels marked draft until R17's approval) | A1.1 +1/8 | R01 R19 | job | open |
 | R35 | cohort C46 | stage 4 through the harness (one factor, n = 2) | A1.1 +1/8 | R02 R21 | job | open |
