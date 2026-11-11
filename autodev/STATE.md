@@ -67,8 +67,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   - the verifier (Opus 5.5 max) of **W048** (scQC, built at `55c9497`: leak hits 193 and 31 to 0 and 0 under the two
     cohorts' lists, its own guard now reading them; the fixture's assay and factor told and read back; A3.1 0.41 to 0.51
     on merge and on its two jobs).
-  - the verifier (Opus 5.5 max) of **W044's last re-check** (scAnno's tree rule, fix round 2 built at `20ad3f6`: six
-    candidates in a pool, the winner counts healthy-only studies; it writes a fresh expectation set before any run).
+  - the builder (Opus 5.5 max) of **W050** (scAnno, from `main`: `embed` names a library from the object or the manifest,
+    never from a file name; GAP-C103, one of the two tool-side breaks that stop a chained stage 4; ROUTE R47).
   - the builder (Opus 5.5 max) of **W046's fix round 1** (scIntegrate: its verification FAILED on two points: a key or
     factor name the writer forbids is refused only after every method trained; the batch moves numbers at state version 1).
   - the builder (Opus 5.5 max) of **W049** (the harness: the driver's residue after its last re-check FAILED on one
@@ -86,7 +86,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   library 1,053; the mutants 581 and 420, where the first job had 0). That library's radial-glia-like cells walk to
   Progenitor cell instead: two lineages of the draft compete for the same cells, and the replicates disagree. The mutant
   libraries also send about 2,000 and 1,000 cells to Pericyte, which an organoid without vessels may not hold. W044's last
-  re-check reads this. Checkouts on the cluster: the harness at `main`; scIntegrate `1901611`; scAnno `20ad3f6`; scQC `55c9497`.
+  re-check reads this. Checkouts on the cluster: the harness and scAnno at `main`; scIntegrate `1901611`; scQC `55c9497`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
@@ -105,7 +105,12 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   the first cohort's stage 3 through the harness at both new heads; both mains in one step. The PI's stage-3 question follows.
 - **Held (D-035): the driver, W041 + W042.** Its last re-check failed on ONE reason and judged all eight of the builder's
   left items limits; five of the first verifier's six reasons are closed. W049 carries the residue, then one verification
-  of the whole batch. **In its last re-check:** W044's tree rule (fix round 2 at `20ad3f6`; job 790197).
+  of the whole batch. 
+- **Ended (D-036): W044's tree rule.** Its last re-check failed on one reason (a draft with every test switched off by a
+  zero threshold is recorded as checked) and its job missed (790197). On a fresh, unfitted set of 147 expectations the
+  branch scores 111 against fix round 1's 106 and main's 103, so the rule is better than main's; but two fix rounds are
+  spent and no score waits on the tree. The branch `autodev/W044-fix2` stays; GAP-C112 and GAP-C113 hold the rest. **The
+  second cohort's tree is not ready for the PI to approve**; the PI is shown the walk table instead.
 - **Held:** the scProfile batch, W035 + W040 (D-032: the last re-check failed on one point, cellchat's own remaining run
   values); W047 carries that residue, and one verification of the whole batch follows it.
 - **The second cohort's tree** is not yet one to take to the PI: the first job missed (PBS 789434, MISSED (2)), and the job
