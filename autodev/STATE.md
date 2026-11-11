@@ -54,7 +54,7 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## The queue: [`ROUTE.md`](ROUTE.md)
 
-- **Running now (6):** the Fable 5.2 designer on R41 = W037 (Studio's design); builders R20 = W039 (scIntegrate: withheld cells out of the PCA), R03 = W042 (the driver's cluster path), W035's fix round 1 (the prose verb's bypass and its record) and R13 = W043 (scQC: a failed removal audit stops the run); the verifier of W038 (scAnno).
+- **Running now (6):** the Fable 5.2 designer on R41 = W037 (Studio's design); builders R03 = W042 (the driver's cluster path), W035's fix round 1 (the prose verb's bypass and its record) and R13 = W043 (scQC: a failed removal audit stops the run); the verifiers of W038 (scAnno; its fresh-prefix build **PBS 789141 AS PREDICTED**) and of W039 (scIntegrate: withheld cells out of the PCA, built at `1901611`).
 - **Verdicts 2026-11-11:** W036 (`prof@scprofile`) PASS, waits for its job at the head that merges; W040 PASS; **W035 FAIL** (two ways past the prose rule), in fix round 1.
 - **On PBS:** the harness train's stage 3 (788587), scAnno's fresh-prefix build (789141), the scale cohort's inventory (789168). The scale cohort's data is in place (12,218,105,530 bytes, the published tag recomputed; PBS 789057 graded MISSED (1) on one file's mode, set by hand, D-027) and scQC's environment built AS PREDICTED (789058).
 - **Built today, waiting for a verdict or a gate:** W035 (the maker's prose verb), W040 (scProfile's own site strings: 100 hits to 10, all in held-out plugins), W036 (`prof@scprofile`), W041 (the driver's run 1: `sch run --request`, decisions asked by name; 880 tests), W037 run A (Studio: shell, tokens, the Cells screen; the coordinator's review sent four defects into run B).
