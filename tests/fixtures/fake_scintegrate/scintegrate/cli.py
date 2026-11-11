@@ -50,6 +50,7 @@ Environment:
     FAKE_SCINTEGRATE_MODE             ok (default) | refuse | fail | unsealed | short | other_argv |
                                       reversed (rows written last first) | relabel (l1 rewritten)
     FAKE_SCINTEGRATE_STATE_VERSION    what `describe` and STATUS report (default 2, 2fc7a6c's)
+    FAKE_SCINTEGRATE_STATUS_STATE_VERSION   what STATUS alone reports (default: the above)
 """
 import argparse
 import csv
@@ -62,6 +63,7 @@ from pathlib import Path
 
 MODE = os.environ.get("FAKE_SCINTEGRATE_MODE", "ok")
 STATE_VERSION = int(os.environ.get("FAKE_SCINTEGRATE_STATE_VERSION", "2"))
+STATUS_STATE_VERSION = int(os.environ.get("FAKE_SCINTEGRATE_STATUS_STATE_VERSION", str(STATE_VERSION)))
 VERSION, COMMIT = "0.0.0-fake", "e" * 40
 ASSAYS = ("scrna", "snrna")
 GRAPH_METHODS = ("bbknn",)
@@ -195,7 +197,7 @@ def _begin(out, cmd):
     if MODE == "other_argv":
         argv = argv[:1] + ["integrate", "--h5ad", "someone_else.h5ad"]
     rec = {"contract": "1.0", "tool": "scintegrate", "command": cmd, "version": VERSION,
-           "commit": COMMIT, "state_version": STATE_VERSION, "status": "partial",
+           "commit": COMMIT, "state_version": STATUS_STATE_VERSION, "status": "partial",
            "headline": "started", "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
            "argv": argv, "products": [], "refusal": None}
     (out / "STATUS.json").write_text(json.dumps(rec, indent=1) + "\n")

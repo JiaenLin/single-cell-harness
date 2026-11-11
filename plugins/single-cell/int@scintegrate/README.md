@@ -85,6 +85,8 @@ scIntegrate's `STATUS.json` and seal are adopted, provided the record names the 
 its first word is the declared checkout's `cli.py`:
 - `ok` and `SEALED.txt`: the layer is read;
 - `refused`: the mount is refused with scIntegrate's reason and fix;
+- a record whose `state_version` is not this adapter's, whatever `describe` said: the plugin died, and its
+  object is not read;
 - anything else, including no record of the call: the plugin died, and stderr says why.
 
 The object read is the one `objects/*.h5ad` the record lists.

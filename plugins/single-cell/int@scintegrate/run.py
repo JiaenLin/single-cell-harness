@@ -321,6 +321,12 @@ if status.get("status") == "refused" and rc == 2:
     ref = status.get("refusal") or {}
     refuse(f"scIntegrate integrate refused: {ref.get('reason') or status.get('headline')}",
            ref.get("fix") or f"read {log}")
+# THE NUMBERS AGAIN, from the run's own record: `describe` is asked first and could be another process's
+# word than the integrate that ran (a checkout moved between the calls); the layer is keyed on this one.
+if status.get("state_version") != STATE_VERSION:
+    died(f"scintegrate integrate recorded state_version {status.get('state_version')!r} in its STATUS.json, where "
+         f"its describe declared {described.get('state_version')!r}; this adapter's layer means state_version "
+         f"{STATE_VERSION} (D6), so its object is not read; read {log}")
 if not (rc == 0 and status.get("status") == "ok" and seal == SEALED and not (P / RUNNING).exists()):
     # scIntegrate's record says what happened; it is quoted, not interpreted
     died(f"scintegrate integrate did not finish ok: exit {rc}, STATUS {status.get('status')!r} "

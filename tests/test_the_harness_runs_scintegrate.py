@@ -114,7 +114,8 @@ def block(design_file, **over):
 
 
 class _Base(unittest.TestCase):
-    ENV = ("FAKE_SCINTEGRATE_LOG", "FAKE_SCINTEGRATE_MODE", "FAKE_SCINTEGRATE_STATE_VERSION")
+    ENV = ("FAKE_SCINTEGRATE_LOG", "FAKE_SCINTEGRATE_MODE", "FAKE_SCINTEGRATE_STATE_VERSION",
+           "FAKE_SCINTEGRATE_STATUS_STATE_VERSION")
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="sch-scint-"))
@@ -433,6 +434,18 @@ sys.exit(run.finish(headline="masked one"))
                 self.assertIn(f"scIntegrate declares state_version {version}; this adapter's layer means "
                               f"state_version 2", r["reason"])
                 self.assertEqual([c["argv"][0] for c in self.calls_of()], ["describe"])
+
+    def test_an_integrate_whose_own_record_carries_other_numbers_is_a_death(self):
+        """The same fact through another field (ATTACKS 21): `describe` says 2, the integrate that ran records 1
+        in its STATUS.json. Its object is not read: the mount dies, naming both, and the view is unchanged."""
+        self.init(self.manifest, "--context", "assay=snrna", "--context", "species=species_x")
+        before = self.view()
+        os.environ["FAKE_SCINTEGRATE_STATUS_STATE_VERSION"] = "1"
+        rc, r = self.mount(block(self.design))
+        self.assertEqual((rc, r["status"]), (2, "died"), r)
+        err = (self.stack / "plugins" / "int_scintegrate" / "stderr.log").read_text()
+        self.assertIn("recorded state_version 1 in its STATUS.json, where its describe declared 2", err)
+        self.assertEqual(self.view()["digest"], before["digest"])
 
     # ----------------------------------------------------------------------- the stage record
     def test_scintegrates_refusal_is_the_mounts_refusal_with_its_fix(self):
