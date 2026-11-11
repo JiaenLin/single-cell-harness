@@ -66,9 +66,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     the maker; no record keeps a copy of a declaration, a maker fix found among five candidates; 19 host files read
     whole). The preflight on the batch still lists 344 lines holding a number the batch removed; run 3 classes and
     clears the ones outside the held-out plugins. Then ONE verification of the whole scProfile batch.
-  - the builder (Opus 5.5 max) of **W048's fix round 1** (scQC: its verification FAILED on two reasons while both gate jobs
-    read AS PREDICTED: about 51 lines still hold one cohort's measured numbers where no list looks; the fixture check
-    stays green when the factor never reaches the gates).
+  - the verifier (Opus 5.5 max) of **W048's fix round 1** (scQC, built at `ed9fe18`: 144 cohort numbers removed across 38
+    files, the survivors each read and classed; the gates record the assay and factors they received and the fixture
+    check reads those records). A3.1 goes over the bar when it merges.
   - the verifier (Opus 5.5 max) of **Lab's W017**, its last fix-only re-check (fix-up 5 at `243783f`); a PASS brings the
     PI the deploy question for Lab.
   - the builder (Opus 5.5 max) of **W048's fix round 1** (scQC: its verification FAILED on two reasons while both gate jobs
@@ -91,14 +91,14 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
 - **Built, waiting for a verifier slot:** **W050** (scAnno `f456431`: `embed` names a library from the object, a manifest or
   the upstream record, never a file name); its reproduction job is on the cluster (790463).
-- **On PBS:** **790463** (W050's reproduction of the first cohort's promoted stage 2); **790442** (scIntegrate's fresh-prefix build at W046's fix head: A1.3's fourth build) and **790443** (the subset
+- **On PBS:** **790475** and **790476** (scQC's two reproductions at W048's fix head); **790463** (W050's reproduction of the first cohort's promoted stage 2); **790442** (scIntegrate's fresh-prefix build at W046's fix head: A1.3's fourth build) and **790443** (the subset
   reproduction against W039's run; the full one, a day's ask, waits for it). Landed: **790201** and **790222** (both cohorts' stage 1 at W048's head) AS PREDICTED, kept cells,
   criteria and names IDENTICAL to the promoted runs: W048's gate is passed and it waits only for its verifier; **790197** (the second cohort's tree at
   W044's fix-2 head) **MISSED (1)**: in one wild-type library 0 of 12,546 cells walk to Glial cell (the other wild-type
   library 1,053; the mutants 581 and 420, where the first job had 0). That library's radial-glia-like cells walk to
   Progenitor cell instead: two lineages of the draft compete for the same cells, and the replicates disagree. The mutant
   libraries also send about 2,000 and 1,000 cells to Pericyte, which an organoid without vessels may not hold. W044's last
-  re-check reads this. Checkouts on the cluster: the harness and scAnno at `main`; scIntegrate `2fc7a6c`; scQC `55c9497`.
+  re-check reads this. Checkouts on the cluster: the harness at `main`; scAnno `f456431`; scIntegrate `2fc7a6c`; scQC `ed9fe18`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
