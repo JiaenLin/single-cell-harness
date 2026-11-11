@@ -65,7 +65,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R08 | harness | a local UI over the driver, designed by a Fable 5.2 designer (the PI, 2026-11-11) to Studio's design file: ask, see the plan, approve, follow, open the reports and the record | A6.1 5/5 | R03 | M x 2 | open |
 | R09 | harness + scProfile | hypothesis records with evidence, a falsifying test and a runnable follow-up; one follow-up through the loop | A5.2 | R02 | M x 2 | open |
 | R11 | all | four cold reproductions of sealed stage runs from the record and the docs | A2.3 4/4 | R01 R12 R19 R22 merged | 4 trials + jobs | open |
-| R13 | scQC | leak-clean under the generated lists (GAP-C78), the fixture's axes; the removal audit can stop a run (GAP-119, a wrong-result defect) | A3.1 +0.1 | R12 | M, split in two | building |
+| R13 | scQC | leak-clean under the generated lists (GAP-C78), the fixture's axes; the removal audit can stop a run (GAP-119, a wrong-result defect) | A3.1 +0.1 | R12 | M, split in two | gating |
 | R14 | cohort C46 | stage 1 through the harness (with R21 and R35 this becomes ONE chained run from C46's request once W042 lands) | A1.1 +1/8 | R12 | job | open |
 | R15 | cohort (scale) + scQC | **W031**: stage the 1,263,676-cell cohort; stage 1, then each next stage as its adapter lands | A3.4 0.316 a stage | R12; R03 for the later stages | jobs, S-M | gating |
 | R16 | scAnno | the environment pin (GAP-C82), a fresh-prefix build and self-test; leak-clean (36 hits), the fixture's axes; `build-markers` field (GAP-C83) | A1.3 +1/5, A3.1 +0.1 | - | M, split in two + job | merged (run 1); building (run 2, W044) |
