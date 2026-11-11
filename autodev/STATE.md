@@ -1,6 +1,6 @@
 # STATE: where the program stands
 
-Updated 2026-11-11T05:47:04Z by the coordinator. This is the living page. Every LOOP TICK that changes
+Updated 2026-11-11T09:05:50Z by the coordinator. This is the living page. Every LOOP TICK that changes
 something refreshes it, and so does every PERIODIC CHECK and every BLOCKER SWEEP.
 
 **FULL development since 2026-11-11T05:47:04Z** (the PI: "first, evaluate and improve current development harness towards our goal ... after that, launch full development to reach our goal!"). The pause (D-020) and TOKEN-LIMITED (D-017) are over (D-021); validation runs again. The harness was changed first: the diagnosis is [`audits/DIAGNOSIS_20261111_efficiency.md`](audits/DIAGNOSIS_20261111_efficiency.md), the rules are RULES.md's 2026-11-11 block, and **the queue is [`ROUTE.md`](ROUTE.md)**: about 40 items from a tally of 5.85 to HAPPY's 18.0. In short: small runs (about 150 calls), verify first and gate at the head that merges, verifiers in parallel, up to 6 development agents, the cluster through `setup/autodev/gate.py`, audits at checkpoints, one HEARTBEAT every 2 hours.
@@ -54,20 +54,38 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## The queue: [`ROUTE.md`](ROUTE.md)
 
-- **Running now (6):** the Fable 5.2 designer on R41 = W037 (Studio's design); builders (the prose verb's bypass and its record) ; R43 = W045 (one published object becomes per-library parts); the driver's fix round 1 (W041 + W042 FAILED verification: six defects, among them the rule-2 ban spelled around, a resume that mixed two designs, and tool-declared decisions never asked); the verifiers of W035's fix round 1 of W043 (scQC: a failed removal audit stops the run; its two jobs **PBS 789344, 789345** are running) and of W044 (scAnno: the proposed tree keeps to the tissue, leak hits 38 to 0; its re-propose job **PBS 789434** is running) (all three defects fixed at `1b3cdd7`, by the builder's report) (W041 + W042: built at `4e10656`, 891 tests; the first cohort's chained run returned with three unknowns to look up) (scIntegrate: withheld cells out of the PCA, built at `1901611`).
-- **Merged 2026-11-11 (the fourth today):** scAnno `main` = `779fd08` (W038: the lock pins its closure, the installer works with the site's conda, one gene reader; the fresh-prefix build PBS 789141 AS PREDICTED; verifier PASS). A1.3 is 3/5 by the verifier's row.
-- **The scale cohort's inventory (PBS 789168) AS PREDICTED:** 1,263,676 cells x 30,172 genes, integer counts in raw/X, 261 donors, 88 libraries each a pool of donors. The data stage is done; stage 1 waits for R43 and W042.
-- **Verdicts 2026-11-11:** W039 (scIntegrate: withheld cells out of the PCA) PASS, its job 32 waits for the scIntegrate checkout; W036 (`prof@scprofile`) PASS, waits for its job at the head that merges; W040 PASS; **W035 FAIL** (two ways past the prose rule), in fix round 1.
-- **On PBS:** the harness train's stage 3 (788587), scAnno's fresh-prefix build (789141), the scale cohort's inventory (789168). The scale cohort's data is in place (12,218,105,530 bytes, the published tag recomputed; PBS 789057 graded MISSED (1) on one file's mode, set by hand, D-027) and scQC's environment built AS PREDICTED (789058).
-- **Built today, waiting for a verdict or a gate:** W035 (the maker's prose verb), W040 (scProfile's own site strings: 100 hits to 10, all in held-out plugins), W036 (`prof@scprofile`), W041 (the driver's run 1: `sch run --request`, decisions asked by name; 880 tests), W037 run A (Studio: shell, tokens, the Cells screen; the coordinator's review sent four defects into run B).
-- **Merged 2026-11-11, each by fast-forward after a verifier's PASS:** scIntegrate `main` = `b148030` (W012 + W025), scProfile `main` = `6f970e5` (W013 + W032 + W023), scQC `main` = `46ffe90` (W020; one comment line fixed by the verifier, the run key's code digest unchanged). Verifier scores: A2.1 3/4, A3.2 3/4. Every batch that waited for validation is now verified; the harness batch waits only for its three gate jobs.
-- **W035 built** (the maker's `scprofile prose` verb; cellchat's leaked values removed through it): it waits to be verified as one batch with W040. A4.1 is still 0/9: the ladder's leak and contract tiers read the whole repository, and the held-out plugins abundance, decoupler and velocity hold the last term hits, so they go first in the plugin line (D-025).
-- **W036 built** (`prof@scprofile`, harness `dcbc0df`): on the fixture, scProfile through the harness gives the DE and abundance tables byte for byte as alone. Its stage-4 job is written; it runs at the head that merges once the train's stage-1 and stage-3 jobs leave the harness checkout. Verified with the next harness batch.
-- **The scale cohort (R15, W031 run 1 built):** the project is on the cluster; the transfer (**PBS 789057**, the 12.2 GB object) and scQC's environment (**PBS 789058**) are running; the inventory job follows. Stage 1 waits for R43 (per-library parts from one object, GAP-C90) and for peak memory in the record (GAP-C91, in the driver's run 2).
-- **Next free slots:** R13 (scQC: the removal audit can stop a run, GAP-119; leak-clean), R40 (C46's records), R31 and R33 after W035, R05 and R06 after R01 merges.
-- **R01 (harness: W029 + W034): verifier PASS** for both waves and the train head; one README line fixed. The gate at the head that merges, `autodev/train-harness-1` @ `0670f3e`: stage 1 **PBS 788583** (running), stage 2 **PBS 788586: AS PREDICTED** (every line equal to 784088's), stage 3 **PBS 788587** (running) (re-pinned copies 36t, 29t, 31t; predictions unchanged). All AS PREDICTED, then the train merges into `main`. scAnno's cluster checkout is back on `main` (`68233f0`). Heartbeat 06:47Z: 6 builders running; the day's meter 2.77 M output, 413 M context read, 11 launches.
-- **Next, as each verifier passes:** its merge (the harness through its train's three jobs), then that repository's next route item; R16 (scAnno) and R40 (C46's records) at the first free slots.
-- **The PI's steps** are in ROUTE section 3; none is askable yet.
+Rewritten whole at 2026-11-11T09:05:50Z (earlier piecemeal edits had left the running line garbled).
+
+- **Running now (6 agents):**
+  - builders (Opus 5.5 max): **W045** (R43: one published object becomes per-library parts); **the driver's fix round 1** (W041 +
+    W042, six defects from its verifier); **W035's fix round 2**, the last (the maker's prose verb).
+  - verifiers (Opus 5.5 max): **W043** (scQC: a failed removal audit stops the run); **W044** (scAnno: the proposed tree, the
+    leak hits).
+  - the design reviewer (Fable 5.2): **W037**, Studio, judged by looking and by use after designer runs 1 and 2.
+- **On PBS:** the harness train's stage 3 (**788587**, the last of the train's three; stages 1 and 2 AS PREDICTED); scQC's two
+  W043 jobs (**789344**, **789345**: each promoted stage-1 run's audit verdicts under the old module and the new).
+- **Merged 2026-11-11, each by fast-forward after a verifier's PASS and a gate at the merged commit:** scIntegrate `b148030`
+  (W012 + W025), scProfile `6f970e5` (W013 + W032 + W023), scQC `46ffe90` (W020), scAnno `779fd08` (W038).
+- **Verified, waiting only for a cluster checkout:** the harness batch W029 + W034 (train `0670f3e`, waits for 788587);
+  **W036** (`prof@scprofile`, `6756aaa`, PASS: its stage-4 job runs at the head that merges, after the train); **W039**
+  (scIntegrate, `75ab03a`, PASS: job 32 runs at `1901611` once 788587 leaves the scIntegrate checkout).
+- **Failed verification, in a fix round:** the driver (W041 + W042: the rule-2 ban spelled around, a resume that mixes two
+  designs, tool-declared decisions never asked, the library column lost at stage 3, a size that drops the site's memory, a
+  job that does not pin its request); W035 (round 1 failed its re-check: a cohort's run counts still in cellchat, removed
+  text kept in an earlier record row, a validate rule that blocks true sentences). **W040** passed but merges only with W035.
+- **Graded MISSED:** scAnno's tree re-propose for the second cohort (PBS **789434**, MISSED (2)): the lineages that entered the
+  draft take the cells ("Golgi membrane fusion", a curator artefact, takes over a thousand in two libraries). The draft is not
+  one to take to the PI; W044's verifier has this, and a fix round follows its verdict.
+- **The scale cohort:** the data is in place and inventoried (1,263,676 cells x 30,172 genes, 88 pooled libraries holding both
+  arms; PBS 789057, 789058, 789168). Stage 1 waits for W045 and the driver's fix.
+- **Scores by verifiers' rows today:** A1.3 3/5, A2.1 3/4, A3.2 3/4 (merged); A1.2 7/10 and A1.1 5/8 wait for the driver and
+  for W036's job.
+- **Next free slots, in order:** W044's fix round (after its verdict); R44 (scProfile's host carries no cohort measurement,
+  GAP-C100); the scProfile plugin line (abundance first) once W035 + W040 merge; R05 and R06 (harness: installer and lock;
+  small fixes) once the train merges; the first cohort's chained run (three values to look up) and the scale cohort's stage 1
+  once the driver passes; a final Studio designer run from the reviewer's list.
+- **The PI's steps** (ROUTE section 3): none is askable yet. Stage 3's re-promotion waits for W039's job and merge; the second
+  cohort's tree waits for a draft worth showing; Studio's deploy waits for the review and the final run.
 - **Parked:** W030 (Service; uncommitted work in its clone), W022 as a wave of its own, the B1 register's queued rows.
 
 ## Machinery (session-only; re-create on resume, see README)
