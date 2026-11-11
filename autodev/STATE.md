@@ -69,8 +69,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     stays green when the factor never reaches the gates).
   - the builder (Opus 5.5 max) of **W050** (scAnno, from `main`: `embed` names a library from the object or the manifest,
     never from a file name; GAP-C103, one of the two tool-side breaks that stop a chained stage 4; ROUTE R47).
-  - the builder (Opus 5.5 max) of **W046's fix round 1** (scIntegrate: its verification FAILED on two points: a key or
-    factor name the writer forbids is refused only after every method trained; the batch moves numbers at state version 1).
+  - the verifier (Opus 5.5 max) of **W046's fix round 1** (scIntegrate, built at `2fc7a6c`: every name that becomes a key is
+    written through the real writer before anything is computed; state version 2; the fixture's design reaches the tool).
   - the builder (Opus 5.5 max) of **W049** (the harness: the driver's residue after its last re-check FAILED on one
     reason: a file given as a decision's answer is in no pinned set; also correct requests the driver now refuses).
   - the reviewer (Fable 5.2) of **Studio's designer run 4** (W037, head `f7dab0c`: by the designer's account the names are
@@ -80,13 +80,14 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
-- **On PBS:** nothing. Landed: **790201** and **790222** (both cohorts' stage 1 at W048's head) AS PREDICTED, kept cells,
+- **On PBS:** **790442** (scIntegrate's fresh-prefix build at W046's fix head: A1.3's fourth build) and **790443** (the subset
+  reproduction against W039's run; the full one, a day's ask, waits for it). Landed: **790201** and **790222** (both cohorts' stage 1 at W048's head) AS PREDICTED, kept cells,
   criteria and names IDENTICAL to the promoted runs: W048's gate is passed and it waits only for its verifier; **790197** (the second cohort's tree at
   W044's fix-2 head) **MISSED (1)**: in one wild-type library 0 of 12,546 cells walk to Glial cell (the other wild-type
   library 1,053; the mutants 581 and 420, where the first job had 0). That library's radial-glia-like cells walk to
   Progenitor cell instead: two lineages of the draft compete for the same cells, and the replicates disagree. The mutant
   libraries also send about 2,000 and 1,000 cells to Pericyte, which an organoid without vessels may not hold. W044's last
-  re-check reads this. Checkouts on the cluster: the harness and scAnno at `main`; scIntegrate `1901611`; scQC `55c9497`.
+  re-check reads this. Checkouts on the cluster: the harness and scAnno at `main`; scIntegrate `2fc7a6c`; scQC `55c9497`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
