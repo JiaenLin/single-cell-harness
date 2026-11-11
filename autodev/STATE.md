@@ -62,9 +62,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   brief from `<scratchpad>/relaunch/` and told to read its predecessor's clone and wave-file plan first. Today's meter
   before the stop: 16.3 M output tokens, 46 launches.
 - **Running now (6 agents), as of 2026-11-11T11:34:24Z:**
-  - builders (Opus 5.5 max): **W047 run 2** (scProfile: `de` through the maker, the record's declaration copies as a maker
-    defect, the rest of the host read file by file; run 1 is built at `4c5b3ad`); **W048** (scQC leak-clean and the
-    fixture's axes: A3.1 0.41 to 0.51 on merge; ROUTE R13 run 2).
+  - the builder (Opus 5.5 max) of **W047 run 2** (scProfile: `de` through the maker, the record's declaration copies as a
+    maker defect, the rest of the host read file by file; run 1 is built at `4c5b3ad`).
+  - the verifier (Opus 5.5 max) of **W048** (scQC, built at `55c9497`: leak hits 193 and 31 to 0 and 0 under the two
+    cohorts' lists, its own guard now reading them; the fixture's assay and factor told and read back; A3.1 0.41 to 0.51
+    on merge and on its two jobs).
   - the verifier (Opus 5.5 max) of **W044's last re-check** (scAnno's tree rule, fix round 2 built at `20ad3f6`: six
     candidates in a pool, the winner counts healthy-only studies; it writes a fresh expectation set before any run).
   - the builder (Opus 5.5 max) of **W046's fix round 1** (scIntegrate: its verification FAILED on two points: a key or
@@ -78,10 +80,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
-- **On PBS:** **790197**, the second cohort's tree re-propose at W044's fix-2 head (`20ad3f6`): it grades the line the
+- **On PBS:** **790201** and **790222**, scQC's two reproduction jobs at W048's head (prediction IDENTICAL); **790197**, the second cohort's tree re-propose at W044's fix-2 head (`20ad3f6`): it grades the line the
   first job missed (glial cells walked in every library) and a bound on where they land. Sealed AS PREDICTED today:
-  789561 (scIntegrate's job 32, W039's gate). The cluster's harness and scQC checkouts are at `main`; scIntegrate's is at
-  `1901611`; scAnno's is at `20ad3f6` while 790197 runs.
+  789561 (scIntegrate's job 32, W039's gate). The cluster's harness checkout is at `main`; scIntegrate's is at
+  `1901611`; scAnno's is at `20ad3f6` and scQC's at `55c9497` while their jobs run.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
