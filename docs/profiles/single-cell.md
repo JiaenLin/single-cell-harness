@@ -49,12 +49,18 @@ aligner's call.
 - **Refused at `init` and at every plugin run:** a manifest or a part that the running user can
   write. A plugin is handed the parts themselves. Delivered data are immutable: `chmod a-w` them
   before `init`. The remedy is printed for a shell, and for a file someone else owns it names the
-  owner or a read-only copy.
-- **Pinned at `init`, never re-baselined:** each file's digest and (dev, inode, size, mtime_ns,
-  ctime_ns). The fingerprint is re-checked after every plugin run, whatever its outcome. It
-  catches what permissions cannot: a part renamed over through its directory, or chmod'ed and
-  written by its owner. A change is an A1 error naming the file, so a chmod after `init` is a
-  change too.
+  owner or a read-only copy. A file made writable after `init` has had its ctime moved, so the
+  printed remedy adds that a new `init` must follow the chmod.
+- **Pinned at `init`, never rewritten:** one digest over the manifest and every part, and each
+  file's (dev, inode, size, mtime_ns, ctime_ns), recorded as an `observations/pinned` event. The
+  fingerprint is checked before a command first reads any part and after every plugin run,
+  whatever its outcome, with what the declared path resolves to now and the pin itself: a
+  manifest reached through a re-pointed `latest` symlink, and a pin a plugin deleted or rewrote
+  before dying, are changes too. It catches what permissions cannot: a part renamed over through
+  its directory, or chmod'ed and written by its owner. A change is an A1 error naming the file,
+  so a chmod after `init` is a change too; where only ctime moved (a chmod, a chown, a new hard
+  link) the error says so and the remedy is a new stack over the same files. A stack from before
+  pins existed is pinned once, on its first read, and that is recorded.
 
 ## 2. Slot bindings
 

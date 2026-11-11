@@ -82,6 +82,30 @@ def write_part(path: Path, barcodes: list) -> Path:
     return path
 
 
+def delivery(root: Path, tag: str, libraries: int = 3, droplets: int = 12, extra: dict = None) -> Path:
+    """A delivery `root/tag/` whose manifest names its parts RELATIVE to itself, as a vendor's
+    folder does - so a `latest -> tag` symlink above it re-points the whole delivery at once.
+    `extra` adds barcodes to a library ({library index: [barcodes]}). Read-only, as delivered.
+    Returns the manifest."""
+    d = Path(root) / tag
+    lines = ["sample\tassay\tambient_h5"]
+    for i in range(libraries):
+        bcs = [f"BC{j:05d}-1" for j in range(droplets)] + list((extra or {}).get(i, []))
+        write_part(d / "libs" / f"L{i + 1}.h5ad", bcs).chmod(0o444)
+        lines.append(f"L{i + 1}\tsnrna\tlibs/L{i + 1}.h5ad")
+    sheet = d / "sheet.tsv"
+    sheet.write_text("\n".join(lines) + "\n")
+    sheet.chmod(0o444)
+    return sheet
+
+
+def repoint(link: Path, target: str):
+    """Re-point a symlink atomically, as an upstream rerun re-points its `latest`."""
+    tmp = link.with_name(link.name + ".new")
+    os.symlink(target, tmp)
+    os.replace(tmp, link)
+
+
 def library_cohort(dest: Path, libraries: int = 4, droplets: int = 120, assay: str = "snrna",
                    delimiter: str = "\t") -> tuple:
     """A samplesheet of `libraries` libraries, two arms, each part holding the SAME barcodes - as

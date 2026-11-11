@@ -80,20 +80,106 @@ SIZE_OF_A_FILE = re.compile(r"(?:^|[.\]])(?:bytes|n_bytes|size_bytes)$")
 #: record it would have excused `measured.n_cells`, a count of the data, and
 #: `schedule[*][*].declared`, while still judging the fitted models - a name is not a declaration.
 #:
-#: A GLOB IS LITERAL BUT FOR `*`, which matches any run of characters, so `[*]` in a declaration
-#: matches an element index as it is written (`[0]`) and as `agree` collapses it (`[*]`). The
-#: product is the path in the run, the key the JSON path or the CSV column.
+#: A DECLARATION IS BOUNDED (autodev W029, GAP-C63). Unbounded, it was the same guess by another
+#: hand: its `*` crossed `/`, `.` and `::`, so `["*"]` excused every field of every product - on
+#: de's runs 192 of them, all 32 DE result columns among them - and `agree` stayed green. So:
+#:   - a glob is `product::key`, with exactly one `::`, and the two parts are matched apart - no
+#:     `*` reaches across `::`;
+#:   - in the product (the path in the run), `*` stays inside one path segment, as a shell's does;
+#:   - the key is a JSON path. Its FIRST SEGMENT - the text before its first `.` or `[` - is
+#:     literal: `measured.*` names a namespace the tool wrote, `*` and `*.cores` name everything.
+#:     After it, `*` matches any run of characters, `.` and `[i]` included (de's `cost_model.*`
+#:     reaches `cost_model.de.points`), and `[*]` matches an index as written (`[0]`) and as
+#:     `agree` collapses it (`[*]`);
+#:   - it EXCUSES JSON LEAVES ONLY. A run's record of its own execution is the status contract's
+#:     JSON; a CSV column is a table the tool computed. A glob that matches a CSV or TSV column is
+#:     a declaration error - the column is judged all the same - and so is a glob of any other
+#:     shape. Either fails `agree`, the baseline's check and its recording, naming the glob.
 
 
-def _glob(pattern: str):
-    return re.compile("^" + ".*".join(re.escape(p) for p in str(pattern).split("*")) + "$")
+class RecordError(ValueError):
+    """A `fixture.execution_record` that could excuse a result. Raised before anything is compared:
+    a comparison that excused what it should not have is not a comparison."""
+
+
+def _key_head(key: str) -> str:
+    """The key's first segment: a leading `[...]`, or the text before its first `.` or `[`."""
+    m = re.match(r"\[[^\]]*\]|[^.\[]*", key)
+    return m.group(0) if m else ""
+
+
+class ExecutionRecord:
+    """The tool's declared `fixture.execution_record`, bounded. `excuses(name)` is True for a JSON
+    leaf the tool declares as its run's record of its own execution, and for nothing else."""
+
+    def __init__(self, globs=()):
+        self.globs = [str(g) for g in (globs or ())]
+        self.errors, self._pats = [], []
+        for g in self.globs:
+            if g.count("::") != 1:
+                self.errors.append(f"{g!r}: a glob is `product::key`, with one `::` - this one has "
+                                   f"{g.count('::')}")
+                continue
+            product, key = g.split("::")
+            head = _key_head(key)
+            if not product or not key:
+                self.errors.append(f"{g!r}: names no {'product' if not product else 'key'}")
+            elif not head or "*" in head:
+                self.errors.append(f"{g!r}: the key must begin with a literal segment (a namespace "
+                                   f"the run writes, `measured.*`), and {key!r} begins with "
+                                   f"{head or 'nothing'!r} - a glob that begins with `*` names "
+                                   f"every field")
+            else:
+                self._pats.append((g, re.compile("^" + "[^/]*".join(map(re.escape, product.split("*")))
+                                                 + "$"),
+                                   re.compile("^" + ".*".join(map(re.escape, key.split("*"))) + "$")))
+
+    def __bool__(self):
+        return bool(self.globs)
+
+    def _matching(self, name: str) -> list:
+        product, sep, key = str(name).partition("::")
+        if not sep:
+            return []
+        return [g for g, p, k in self._pats if p.match(product) and k.match(key)]
+
+    def excuses(self, name: str) -> bool:
+        """For a JSON leaf, `product::key`. Never asked of a CSV column (`misdeclared` is)."""
+        return bool(self._matching(name))
+
+    def misdeclared(self, *product_maps) -> list:
+        """Every declaration error: a glob of the wrong shape, and every CSV or TSV column - of
+        the products in `product_maps`, fingerprints' `products` - that a glob matches."""
+        out = list(self.errors)
+        seen = set()
+        for products in product_maps:
+            for rel, item in sorted((products or {}).items()):
+                if item.get("kind") != "csv":
+                    continue
+                for col in item.get("numbers") or {}:
+                    name = f"{rel}::{col}"
+                    for g in self._matching(name):
+                        if (g, name) not in seen:
+                            seen.add((g, name))
+                            out.append(f"{g!r} matches the column {name}: a CSV column is a table "
+                                       f"the tool computed, and an execution record is the run's "
+                                       f"JSON - the column is judged, and the glob must go")
+        return out
+
+    def require(self, *product_maps):
+        """Raise RecordError naming every declaration error, if there is one."""
+        bad = self.misdeclared(*product_maps)
+        if bad:
+            raise RecordError("fixture.execution_record is misdeclared: " + "; ".join(bad))
 
 
 def execution_record(globs=()):
-    """A predicate over `product::key`: True for a field the tool DECLARES as its run's record of
-    its own execution (`fixture.execution_record`), and for nothing else."""
-    pats = [_glob(g) for g in (globs or ())]
-    return lambda name: any(p.match(str(name)) for p in pats)
+    """A predicate over `product::key`: True for a JSON leaf the tool DECLARES as its run's record
+    of its own execution (`fixture.execution_record`), and for nothing else. Raises RecordError
+    for a glob of the wrong shape."""
+    rec = globs if isinstance(globs, ExecutionRecord) else ExecutionRecord(globs)
+    rec.require()
+    return rec.excuses
 
 
 def is_size(path: str) -> bool:
@@ -103,15 +189,17 @@ def is_size(path: str) -> bool:
 
 def reported(fp: dict, record=()) -> dict:
     """{"resources": [...], "byte_counts": [...]} - the `product::field` names a fingerprint
-    RECORDS and no comparison judges: the fields the tool declares as its execution record, and
-    every byte count. Printed by a check, so that what is not compared is said."""
+    RECORDS and no comparison judges: the JSON fields the tool declares as its execution record,
+    and every byte count. Printed by a check, so that what is not compared is said."""
     declared = execution_record(record)
     out = {"resources": [], "byte_counts": []}
     for rel, item in sorted((fp.get("products") or {}).items()):
+        if item.get("kind") != "json":
+            continue
         for k in sorted(item.get("numbers") or {}):
             if declared(f"{rel}::{k}"):
                 out["resources"].append(f"{rel}::{k}")
-            elif item.get("kind") == "json" and is_size(k):
+            elif is_size(k):
                 out["byte_counts"].append(f"{rel}::{k}")
     return out
 
@@ -180,11 +268,24 @@ def _h5ad_structure(p: Path):
                 g = f.get(name)
                 return sorted(g.keys()) if isinstance(g, h5py.Group) else []
 
+            def length(node):
+                # AN INDEX IS A DATASET OR A GROUP, by the anndata that wrote it (autodev W029, the
+                # W026 verifier): up to 0.12 a `string-array` dataset; from 0.13, under pandas 3, a
+                # `nullable-string-array` GROUP of `values` and `mask`, which has no `.shape` - so
+                # every 0.13 object lost its structure, and the test of it raised KeyError. A
+                # group is read by its encoding: its codes if categorical, else its values.
+                if isinstance(node, h5py.Dataset):
+                    return int(node.shape[0])
+                enc = node.attrs.get("encoding-type")
+                enc = enc.decode() if isinstance(enc, bytes) else enc
+                member = node.get("codes" if enc == "categorical" else "values")
+                return int(member.shape[0]) if isinstance(member, h5py.Dataset) else None
+
             def rows(name):
                 g = f.get(name)
                 idx = g.attrs.get("_index") if isinstance(g, h5py.Group) else None
                 idx = idx.decode() if isinstance(idx, bytes) else idx
-                return int(g[idx].shape[0]) if idx and idx in g else None
+                return length(g[idx]) if idx and idx in g else None
             x = f.get("X")
             shape = ([int(v) for v in x.shape] if isinstance(x, h5py.Dataset) else
                      [int(v) for v in x.attrs.get("shape", [])] if isinstance(x, h5py.Group)
@@ -363,7 +464,9 @@ def compare(new: dict, ref: dict, record=()) -> list:
     """
     rtol, atol = float(ref.get("rtol", RTOL)), float(ref.get("atol", ATOL))
     unstable = set(ref.get("not_execution_stable") or [])
-    declared = execution_record(record)
+    rec = record if isinstance(record, ExecutionRecord) else ExecutionRecord(record)
+    rec.require(new.get("products"), ref.get("products"))      # before anything is excused
+    declared = rec.excuses
     out, np_, rp = [], new.get("products", {}), ref.get("products", {})
 
     def keep(product, what):
@@ -405,9 +508,7 @@ def compare(new: dict, ref: dict, record=()) -> list:
             if a.get("rows") != b.get("rows") and keep(rel, "rows"):
                 out.append({"product": rel, "what": "rows", "detail": f"{b.get('rows')} -> {a.get('rows')}"})
             an, bn = a.get("numbers", {}), b.get("numbers", {})
-            for col in sorted(set(an) & set(bn)):
-                if declared(f"{rel}::{col}"):
-                    continue                 # the declared execution record: recorded, not judged
+            for col in sorted(set(an) & set(bn)):       # every column judged (GAP-C63)
                 for stat in ("n", "nan", "sum", "min", "max"):
                     if not _close(an[col].get(stat), bn[col].get(stat), rtol, atol) \
                             and keep(rel, f"{col}.{stat}"):
