@@ -1,0 +1,83 @@
+# Improvement plan: five lessons from ScientistTwo
+
+The PI, 2026-11-11, after comparing ScientistTwo (arXiv 2609.19644) with this program's development harness and the
+VCC harness: "make a improvement plan doc and to do list. and go ahead." The comparison found this harness already
+stricter on rigor (a prediction written before the run and graded as written; an adversarial verifier that runs the
+code; held-out plugins and a second cohort; human gates on promotion). The five lessons below are about spending
+cheaply first, learning from failures, and stopping by rule. Each has what changes, where it is written, and how its
+effect is measured.
+
+## The five lessons
+
+### 1. Subset before full
+- **What they do:** no idea runs on the full benchmark before it passes on a subset.
+- **Our gap:** the local fixture plays that role, but cluster gates go straight to full size. Two full jobs died on a
+  precondition today (a wrong path; a file mode), and the 1,263,676-cell cohort has never run at any size.
+- **The change:** a job that asks for more than 2 hours ships with a subset job, `<name>.subset.pbs`: the same steps on
+  a declared subset (a few libraries, or a fraction of cells), with its own prediction, sized to finish in minutes. The
+  full job is submitted only after the subset is graded AS PREDICTED at the same tool commits. The subset's measured
+  wall time and peak memory size the full job's request. `setup/autodev/gate.py` refuses otherwise.
+- **First use:** the scale cohort's stage 1 runs on 2 of its 88 libraries before the 88.
+- **Measured by:** full-size jobs that fail before their first result (2 today; the target is 0), from the ledger.
+
+### 2. Failures as first-class input
+- **What they do:** every failed run is read by the agent that proposes the next idea.
+- **Our gap:** a verifier's finding becomes a ledger row the next builder never sees. Of the 9 waves built on
+  2026-11-11, 5 failed first verification, on causes that repeat.
+- **The change:** [`ATTACKS.md`](ATTACKS.md), one screen of the attacks that broke a wave here, each with the wave it
+  broke. Every builder runs the ones that apply against its own change before hand-back and says which it ran. A
+  verifier that breaks a wave a new way adds a line.
+- **Measured by:** `setup/autodev/passrate.py`: waves that pass their first verification. Baseline 4 of 9 (44 %) on
+  2026-11-11. Read at every daily check; if it has not passed 60 % after 15 more waves, the list is not working and is
+  reworked.
+
+### 3. A pool rule for idea-driven work
+- **What they do:** each round tests the candidates evolved from all earlier results plus a few untried ones, and the
+  search stops at S successes or K rounds.
+- **Where it applies here:** not the route (an engineering list), but the items that search: the hypothesis loop
+  (R09), the never-seen tools (R36), and any wave that has to FIND a rule (the tree rule of W044 was one).
+- **The change:** such an item keeps a pool file (`autodev/pools/<item>.tsv`: candidate, where it came from, its
+  predicted effect, tested or not, result). A round is the candidates evolved from every earlier trace plus at least
+  one untried one. Each is tested on a subset first with a three-way call: good, bad, or engineer (at most 2 tuning
+  passes, then bad). The item stops at its registered S or K, both written in its registration.
+- **Measured by:** each such item's registration states S and K, and its pool file exists when it hands back.
+
+### 4. Ablation before a gain is kept
+- **What they do:** after a win, find which component carries it, drop the rest, and keep the change only if it is
+  strictly better.
+- **Where it applies here:** rarely, since most waves change behaviour, not a score. It applies when a wave claims a
+  measured gain (time, memory, a metric, a design measurement).
+- **The change:** such a wave's hand-back carries the gain per component, measured by removing each, and keeps only
+  the components that carry it.
+- **Measured by:** verifiers check it; a claimed gain with no ablation is a FAIL reason.
+
+### 5. A reference check
+- **What they do:** every citation is checked to exist; without the check 19 of 1,840 were invented.
+- **Our gap:** A4.3 counts a plugin that names a source and a pinned version; nothing checks that the source exists
+  and is the method's.
+- **The change:** a plugin's declaration carries its source's DOI with the title and year as recorded from the DOI's
+  own record; a check resolves each DOI and compares (ROUTE R45). Each plugin's wave (R24-R30) and each docs-truth pass
+  (R39) includes it, and a verifier reads one cited claim per plugin against its source.
+- **Measured by:** A4.3's count, with "resolves and matches" added to what a verifier must see.
+
+## For the VCC harness
+Lessons 1, 3 and 4 fit VCC's research waves most (long training runs, a search over ideas, stacked gains), and lesson 2
+fits any loop with a verifier. That repository belongs to its own session, so they were sent to it as a proposal on
+2026-11-11; nothing in VCC was edited from here.
+
+## To do
+
+| # | task | where | status |
+|---|---|---|---|
+| 1 | The subset rule in the gate runner: refuse a full job whose subset has not passed; refuse a job over 2 h with no subset unless a reason is given | `setup/autodev/gate.py` | done 2026-11-11 |
+| 2 | The rules: subset before full, self-attack, the pool rule, ablation, the reference check | RULES.md, 2026-11-11 items 14-18 | done 2026-11-11 |
+| 3 | The attacks list, from every verifier FAIL so far | `ATTACKS.md` | done 2026-11-11 (18 lines) |
+| 4 | Every brief: SELF-ATTACK and SUBSET lines; the verifier adds new attacks | BRIEFS.md section 0 and 2a | done 2026-11-11 |
+| 5 | The pass-rate meter | `setup/autodev/passrate.py` | done 2026-11-11 (baseline 4 of 9) |
+| 6 | The route: the scale cohort's subset run; S and K for R09 and R36; the reference check as R45 and inside R24-R30 and R39 | ROUTE.md | done 2026-11-11 |
+| 7 | Tests that keep the above from decaying | `tests/test_autodev.py` | done 2026-11-11 |
+| 8 | The proposal to the VCC session | a message to that session | sent 2026-11-11 |
+| 9 | The scale cohort's stage-1 job written as a subset job and a full job | the wave after W045 | open: waits for W045 and the driver |
+| 10 | R45 built: DOIs recorded and checked | a harness and scProfile wave | open: after W035 + W040 merge |
+| 11 | First reading of the pass rate after 15 more waves; rework the attacks list if under 60 % | the daily check | open |
+| 12 | Agents already running were briefed before this plan; they get the attacks list at their next fix round or re-check | the coordinator, at each launch | open |

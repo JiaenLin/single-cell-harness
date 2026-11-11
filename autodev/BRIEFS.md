@@ -33,6 +33,10 @@ the lines a change touches. At about 150 calls: commit, push, hand back what is 
 follow-up. That is a normal hand-back.
 THREADS: this workstation is shared by up to 6 agents. Before any test or tool, export OMP_NUM_THREADS=2
 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2, and run one suite at a time.
+SELF-ATTACK: before hand-back, read <HARNESS>/autodev/ATTACKS.md (one screen: the attacks that broke a wave here) and run
+every one that applies against your own change. Say in the hand-back which you ran and what each showed.
+SUBSET: a job you write that asks for more than 2 hours comes with `<name>.subset.pbs`: the same steps on a declared
+subset, its own prediction, minutes long. The coordinator runs it first.
 GAPS: name at most 3 new gaps, and only ones that block a ROUTE item (<HARNESS>/autodev/ROUTE.md) or are a wrong
 result in a promoted output. Put every other observation in the wave file's as-built note.
 A NEW JOB FILE carries its submit recipe as shell lines between `# SUBMIT-BEGIN` and `# SUBMIT-END` in its header
@@ -116,6 +120,9 @@ Check:
     that changes behaviour is a FAIL reason for a builder. Then write one row per test this batch moves into
     <HARNESS>/autodev/ledger/scores.tsv (stamp, pass `v-<W###>`, test_id, score, numerator, denominator, evidence) by
     the formulas in GOALS.md "Layer 3, scored"; leave the ledger uncommitted for the coordinator.
+(8) Added 2026-11-11: <HARNESS>/autodev/ATTACKS.md lists the attacks that broke earlier waves. Run the ones that apply.
+    If you break this wave a way that is not on the list, append one line to its Inbox (the defect, the attack, the
+    wave) and leave the file uncommitted. A claimed measured gain with no ablation is a FAIL reason (RULES item 17).
 Verdict: PASS or FAIL, with each reason and its evidence, in at most 30 lines.
 ```
 

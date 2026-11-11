@@ -38,7 +38,7 @@ EOF
   rc=$?
   if [ "$rc" -ne 0 ]; then echo "$stamp ssh rc=$rc" >> "$OUT/mirror.log"; sleep "$POLL"; continue; fi
   mv "$OUT/poll.tmp" "$OUT/poll.txt"; echo "$stamp ok" >> "$OUT/mirror.log"
-  while IFS=$'\t' read -r job dir wave tools; do   # the 4th column: the tool commits the job uses (gate.py)
+  while IFS=$'\t' read -r job dir wave tools jobfile; do   # 4th column: the tool commits the job uses; 5th: its job file (gate.py)
     [ -z "$job" ] && continue
     id=${job%%.*}
     block() { awk -v j="$job" '$0=="== JOB "j{f=1;next} /^== /{f=0} f' "$OUT/poll.txt"; }

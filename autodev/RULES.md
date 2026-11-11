@@ -258,3 +258,24 @@ names; nothing in tiers I to III changes.
     builder on Opus may do the non-visual work a UI needs (data, state, tests), to the designer's file. No effort was
     named, so none is set (measured: xhigh). The Opus builder that had just started Studio's run B was stopped (it had
     only confirmed the baseline) and the run relaunched under a designer.
+
+### Added the same day by the PI: "make a improvement plan doc and to do list. and go ahead" (five lessons from ScientistTwo; [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md))
+
+14. **Subset before full.** A job that asks for more than 2 hours ships with `<name>.subset.pbs`: the same steps on a
+    declared subset, its own prediction in its header, sized for minutes. The full job is submitted only after the
+    subset is graded AS PREDICTED at the same tool commits, and the subset's measured wall time and peak memory size the
+    full request. `gate.py` refuses otherwise; `--no-subset REASON` is for a job written before this rule, and the reason
+    goes into the RUNLOG.
+15. **Self-attack.** [ATTACKS.md](ATTACKS.md) lists the attacks that broke a wave here. A builder runs each one that
+    applies against its own change before hand-back and says which it ran and what happened. A verifier that breaks a
+    wave a new way adds a line to its inbox. The measure is `setup/autodev/passrate.py` (waves that pass their first
+    verification; 4 of 9 on 2026-11-11), read at every daily check.
+16. **A pool for items that search.** An item that has to find something (a rule, a hypothesis, a tool to convert) keeps
+    `autodev/pools/<item>.tsv` and registers S (successes that end it) and K (rounds that end it). A round is the
+    candidates evolved from every earlier trace plus at least one untried one; each is tried on a subset first and
+    called good, bad, or engineer (at most 2 tuning passes, then bad).
+17. **Ablation before a gain is kept.** A wave that claims a measured gain (time, memory, a metric) reports the gain per
+    component, measured by removing each, and keeps only what carries it. A claimed gain with no ablation is a verifier's
+    FAIL reason.
+18. **A source that exists.** A plugin's source is a DOI recorded with the title and year its own record gives, and a
+    check resolves it (ROUTE R45). A verifier reads one cited claim per plugin against its source.

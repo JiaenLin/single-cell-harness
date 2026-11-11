@@ -19,6 +19,7 @@ WHAT IS ASSERTED HERE.
   wave's gap ids must be gaps that were opened.
 """
 import csv
+import pathlib
 import re
 import unittest
 from pathlib import Path
@@ -181,7 +182,7 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
     def test_the_tools_exist_and_the_shell_ones_parse(self):
         import subprocess
         tools = ROOT / "setup" / "autodev"
-        for name in ("usage.py", "pbs_mirror.sh", "monitor_verdicts.sh", "bootstrap.sh", "agent_models.sh", "gate.py", "costs.py"):
+        for name in ("usage.py", "pbs_mirror.sh", "monitor_verdicts.sh", "bootstrap.sh", "agent_models.sh", "gate.py", "costs.py", "passrate.py"):
             self.assertTrue((tools / name).is_file(), name)
             if name.endswith(".sh"):
                 rc = subprocess.run(["bash", "-n", str(tools / name)], capture_output=True)
@@ -218,6 +219,44 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
                 self.assertIn(test_id, known, f"ROUTE item {cells[0]} moves an unknown test {test_id}")
             self.assertIn(cells[6].split(" ")[0], {"open", "registered", "building", "verifying", "gating", "merged", "done", "struck"},
                           f"ROUTE item {cells[0]} has an unknown status")
+
+    def test_the_improvement_plan_is_wired_in(self):
+        """The five lessons of 2026-11-11 are rules, a list every brief points at, and a gate the runner enforces."""
+        import importlib.util
+        import tempfile
+        rules = (ROOT / "autodev" / "RULES.md").read_text(encoding="utf-8")
+        for words in ("**Subset before full.**", "**Self-attack.**", "**A pool for items that search.**",
+                      "**Ablation before a gain is kept.**", "**A source that exists.**"):
+            self.assertIn(words, rules, f"RULES lost {words}")
+        attacks = (ROOT / "autodev" / "ATTACKS.md").read_text(encoding="utf-8")
+        rows = re.findall(r"^\| (\d+) \|", attacks, flags=re.M)
+        self.assertGreaterEqual(len(rows), 15, "ATTACKS.md lost its lines")
+        self.assertLessEqual(len(attacks.splitlines()), 60, "ATTACKS.md is one screen: drop what has caught nothing")
+        self.assertIn("## Inbox", attacks)
+        briefs = (ROOT / "autodev" / "BRIEFS.md").read_text(encoding="utf-8")
+        for words in ("SELF-ATTACK:", "SUBSET:", "ATTACKS.md"):
+            self.assertIn(words, briefs, f"BRIEFS lost {words}")
+        plan = (ROOT / "autodev" / "IMPROVEMENT_PLAN.md").read_text(encoding="utf-8")
+        self.assertIn("## To do", plan)
+        spec = importlib.util.spec_from_file_location("gate", ROOT / "setup" / "autodev" / "gate.py")
+        gate = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gate)
+        with tempfile.TemporaryDirectory() as tmp:
+            watch = pathlib.Path(tmp) / "watch.tsv"
+            a, b = "a" * 40, "b" * 40
+            watch.write_text(f"# graded AS PREDICTED t: 1.x\t/r\tW1\tT={a}\tj.subset.pbs\n"
+                             f"# graded MISSED (1) t: 2.x\t/r\tW1\tT={a}\tk.subset.pbs\n", encoding="utf-8")
+            self.assertTrue(gate.passed_subset("j.subset.pbs", [("T", a)], watch))
+            self.assertFalse(gate.passed_subset("j.subset.pbs", [("T", b)], watch), "a subset passed at another commit does not count")
+            self.assertFalse(gate.passed_subset("k.subset.pbs", [("T", a)], watch), "a subset that missed does not count")
+            job = pathlib.Path(tmp) / "long.pbs"
+            job.write_text("#!/bin/bash\n#PBS -l walltime=24:00:00\n", encoding="utf-8")
+            with self.assertRaises(SystemExit):
+                gate.subset_rule(job, job.read_text(), [("T", a)], None)
+            self.assertIn("no subset job", gate.subset_rule(job, job.read_text(), [("T", a)], "written before the rule"))
+            (pathlib.Path(tmp) / "long.subset.pbs").write_text("#!/bin/bash\n", encoding="utf-8")
+            with self.assertRaises(SystemExit):
+                gate.subset_rule(job, job.read_text(), [("T", a)], None)
 
     def test_the_gate_runner_names_no_site(self):
         """gate.py reads its site facts from the git-ignored site.env, and its dry run needs no network."""

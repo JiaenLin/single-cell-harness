@@ -82,6 +82,7 @@ Rewritten whole at 2026-11-11T09:05:50Z (earlier piecemeal edits had left the ru
   arms; PBS 789057, 789058, 789168). Stage 1 waits for W045 and the driver's fix.
 - **Scores by verifiers' rows today:** A1.3 3/5, A2.1 3/4, A3.2 3/4 (merged); A1.2 7/10 and A1.1 5/8 wait for the driver and
   for W036's job.
+- **The improvement plan of 2026-11-11** ([`IMPROVEMENT_PLAN.md`](IMPROVEMENT_PLAN.md); RULES items 14-18): a job over 2 hours runs on a subset first (`gate.py` refuses otherwise); every builder runs [`ATTACKS.md`](ATTACKS.md) against its own change before hand-back; items that search keep a pool with S and K; a claimed gain needs its ablation; a plugin's source is a DOI that resolves (R45). The measure: `passrate.py`, 4 of 9 waves built on 2026-11-11 passed first verification. Agents launched before the plan get the attacks list at their next round.
 - **Next free slots, in order:** W044's fix round (after its verdict); R44 (scProfile's host carries no cohort measurement,
   GAP-C100); the scProfile plugin line (abundance first) once W035 + W040 merge; R05 and R06 (harness: installer and lock;
   small fixes) once the train merges; the first cohort's chained run (three values to look up) and the scale cohort's stage 1

@@ -2,7 +2,8 @@
 """The coordinator's gate runner (RULES, 2026-11-11): submit a pre-declared job, grade it when it lands.
 
   python3 -I setup/autodev/gate.py submit --wave W### --project <PROJECT> --stage <NN_stage> --job <file.pbs>
-                                          [--tool <Tool>=<40-hex commit>|<Tool>=keep ...] [--set NAME=VALUE ...] [--go]
+                                          [--tool <Tool>=<40-hex commit>|<Tool>=keep ...] [--set NAME=VALUE ...]
+                                          [--no-subset REASON] [--go]
   python3 -I setup/autodev/gate.py grade <jobid> --status <gating|verifying|failed> [--verdict "AS PREDICTED"] [--note TEXT]
   python3 -I setup/autodev/gate.py checkout --tool <Tool>=<40-hex commit> [--go]
 
@@ -12,6 +13,10 @@ tool at another commit; (3) the site's validator; (4) the submit recipe in the j
 node: the lines between `# SUBMIT-BEGIN` and `# SUBMIT-END`, or, in an older job, the commented lines after the last
 header line that says "Submit", up to its qsub. Every check line (`... && echo X-CLEAN`, `... && echo PIPELINE-SAME`) is made fatal when it does not hold;
 (5) the watch row, a RUNLOG entry, and its copy on the cluster. Without --go it prints what it would run and stops.
+
+Subset before full (RULES 2026-11-11, item 14): a job file `X.pbs` with a sibling `X.subset.pbs` is refused until that
+subset job has been graded AS PREDICTED at the same tool commits; a job that asks for more than 2 hours and has no
+sibling is refused unless --no-subset gives the reason, which goes into the RUNLOG.
 
 grade: reads the mirror's verdict file, writes the job's own lines verbatim into the RUNLOG, comments the watch row and
 appends the wave's ledger row. The verdict is the job's own `GATE:` line, or --verdict for a job that prints none.
@@ -97,6 +102,48 @@ def refuse_if_in_use(tools):
                 sys.exit(f"REFUSED: watch row {row[0]} names no tools; grade or comment it before moving {name}")
             if name in used and used[name] != commit:
                 sys.exit(f"REFUSED: {name} is at {used[name][:7]} under live job {row[0]}; {commit[:7]} waits for it")
+
+
+def walltime_hours(text):
+    m = re.search(r"^#PBS\s+-l\s+walltime=(\d+):(\d+):(\d+)", text, flags=re.M)
+    return int(m.group(1)) + int(m.group(2)) / 60 if m else 0.0
+
+
+def passed_subset(sibling, tools, watch=None):
+    """Has `sibling` (a job file name) been graded AS PREDICTED at these tool commits? Reads the watch list's history."""
+    watch = watch or WATCH
+    want = {n: c for n, c in tools if c != "keep"}
+    if not watch.is_file():
+        return False
+    for line in watch.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("# graded AS PREDICTED"):
+            continue
+        cells = line.split(": ", 1)[-1].split("\t")
+        if len(cells) < 5 or cells[4].strip() != sibling:
+            continue
+        used = dict(p.split("=", 1) for p in cells[3].split(",") if "=" in p)
+        if all(used.get(n) == c for n, c in want.items()):
+            return True
+    return False
+
+
+def subset_rule(job, text, tools, no_subset):
+    """Returns the sentence the RUNLOG carries; exits when the rule refuses."""
+    if job.name.endswith(".subset.pbs"):
+        return "This is a subset job."
+    sibling = job.with_name(job.name[:-len(".pbs")] + ".subset.pbs")
+    if sibling.is_file():
+        if passed_subset(sibling.name, tools):
+            return f"Its subset job `{sibling.name}` was graded AS PREDICTED at these tool commits."
+        if no_subset:
+            return f"Submitted WITHOUT its subset job `{sibling.name}` having passed: {no_subset}"
+        sys.exit(f"REFUSED: submit {sibling.name} first; the full job goes in when it is graded AS PREDICTED at the same commits")
+    hours = walltime_hours(text)
+    if hours > 2:
+        if no_subset:
+            return f"Asks for {hours:g} h and has no subset job: {no_subset}"
+        sys.exit(f"REFUSED: this job asks for {hours:g} h and has no {sibling.name}; write the subset job, or pass --no-subset with the reason")
+    return "Under 2 h; no subset job is required."
 
 
 def move_script(env, tools):
@@ -186,6 +233,7 @@ def submit(args):
         sys.exit("the job file has CR line ends")
     md5 = hashlib.md5(data).hexdigest()
     recipe = recipe_of(data.decode("utf-8"), args.job, args.set)
+    subset_note = subset_rule(job, data.decode("utf-8"), tools, args.no_subset)
     refuse_if_in_use(tools)
     rdir = f'{env["R_PROJECTS"]}/{args.project}/stages/{args.stage}/jobs'
     script = ["set -e", f'cd "{rdir}"',
@@ -196,7 +244,7 @@ def submit(args):
     script += recipe
     if not args.go:
         print("\n".join(script))
-        print(f"\n(dry run: md5 {md5}; add --go to copy the job and run this on the login node)")
+        print(f"\n(dry run: md5 {md5}; subset rule: {subset_note}; add --go to copy the job and run this on the login node)")
         return
     rc, out = remote(env["PBS_HOST"], f'cat > "{rdir}/{args.job}"', data)
     if rc:
@@ -208,13 +256,14 @@ def submit(args):
         sys.exit(f"NOT SUBMITTED (rc={rc}):\n{out[-1500:]}")
     used = ",".join(f"{n}={c}" for n, c in re.findall(r"^TOOL (\S+)=([0-9a-f]{40})", out, flags=re.M))
     with open(WATCH, "a", encoding="utf-8") as handle:
-        handle.write(f"{jobid.group(1)}\t{rundir.group(1)}\t{args.wave}\t{used}\n")
+        handle.write(f"{jobid.group(1)}\t{rundir.group(1)}\t{args.wave}\t{used}\t{args.job}\n")
     validate = (re.search(r"^VALIDATE (.*)$", out, flags=re.M) or [None, "?"])[1]
     rel = rundir.group(1).split(f"/{args.project}/", 1)[-1]
     runlog(env, args.project, args.stage,
            f"\n## {stamp()} — {args.wave}: `jobs/{args.job}` submitted (gate.py)\n\n"
            f"- The job file: md5 `{md5}`, equal on both sides; the validator: {validate}.\n"
            f"- The tool checkouts, each clean on its HEAD.txt: {used.replace(',', ', ') or 'none named'}.\n"
+           f"- Subset before full: {subset_note}\n"
            f"- **PBS `{jobid.group(1)}`**, run `{rel}`. The prediction is the job header's, written before submission.\n")
     print(f"SUBMITTED {jobid.group(1)} wave={args.wave} run={rel} tools={used}")
 
@@ -282,6 +331,7 @@ def main():
         s.add_argument(name, required=True)
     s.add_argument("--tool", action="append")
     s.add_argument("--set", action="append")
+    s.add_argument("--no-subset", dest="no_subset", help="the reason a long job goes in without a passed subset job")
     s.add_argument("--go", action="store_true")
     g = sub.add_parser("grade")
     g.add_argument("jobid")
