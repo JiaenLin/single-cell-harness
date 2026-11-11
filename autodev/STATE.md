@@ -62,8 +62,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   brief from `<scratchpad>/relaunch/` and told to read its predecessor's clone and wave-file plan first. Today's meter
   before the stop: 16.3 M output tokens, 46 launches.
 - **Running now (6 agents), as of 2026-11-11T11:34:24Z:**
-  - the builder (Opus 5.5 max) of **W047 run 2** (scProfile: `de` through the maker, the record's declaration copies as a
-    maker defect, the rest of the host read file by file; run 1 is built at `4c5b3ad`).
+  - the builder (Opus 5.5 max) of **W047 run 3**, small and the last (scProfile): run 2 is built at `7785254` (`de` through
+    the maker; no record keeps a copy of a declaration, a maker fix found among five candidates; 19 host files read
+    whole). The preflight on the batch still lists 344 lines holding a number the batch removed; run 3 classes and
+    clears the ones outside the held-out plugins. Then ONE verification of the whole scProfile batch.
   - the builder (Opus 5.5 max) of **W048's fix round 1** (scQC: its verification FAILED on two reasons while both gate jobs
     read AS PREDICTED: about 51 lines still hold one cohort's measured numbers where no list looks; the fixture check
     stays green when the factor never reaches the gates).
