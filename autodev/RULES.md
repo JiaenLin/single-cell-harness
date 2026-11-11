@@ -238,3 +238,8 @@ names; nothing in tiers I to III changes.
    CHECK; hand-backs and verdict files drive everything else.
 10. **The PI's steps are asked once, early** (ROUTE section 3): each becomes an ASK row, with the numbers and a
     recommendation, the moment its precondition is met. No lane waits on one.
+11. **The PI, 2026-11-11: "also, improve the studio UI design and layout to be top level".** A direction of the PI's
+    (tier III in weight): ROUTE item R41, wave W037. "Top level" is the ten-point rubric in `waves/W037.md`; the builder
+    designs to it and a verifier judges it by looking. It is built on a branch from the synthetic fixture only; Studio's
+    `main` is still the PI's go (BLK-005), asked with the before-and-after gallery. The cap of 6 agents is tier IV: a
+    direct request of the PI's may run beside it.

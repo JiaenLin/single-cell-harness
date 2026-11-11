@@ -74,6 +74,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R36 | harness + scProfile | a draw rule over the scRNA-tools catalogue; five never-seen tools converted by agents alone, each passing the dev suite and its published example | A4.2 (0.2 a tool) | R24-R30 mostly done (the maker stable) | 5 x M + jobs | open |
 | R38 | Lab + Studio | W017's last re-check, W028's verification; the family's final object through Lab's converter (GAP-P20); ask the PI's deploy go | A6.2 2/2 | - | v x 2, S + the PI | open |
 | R39 | all eight | a docs-truth pass per repository (the audit's known-false lines first, then a claim sweep) | A2.2 8/8 | each repository's last route item | S each | open |
+| R41 | Studio | **W037** (the PI, 2026-11-11: "improve the studio UI design and layout to be top level"): an audit against a written rubric, a design file with tokens and a layout model, the shell and every screen rebuilt to it, a before-and-after gallery; three runs | the PI's direction (PLAT.3, G6; A6.2's surface) | - (stacked on W028's `099a085`); the deploy is the PI's go | M x 3 + a verifier by looking | building |
 
 Parked (not on the route; they stay in the ledgers): W030 (Service local reads: moves no score), W022 as a wave of its
 own, the 73 queued constraints of the B1 register (removed by the wave that meets one), every gap not named above.
@@ -85,7 +86,7 @@ own, the 73 queued constraints of the B1 register (removed by the wave that meet
 | stage 3: re-promote or keep, now that harmony is deterministic and its rank moved (2nd to 5th; the top method unchanged) | R19 merged | A2.1 |
 | stage 4: promote a run | R22 and R02 merged, R34's run sealed | A2.1 |
 | C46's cell-type tree: approve the re-proposed tree | R17 built | A1.1's labels, A3.1 |
-| deploy Lab, then Studio | R38's verifications PASS | A6.2 |
+| deploy Lab, then Studio (with R41's before-and-after gallery) | R38's verifications PASS; R41 verified by looking | A6.2, the PI's direction |
 
 ## 4. The order
 
@@ -94,4 +95,5 @@ own, the 73 queued constraints of the B1 register (removed by the wave that meet
    (R05 or R06; R13 with R14 and R15's staging; R20 with R21; R32 or R33), and R16 at the first free slot.
 3. **When R02 is built:** R03 (the driver), then R04, R07, R08, R09, R10 in parallel where their files are disjoint.
 4. **The plugin line** (R31, R24-R30) runs the whole time, one at a time; R36 follows it.
-5. **Last:** R11's cold reproductions, R39's docs-truth passes, then one full audit.
+5. **The Studio line** (R41 = W037, then R38's verifications) runs beside the rest; R08's harness UI takes its tokens from R41's design file.
+6. **Last:** R11's cold reproductions, R39's docs-truth passes, then one full audit.
