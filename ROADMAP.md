@@ -251,7 +251,8 @@ contract**, do not write three more adapters against it.
 > beneath them; each run's `cost` from the scheduler's `resources_used` and the report's `cost` (cells,
 > wall time, peak memory, every figure with its events); one library column (`library_key:` in each
 > adapter, written from `keys.sample`); `sch run --request --job` generates the job. Not run: any
-> cohort's chained run (the first cohort's job is generated and waits for the coordinator).
+> cohort's chained run, and no cohort's job is generated yet (the first cohort's request is a draft
+> with three stated unknowns).
 >
 > **BUILT, NOT YET GRADED ON THE COHORT, 2026-11-11 (W036, branch `autodev/W036-prof-adapter`): the
 > fourth adapter, `prof@scprofile`.** `plugins/single-cell/prof@scprofile` runs scProfile's real CLI

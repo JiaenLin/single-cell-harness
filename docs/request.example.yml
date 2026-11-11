@@ -1,7 +1,7 @@
 # A request: one cohort, every stage (harness W041). SYNTHETIC: every name below is a placeholder.
 # A real request is data that lives with the cohort, never in this repository. The schema is
 # sch/drive.py (FIELDS); `sch plan --request FILE` checks one and runs nothing, and
-# `sch run --request FILE --out DIR` runs it, stopping before any stage whose tool declares a choice
+# `sch run --request FILE --out DIR` runs it, stopping before any stage whose adapter declares a choice
 # as the user's until it is answered with `--answer NAME=VALUE --by WHO`.
 request: 1
 observations: samplesheet.tsv        # the QC tool's samplesheet: one row per library (relative to this file)
