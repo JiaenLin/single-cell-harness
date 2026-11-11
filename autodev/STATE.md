@@ -76,14 +76,17 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     never from a file name; GAP-C103, one of the two tool-side breaks that stop a chained stage 4; ROUTE R47).
   - the verifier (Opus 5.5 max) of **W046's fix round 1** (scIntegrate, built at `2fc7a6c`: every name that becomes a key is
     written through the real writer before anything is computed; state version 2; the fixture's design reaches the tool).
-  - the builder (Opus 5.5 max) of **W049** (the harness: the driver's residue after its last re-check FAILED on one
-    reason: a file given as a decision's answer is in no pinned set; also correct requests the driver now refuses).
+  - the verifier (Opus 5.5 max) of **the driver batch, W041 + W042 + W049** (W049 built at `dbdc028`: an answer's file and
+    four more routes are in the one pinned set; the profile's hand lists replaced by a drift test against scQC's own code).
   - the verifier (Opus 5.5 max) of **the Studio batch, W028 + W037** (head `f7dab0c`), code only: the Run card on Lab's
     fixture, the split-id parser, every changed test hunk, and whether the uncalled-cells finding blocks a deploy.
 - **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
+- **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
+  head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
+  driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
 - **Built, waiting for a verifier slot:** **W050** (scAnno `f456431`: `embed` names a library from the object, a manifest or
   the upstream record, never a file name); its reproduction job is on the cluster (790463).
 - **On PBS:** **790463** (W050's reproduction of the first cohort's promoted stage 2); **790442** (scIntegrate's fresh-prefix build at W046's fix head: A1.3's fourth build) and **790443** (the subset
