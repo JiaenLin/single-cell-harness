@@ -62,11 +62,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     the host's counts); **W044's fix round 2**, the last (scAnno's tree rule: at least two candidates for the disease
     test with one fresh, scored on both expectation sets, a pool file; branch `autodev/W044-fix2` from `main`).
   - the designer (Fable 5.2), **run 3 on Studio** (W037).
-  - No verifier is running. Waiting for a slot: the route's first sufficiency check (RULES item 19).
+  - an independent reader (Opus 5.5 max): **the route's first sufficiency check** (RULES item 19; it writes
+    `audits/ROUTE_SUFFICIENCY_20261111.md`). No verifier is running.
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
-- **On PBS:** **789561**, scIntegrate's job 32 (W039, withheld cells out of the PCA, at `1901611`); **789673**, scQC's 37b
-  for the first cohort at W043's fixed head. Landed AS PREDICTED since the last rewrite: 789675 (scQC's 17b, the second
-  cohort, IDENTICAL to the promoted run) and 789688 (scAnno's fresh-prefix build at `9fb561c`).
+- **On PBS:** **789561**, scIntegrate's job 32 (W039, withheld cells out of the PCA, at `1901611`). The cluster's harness
+  checkout is at `main` (`1d1031b`); scQC's is at `2f25e72` and scIntegrate's at `1901611` (each returns to `main` when free).
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
@@ -75,9 +75,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   (W020), scAnno `779fd08` (W038), and **the harness `a677e8f` (W029 + W034)**: its train's three jobs all AS PREDICTED at the
   merged commit (stages 1, 2 and 3; PBS 788583, 788586, 788587), the merged tree's runtime files equal the gated head's, the
   suite OK.
-- **Verified, waiting for a job:** **W043** (scQC: the audit's integrity checks are never acceptable by name; the re-check
-  PASSED, head `de62f78`; it merges when 789673 reads AS PREDICTED) and **W039** (scIntegrate, PASS; job 789561). W039's
-  merge is followed by ONE question to the PI: stage 3's re-promotion.
+- **Merged 2026-11-11, the eighth: scQC `de62f78`** (W043: a failed removal audit stops the run before any object is written;
+  its integrity checks are never acceptable by name). Both cohorts' promoted stage-1 runs reproduced IDENTICAL at the gated
+  commit (PBS 789673, 789675). GAP-119, a wrong-result defect, is closed. scQC's leak-clean half of R13 is still open.
+- **Verified, waiting for a job:** **W039** (scIntegrate, PASS; job 789561). Its merge is followed by ONE question to the
+  PI: stage 3's re-promotion.
 - **Failed verification, in its last fix round:** the driver (W041 + W042; round 1's re-check broke four of its six fixes by
   attacking the family of each case); **W044's tree rule** (the re-check: no gain on 59 expectations the builder did not
   write; the disease test sets aside five tissues' defining cells; a release that cannot tell health is drafted unchecked;
@@ -92,7 +94,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **A records commit says whether it landed** (`setup/autodev/commit.sh`, 2026-11-11): two records commits were blocked by
   the suite's leak guard (a site path an agent wrote into a wave file) and were reported as landed. The helper stages only
   the paths it is given and prints `COMMITTED <sha> pushed` or `BLOCKED: <reason>`; every brief now says a wave file takes no site path.
-- **Next free slots, in order:** the route's sufficiency check; the re-checks of the driver's and W044's last rounds as they
+- **Next free slots, in order:** the re-checks of the driver's and W044's last rounds as they
   hand back; one verification of the scProfile batch after W047; then the scProfile plugin line (abundance first), R05 and
   R06 (harness: installer and lock; small fixes), the first cohort's chained run and the scale cohort's stage 1 once the
   driver passes.
