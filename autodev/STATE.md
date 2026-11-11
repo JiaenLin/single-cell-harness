@@ -57,7 +57,7 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 Rewritten whole at 2026-11-11T09:05:50Z (earlier piecemeal edits had left the running line garbled).
 
 - **Running now (6 agents), as of 2026-11-11T09:33:40Z:**
-  - builders (Opus 5.5 max): **W046** (scIntegrate: keeps the cohort's library column, GAP-C102; a fresh-prefix build; the first wave briefed with the attacks list and the subset rule); **W035's fix round 2**, the last;
+  - builders (Opus 5.5 max): **W046** (scIntegrate: keeps the cohort's library column, GAP-C102; a fresh-prefix build; the first wave briefed with the attacks list and the subset rule); (W035's fix round 2 is built at `ac430dc` and in its last re-check);
     **W044's fix round 1** (scAnno: the leak fixes split out, then the tree rule); **W043's fix round 1** (scQC: the audit's
     invariants cannot be accepted by name).
   - the verifier (Opus 5.5 max) re-checking **the driver's fix round 1** (W041 + W042, `b0918c0`, 902 tests; five of the six
