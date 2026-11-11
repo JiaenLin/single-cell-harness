@@ -61,10 +61,12 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   stayed in its clone. No agent was resumed (an agent resumes on the session's model): each was launched fresh with its
   brief from `<scratchpad>/relaunch/` and told to read its predecessor's clone and wave-file plan first. Today's meter
   before the stop: 16.3 M output tokens, 46 launches.
-- **Running now (5 agents), as of 2026-11-11T11:02:22Z:**
+- **Running now (6 agents; W048 added 2026-11-11T11:04:33Z), as of 2026-11-11T11:02:22Z:**
   - builders (Opus 5.5 max), each continuing an interrupted run: **the driver's fix round 2**, the last (W041 + W042);
     **W047** (scProfile carries no cohort's measured value); **W044's fix round 2**, the last (scAnno's tree rule: at
     least two candidates with one fresh, a pool file; branch `autodev/W044-fix2`).
+  - the builder (Opus 5.5 max) of **W048** (scQC leak-clean under both cohorts' generated lists, and the fixture's axes
+    reaching its pipeline: A3.1 0.41 to 0.51 on merge, the first time over the bar; ROUTE R13 run 2).
   - the verifier (Opus 5.5 max) of **W046** (scIntegrate: the design's key column kept; the lock's whole closure, 120
     pins; built at `e811372`), on the batch W039 + W046.
   - the reviewer (Fable 5.2) of **Studio's designer run 3** (W037, head `5fe9923`: the first review's thirteen closed
@@ -103,7 +105,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **A records commit says whether it landed** (`setup/autodev/commit.sh`, 2026-11-11): two records commits were blocked by
   the suite's leak guard (a site path an agent wrote into a wave file) and were reported as landed. The helper stages only
   the paths it is given and prints `COMMITTED <sha> pushed` or `BLOCKED: <reason>`; every brief now says a wave file takes no site path.
-- **Next free slot (one is free):** R47 (scAnno, GAP-C103) waits for W044's round, so the slot is kept for the first hand-back. Then, in order: the re-checks of the driver's and W044's last rounds as they
+- **Next free slots, in order:** the re-checks of the driver's and W044's last rounds as they
   hand back; one verification of the scProfile batch after W047; then the scProfile plugin line (abundance first), R05 and
   R06 (harness: installer and lock; small fixes), the first cohort's chained run and the scale cohort's stage 1 once the
   driver passes.
