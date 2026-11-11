@@ -61,16 +61,14 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   stayed in its clone. No agent was resumed (an agent resumes on the session's model): each was launched fresh with its
   brief from `<scratchpad>/relaunch/` and told to read its predecessor's clone and wave-file plan first. Today's meter
   before the stop: 16.3 M output tokens, 46 launches.
-- **Running now (6 agents; W048 added 2026-11-11T11:04:33Z), as of 2026-11-11T11:02:22Z:**
-  - builders (Opus 5.5 max), each continuing an interrupted run: **the driver's fix round 2**, the last (W041 + W042);
-    **W047** (scProfile carries no cohort's measured value); **W044's fix round 2**, the last (scAnno's tree rule: at
-    least two candidates with one fresh, a pool file; branch `autodev/W044-fix2`).
-  - the builder (Opus 5.5 max) of **W048** (scQC leak-clean under both cohorts' generated lists, and the fixture's axes
-    reaching its pipeline: A3.1 0.41 to 0.51 on merge, the first time over the bar; ROUTE R13 run 2).
-  - the verifier (Opus 5.5 max) of **W046** (scIntegrate: the design's key column kept; the lock's whole closure, 120
-    pins; built at `e811372`), on the batch W039 + W046.
-  - the reviewer (Fable 5.2) of **Studio's designer run 3** (W037, head `5fe9923`: the first review's thirteen closed
-    by the designer's account): the last review round, 'ready for the PI' or the limits to tell the PI.
+- **Running now (6 agents), as of 2026-11-11T11:34:24Z:**
+  - builders (Opus 5.5 max): **W047 run 2** (scProfile: `de` through the maker, the record's declaration copies as a maker
+    defect, the rest of the host read file by file; run 1 is built at `4c5b3ad`); **W044's fix round 2**, the last
+    (scAnno's tree rule; branch `autodev/W044-fix2`); **W048** (scQC leak-clean and the fixture's axes: A3.1 0.41 to 0.51 on
+    merge; ROUTE R13 run 2).
+  - verifiers (Opus 5.5 max): **the driver's last re-check** (W041 + W042, fix round 2 built at `174d890`: PASS may carry
+    stated limits, FAIL names only blocking reasons); **W046** (scIntegrate, on the batch W039 + W046).
+  - the reviewer (Fable 5.2) of **Studio's designer run 3** (W037, head `5fe9923`): the last review round.
 - **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
