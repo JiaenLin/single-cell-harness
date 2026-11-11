@@ -193,6 +193,16 @@ for t in tables:
     run.table_at(str(t.relative_to(out_dir)))
 for o in sorted((res / "objects").glob("**/*.h5ad")):
     run.object_at(o.stem, str(o.relative_to(out_dir)))
+# WHAT THE NEXT STAGE READS (harness W041), in scQC's own layout: each library's kept observations
+# (`objects/<prefix>_per_sample/<sample>.filtered.h5ad`, what annotation reads) and the joint
+# deliverable (`objects/<prefix>.deliverable.h5ad`, what integration and DE read). Named, not copied.
+per = {}
+for o in sorted((res / "objects").glob("*_per_sample/*.filtered.h5ad")):
+    lib = o.name[:-len(".filtered.h5ad")]
+    if lib in scope_of:
+        per[scope_of[lib]] = str(o.relative_to(out_dir))
+joint = sorted((res / "objects").glob("*.deliverable.h5ad"))
+run.answer(hands_on={"libraries": per, "joint": str(joint[0].relative_to(out_dir)) if len(joint) == 1 else None})
 
 percell = {lib: res / "tables" / f"{lib}.percell.csv" for lib in scope_of}
 if not any(p.exists() for p in percell.values()):

@@ -19,6 +19,15 @@ state_version: 1
 # is no default.
 assays: [scrna, snrna]
 
+# What it reads and hands on (harness W041): the integrated object in, scProfile's object out.
+reads: joint
+hands_on: {joint: null}
+# The choice scProfile leaves to the user (cannot_show, first line): the driver asks it by name.
+decisions:
+  - name: control
+    param: run.control
+    what: "the control every contrast is read against; every sign in the tables follows it"
+
 wraps:
   tool: scProfile
   version: "0.1.0"

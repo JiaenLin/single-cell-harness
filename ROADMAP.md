@@ -233,6 +233,21 @@ contract**, do not write three more adapters against it.
 > Not yet graded: **numbers**, by the reference cohort's stage-3 run through the harness against
 > scIntegrate run alone at the same commit in the same job (written before it runs).
 >
+> **BUILT ON THE FIXTURE, 2026-11-11 (W041 run 1, branch `autodev/W041-driver`): the stage driver.**
+> A request (`docs/request.example.yml`; schema `sch/drive.py` FIELDS) names the samplesheet, the
+> design, the context once (one assay word, `scrna`/`snrna`, that every stage's adapter declares; the
+> species once, as `species`), the upstream steps by name (alignment, ambient removal: the profile
+> refuses CellBender upstream of single cells, rule 2) and each stage's tool flags verbatim.
+> `sch plan --request FILE` plans it; `sch run --request FILE --out DIR` runs it as one stack per
+> stage, each stage's observations a manifest of what the stage before it handed on (each adapter's
+> `hands_on`, read from that stage's own out.json), the stage's plugin declared in its `stack.yml` and
+> mounted by `run_declared()`, then reported and sealed (outputs read-only). A choice an adapter
+> declares as its tool's user's (`decisions:`: scQC's `mode` and `decisions`, scProfile's `control`)
+> stops the run before that stage, named, until `--answer NAME=VALUE --by WHO` records it; a sealed
+> stage is never re-run; a failed one is kept and named with the resume command. `anno@scanno` gained
+> scAnno's `embed` (off unless declared), the join a stage-3 object comes from. Not built: the cluster
+> path (run 2: a job generated from the request) and any cohort's chained run.
+>
 > **BUILT, NOT YET GRADED ON THE COHORT, 2026-11-11 (W036, branch `autodev/W036-prof-adapter`): the
 > fourth adapter, `prof@scprofile`.** `plugins/single-cell/prof@scprofile` runs scProfile's real CLI
 > (`python -m scprofile.cli`, the declared checkout on PYTHONPATH and nothing else) over the one object

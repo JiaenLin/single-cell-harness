@@ -14,6 +14,20 @@ layer: stack
 reversible: true
 state_version: 1
 
+# What it reads and hands on (harness W041): the stack's libraries; scQC's per-library objects
+# (annotation reads them) and its joint deliverable (integration and DE read it).
+assays: [scrna, snrna]
+reads: libraries
+hands_on: {libraries: null, joint: null}
+# The choices scQC declares as the user's (`scqc describe` escapes): the driver asks them by name.
+decisions:
+  - name: mode
+    param: mode
+    what: "evidence (measure, remove nothing) or apply (remove what scQC's gates allow); scQC's escape for the apply step"
+  - name: decisions
+    param: decisions
+    what: "scQC's approved-threshold record (decisions.yml), or null; a derived threshold is applied only with a recorded human decision"
+
 wraps:
   tool: scQC
   version: "0.4.0"

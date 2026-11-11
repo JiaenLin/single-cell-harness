@@ -435,6 +435,7 @@ except (OSError, ValueError):
     chosen = None
 run.wrapped("scIntegrate", f"{described.get('version')} ({described.get('commit')})")
 run.object_at(Path(made[0]).stem, rel(obj))
+run.answer(hands_on={"libraries": {}, "joint": rel(obj)})      # what stage 4 reads (harness W041)
 for x in status.get("products") or []:
     t = str(x.get("path", ""))
     if t.startswith("tables/") and t.endswith(".csv") and (P / t).is_file():

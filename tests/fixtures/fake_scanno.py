@@ -6,7 +6,7 @@ It honours the parts of scAnno's contract the adapter relies on, and nothing mor
 `fake_scqc.py` stands in for scQC:
 
     describe                 the declaration, as JSON (`state_version` is what the adapter checks)
-    cluster | annotate | rescue
+    cluster | annotate | rescue | embed
                              each parsed with the flags scAnno's own parser declares for it (at
                              d0ee926), so a flag scAnno does not have fails here as it would there
 
@@ -254,6 +254,43 @@ def rescue(a):
     return done if done is not None else st.finish("ok", "targeted rescue done", 0, n_obs=n)
 
 
+def embed(a):
+    """scAnno's `embed`: every object's obs in one joint object, in order, its obs_names as they are
+    (index_unique=None), `--label-obs OLD=NEW` renaming, and obsm X_pca / X_umap - a fixed pattern of
+    each observation's position, never an embedding. A named column no object carries is refused."""
+    import h5py
+    import numpy as np
+    st = Status(a.status_dir or Path(a.out).parent, "embed")
+    rename = {}
+    for spec in a.label_obs or []:
+        old, _, new = str(spec).partition("=")
+        rename[old] = new or old
+    index, cols, order = [], {}, None
+    for src in a.h5ad:
+        idx, c = read_obs(src)
+        if a.sample_key not in c:
+            # scanno/embed.py: an object without the column is named by its file's stem
+            c[a.sample_key] = ("cat", [Path(src).stem.replace("_annotated", "")] * len(idx))
+        order = [k for k in (order if order is not None else list(c)) if k in c]
+        index += idx
+        for k in order:
+            cols.setdefault(k, (c[k][0], []))[1].extend(c[k][1])
+    gone = sorted(set(rename) - set(order or []))
+    if gone:
+        print(f"scanno: REFUSE - embed: --label-obs names {gone[0]!r}, which no object carries", file=sys.stderr)
+        return st.finish("refused", f"embed: no column {gone[0]!r}", 2, n_obs=len(index),
+                         refusal={"reason": f"embed: no column {gone[0]!r}", "fix": "name a column annotate wrote"})
+    out = {rename.get(k, k): cols[k] for k in order or []}
+    write_obs(a.out, index, out)
+    pca = np.array([[((i * (k + 3)) % 17) / 17.0 for k in range(6)] for i in range(len(index))], dtype="float32")
+    with h5py.File(a.out, "a") as f:
+        m = f.create_group("obsm")
+        m.create_dataset("X_pca", data=pca)
+        m.create_dataset("X_umap", data=np.ascontiguousarray(pca[:, :2]))
+    done = outcome(st, "embed", len(index), "embedded")
+    return done if done is not None else st.finish("ok", "embedded", 0, n_obs=len(index))
+
+
 def parse_error() -> bool:
     """`nostatus:<command>:<n>`: is this the call that dies at the parse, before any record?"""
     kind, _, rest = MODE.partition(":")
@@ -329,6 +366,19 @@ def main(argv=None):
     s.add_argument("--out-table")
     s.add_argument("--out-report")
     s.set_defaults(fn=rescue)
+
+    s = sub.add_parser("embed")
+    s.add_argument("--h5ad", required=True, nargs="+")
+    s.add_argument("--out", required=True)
+    s.add_argument("--sample-key", default="sample")
+    s.add_argument("--label-obs", nargs="*", default=None)
+    s.add_argument("--gene-key")
+    s.add_argument("--n-hvg", type=int, default=2000)
+    s.add_argument("--n-pcs", type=int, default=50)
+    s.add_argument("--n-neighbors", type=int, default=15)
+    s.add_argument("--min-dist", type=float, default=0.2)
+    s.add_argument("--seed", type=int, default=0)
+    s.set_defaults(fn=embed)
 
     for sp in sub.choices.values():
         sp.add_argument("--status-dir")

@@ -16,6 +16,11 @@ state_version: 1
 # stack's declaration (`--context assay=`), passed to annotate verbatim; there is no default.
 assays: [scrna, snrna]
 
+# What it reads and hands on (harness W041): libraries in, its labelled libraries out, and the
+# joint object only when the stage declares scAnno's `embed`.
+reads: libraries
+hands_on: {libraries: null, joint: embed}
+
 wraps:
   tool: scAnno
   version: "0.12.0"

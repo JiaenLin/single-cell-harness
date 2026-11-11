@@ -18,6 +18,10 @@ state_version: 1
 # integrate verbatim. There is no default.
 assays: [scrna, snrna]
 
+# What it reads and hands on (harness W041): the joint object in, scIntegrate's object out.
+reads: joint
+hands_on: {joint: null}
+
 wraps:
   tool: scIntegrate
   version: "0.5.0"

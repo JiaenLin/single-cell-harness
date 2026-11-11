@@ -48,7 +48,9 @@ The result comes back as a **layer**, never an edit of the observations:
 - `--assay`: the stack's `--context assay=`, in scProfile's words: `scrna` is written `cell` and `snrna`
   `nucleus` (scProfile's own reader equates them). Passed verbatim, `snrna` would reach scProfile as an
   unrecognised word and switch off every assay-specific caveat without a word.
-- `--organism`: the stack's `--context organism=`, verbatim. Undeclared, it is not passed, scProfile
+- `--organism`: the stack's `--context organism=`, verbatim; or, when only `--context species=` is
+  declared (a request declares the species once), scProfile's word for it (`homo_sapiens` -> `human`,
+  `mus_musculus` -> `mouse`; the two disagreeing are refused). Otherwise it is not passed, scProfile
   infers it as it documents, and a caveat says so.
 
 A parameter naming any of these is refused by name.

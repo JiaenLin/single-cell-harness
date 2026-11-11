@@ -63,6 +63,10 @@ FLAGS = {
     "rescue": ("h5ad", "label_key", "sweep_prefix", "cluster_prefix", "unit_key", "from_resolution",
                "to_resolution", "out_key", "out_dir", "out", "out_table", "out_report",
                "status_dir", "by"),
+    # scAnno's `embed` (harness W041): ONE embedding over every library, the joint object a stage-3
+    # job reads. Run only when the stage declares it, after the chain, over the chain's objects.
+    "embed": ("h5ad", "out", "sample_key", "label_obs", "gene_key", "n_hvg", "n_pcs", "n_neighbors",
+              "min_dist", "seed", "status_dir", "by"),
 }
 #: The flags the adapter sets and a parameter may not, each with the reason. Inputs and outputs
 #: live in the run (the kernel's out_dir), and the assay is the stack's declaration.
@@ -79,7 +83,11 @@ OWNED = {
     "rescue": {"h5ad": "annotate's outputs", "out_dir": _IN_RUN, "out": _IN_RUN,
                "out_table": _IN_RUN, "out_report": _IN_RUN,
                "status_dir": "scAnno's record stays beside its output"},
+    "embed": {"h5ad": "the chain's objects, every library", "out": _IN_RUN,
+              "status_dir": "scAnno's record stays beside its output"},
 }
+#: A flag scAnno's parser takes several values for (`nargs`), written as separate words.
+SPREAD = ("h5ad", "label_obs")
 #: A flag scAnno's parser takes again for each value (`action="append"`).
 APPEND = ("cluster_key",)
 #: scAnno's flags that take NO argument (`action="store_true"`, d0ee926's parser): written bare, or
@@ -89,7 +97,7 @@ APPEND = ("cluster_key",)
 #: observations (E2), and `background_from_clusters: "--assay=snrna"` overrode the stack's assay
 #: (rule 2). For the same reason no value at all may begin with "-".
 BARE = {"cluster": (), "annotate": ("resolve", "background_from_clusters", "no_exclude", "use_raw"),
-        "rescue": ()}
+        "rescue": (), "embed": ()}
 #: Read by the kernel, not by scAnno.
 KERNEL_PARAMS = ("timeout",)
 #: scAnno's status contract (scanno/status.py): the record and its seals, beside the output.
@@ -231,7 +239,7 @@ if described.get("state_version") != STATE_VERSION:
 
 # ---------------------------------------------------------------------------- scAnno's own chain
 P = out_dir / "scanno"
-for sub in LAYOUT:
+for sub in LAYOUT + (("joint",) if "embed" in params else ()):
     (P / sub).mkdir(parents=True, exist_ok=True)
 
 
@@ -243,8 +251,8 @@ def call(cmd, values, label, where):
         if v is None or v is False:
             continue
         flag = "--" + k.replace("_", "-")
-        if k == "h5ad":
-            argv += [flag, *v]
+        if k in SPREAD:
+            argv += [flag, *(str(x) for x in (v if isinstance(v, list) else [v]))]
         elif k in APPEND:
             for x in (v if isinstance(v, list) else [v]):
                 argv += [flag, str(x)]
@@ -315,6 +323,12 @@ if "rescue" in params:
     # scAnno's rule for rescue --out-dir: each written as <input stem>.rescued.h5ad
     final = {lib: produced(P / "rescued" / f"{annotated[lib].stem}.rescued.h5ad", "rescue")
              for lib, _p in parts}
+joint = None
+if "embed" in params:
+    joint = P / "joint" / "joint.h5ad"
+    call("embed", {**params["embed"], "h5ad": [str(final[lib]) for lib, _p in parts], "out": str(joint)},
+         "embed", P / "joint")
+    produced(joint, "embed")
 
 # ---------------------------------------------------------------------------- what scAnno changed
 # Read back from scAnno's own objects, by identity, and compared with each library as delivered.
@@ -363,6 +377,8 @@ for c in layer:
 run.wrapped("scAnno", f"{described.get('version')} ({described.get('commit')})")
 for lib, _p in parts:
     run.object_at(lib, str(final[lib].relative_to(out_dir)))
+if joint is not None:
+    run.object_at("joint", str(joint.relative_to(out_dir)))
 for t in (P / "rescue" / "impact.csv",):
     if t.is_file():
         run.table_at(str(t.relative_to(out_dir)))
@@ -378,6 +394,8 @@ for label, rec in record.items():
 chain = [c for c in FLAGS if c in params]
 run.answer(stage_record=record, argv=argvs, chain=chain, assay=assay, identity_joiner=joiner,
            results=str(P.relative_to(out_dir)),
+           hands_on={"libraries": {lib: str(final[lib].relative_to(out_dir)) for lib, _p in parts},
+                     "joint": str(joint.relative_to(out_dir)) if joint is not None else None},
            layer={"added": [c for c in layer if c in added],
                   "rewritten": [c for c in layer if c in rewritten and c not in added],
                   "dropped": sorted(dropped)})

@@ -12,6 +12,9 @@ The commands run in scAnno's order, and each one only when the stage declares it
 2. `cluster` over every library;
 3. `annotate` once per library (always);
 4. `rescue` over the annotated objects.
+5. `embed`, when the stage declares it (harness W041): scAnno's ONE embedding over every library's
+   final object, written to `scanno/joint/joint.h5ad`, the joint object a stage-3 stack reads. Its
+   `h5ad` and `out` are the adapter's; its other flags are the stage's.
 
 Every flag is the stage's, by scAnno's own name.
 

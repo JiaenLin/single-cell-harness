@@ -109,7 +109,7 @@ def run(a):
         print("scqc: RuntimeError: a task died", file=sys.stderr)
         return 1
 
-    removed_ids, total, kept = [], 0, 0
+    removed_ids, total, kept, kept_of = [], 0, 0, {}
     if a.mode == "apply":
         for r in rows:
             sample = r["sample"]
@@ -136,6 +136,8 @@ def run(a):
                                 True, *fires, removed, keep])
                     total += 1
                     kept += keep
+                    if keep:
+                        kept_of.setdefault(sample, []).append(b)
                     if removed:
                         removed_ids.append((f"{sample}|{b}", [c for c, f in zip(criteria, fires) if f],
                                             criteria))
@@ -149,6 +151,23 @@ def run(a):
         with h5py.File(res / "objects" / "cohort.deliverable.h5ad", "w") as f:
             f.create_group("obs").attrs["_index"] = "_index"
             f["obs"].create_dataset("_index", data=[str(i).encode() for i in range(kept)])
+        # scQC's other shape (adapters/scanpy_ops.py, the apply step): each library's kept barcodes
+        # in `objects/cohort_per_sample/<sample>.filtered.h5ad`, named `<sample>_<barcode>`, with
+        # scQC's `sample` column - what annotation reads (harness W041)
+        import numpy as np
+        for sample, mine in kept_of.items():
+            names = [b if b.startswith(f"{sample}_") else f"{sample}_{b}" for b in mine]
+            one = res / "objects" / "cohort_per_sample" / f"{sample}.filtered.h5ad"
+            one.parent.mkdir(parents=True, exist_ok=True)
+            with h5py.File(one, "w") as f:
+                g = f.create_group("obs")
+                g.attrs.update({"_index": "_index", "column-order": ["sample"],
+                                "encoding-type": "dataframe", "encoding-version": "0.2.0"})
+                g.create_dataset("_index", data=[n.encode() for n in names])
+                c = g.create_group("sample")
+                c.attrs.update({"encoding-type": "categorical", "encoding-version": "0.2.0", "ordered": False})
+                c.create_dataset("categories", data=[sample.encode()])
+                c.create_dataset("codes", data=np.zeros(len(names), dtype="int8"))
     (res / "reports" / "report.json").write_text(json.dumps({"kept": kept, "total": total}))
     status.update(status="ok", headline=f"{len(rows)} libraries; deliverable written",
                   products=[{"path": "reports/report.json", "bytes": 1}])

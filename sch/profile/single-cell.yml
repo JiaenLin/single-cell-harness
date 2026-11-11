@@ -43,6 +43,14 @@ capabilities:
 sentinels: [EXCLUDED, UNRESOLVED]
 checkpoint_kinds: [align, ambient, impute, "integrate:corrected-counts"]
 
+# THE STEPS THE FAMILY DOES NOT PERFORM, DECLARED BY NAME (harness W041): a request names the tool
+# that aligned the libraries and the tool that removed ambient RNA (`tool: none` is a declaration).
+# `never` is rule 2 (the PI, 2026-10-02): a remover calibrated on nuclei is not lent to cells.
+upstream:
+  steps: [alignment, ambient]
+  never:
+    scrna: {ambient: [cellbender]}
+
 required:
   mask:
     gates: {differential_check: required}

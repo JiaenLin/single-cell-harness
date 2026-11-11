@@ -90,6 +90,9 @@ DOCTOR = ("prefix", "references")
 #: own reader equates `snrna` with nucleus and `scrna` with cell (scprofile/inputs.py). A declared
 #: `snrna` passed verbatim would switch the nucleus caveats off without a word.
 ASSAYS = {"scrna": "cell", "snrna": "nucleus"}
+#: The species as scIntegrate checks it (Ensembl's names) -> scProfile's organism word, the two its
+#: own `detect_organism` returns. Any other species reaches scProfile as no declaration.
+SPECIES_AS_ORGANISM = {"homo_sapiens": "human", "mus_musculus": "mouse"}
 #: Read by the kernel, not by scProfile.
 KERNEL_PARAMS = ("timeout",)
 #: scProfile's status contract (scprofile/status.py): the run's record and its seals, in --out.
@@ -234,6 +237,16 @@ if assay not in ASSAYS:
            f"as unrecognised with every assay-specific caveat off",
            f"sch init ... --context assay=<{'|'.join(ASSAYS)}>")
 organism = str(context.get("organism") or "").strip()
+# ONE FACT, ONE AXIS (harness W041): a stack declares the species once, in the Ensembl words
+# scIntegrate checks; scProfile's word for it is its own (`detect_organism`: mouse, human). A species
+# scProfile has no word for is left undeclared to scProfile and said, as an undeclared organism is.
+species = str(context.get("species") or "").strip()
+if species and SPECIES_AS_ORGANISM.get(species.lower()):
+    if organism and organism.lower() != SPECIES_AS_ORGANISM[species.lower()]:
+        refuse(f"the stack declares species {species!r} and organism {organism!r}, which scProfile would "
+               f"call {SPECIES_AS_ORGANISM[species.lower()]!r}; one fact is declared once",
+               "sch init ... --context species=<the species> (and no organism)")
+    organism = organism or SPECIES_AS_ORGANISM[species.lower()]
 design = run.inp.get("design")
 if design and not Path(design).is_file():
     refuse(f"the stack's design sheet {design} is not a file", "sch init ... --design <the design CSV>")
@@ -417,6 +430,7 @@ skipped = [x for x in report.get("skipped") or [] if isinstance(x, dict)]
 run.wrapped("scProfile", f"{status.get('version')} ({status.get('commit')})")
 if obj is not None:
     run.object_at(obj.stem, rel(obj))
+    run.answer(hands_on={"libraries": {}, "joint": rel(obj)})
 for t in tables:
     run.table_at(rel(P / t))
 n_cols = len(layer["columns"]["added"]) + len(layer["columns"]["rewritten"])

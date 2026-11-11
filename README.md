@@ -25,7 +25,13 @@ everything downstream knows when one does.
 > (W036), runs scProfile's real CLI over the integrated object, scProfile's own plan choosing the
 > plugins (differential expression and abundance first); it is built and graded against a stand-in
 > and the real scProfile on the synthetic fixture, and its stage-4 reproduction is written and not yet
-> run. Phases 5–8 and 11 are not built.
+> run. The stage driver (W041, run 1) chains them: `sch run --request FILE --out DIR` runs a request
+> (`docs/request.example.yml`; schema in `sch/drive.py`) as one stack per stage, each reading what
+> the stage before it handed on from that stage's record, stopping before a stage whose tool declares
+> a choice as the user's until it is answered by name, and sealing each stage and the run; `sch plan
+> --request FILE` shows the plan and runs nothing. It is graded on the synthetic fixture with the
+> stand-ins; the cluster path (a job generated from the request) is run 2. Phases 5–8 and 11 are not
+> built.
 >
 > `sch conform` checks a child tool against
 > [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it; all four pass with

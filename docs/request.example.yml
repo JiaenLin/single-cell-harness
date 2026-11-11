@@ -1,0 +1,34 @@
+# A request: one cohort, every stage (harness W041). SYNTHETIC: every name below is a placeholder.
+# A real request is data that lives with the cohort, never in this repository. The schema is
+# sch/drive.py (FIELDS); `sch plan --request FILE` checks one and runs nothing, and
+# `sch run --request FILE --out DIR` runs it, stopping before any stage whose tool declares a choice
+# as the user's until it is answered with `--answer NAME=VALUE --by WHO`.
+request: 1
+observations: samplesheet.tsv        # the QC tool's samplesheet: one row per library (relative to this file)
+parts: ambient_h5                    # the samplesheet's column naming each library's object
+keys: {sample: sample, condition: condition}
+design: design.csv
+context:                             # what the dataset is, declared once; one word per fact
+  assay: snrna                       # scrna | snrna, and no other spelling; never a default (rule 2)
+  species: species_x                 # one axis for the species; each adapter writes its tool's word
+  tissue: tissue_x
+upstream:                            # the steps the family does not perform, each by name
+  alignment: {tool: aligner_x, version: "0.0"}
+  ambient: {tool: none}              # or the remover's name; never one calibrated on nuclei for scrna
+stages:                              # in order; params are each tool's own flags, verbatim
+  - plugin: qc@scqc
+    params: {scqc: /path/to/scQC/scqc_cli.py, registry: /path/to/registry.tsv}
+  - plugin: anno@scanno
+    params:
+      scanno: /path/to/scAnno/bin/scanno
+      cluster: {resolutions: "0.5,1.0"}
+      annotate: {cluster_key: [leiden_0p5, leiden_1p0], tree: /path/to/tree.json, species: species_x, tissue: tissue_x}
+      embed: {label_obs: ["scanno_cell_type=cell_type"]}
+  - plugin: int@scintegrate
+    params:
+      scintegrate: /path/to/scIntegrate
+      integrate: {batch_key: sample, label_key: cell_type, design: /path/to/design.csv, methods: "none,harmony"}
+  - plugin: prof@scprofile
+    params:
+      scprofile: /path/to/scProfile
+      run: {kernel: "de,abundance", label_key: cell_type, sample_key: sample, batch_key: sample, embedding: X_harmony}
