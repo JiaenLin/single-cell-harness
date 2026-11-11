@@ -57,6 +57,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R02 | harness | **W036**: `prof@scprofile`, SAMBO stage 4 through the harness (DE, abundance, the plugins the design admits), with the run-alone twin | A1.1 5/8, A1.2 9/10 | - (stacked on the train head; scProfile at `6f970e5`) | M + job | verifying |
 | R03 | harness | **W041** (run 1), the stage driver: one request (matrices + design sheet) plans and runs the four mounts in order, user-owned decisions declared, ambient removal declared upstream by name; a job generated, not hand-written | A1.2 10/10; needed by R04 R07 R08 R15 | R02 (starts on three stages) | M, split in two | building |
 | R04 | harness | the Service request as the driver's input (GAP-P06) | A6.3 3/3 | R03 | S | open |
+| R43 | harness | one published object becomes per-library parts (GAP-C90): a declared library column, counts slot and symbol column; read-only parts and a samplesheet manifest that `qc@scqc` mounts; no cohort script | A3.4 (stage 1 cannot start without it), A6.3 | R03's run 1 (the request names the declarations) | M | open |
 | R05 | harness | an installer and a lock; a fresh-prefix build and self-test on the cluster (GAP-127) | A1.3 +1/5 | R01 | S-M + job | open |
 | R06 | harness | leak-clean under its own generated shapes (GAP-C66), `anno@scanno` takes W021's flags (GAP-C84); the commit gate runs only the ledger tests and conform when a commit touches record paths alone (measured 2026-11-11: every records commit runs the whole suite, minutes each) | A3.1 +0.1 | R01 | S | open |
 | R10 | harness | the catalogue's dead `scprofile:<name>` rows (GAP-122); then the cold-agent trial of the four acts | A4.4 4/4 | R02 | S + trial | open |
@@ -66,7 +67,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R11 | all | four cold reproductions of sealed stage runs from the record and the docs | A2.3 4/4 | R01 R12 R19 R22 merged | 4 trials + jobs | open |
 | R13 | scQC | leak-clean under the generated lists (GAP-C78), the fixture's axes; the removal audit can stop a run (GAP-119, a wrong-result defect) | A3.1 +0.1 | R12 | M, split in two | open |
 | R14 | cohort C46 | stage 1 through the harness | A1.1 +1/8 | R12 | job | open |
-| R15 | cohort (scale) + scQC | **W031**: stage the 1,263,676-cell cohort; stage 1, then each next stage as its adapter lands | A3.4 0.316 a stage | R12; R03 for the later stages | jobs, S-M | building |
+| R15 | cohort (scale) + scQC | **W031**: stage the 1,263,676-cell cohort; stage 1, then each next stage as its adapter lands | A3.4 0.316 a stage | R12; R03 for the later stages | jobs, S-M | gating |
 | R16 | scAnno | the environment pin (GAP-C82), a fresh-prefix build and self-test; leak-clean (36 hits), the fixture's axes; `build-markers` field (GAP-C83) | A1.3 +1/5, A3.1 +0.1 | - | M, split in two + job | building |
 | R17 | scAnno | `tree propose` keeps the tissue's own lineages (GAP-C85); C46's tree re-proposed; ask the PI to approve it | C46's labels | R16 | S-M + the PI | open |
 | R20 | scIntegrate | a fresh-prefix build and self-test; leak-clean (12 hits), the fixture's axes; withheld cells out of the PCA (GAP-128, a wrong-result defect, with its predicted difference); W022's constraints only where a wave meets them | A1.3 +1/5, A3.1 +0.1 | R19 | M, split in two + job | building |
