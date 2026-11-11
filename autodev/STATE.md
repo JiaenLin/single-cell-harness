@@ -56,16 +56,22 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone stale).
 
-- **Running now (6 agents), as of 2026-11-11T10:23:25Z:**
-  - builders (Opus 5.5 max): **the driver's
-    fix round 2**, the last (W041 + W042); **W047** (scProfile carries no cohort's measured value: W035's one residue and
-    the host's counts); **W044's fix round 2**, the last (scAnno's tree rule: at least two candidates for the disease
-    test with one fresh, scored on both expectation sets, a pool file; branch `autodev/W044-fix2` from `main`).
-  - the designer (Fable 5.2), **run 3 on Studio** (W037).
-  - an independent reader (Opus 5.5 max): **the route's first sufficiency check** (RULES item 19; it writes
-    `audits/ROUTE_SUFFICIENCY_20261111.md`).
-  - the verifier (Opus 5.5 max) of **W046** (scIntegrate: the object keeps the design's key column; the lock pins its whole
-    closure, 120 pins; built at `e811372`, three jobs written, none submitted), on the batch W039 + W046.
+- **The account's weekly limit stopped all six agents at about 10:50Z on 2026-11-11** (it resets 2026-11-15T21:00Z). The PI
+  then said CONTINUE, and requests are accepted again. Nothing was lost that was pushed; each builder's uncommitted work
+  stayed in its clone. No agent was resumed (an agent resumes on the session's model): each was launched fresh with its
+  brief from `<scratchpad>/relaunch/` and told to read its predecessor's clone and wave-file plan first. Today's meter
+  before the stop: 16.3 M output tokens, 46 launches.
+- **Running now (5 agents), as of 2026-11-11T11:02:22Z:**
+  - builders (Opus 5.5 max), each continuing an interrupted run: **the driver's fix round 2**, the last (W041 + W042);
+    **W047** (scProfile carries no cohort's measured value); **W044's fix round 2**, the last (scAnno's tree rule: at
+    least two candidates with one fresh, a pool file; branch `autodev/W044-fix2`).
+  - the verifier (Opus 5.5 max) of **W046** (scIntegrate: the design's key column kept; the lock's whole closure, 120
+    pins; built at `e811372`), on the batch W039 + W046.
+  - the reviewer (Fable 5.2) of **Studio's designer run 3** (W037, head `5fe9923`: the first review's thirteen closed
+    by the designer's account): the last review round, 'ready for the PI' or the limits to tell the PI.
+- **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
+  as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
+  R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
 - **On PBS:** **789561**, scIntegrate's job 32 (W039, withheld cells out of the PCA, at `1901611`). The cluster's harness
   checkout is at `main` (`1d1031b`); scQC's is at `2f25e72` and scIntegrate's at `1901611` (each returns to `main` when free).
@@ -97,7 +103,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **A records commit says whether it landed** (`setup/autodev/commit.sh`, 2026-11-11): two records commits were blocked by
   the suite's leak guard (a site path an agent wrote into a wave file) and were reported as landed. The helper stages only
   the paths it is given and prints `COMMITTED <sha> pushed` or `BLOCKED: <reason>`; every brief now says a wave file takes no site path.
-- **Next free slots, in order:** the re-checks of the driver's and W044's last rounds as they
+- **Next free slot (one is free):** R47 (scAnno, GAP-C103) waits for W044's round, so the slot is kept for the first hand-back. Then, in order: the re-checks of the driver's and W044's last rounds as they
   hand back; one verification of the scProfile batch after W047; then the scProfile plugin line (abundance first), R05 and
   R06 (harness: installer and lock; small fixes), the first cohort's chained run and the scale cohort's stage 1 once the
   driver passes.

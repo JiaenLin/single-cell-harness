@@ -7,26 +7,29 @@ wave only if it blocks an item here, or is a wrong result in a promoted output. 
 test is struck, with the reason.
 
 HAPPY = the mean of the 20 scores is at least 0.9 (a sum of 18.0) and no test is below 0.5. The tally was 5.85 on the morning of 2026-11-11 and 7.19 (mean 0.359) that evening, by verifiers' and the coordinator's rows.
-Everything below done gives 19.9, so about 1.9 points may be missed. The expensive fractions that HAPPY does not need:
-A3.4 past two stages at scale (0.63), A4.2 past three tools (0.6), A2.1's fourth stage if it is not promoted (0.75).
+**Sufficiency, checked 2026-11-11** by an independent reader ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md); RULES item 19).
+As first written the route reached 18.77 only if every item landed in full, and 17.9994 (NOT HAPPY, by 0.0006) with the two
+stops planned here: A3.4 at two stages (0.63) and A4.2 at three tools (0.6). Five tests were capped below what the route
+assumed: A6.3 0.667, A4.3 0.778, A1.2 0.8, A3.1 0.8, A7.1 0.8. The additions marked **(suff.)** below close them: 19.05
+with the two stops (mean 0.953), 19.82 with none. So the slack is about 1.0 point, and the two stops stay.
 
 ## 1. Where each test stands and what closes it
 
 | test | now | closes with | items |
 |---|---|---|---|
 | A1.1 one request, every stage | 5/8 (the first cohort's four stages on `main` since 2026-11-11; the second cohort's stage 2) | SAMBO stage 4; C46 stages 1, 3, 4 | R02 R14 R21 R35 |
-| A1.2 ten steps mapped | 7/10 (DE and DA through the adapter) | DE, DA and the plugins through the adapter; ambient removal declared upstream by name | R02 R03 |
+| A1.2 ten steps mapped | 7/10 (DE and DA through the adapter) | step 10 (cellchat through the adapter); step 9 needs a trajectory or pathway plugin RUN in a cohort's stage 4; step 2 by the PI's reading of "declared upstream" | R02 R03 R35 |
 | A1.3 fresh environments | 3/5 (scAnno, 2026-11-11) | scAnno, scIntegrate, the harness build from `main` on a fresh prefix | R05 R16 R20 |
-| A2.1 promoted runs reproduced | 2/4 | stage 3 counts when W012 + W025 merge; stage 4 needs a promoted run (the PI) | R19 R34 |
+| A2.1 promoted runs reproduced | 3/4 (stage 3 counted since W012 + W025 merged) | stage 4 needs a promoted run (the PI); a re-promoted stage 3 needs its own reproduction (R34) | R34 |
 | A2.2 no false claim in the docs | 1/8 | a docs-truth pass per repository, after its code settles | R39 |
 | A2.3 cold reproduction | 0/4 | a context-free agent reproduces four sealed stage runs | R11 |
-| A3.1 held-out cohorts | 0.41 (5 of 8 stages; scAnno leak-clean on `main`) | the four stages above; each tool leak-clean with the fixture's axes reaching its pipeline | R06 R13 R16 R20 R23-R30 |
-| A3.2 designs | 1/4 | interaction contrast, covariates modelled or refused by name, the declared-control direction | R22 R32 |
+| A3.1 held-out cohorts | 0.41 (5 of 8 stages; scAnno leak-clean on `main`) | the four stages above; each tool leak-clean with the fixture's axes reaching its pipeline | R06 R13 R16 R20 R23-R30 R46 R47 |
+| A3.2 designs | 3/4 | the fourth design, or its refusal by name with the reason | R32 (inside R24) |
 | A3.3 assay rule sets | 4/5 | scProfile's rule sets | R33 |
 | A3.4 scale | 0 | the 1,263,676-cell cohort through the stages (0.316 a stage) | R15 |
 | A4.1 plugins in the maker's layout | 0/9 | cellchat, de and the seven held-out, each passing the cluster's dev suite and conform | R23-R31 |
 | A4.2 never-seen tools | 0/5 | a draw rule, then tools converted by agents alone | R36 |
-| A4.3 source and pinned version | 3/9 | a DOI and an exact pin in each plugin, set through the maker in its own wave | R24-R30 |
+| A4.3 source and pinned version | 3/9 | a DOI and an exact pin in each plugin, set through the maker in its own wave; `de` and `cellchat` too | R24-R30 R45 |
 | A4.4 cold agent uses a plugin | 2/4 | the catalogue's dead rows fixed, then the trial | R10 |
 | A5.1 claims that survive review | 12/13 | nothing: kept | - |
 | A5.2 hypotheses | 0 | hypothesis records, a falsifying test, a follow-up run through the loop | R09 |
@@ -46,7 +49,7 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R12 | scQC | verify W020 (`b255e45`); merge | unblocks R13 R14 R15 | - | v | merged |
 | R19 | scIntegrate | verify W012 + W025 (`b148030`); merge; then ask the PI about stage 3's moved ranking | A2.1 3/4 | - | v | merged |
 | R22 | scProfile | verify W013 + W032 + W023 (`6f970e5`); merge | A3.2 (direction) | - | v | merged |
-| R40 | cohort C46 | verify W033's jobs and records (no tool change) | A1.1 (stands) | - | v, S | open |
+| R40 | cohort C46 | verify W033's jobs and records (no tool change). STRUCK 2026-11-11 (the sufficiency check): it moves no score, since C46's stage 2 already counts, and R14, R21 and R35 re-run C46's stages through the harness anyway | - | - | - | struck |
 | R23 | scProfile | **W035**: the maker's prose verb; cellchat's leak hit; cellchat and de through the cluster's dev suite | A4.1 2/9 | - (stacked on `6f970e5`) | M + job | held (2 rounds; the residue is in R44) |
 | R31 | scProfile | isolated groups' x86_64 locks, a cluster build, `selftest` (GAP-C88) | A4.1 (the suite needs the environments) | R23 | S + job | open |
 | R24-R30 | scProfile | the seven held-out plugins through the maker, one wave each, in this order: abundance, decoupler, velocity, scenic (they hold the 10 leak hits that keep every plugin red, D-025; measured at W040's head), then cellcycle, liana, pseudotime: migrate, DOI and pin (the DOI recorded with its own record's title and year and checked, RULES item 18), comment hits, the cluster's dev suite | A4.1 +7/9, A4.3 +6/9, A3.1 | R23 R31; one at a time until two in a row need no maker change, then in pairs | S-M each + job | open |
@@ -54,16 +57,18 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R33 | scProfile | assay rule sets, not captions (GAP-050, GAP-C51); a refused kernel no longer leaves the run reading ok with no table (GAP-C96, a wrong-result defect) | A3.3 5/5 | R22 | S-M | open |
 | R42 | scProfile | **W040**: leak-clean under the generated site shapes (GAP-C89: 101 and 95 hits, bare job ids and queue names in the host's docs, runner, cli, setup, tests and DEVPOINTS); the 12 in kernels/ go through the prose verb, the held-out ones in their own waves | A3.1 +0.1 | R23 | S-M | verifying |
 | R44 | scProfile | **W047**, with the one residue of W035's last re-check (cellchat's own remaining run values): the host carries no cohort measurement (GAP-C100): the development contract stops asking for run counts in code, the scaffold stops stamping them into every new plugin, the host files and tests lose them | A3.1 +0.1 (with R42 and the held-out plugins' waves), A4.1 | R23's fix round 2 (disjoint files otherwise) | M | building |
-| R45 | harness + scProfile | a reference check (RULES item 18): a plugin's source is a DOI recorded with the title and year from the DOI's own record; `sch dev` resolves it and compares; an offline test uses the recorded values | A4.3 (what counts as a named source) | R23 merged | S-M | open |
+| R45 | harness + scProfile | a reference check (RULES item 18): a plugin's source is a DOI recorded with the title and year from the DOI's own record; `sch dev` resolves it and compares; an offline test uses the recorded values. **(suff.)** Not a run of its own: it is the first step of R24, and it gives `de` a DOI and an exact upstream pin and `cellchat` its DOI, through the maker (no other item names those two) | A4.3 +2/9 | R23 released | S, inside R24 | open |
+| R46 | scProfile | **(suff.)** GAP-054: the fixture's dev point runs DE and abundance on the built environment and accepts no refusal; `sch dev check fixture_a` green (without it scProfile cannot earn its tool credit in A3.1's leak-and-fixture half) | A3.1 +0.1 (with R42, R44) | R23 released; R31 if run on the cluster | S | open |
+| R47 | scAnno | **(suff.)** GAP-C103: `embed` takes the library name from the object or the manifest, never a file stem, with a test that fails at `main` (else a chained stage 4 keyed on the library column finds no library) | protects A1.1 +1/8 and A3.1 +1/16 | W044's fix round 2 (same repository) | S | open |
 | R34 | scProfile + SAMBO | a full stage-4 run at merged `main`; ask the PI to promote; reproduce it | A2.1 4/4 | R22 R02 | 2 jobs + the PI | open |
 | R02 | harness | **W036**: `prof@scprofile`, SAMBO stage 4 through the harness (DE, abundance, the plugins the design admits), with the run-alone twin | A1.1 5/8, A1.2 9/10 | - (stacked on the train head; scProfile at `6f970e5`) | M + job | merged (run 1); run 2, the plugins, open |
 | R03 | harness | **W041** (run 1, built) and **W042** (run 2: the cluster path, each stage's cost, one library key, the first cohort's chained run), the stage driver: one request (matrices + design sheet) plans and runs the four mounts in order, user-owned decisions declared, ambient removal declared upstream by name; a job generated, not hand-written | A1.2 10/10; needed by R04 R07 R08 R15 | R02 (starts on three stages) | M, split in two | building (fix round 1 after the verifier's FAIL) |
-| R04 | harness | the Service request as the driver's input (GAP-P06) | A6.3 3/3 | R03 | S | open |
+| R04 | harness | the Service request as the driver's input (GAP-P06); **(suff.)** one request Service wrote (a real delivery and its questionnaire) is RUN as a cohort's chained run under its pre-declared job: without a run the test stays at 2/3 | A6.3 3/3 | R03 | S, no extra job | open |
 | R43 | harness | one published object becomes per-library parts (GAP-C90): a declared library column, counts slot and symbol column, and the replicate unit as a second key (measured on the scale cohort, PBS 789168: its 88 libraries are each a pool of donors, so the QC unit and the replicate unit differ); read-only parts and a samplesheet manifest that `qc@scqc` mounts; no cohort script | A3.4 (stage 1 cannot start without it), A6.3 | R03's run 1 (the request names the declarations) | M | verifying |
 | R05 | harness | an installer and a lock; a fresh-prefix build and self-test on the cluster (GAP-127) | A1.3 +1/5 | R01 | S-M + job | open |
-| R06 | harness | leak-clean under its own generated shapes (GAP-C66), `anno@scanno` takes W021's flags (GAP-C84); `sch dev edit` and `layout --apply` take a version only as N.N.N (GAP-C97); the commit gate runs only the ledger tests and conform when a commit touches record paths alone (measured 2026-11-11: every records commit runs the whole suite, minutes each) | A3.1 +0.1 | R01 | S | open |
+| R06 | harness | leak-clean under its own generated shapes (GAP-C66), `anno@scanno` takes W021's flags (GAP-C84); `sch dev edit` and `layout --apply` take a version only as N.N.N (GAP-C97); the commit gate runs only the ledger tests and conform when a commit touches record paths alone (measured 2026-11-11: every records commit runs the whole suite, minutes each; this part moves no score: only if it costs a few calls); **(suff.)** the two-shape fixture's axes reach a harness pipeline (a mount's run or the driver's plan) as a `sch dev check` point | A3.1 +0.1 | R01 | S | open |
 | R10 | harness | the catalogue's dead `scprofile:<name>` rows (GAP-122); then the cold-agent trial of the four acts | A4.4 4/4 | R02 | S + trial | open |
-| R07 | harness | a cohort-run skill (assemble, submit, recover, audit, record: GAP-003); then a cold agent on a held-out cohort | A7.1 5/5 | R03 | M + trial | open |
+| R07 | harness | a cohort-run skill (assemble, submit, recover, audit, record: GAP-003); then a cold agent on a held-out cohort; **(suff.)** the trial's protocol plants ONE failure, declared before it starts, that the skill must detect, fix and resubmit (without one the recover act cannot be shown: 4/5) | A7.1 5/5 | R03 | M + trial | open |
 | R08 | harness | a local UI over the driver, designed by a Fable 5.2 designer (the PI, 2026-11-11) to Studio's design file: ask, see the plan, approve, follow, open the reports and the record | A6.1 5/5 | R03 | M x 2 | open |
 | R09 | harness + scProfile | hypothesis records with evidence, a falsifying test and a runnable follow-up; one follow-up through the loop; a pool with S and K registered, each hypothesis tried on a subset first (RULES item 16) | A5.2 | R02 | M x 2 | open |
 | R11 | all | four cold reproductions of sealed stage runs from the record and the docs | A2.3 4/4 | R01 R12 R19 R22 merged | 4 trials + jobs | open |
@@ -71,10 +76,10 @@ cluster job the coordinator submits with `gate.py`, "trial" = a cold agent.
 | R14 | cohort C46 | stage 1 through the harness (with R21 and R35 this becomes ONE chained run from C46's request once W042 lands) | A1.1 +1/8 | R12 | job | open |
 | R15 | cohort (scale) + scQC | **W031**: stage the 1,263,676-cell cohort (done: PBS 789057, 789058, 789168); each stage runs on a subset first (2 of the 88 libraries), then on all, the subset's cost sizing the full request (RULES item 14) | A3.4 0.316 a stage | R12; R03 for the later stages | jobs, S-M | gating |
 | R16 | scAnno | the environment pin (GAP-C82), a fresh-prefix build and self-test; leak-clean (36 hits), the fixture's axes; `build-markers` field (GAP-C83) | A1.3 +1/5, A3.1 +0.1 | - | M, split in two + job | merged (run 1; run 2's leak fixes at `9fb561c`, 2026-11-11) |
-| R17 | scAnno | `tree propose` keeps the tissue's own lineages (GAP-C85); C46's tree re-proposed; ask the PI to approve it | C46's labels | R16 | S-M + the PI | building (fix round 2, the last: the re-check failed on the disease test, the no-health release and the job's graded lines) |
+| R17 | scAnno | `tree propose` keeps the tissue's own lineages (GAP-C85); C46's tree re-proposed; ask the PI to approve it | C46's labels (no score by any formula: R21 runs with draft labels; it ends at this round) | R16 | S-M + the PI | building (fix round 2, the last: the re-check failed on the disease test, the no-health release and the job's graded lines) |
 | R20 | scIntegrate | a fresh-prefix build and self-test; leak-clean (12 hits), the fixture's axes; withheld cells out of the PCA (GAP-128, a wrong-result defect, with its predicted difference); W022's constraints only where a wave meets them | A1.3 +1/5, A3.1 +0.1 | R19 | M, split in two + job | gating |
 | R21 | cohort C46 | stage 3 through the harness (labels marked draft until R17's approval) | A1.1 +1/8 | R01 R19 | job | open |
-| R35 | cohort C46 | stage 4 through the harness (one factor, n = 2) | A1.1 +1/8 | R02 R21 | job | open |
+| R35 | cohort C46 | stage 4 through the harness (one factor, n = 2); **(suff.)** the run names and runs one trajectory plugin its design admits (pseudotime or velocity) through `prof@scprofile`, else a pathway plugin through the maker (GAP-042) | A1.1 +1/8; A1.2 step 9 +0.1 | R02 R21 R47 | job | open |
 | R36 | harness + scProfile | a draw rule over the scRNA-tools catalogue, kept as a pool with S = 5 and K registered (RULES item 16); five never-seen tools converted by agents alone, each passing the dev suite and its published example | A4.2 (0.2 a tool) | R24-R30 mostly done (the maker stable) | 5 x M + jobs | open |
 | R38 | Lab + Studio | W017's last re-check, W028's verification; the family's final object through Lab's converter (GAP-P20); ask the PI's deploy go | A6.2 2/2 | - | v x 2, S + the PI | open |
 | R39 | all eight | a docs-truth pass per repository (the audit's known-false lines first, then a claim sweep; every cited source resolved and one cited claim per document read against it) | A2.2 8/8 | each repository's last route item | S each | open |
@@ -89,8 +94,11 @@ own, the 73 queued constraints of the B1 register (removed by the wave that meet
 |---|---|---|
 | stage 3: re-promote or keep, now that harmony is deterministic and its rank moved (2nd to 5th; the top method unchanged) | R19 merged (done 2026-11-11) AND W039 merged (withheld cells out of the PCA, GAP-128), so one re-promotion carries both | A2.1 |
 | stage 4: promote a run | R22 and R02 merged, R34's run sealed | A2.1 |
-| C46's cell-type tree: approve the re-proposed tree | R17 built | A1.1's labels, A3.1 |
+| C46's cell-type tree: approve the re-proposed tree (no score waits on it) | R17 built | the labels' standing |
 | deploy Lab, then Studio (with R41's before-and-after gallery) | R38's verifications PASS; R41 verified by looking | A6.2, the PI's direction |
+| the scale cohort's residual-doublet threshold for genotype-demultiplexed pools (stage 1's `dbr` decision; the data cannot decide it) | R15's staging done (it is): asked with the subset run's numbers, so the question carries what each choice removes | A3.4 stage 1 (0.316) |
+| A1.2's step 2: does ambient removal "declared upstream by name" count as mapped? (GOALS: the PI's reading of a goal wins) | the driver (R03) merged, so the declaration can be shown | A1.2 +0.1 |
+| if stage 3 is re-promoted: its reproduction is one more job (R34), else A2.1 drops to 3/4 until it runs | the PI's stage-3 answer | A2.1 |
 
 ## 4. The order
 
