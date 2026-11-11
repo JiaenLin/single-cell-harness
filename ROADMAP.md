@@ -236,8 +236,9 @@ contract**, do not write three more adapters against it.
 > **BUILT ON THE FIXTURE, 2026-11-11 (W041 run 1, branch `autodev/W041-driver`): the stage driver.**
 > A request (`docs/request.example.yml`; schema `sch/drive.py` FIELDS) names the samplesheet, the
 > design, the context once (one assay word, `scrna`/`snrna`, that every stage's adapter declares; the
-> species once, as `species`), the upstream steps by name (alignment, ambient removal: the profile
-> refuses CellBender upstream of single cells, rule 2) and each stage's tool flags verbatim.
+> species once, as `species`), the upstream steps by name (alignment, ambient removal: on single cells
+> the profile allows only the names it lists, `upstream.allowed.scrna.ambient: [none]`, rule 2, so no
+> spelling of a nucleus-calibrated remover passes; W042 fix 1) and each stage's tool flags verbatim.
 > `sch plan --request FILE` plans it; `sch run --request FILE --out DIR` runs it as one stack per
 > stage, each stage's observations a manifest of what the stage before it handed on (each adapter's
 > `hands_on`, read from that stage's own out.json), the stage's plugin declared in its `stack.yml` and
