@@ -34,7 +34,10 @@ everything downstream knows when one does.
 > param under any spelling) until it is answered by name, and sealing each stage and the run. Every
 > file the run reads (the samplesheet and the paths in it, the design, each path a param names, every
 > file under a named directory, an adapter the harness does not ship) is one set, recomputed and compared
-> at the plan, at each stage's start and seal and on every resume; a seal is trusted only on the run's own
+> at the plan, at each stage's start and seal and on every resume (not in it: a path given only as an
+> answer, as `--answer qc.decisions=FILE`; files under a symlinked subdirectory; files named inside a
+> named file; a file over 1 GiB is sampled and a directory over 5,000 files is not compared, each said in
+> the run's INPUTS.json); a seal is trusted only on the run's own
 > record, and one it names is never missing; `sch plan --request FILE`
 > shows the plan and runs nothing (`--expect` compares the set with a generated job's). It is graded on the synthetic fixture with the
 > stand-ins. Run 2 (W042) is the cluster path: under a site file declaring `executor: pbs`, each stage
