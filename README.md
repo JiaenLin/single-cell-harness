@@ -19,7 +19,7 @@ everything downstream knows when one does.
 > `qc@scqc` (the first tool the kernel runs), and Phase 9's `pbs` executor were built in W010 and
 > graded by a pre-declared reproduction of the reference cohort's stage 1 through the harness,
 > with nested jobs on a real scheduler (PBS 782922). The second adapter, `anno@scanno` (W026),
-> reproduced the reference cohort's stage 2 through the harness as predicted (PBS 783280, 783363).
+> reproduced the reference cohort's stage 2 through the harness as predicted (W026's gate jobs).
 > The third, `int@scintegrate` (W034), is built and graded on a synthetic object against the real
 > scIntegrate; its stage-3 reproduction is written and not yet run. Phases 5–8 and 11 are not built.
 >
