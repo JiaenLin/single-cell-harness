@@ -102,8 +102,11 @@ def _hands_on(m, params: dict) -> list:
 
 
 # ---------------------------------------------------------------------------- the request
-def load(path) -> dict:
-    """Read and check a request. Everything a refusal needs is decided here, before any tool."""
+def load(path, files: bool = True) -> dict:
+    """Read and check a request. Everything a refusal needs is decided here, before any tool.
+    `files=False` (a job generated where it is authored, not where it runs): the samplesheet and the
+    design are named, not opened - they may be the cluster's only - and the job's own `sch run` checks
+    them where they are."""
     from .profile import load_profile
     src = Path(path).resolve()
     if not src.is_file():
@@ -129,7 +132,7 @@ def load(path) -> dict:
     def where(k):
         p = Path(str(doc[k]))
         p = p if p.is_absolute() else base / p
-        if not p.is_file():
+        if files and not p.is_file():
             raise RequestError(f"{k}: {p} is not a file")
         return str(p)
     keys = doc["keys"]

@@ -255,7 +255,7 @@ def cmd_run(a):
         from .drive import RequestError, load, plan_lines, run, write_job
         if a.job:
             try:
-                req = load(a.request)
+                req = load(a.request, files=False)
                 rec = write_job(req, a.job, answers=a.answer, by=a.by, predict=a.predict, check=a.check,
                                 purpose=a.purpose, where=a.where)
             except RequestError as e:

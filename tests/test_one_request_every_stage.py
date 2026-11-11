@@ -542,6 +542,12 @@ class TheClusterPath(_Base):
         for sd in ("01_qc", "02_anno", "03_int", "04_prof"):
             cost = json.loads((rundir / sd / "report" / "report.json").read_text())["cost"]
             self.assertEqual(cost["measured_by"], ["scheduler"], sd)
+        # a job is generated where it is authored: a samplesheet only the cluster has is named, not
+        # opened there, and `sch plan` (which runs where the files are) still refuses it
+        absent = request(c, name="absent.yml", observations="only_on_the_cluster.tsv")
+        rc, text = cli("--json", "run", "--request", str(absent), "--job", str(f.parent / "absent.pbs"))
+        self.assertEqual(rc, 0, text)
+        self.assertEqual(cli("plan", "--request", str(absent))[0], 2)
         f2, _ = self.job(c, req, check_ok=False)
         p, rundir = self.run_job(f2, "rundir2")
         self.assertNotEqual(p.returncode, 0)
