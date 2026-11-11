@@ -59,10 +59,10 @@ Rewritten whole at 2026-11-11T09:05:50Z (earlier piecemeal edits had left the ru
 - **Running now (6 agents), as of 2026-11-11T09:15:45Z:**
   - builders (Opus 5.5 max): **W045** (R43: one published object becomes per-library parts); **the driver's fix round 1** (W041 +
     W042); **W035's fix round 2**, the last; **W044's fix round 1** (scAnno: the leak fixes split out first, then the tree rule).
-  - the verifier (Opus 5.5 max) of **W043** (scQC: a failed removal audit stops the run).
+  - **W043's fix round 1** (scQC: its verifier found the audit's own consistency checks could be accepted by name; both its jobs read AS PREDICTED and show neither promoted stage-1 run carried a failed audit).
   - the design reviewer (Fable 5.2) of **W037**, Studio.
 - **On PBS:** **789570**, the first cohort's stage 4 through the harness (W036, at `8e06a95` = main + W036); **789561**, scIntegrate's
-  job 32 (W039, withheld cells out of the PCA, at `1901611`); scQC's two W043 jobs (**789344**, **789345**).
+  job 32 (W039, withheld cells out of the PCA, at `1901611`); (scQC's two W043 jobs, 789344 and 789345, landed AS PREDICTED.)
 - **Merged 2026-11-11, five batches:** scIntegrate `b148030` (W012 + W025), scProfile `6f970e5` (W013 + W032 + W023), scQC `46ffe90`
   (W020), scAnno `779fd08` (W038), and **the harness `a677e8f` (W029 + W034)**: its train's three jobs all AS PREDICTED at the
   merged commit (stages 1, 2 and 3; PBS 788583, 788586, 788587), the merged tree's runtime files equal the gated head's, the
