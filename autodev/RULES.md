@@ -247,7 +247,9 @@ names; nothing in tiers I to III changes.
     140 to 163).** Every agent runs its tests and tools with `OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2
     VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2` exported, and runs one suite at a time. The coordinator commits records
     at hand-backs, not after every step: the harness's commit gate runs the whole suite on each commit (ROUTE R06 narrows
-    it for record-only commits).
+    it for record-only commits). One commit at a time: a second commit started while the first one's hook is still running
+    has its staged files swept into the first, and is then blocked by the suite's own guard when HEAD moves (measured
+    2026-11-11, commit 53cb948).
 13. **The PI, 2026-11-11: "use fable 5.2 level designer to design all ui".** Every UI item on the route is designed, and its
     visual layer built, by a designer agent on Fable 5.2 (Agent model `fable`; measured `claude-fable-5-2` at launch with
     `EXPECT_MODEL=claude-fable-5-2 EXPECT_EFFORT=any bash setup/autodev/agent_models.sh ...`). This is the one exception to

@@ -80,6 +80,7 @@ Everything else is decided here.
 | exceed the agent cap, or the budget | ask, with the numbers | tier IV (2026-11-10), `budget or token mode` |
 | promote a run, re-promote a moved run | ask, with the numbers and a recommendation | tier III |
 | an agent running on a model other than Opus 5.5 at max | stop it and launch a fresh one (model opus, effort max) on its branch; never resume it under another session model. A UI designer is the exception: Fable 5.2 | D-010; tier II (the PI 2026-11-10); D-026 (the PI 2026-11-11) |
+| a job misses only on a file mode its own freeze step set, its data lines all held | set the mode by hand with a dated note saying who; the grade stays as the job wrote it; the next job goes on | D-027 (C) |
 | who designs a user interface | a designer agent on Fable 5.2, for every UI item on the route; the design decided there, shown to the PI before any deploy | D-026 (the PI 2026-11-11) |
 | deploy a verified platform wave (its merge into Lab, Studio or Service main publishes the live app) | ask the PI's go, per wave, with the verifier's verdict; the build itself never waits for it | BLK-005; `permission` |
 | count floors or ceilings on single cells | derived from the called cells within the PI's declared bounds; the bound's lower end where no valley exists, said so | D-008 |
