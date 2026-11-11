@@ -68,7 +68,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
     merge; ROUTE R13 run 2).
   - verifiers (Opus 5.5 max): **the driver's last re-check** (W041 + W042, fix round 2 built at `174d890`: PASS may carry
     stated limits, FAIL names only blocking reasons); **W046** (scIntegrate, on the batch W039 + W046).
-  - the reviewer (Fable 5.2) of **Studio's designer run 3** (W037, head `5fe9923`): the last review round.
+  - the designer (Fable 5.2), **run 4 on Studio** (W037), the last fix round: the second review said "not yet", close (10 of
+    the first thirteen closed, 3 in part; truth held; run 3 damaged one figure's names; saved figures incomplete and their
+    stated width untrue). The review: `<scratchpad>/autodev/w037-review2/REVIEW2.md`. Four taste calls wait for the PI.
 - **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
