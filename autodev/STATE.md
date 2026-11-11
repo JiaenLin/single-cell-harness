@@ -80,10 +80,13 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
-- **On PBS:** **790201** and **790222**, scQC's two reproduction jobs at W048's head (prediction IDENTICAL); **790197**, the second cohort's tree re-propose at W044's fix-2 head (`20ad3f6`): it grades the line the
-  first job missed (glial cells walked in every library) and a bound on where they land. Sealed AS PREDICTED today:
-  789561 (scIntegrate's job 32, W039's gate). The cluster's harness checkout is at `main`; scIntegrate's is at
-  `1901611`; scAnno's is at `20ad3f6` and scQC's at `55c9497` while their jobs run.
+- **On PBS:** **790201**, scQC's reproduction of the first cohort's stage 1 at W048's head. Landed: **790222** (the second
+  cohort's apply at W048's head) AS PREDICTED, IDENTICAL to the promoted run; **790197** (the second cohort's tree at
+  W044's fix-2 head) **MISSED (1)**: in one wild-type library 0 of 12,546 cells walk to Glial cell (the other wild-type
+  library 1,053; the mutants 581 and 420, where the first job had 0). That library's radial-glia-like cells walk to
+  Progenitor cell instead: two lineages of the draft compete for the same cells, and the replicates disagree. The mutant
+  libraries also send about 2,000 and 1,000 cells to Pericyte, which an organoid without vessels may not hold. W044's last
+  re-check reads this. Checkouts on the cluster: the harness at `main`; scIntegrate `1901611`; scAnno `20ad3f6`; scQC `55c9497`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
