@@ -67,9 +67,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   wrote. The heartbeat's prompt and RULES item 6 carry the cap.
 - **Running now (2 Opus + 1 Fable):**
   - Opus 5.5 max: the verifier of **the scProfile batch** (W035 + W040 + W047, head `945549f`; W047's run 3 cleared 65
-    survivor lines), under D-040's bound; the builder of **W048's fix round 2**, the last (scQC: a cohort's counts in
-    words, two tests holding rounded real values, the fixture's record naming declared factors; both jobs at the fix
-    head read AS PREDICTED). A3.1 goes over the bar when scQC merges.
+    survivor lines), under D-040's bound; the verifier of **W048's last re-check** (scQC `f57bc6e`: each gate records the
+    design it computed on, and a dropped factor is told to the user; its jobs 790672 and 790673 are on the cluster).
+    A3.1 goes over the bar when scQC merges.
   - Fable 5.2: the designer of **W051**, run 5 on the Studio: every word and every element measured, a written standard
     (word budgets, one term per concept), every element brought to it; a saved figure names uncalled cells.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary".** Applied: W048's last round
@@ -96,11 +96,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** nothing. Landed AS PREDICTED: **790475** and **790476** (both cohorts' stage 1 at W048's fix head `ed9fe18`,
-  identical to the promoted runs): W048's gate is passed and it waits only for its re-check. **790463** (W050) sealed with
-  GATE: AS PREDICTED beside the model job's own 4 untraced differences, which its verifier must place. Both of W046's
-  (790442, 790443) MISSED, as recorded. Checkouts on the cluster: the harness at `main`; scAnno `f456431`; scIntegrate
-  `2fc7a6c`; scQC `ed9fe18`.
+- **On PBS:** **790672** and **790673** (both cohorts' stage 1 at W048's last head `f57bc6e`, prediction IDENTICAL). Earlier
+  today: 790475 and 790476 (the same at `ed9fe18`) AS PREDICTED; 790463 (W050) GATE: AS PREDICTED beside the model job's
+  4 untraced differences; 790442 and 790443 (scIntegrate) MISSED. Checkouts on the cluster: the harness at `main`;
+  scAnno `f456431`; scIntegrate `2fc7a6c`; scQC `f57bc6e`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
