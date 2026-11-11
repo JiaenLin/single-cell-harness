@@ -226,7 +226,8 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
         import tempfile
         rules = (ROOT / "autodev" / "RULES.md").read_text(encoding="utf-8")
         for words in ("**Subset before full.**", "**Self-attack.**", "**A pool for items that search.**",
-                      "**Ablation before a gain is kept.**", "**A source that exists.**"):
+                      "**Ablation before a gain is kept.**", "**A source that exists.**",
+                      "**The route is checked for sufficiency.**"):
             self.assertIn(words, rules, f"RULES lost {words}")
         attacks = (ROOT / "autodev" / "ATTACKS.md").read_text(encoding="utf-8")
         rows = re.findall(r"^\| (\d+) \|", attacks, flags=re.M)

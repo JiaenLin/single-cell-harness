@@ -62,6 +62,22 @@ effect is measured.
   (R39) includes it, and a verifier reads one cited claim per plugin against its source.
 - **Measured by:** A4.3's count, with "resolves and matches" added to what a verifier must see.
 
+### 6. The search itself (added the same day; the PI: "how about the search part, anything we can learn")
+- **What they do:** several candidates tried cheaply before one is built out; the next candidates proposed from every
+  earlier result, failures included; a few untried ones in every round; the current best replaced only by something
+  strictly better; a check that the list of limitations is sufficient before any idea is generated.
+- **Our gap:** a wave carries ONE design, and a failed one is patched. The tree rule of W044 was one design, built in
+  full, run on the cluster, and found wrong on nine other tissues by its verifier. The route itself was never checked
+  for sufficiency: four of its items were found by accident on 2026-11-11.
+- **The change (RULES items 16 and 19):** for an item that searches, the first round tries at least 2 candidates at the
+  cheapest test that can tell them apart, against expectations written first; the incumbent stays unless the challenger
+  is strictly better; a fix round brings a fresh candidate; every candidate tried is kept and counted. And the route is
+  read against the goals by an independent agent after it changes.
+- **What is NOT taken:** ranking by novelty; closing an idea at K; and searching analysis choices for an effect, which
+  for a result on a cohort would be fishing. The pool's count of candidates is what keeps a search honest there.
+- **Measured by:** for items that search, first-verification pass rate against the other waves'; for the route, the
+  count of items added after the sufficiency check that it did not name.
+
 ## For the VCC harness
 Lessons 1, 3 and 4 fit VCC's research waves most (long training runs, a search over ideas, stacked gains), and lesson 2
 fits any loop with a verifier. That repository belongs to its own session, so they were sent to it as a proposal on
@@ -82,4 +98,6 @@ fits any loop with a verifier. That repository belongs to its own session, so th
 | 9 | The scale cohort's stage-1 job written as a subset job and a full job | the wave after W045 | open: waits for W045 and the driver |
 | 10 | R45 built: DOIs recorded and checked | a harness and scProfile wave | open: after W035 + W040 merge |
 | 11 | First reading of the pass rate after 15 more waves; rework the attacks list if under 60 % | the daily check | open |
+| 13 | The search rules (breadth first, the incumbent, a fresh candidate in a fix round, every candidate counted) | RULES item 16 | done 2026-11-11 |
+| 14 | The route's first sufficiency check, by an independent agent | RULES item 19; at the next free slot | open |
 | 12 | Agents already running were briefed before this plan; they get the attacks list at their next fix round or re-check | the coordinator, at each launch | open |

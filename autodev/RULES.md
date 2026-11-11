@@ -275,6 +275,16 @@ names; nothing in tiers I to III changes.
     candidates evolved from every earlier trace plus at least one untried one; each is tried on a subset first and
     called good, bad, or engineer (at most 2 tuning passes, then bad). Bad is a verdict on a variant, never on the idea: an
     item that reaches K returns to the route as a gap, with what its traces showed, and can be registered again.
+    Added the same day (the PI: "how about the search part, anything we can learn"): (a) breadth before depth: the
+    first round tries at least 2 candidates at the cheapest test that can tell them apart, against expectations written
+    down first, and only the winner is built out; (b) the incumbent stays unless the challenger is strictly better on
+    the registered measure; (c) a fix round on such an item brings at least one fresh candidate, not only a patch of
+    the failed one; (d) the pool keeps every candidate tried with its result, and a result chosen from several is
+    reported with how many were tried. For an analysis result that last line is what keeps a search from being a
+    fishing trip: the tools never search analysis choices for an effect.
+19. **The route is checked for sufficiency.** After a route change, and before a full audit, one independent agent
+    reads ROUTE.md against GOALS.md and answers: if every item lands as written, does each test reach its bar, and
+    what is missing? (On 2026-11-11 four route items were found by accident, inside other waves' verdicts.)
 17. **Ablation before a gain is kept.** A wave that claims a measured gain (time, memory, a metric) reports the gain per
     component, measured by removing each, and keeps only what carries it. A claimed gain with no ablation is a verifier's
     FAIL reason.
