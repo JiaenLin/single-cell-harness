@@ -42,7 +42,11 @@ aligner's call.
   companion sees.
 - **The view.** It is identity-level: `view.csv`, holding the identity, `{sample}`, the contributed
   columns, `keep` and every mask. Matrices stay in their parts and are read in place, and a
-  plugin finds them through `in.json` `observations`.
+  plugin finds them through `in.json` `observations`. A contributed embedding or graph stays in
+  its own file beside its identity file; the view's digest covers each by its content, so a layer
+  of embeddings alone is visible to a mount and to its unmount (W034).
+- **One part.** A cohort's joint object, its libraries already in one file, is a manifest of one
+  row: the object is then read in place like any part, and never copied into a view.
 - **Refused at `init`, before anything is written:** a manifest that names one sample twice, a
   missing part, a part in a form no reader is written for (a 10x `.h5` or a MEX directory, for
   now), or a missing scope key.
@@ -70,7 +74,7 @@ aligner's call.
 | `feature_column` | `var` — one value per gene | `features/<name>.csv`, `feature,value` |
 | `embedding` | `obsm` — observation × k | `embeddings/<name>.npy` + `barcodes.txt` |
 | `matrix` | `layers` — observation × feature, on the object's own feature set | `matrices/<name>.npz` |
-| `graph` | `obsp` — a neighbour graph | `graphs/<name>.npz` |
+| `graph` | `obsp` — a neighbour graph | `graphs/<name>.npz` (compressed sparse) + `barcodes.txt` |
 | `mask` | a boolean keep-vector with a reason | `masks/<name>.csv`, `barcode,keep,reason` |
 | `object` | a side-car `.h5ad` | `objects/<name>.h5ad` |
 | `table`, `figure`, `answer` | as the generic contract defines | |
