@@ -67,6 +67,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   - the builder (Opus 5.5 max) of **W048's fix round 1** (scQC: its verification FAILED on two reasons while both gate jobs
     read AS PREDICTED: about 51 lines still hold one cohort's measured numbers where no list looks; the fixture check
     stays green when the factor never reaches the gates).
+  - the verifier (Opus 5.5 max) of **Lab's W017**, its last fix-only re-check (fix-up 5 at `243783f`); a PASS brings the
+    PI the deploy question for Lab.
+  - the builder (Opus 5.5 max) of **W048's fix round 1** (scQC: its verification FAILED on two reasons while both gate jobs
+    read AS PREDICTED: about 51 lines still hold one cohort's measured numbers where no list looks; the fixture check
+    stays green when the factor never reaches the gates).
   - the builder (Opus 5.5 max) of **W050** (scAnno, from `main`: `embed` names a library from the object or the manifest,
     never from a file name; GAP-C103, one of the two tool-side breaks that stop a chained stage 4; ROUTE R47).
   - the verifier (Opus 5.5 max) of **W046's fix round 1** (scIntegrate, built at `2fc7a6c`: every name that becomes a key is
@@ -79,7 +84,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
 - **W045 built** (`4fb23df`: one object becomes per-library parts, streaming at about 560 MB whatever the object's size; 899 tests): it waits for the driver's re-check, then is brought onto the fixed driver.
-- **On PBS:** **790442** (scIntegrate's fresh-prefix build at W046's fix head: A1.3's fourth build) and **790443** (the subset
+- **Built, waiting for a verifier slot:** **W050** (scAnno `f456431`: `embed` names a library from the object, a manifest or
+  the upstream record, never a file name); its reproduction job is on the cluster (790463).
+- **On PBS:** **790463** (W050's reproduction of the first cohort's promoted stage 2); **790442** (scIntegrate's fresh-prefix build at W046's fix head: A1.3's fourth build) and **790443** (the subset
   reproduction against W039's run; the full one, a day's ask, waits for it). Landed: **790201** and **790222** (both cohorts' stage 1 at W048's head) AS PREDICTED, kept cells,
   criteria and names IDENTICAL to the promoted runs: W048's gate is passed and it waits only for its verifier; **790197** (the second cohort's tree at
   W044's fix-2 head) **MISSED (1)**: in one wild-type library 0 of 12,546 cells walk to Glial cell (the other wild-type
@@ -128,10 +135,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   hand back; one verification of the scProfile batch after W047; then the scProfile plugin line (abundance first), R05 and
   R06 (harness: installer and lock; small fixes), the first cohort's chained run and the scale cohort's stage 1 once the
   driver passes.
-- **Studio's design is READY FOR THE PI** (the final check, 2026-11-11; `<scratchpad>/autodev/w037-review3/REVIEW3.md`; the
-  gallery is `docs/design/gallery.html` on the branch). Six limits to tell, the first that a saved figure drops the note
-  about uncalled cells; four taste calls are the PI's. The deploy question is asked ONCE, when the Studio batch's code
-  verification and Lab's W017 re-check have passed (ROUTE R38): Lab first, then Studio.
+- **Studio is DEPLOYED (D-037).** The PI opened the gallery and said "good, deploy." on 2026-11-11; scrnaseq-studio's `main`
+  went from `1d591f9` to `f7dab0c` (W028 + W037) at 13:14Z; the Pages workflow (lint, the 1,861 checks, the build, the
+  publish) finished with success and the live site answers with the new build. The go covered the Studio only: Lab's W017 is asked when its re-check has passed. The batch's
+  code verification was still running when `main` moved; it continues, and a blocking finding goes to the PI at once.
+  Told to the PI: six limits (the first: a saved figure drops the note about uncalled cells) and four taste calls.
 - **The PI's steps** (ROUTE section 3): stage 3's re-promotion waits for scIntegrate's batch to merge (D-034); the second
   cohort's tree is not ready (D-036); the scale cohort's doublet threshold waits for the subset run's numbers.
 - **Parked:** W030 (Service; uncommitted work in its clone), W022 as a wave of its own, the B1 register's queued rows.
