@@ -232,6 +232,24 @@ contract**, do not write three more adapters against it.
 >
 > Not yet graded: **numbers**, by the reference cohort's stage-3 run through the harness against
 > scIntegrate run alone at the same commit in the same job (written before it runs).
+>
+> **BUILT, NOT YET GRADED ON THE COHORT, 2026-11-11 (W036, branch `autodev/W036-prof-adapter`): the
+> fourth adapter, `prof@scprofile`.** `plugins/single-cell/prof@scprofile` runs scProfile's real CLI
+> (`python -m scprofile.cli`, the declared checkout on PYTHONPATH and nothing else) over the one object
+> a parts stack declares, the cohort's integrated object, read in place: `doctor` (a record), then one
+> `run`. Every flag is the stage's, by scProfile's name, `--kernel` included: which plugins run is
+> scProfile's own plan, and one it skipped is named with its reason. The design sheet, the assay and
+> the organism are the stack's; the family's `scrna`/`snrna` are written in scProfile's words
+> (`cell`/`nucleus`), because a word it does not reason about switches its assay caveats off. Its
+> result is a **layer**: the tables and the object scProfile wrote, referenced where they lie, and
+> exactly what its `report.json` says it merged into the object, read back by identity. Differential
+> expression and abundance are per population, so their mount leaves the view's digest as it was.
+>
+> Graded on the synthetic fixture through the `sch` CLI (`tests/test_the_harness_runs_scprofile.py`):
+> against a stand-in, the calls and argv, the layer, rule 2, every refusal and death; against the real
+> scProfile (de and abundance), the three tables byte-identical to scProfile run alone. Not yet graded:
+> the reference cohort's stage 4 through the harness against scProfile alone in the same job; the
+> plugins beyond de and abundance (a later run).
 
 ---
 

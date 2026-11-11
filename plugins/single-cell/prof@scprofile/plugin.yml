@@ -1,0 +1,53 @@
+contract: "1.0"
+profile: single-cell/1.0
+name: prof@scprofile
+version: 0.1.0
+summary: scProfile's profiling mounted as a layer the stack can take back - its differential expression, differential abundance and plugin tables, its object, and whatever it merged into the observations
+when_to_use: >
+  the stack's observations are a cohort's integrated object - the one part of a parts manifest - and
+  the stack declares the design sheet; you want scProfile's own plan to run the plugins that design
+  admits (differential expression and abundance first) and their tables on the stack as a layer that
+  unmounts, with scProfile's own record of the run kept beside them
+
+class: method
+layer: stack
+reversible: true
+state_version: 1
+# The family's two assays (rule 2). scProfile reasons about `cell` and `nucleus` and carries any
+# other word as unrecognised, with every assay-specific caveat off; the adapter writes the stack's
+# declaration in scProfile's words for it (its own reader's equivalence, scprofile/inputs.py). There
+# is no default.
+assays: [scrna, snrna]
+
+wraps:
+  tool: scProfile
+  version: "0.1.0"
+  homepage: https://github.com/JiaenLin/scProfile
+  license: MIT
+  cite: "Lin J. scProfile: one plugin host for the analyses a single-cell design admits. Software, version 0.1.0."
+  state_version: 1
+
+inject: [dataset]
+needs: [observations/raw]
+provides:
+  - table/*
+  - object/*
+  - column/*
+  - embedding/*
+optional: []
+sourceable: []
+sees: [design]
+
+language: python
+entry: run.py
+needs_env: false
+executor: {cost: high}
+invariant: invariant.py
+
+cannot_show:
+  - A contrast is read against the control the run declares; without a declared control scProfile recommends one and says on what basis, and every sign in the tables follows that choice.
+  - The plugins that ran are the ones scProfile's own plan admitted for this design; one it skipped is named with its reason, and nothing in this mount says what it would have found.
+  - Differential expression is per population and per contrast over pseudobulk samples; a population too small in a sample or absent from an arm was not tested, which is not the same as unchanged.
+  - Differential abundance is compositional - every share is relative to a reference population scProfile names - and a credible change is a statement about that ratio, not about the population alone.
+  - The populations are the annotation's labels and the space is the integration's, inherited; every limit of the stages that wrote them applies, and a removal upstream that differed across the design shaped every share here.
+  - Tables are per population, per contrast or per sample, not per observation; the view over the observations is unchanged by them, and only what scProfile merged into its object is carried as columns or embeddings.
