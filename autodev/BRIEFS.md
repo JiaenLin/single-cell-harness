@@ -31,6 +31,8 @@ Added 2026-11-11 (RULES, the block of that date), part of the block for every bu
 SIZE: this run is sized for about 150 tool calls. Keep tool output short (tail, head, cut, a line range); read only
 the lines a change touches. At about 150 calls: commit, push, hand back what is done, and return the rest as a
 follow-up. That is a normal hand-back.
+THREADS: this workstation is shared by up to 6 agents. Before any test or tool, export OMP_NUM_THREADS=2
+OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2, and run one suite at a time.
 GAPS: name at most 3 new gaps, and only ones that block a ROUTE item (<HARNESS>/autodev/ROUTE.md) or are a wrong
 result in a promoted output. Put every other observation in the wave file's as-built note.
 A NEW JOB FILE carries its submit recipe as shell lines between `# SUBMIT-BEGIN` and `# SUBMIT-END` in its header

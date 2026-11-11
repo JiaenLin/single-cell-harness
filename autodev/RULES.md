@@ -241,5 +241,10 @@ names; nothing in tiers I to III changes.
 11. **The PI, 2026-11-11: "also, improve the studio UI design and layout to be top level".** A direction of the PI's
     (tier III in weight): ROUTE item R41, wave W037. "Top level" is the ten-point rubric in `waves/W037.md`; the builder
     designs to it and a verifier judges it by looking. It is built on a branch from the synthetic fixture only; Studio's
-    `main` is still the PI's go (BLK-005), asked with the before-and-after gallery. The cap of 6 agents is tier IV: a
-    direct request of the PI's may run beside it.
+    `main` is still the PI's go (BLK-005), asked with the before-and-after gallery. It launches at the first free slot (corrected the same day: at 6
+    agents the workstation measured saturated, so the cap of 6 holds for it too; D-024).
+12. **Threads (measured 2026-11-11: 6 agents plus another session put the 12-core workstation at a load average of
+    140 to 163).** Every agent runs its tests and tools with `OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2
+    VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2` exported, and runs one suite at a time. The coordinator commits records
+    at hand-backs, not after every step: the harness's commit gate runs the whole suite on each commit (ROUTE R06 narrows
+    it for record-only commits).
