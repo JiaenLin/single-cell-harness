@@ -31,6 +31,27 @@ decisions:
   - name: control
     param: run.control
     what: "the control every contrast is read against; every sign in the tables follows it"
+  # scProfile's escapes, LISTED BY HAND: scProfile has no `describe`, so they are read from its parser
+  # (scprofile/cli.py `run`: --allow, --force, --no-validate; kernels.py guard_verdict names --allow as the
+  # guard's escape). Each lifts one of scProfile's refusals, so each is the user's (autodev W042 fix 2, D);
+  # unanswered, its flag is not passed, scProfile's own default.
+  - name: allow
+    param: run.allow
+    escape: "--allow"
+    unanswered: tool-default
+    what: "run these kernels even though their own guard refused (scProfile logs each override)"
+  - name: force
+    param: run.force
+    escape: "--force"
+    unanswered: tool-default
+    what: "run a kernel whose prerequisites are unmet; its result would not mean what the report says"
+  - name: no_validate
+    param: run.no_validate
+    escape: "--no-validate"
+    unanswered: tool-default
+    what: "run without scProfile's static checks of each kernel's declaration and references"
+# The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
+owned: [run.h5ad, run.out, run.design, run.assay, run.organism]
 
 wraps:
   tool: scProfile

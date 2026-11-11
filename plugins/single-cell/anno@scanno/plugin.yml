@@ -58,6 +58,10 @@ decisions:
     unanswered: tool-default
     what: "lifts the declared species, for markers only"
 
+# scAnno reads the stack's parts manifest and nothing of what ran upstream (autodev W042 fix 2, A).
+upstream_columns: {}
+# The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
+owned: [cluster.h5ad, cluster.out, cluster.out_dir, cluster.split_by, cluster.status_dir, annotate.h5ad, annotate.assay, annotate.out, annotate.out_h5ad, annotate.report, annotate.status_dir, rescue.h5ad, rescue.out_dir, rescue.out, rescue.out_table, rescue.out_report, rescue.status_dir, embed.h5ad, embed.out, embed.status_dir]
 wraps:
   tool: scAnno
   version: "0.12.0"

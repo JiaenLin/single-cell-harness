@@ -6,8 +6,9 @@ stage's tool flags; `sch run --request` runs the four stages as four stacks, eac
 stage before it handed on from that stage's own record, and seals the run. What must hold, each
 asserted against the world (the tools' argv, the files, the records), never the driver's account:
   - a request that cannot be run is refused before any tool starts: no assay, a third spelling of
-    one, `organism` beside `species`, CellBender upstream of single cells, a user's decision set
-    as a plain parameter;
+    one, `organism` beside `species`, a remover the profile does not list upstream of single cells
+    (one it asks about stops the run at the user's decision, W042 fix 2), a user's decision set as
+    a plain parameter;
   - the plan names every stage and every decision a tool declares as the user's, and runs nothing;
   - the run stops before a stage whose decision is unanswered, by name, and resumes from the answer,
     recorded with who gave it; a sealed stage is never run again; a failed one says where and how;
@@ -47,18 +48,23 @@ def cli(*argv):
     return rc, buf.getvalue()
 
 
-def cohort(dest: Path, shape: str, libraries: int = 4, droplets: int = 40) -> dict:
+def cohort(dest: Path, shape: str, libraries: int = 4, droplets: int = 40, assay: str = "snrna",
+           extra=None) -> dict:
     """A cohort as a samplesheet of libraries (scQC's: `sample`, `assay`, `ambient_h5`) whose scope
-    and design columns carry the shape's role names. Read-only, as delivered."""
+    and design columns carry the shape's role names. Read-only, as delivered. `extra`: more of scQC's
+    columns, {column: value or a function of the library}."""
     r = ROLES[shape]
+    extra = dict(extra or {})
     dest.mkdir(parents=True)
-    head = ["sample"] + ([r["sample"]] if r["sample"] != "sample" else []) + ["assay", "ambient_h5", r["condition"]]
+    head = ["sample"] + ([r["sample"]] if r["sample"] != "sample" else []) + ["assay", "ambient_h5", r["condition"]] \
+        + list(extra)
     rows = ["\t".join(head)]
     for i in range(libraries):
         lib = f"L{i + 1}"
         part = write_part(dest / "libs" / f"{lib}.h5ad", [f"BC{j:05d}-1" for j in range(droplets)])
         arm = "control" if i % 2 == 0 else "treated"
-        rows.append("\t".join([lib] + ([lib] if r["sample"] != "sample" else []) + ["snrna", str(part), arm]))
+        rows.append("\t".join([lib] + ([lib] if r["sample"] != "sample" else []) + [assay, str(part), arm]
+                               + [str(v(lib) if callable(v) else v) for v in extra.values()]))
     (dest / "samplesheet.tsv").write_text("\n".join(rows) + "\n")
     (dest / "design.csv").write_text(f"{r['sample']},{r['condition']}\n" + "".join(
         f"L{i + 1},{'control' if i % 2 == 0 else 'treated'}\n" for i in range(libraries)))
@@ -105,8 +111,8 @@ def request(c: dict, name="request.yml", **over) -> Path:
     doc = {"request": 1, "observations": "samplesheet.tsv", "parts": "ambient_h5",
            "keys": {"sample": r["sample"], "condition": r["condition"]}, "design": "design.csv",
            "context": {"assay": "snrna", "species": "species_x", "tissue": "tissue_x"},
-           "upstream": {"alignment": {"tool": "aligner_x", "version": "1"},
-                        "ambient": {"tool": "remover_x", "ran": True}},
+           "upstream": {"alignment": {"tool": "cellranger", "version": "7.1.0"},
+                        "ambient": {"tool": "cellbender", "version": "0.3.0"}},
            "stages": stages(c)}
     for k, v in over.items():
         if v is None:
@@ -165,9 +171,9 @@ class TheRequestIsRefusedBeforeAnyTool(_Base):
                  ({"context": {"assay": "sn", "species": "species_x"}}, "scrna, snrna"),
                  ({"context": {"assay": "nucleus", "species": "species_x"}}, "scrna, snrna"),
                  ({"context": {"assay": "snrna", "organism": "x"}}, "declared once as `species`"),
-                 ({"context": {"assay": "scrna"}, "upstream": {"alignment": {"tool": "aligner_x"},
-                                                               "ambient": {"tool": "CellBender"}}}, "rule 2"),
-                 ({"upstream": {"alignment": {"tool": "aligner_x"}}}, "declares no ambient"),
+                 ({"context": {"assay": "scrna"}, "upstream": {"alignment": {"tool": "cellranger"},
+                                                               "ambient": {"tool": "remover_x"}}}, "rule 2"),
+                 ({"upstream": {"alignment": {"tool": "cellranger"}}}, "declares no ambient"),
                  ({"stages": bad_stages}, "prof.control"),
                  ({"stages": stages(c)[2:]}, "the first stage must read libraries"),
                  ({"stages": no_embed}, "hands on joint when its params declare 'embed'"),
@@ -186,7 +192,7 @@ class TheRequestIsRefusedBeforeAnyTool(_Base):
 
     def test_nuclei_after_cellbender_are_planned_and_the_upstream_is_said(self):
         c = cohort(self.tmp / "c", "a")
-        req = request(c, upstream={"alignment": {"tool": "aligner_x"}, "ambient": {"tool": "CellBender"}})
+        req = request(c, upstream={"alignment": {"tool": "cellranger"}, "ambient": {"tool": "CellBender"}})
         rc, text = cli("plan", "--request", str(req))
         self.assertEqual(rc, 0, text)
         self.assertIn("ambient: CellBender", text)
@@ -202,7 +208,7 @@ class ThePlan(_Base):
         self.assertEqual([d["name"] for s in p["stages"] for d in s["decisions"]],
                          ["qc.mode", "qc.decisions", "anno.no_exclude", "anno.background_from_clusters",
                           "anno.gap_min", "anno.tissue_fallback", "anno.marker_species", "int.drop_labels",
-                          "prof.control"])
+                          "prof.control", "prof.allow", "prof.force", "prof.no_validate"])
         self.assertEqual([d["name"] for s in p["stages"] for d in s["decisions"] if d["unanswered"] == "stop"],
                          ["qc.mode", "qc.decisions", "prof.control"], "an escape does not stop the run (W042 fix 1)")
         self.assertEqual([(s["reads"], s["hands_on"]) for s in p["stages"]],
@@ -310,7 +316,7 @@ class OneRequestEveryStage(_Base):
         self.assertEqual([(e["name"], e["value"], e["by"]) for e in ev],
                          [("qc.mode", "apply", "a tester"), ("qc.decisions", None, "a tester")])
         rc, text = cli("--json", "events", "--stack", str(out / "04_prof"), "--kind", "upstream")
-        self.assertEqual(json.loads(text)[0]["ambient"], {"tool": "remover_x", "ran": True})
+        self.assertEqual(json.loads(text)[0]["ambient"], {"tool": "cellbender", "version": "0.3.0"})
         # each stage read the stage before it from that stage's record, never a promoted path
         sheet = (out / "02_anno" / "observations.tsv").read_text()
         self.assertIn(str(out.resolve() / "01_qc" / "plugins" / "qc_scqc" / "out"), sheet)
@@ -380,8 +386,8 @@ class AFailedStageSaysWhereAndResumes(_Base):
         self.assertIn("not rewritten", rec["reason"])
         rc, rec = self.drive(req, out, "--answer", "qc.nothing=1", "--by", "a tester")
         self.assertIn("no stage declares", rec["reason"])
-        rc, rec = self.drive(request(c, name="other.yml", upstream={"alignment": {"tool": "aligner_y"},
-                                                                    "ambient": {"tool": "remover_x"}}), out)
+        rc, rec = self.drive(request(c, name="other.yml", upstream={"alignment": {"tool": "starsolo"},
+                                                                    "ambient": {"tool": "cellbender"}}), out)
         self.assertIn("another request", rec["reason"])
 
 
@@ -506,7 +512,7 @@ class TheClusterPath(_Base):
             self.assertFalse((self.tmp / f"r_{who}").exists())
         self.assertEqual(self.calls(), [], "no tool started")
 
-    def job(self, c, req, check_ok=True):
+    def job(self, c, req, check_ok=True, name=None):
         """The job generated for `req`, in a stage's jobs/ directory, with its site's job.yml."""
         import subprocess
         harness = self.tmp / "harness"
@@ -527,7 +533,7 @@ class TheClusterPath(_Base):
         chk.write_text("#!/bin/bash\nn=$(ls \"$1\"/0*/report/report.json | wc -l | tr -d ' ')\n"
                        f"if [ \"$n\" -eq {want} ]; then echo \"VERDICT (four reports): AS PREDICTED - $n\"\n"
                        "else echo \"VERDICT (four reports): MISSED - $n\"; fi\n")
-        f = jobs / ("drive.pbs" if check_ok else "drive_missed.pbs")
+        f = jobs / (name or ("drive.pbs" if check_ok else "drive_missed.pbs"))
         rc, text = cli("--json", "run", "--request", str(req), "--job", str(f), "--predict", str(pred),
                        "--check", str(chk), "--purpose", "w042", *answered(c))
         self.assertEqual(rc, 0, text)
@@ -595,7 +601,7 @@ class TheClusterPath(_Base):
         self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: MISSED (1)")
         self.assertIn("VERDICT (pins): MISSED - the request", (rundir / "FAILED.txt").read_text())
         self.assertFalse((rundir / "01_qc").exists(), "nothing ran")
-        f2, _rec = self.job(c, req)              # generated again for the request as it now is
+        f2, _rec = self.job(c, req, name="drive2.pbs")   # generated again, as another job
         chk = c["dir"] / "00_driver" / "checks.sh"
         chk.write_text(chk.read_text() + "echo 'VERDICT (added): AS PREDICTED'\n")
         p, rundir = self.run_job(f2, "edited_check")
@@ -612,6 +618,57 @@ class TheClusterPath(_Base):
         self.assertIn("#PBS -q q_big\n", script, "4 cpus are over q_small's 2")
 
 
+    # ---- W042 fix 2: C (the job pins B's whole set; never generated over) and F (every size word)
+    def test_C2_the_job_pins_every_file_the_run_reads_and_is_never_generated_over(self):
+        c = cohort(self.tmp / "c", "a")
+        req = request(c, resources=self.SIZES)
+        f, _rec = self.job(c, req)
+        before = f.read_text()
+        self.assertIn("files the run reads, pinned as generated", before)
+        self.assertIn('--expect "$RUNDIR/PINS.json"', before)
+        rc, text = cli("--json", "run", "--request", str(req), "--job", str(f), *answered(c))
+        self.assertEqual(rc, 2, text)
+        self.assertIn("a job is there already", json.loads(text)["reason"])
+        self.assertEqual(f.read_text(), before, "the job and its prediction are untouched")
+        d, was = c["design"], c["design"].read_text()
+        d.chmod(0o644)
+        d.write_text(was.replace("control", "@").replace("treated", "control").replace("@", "treated"))
+        p, rundir = self.run_job(f, "swapped")
+        self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: MISSED (1)", p.stdout[-1500:])
+        self.assertIn("VERDICT (pins): MISSED", (rundir / "FAILED.txt").read_text())
+        self.assertIn("differs: design", (rundir / "FAILED.txt").read_text())
+        self.assertFalse((rundir / "01_qc").exists(), "nothing ran")
+        d.write_text(was)
+        p, rundir = self.run_job(f, "as_generated")
+        self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: AS PREDICTED", p.stdout[-2500:] + p.stderr[-800:])
+        absent = request(c, name="absent.yml", observations="only_on_the_cluster.tsv")
+        rc, text = cli("--json", "run", "--request", str(absent), "--job", str(f.parent / "absent.pbs"))
+        self.assertEqual(rc, 0, text)
+        self.assertIn("#     on the cluster only: observations ", (f.parent / "absent.pbs").read_text())
+
+    def test_F2_every_size_word_is_laid_over_the_sites_and_a_bad_size_is_refused_before_any_tool(self):
+        c = cohort(self.tmp / "c", "a")
+        req, out = request(c, resources={"qc": {"select": "1:ncpus=4"}}), self.tmp / "run"
+        rc, rec = self.drive(req, out, *answered(c))
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        script = (out / "01_qc" / "plugins" / "qc_scqc" / "pbs" / "job.pbs").read_text()
+        self.assertIn("#PBS -l select=1:ncpus=4:mem=1gb\n", script, "a request's select keeps the site's 1gb")
+        bad = [{"ncpus": 0}, {"ncpus": -2}, {"mem": 8}, {"mem": "0gb"}, {"walltime": 0}, {"walltime": "00:00:00"},
+               {"select": "1:ncpus=4:mem=8"}]
+        for i, size in enumerate(bad):
+            for site in (True, False):
+                with self.subTest(size=size, site=site):
+                    if not site:
+                        os.environ.pop("SCH_SITE")
+                    n = len(self.calls())
+                    rc, rec = self.drive(request(c, name=f"b{i}.yml", resources={"prof": size}),
+                                         self.tmp / f"rb{i}{site}", *answered(c))
+                    os.environ["SCH_SITE"] = str(self.site)
+                    self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+                    self.assertIn("resources.prof", rec["reason"])
+                    self.assertEqual(len(self.calls()), n, "refused before any tool")
+
+
 def sha(path) -> str:
     import hashlib
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -623,27 +680,6 @@ def scrna(**over):
 
 class TheDriverHoldsItsRules(_Base):
     """W042 fix 1: the verifier's reasons A, B, D and its observations, each through `sch`."""
-
-    def test_A_what_may_run_upstream_of_single_cells_is_what_the_profile_names(self):
-        import sch.drive
-        c = cohort(self.tmp / "c", "a")
-        for i, tool in enumerate(["CellBender 0.3.0", "cellbender remove-background", "CellBender", "remover_x"]):
-            with self.subTest(tool=tool):
-                req = request(c, name=f"a{i}.yml", context=scrna(),
-                              upstream={"alignment": {"tool": "aligner_x"}, "ambient": {"tool": tool}})
-                rc, rec = self.drive(req, self.tmp / f"ra{i}")
-                self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
-                self.assertIn("rule 2", rec["reason"])
-                self.assertIn("upstream.allowed.scrna.ambient: none", rec["reason"])
-        for i, tool in enumerate(["none", " None "]):
-            req = request(c, name=f"n{i}.yml", context=scrna(),
-                          upstream={"alignment": {"tool": "aligner_x"}, "ambient": {"tool": tool}})
-            self.assertEqual(cli("plan", "--request", str(req))[0], 0, tool)
-        req = request(c, name="sn.yml", upstream={"alignment": {"tool": "aligner_x"},
-                                                   "ambient": {"tool": "CellBender 0.3.0"}})
-        self.assertEqual(cli("plan", "--request", str(req))[0], 0, "nuclei take any declared remover")
-        self.assertNotIn("cellbender", Path(sch.drive.__file__).read_text().casefold(), "the rule is the profile's")
-        self.assertEqual(self.calls(), [])
 
     def test_B_a_resume_on_a_changed_file_the_request_names_is_refused_by_name(self):
         c = cohort(self.tmp / "c", "a")
@@ -701,8 +737,10 @@ class TheDriverHoldsItsRules(_Base):
                 self.assertTrue(declared, "the stand-in carries its tool's escapes")
                 self.assertEqual(declared, asked | not_asked, "an adapter's decisions are its tool's escapes")
                 self.assertFalse(asked & not_asked)
+        # scProfile has no `describe`: its manifest lists its escapes by hand, each a flag its parser declares
         m = yamlish.load(plugins / "prof@scprofile" / "plugin.yml")
-        self.assertEqual([d.get("escape") for d in m["decisions"]], [None], "scProfile declares no escape")
+        self.assertEqual([d.get("escape") for d in m["decisions"]], [None, "--allow", "--force", "--no-validate"])
+        self.assertIn("LISTED BY HAND", (plugins / "prof@scprofile" / "plugin.yml").read_text())
 
     def test_D_an_escape_is_never_a_plain_param_answered_it_is_passed_and_recorded_with_who(self):
         c = cohort(self.tmp / "c", "a")
@@ -769,6 +807,331 @@ class TheDriverHoldsItsRules(_Base):
         self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "02_int"), rec)
         self.assertIn("handed on none", rec["reason"])
         self.assertEqual(json.loads((out / "DRIVE.json").read_text())["status"], "failed")
+
+
+SWAP = lambda t: t.replace("control", "@").replace("treated", "control").replace("@", "treated")  # noqa: E731
+CTRL = ["--answer", CONTROL.format(c="condition"), "--by", "a tester"]
+
+
+class TheDriverHoldsItsRulesRound2(_Base):
+    """W042 fix 2: each break of the re-check closed by its principle, each through `sch`."""
+
+    def sheet(self, c, rename=None, cols=None):
+        f = c["dir"] / "samplesheet.tsv"
+        f.chmod(0o644)
+        rows = [ln.split("\t") for ln in f.read_text().splitlines()]
+        if rename:
+            rows[0][rows[0].index(rename[0])] = rename[1]
+        for name, fn in (cols or {}).items():
+            rows[0].append(name)
+            for r in rows[1:]:
+                r.append(str(fn(r[0])))
+        f.write_text("\n".join("\t".join(r) for r in rows) + "\n")
+        f.chmod(0o444)
+
+    def plan(self, req):
+        rc, text = cli("--json", "plan", "--request", str(req))
+        return rc, json.loads(text).get("reason") or ""
+
+    def set_design(self, c, text):
+        c["design"].chmod(0o644)
+        c["design"].write_text(text)
+
+    # ---- B: one set, recomputed and compared everywhere
+    def test_B2_the_set_is_every_file_the_run_reads_and_a_relative_param_is_refused(self):
+        c = cohort(self.tmp / "c", "a")
+        refs = c["dir"] / "refdir" / "sub"
+        refs.mkdir(parents=True)
+        (refs / "ref.tsv").write_text("a\t1\n")
+        for i in range(1, 5):
+            (c["dir"] / f"raw{i}.h5").write_text("raw v1\n")
+        self.sheet(c, cols={"raw_h5": lambda lib: c["dir"] / f"raw{lib[1:]}.h5"})
+        st = stages(c)
+        st[3]["params"]["run"]["references"] = str(refs.parent)
+        req, out = request(c, stages=st), self.tmp / "run"
+        rc, rec = self.drive(req, out, *ANSWERS, "--by", "a tester")
+        self.assertEqual((rc, rec.get("stage")), (3, "04_prof"), rec)
+        files = json.loads((out / "INPUTS.json").read_text())["files"]
+        for role in ("04_prof.run.references/sub/ref.tsv", "observations.raw_h5[L1]", "02_anno.scanno"):
+            self.assertIn(role, files)
+        self.assertFalse([k for k in files if "__pycache__" in k or k.endswith(".pyc")])
+        for f, role in [(refs / "ref.tsv", "04_prof.run.references/sub/ref.tsv"),
+                        (c["dir"] / "raw1.h5", "observations.raw_h5[L1]")]:
+            was = f.read_text()
+            f.write_text("changed\n")
+            rc, rec = self.drive(req, out, *CTRL)
+            self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+            self.assertIn(role, rec["reason"])
+            f.write_text(was)
+        (refs / "new.tsv").write_text("added\n")
+        rc, rec = self.drive(req, out, *CTRL)
+        self.assertIn("04_prof.run.references/sub/new.tsv", rec.get("reason", ""), rec)
+        (refs / "new.tsv").unlink()
+        rc, rec = self.drive(req, out, *CTRL)
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        (c["dir"] / "tree.json").write_text('{"v": 1}\n')
+        st = stages(c)
+        st[1]["params"]["annotate"]["tree"] = "tree.json"
+        rc, why = self.plan(request(c, name="rel.yml", stages=st))
+        self.assertEqual(rc, 2, why)
+        self.assertIn("annotate.tree is 'tree.json', a relative path", why)
+
+    def test_B3_a_sealed_stage_is_trusted_only_on_the_runs_record(self):
+        c = cohort(self.tmp / "c", "a")
+        req, out = request(c), self.tmp / "run"
+        rc, rec = self.drive(req, out, *ANSWERS, "--by", "a tester")
+        self.assertEqual((rc, rec.get("stage")), (3, "04_prof"), rec)
+        was = c["design"].read_text()
+        keep = {f: f.read_bytes() for f in (out / "INPUTS.json", out / "request.json")}
+
+        def restore():
+            self.set_design(c, was)
+            for f, b in keep.items():
+                f.write_bytes(b)
+        self.set_design(c, SWAP(was))            # the record edited to the swapped design (the re-check's B4)
+        doc = json.loads(keep[out / "INPUTS.json"])
+        for k in ("design", "03_int.integrate.design"):
+            doc["files"][k]["sha256"] = sha(c["design"])
+        (out / "INPUTS.json").write_text(json.dumps(doc))
+        rc, rec = self.drive(req, out, *CTRL)
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn("was sealed on other files", rec["reason"])
+        restore()
+        for f in keep:                           # the record removed (B5): never a fresh start
+            f.unlink()
+        rc, rec = self.drive(req, out, *CTRL)
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn("a missing record is not a fresh start", rec["reason"])
+        restore()
+        for n, names in enumerate([("01_qc", "02_anno", "03_int"),
+                                   ("01_qc", "02_anno", "03_int", "INPUTS.json", "request.json", "decisions.json")]):
+            new = self.tmp / f"copy{n}"          # sealed stages copied into another run directory
+            new.mkdir()
+            for x in names:
+                (shutil.copytree if (out / x).is_dir() else shutil.copy2)(out / x, new / x)
+            rc, rec = self.drive(req, new, *CTRL)
+            self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+            self.assertIn("start a new --out", rec["reason"])
+        seal = out / "02_anno" / "SEALED.json"
+        b = seal.read_bytes()
+        seal.write_text(b.decode().replace('"numbers"', '"numbers" ', 1))
+        rc, rec = self.drive(req, out, *CTRL)
+        self.assertIn("02_anno's seal is not one this run recorded", rec.get("reason", ""), rec)
+        seal.write_bytes(b)
+        joint = Path(json.loads(b)["hands_on"]["joint"])
+        jb = joint.read_bytes()
+        joint.chmod(0o644)
+        joint.write_bytes(jb + b"\0")
+        rc, rec = self.drive(req, out, *CTRL)
+        self.assertIn("02_anno handed on", rec.get("reason", ""), rec)
+        joint.write_bytes(jb)
+        rc, rec = self.drive(req, out, *CTRL)
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+
+    def test_B4_the_set_is_recomputed_at_each_stages_start_and_at_its_seal(self):
+        import sch.drive as D
+        c = cohort(self.tmp / "c", "a")
+        req, out = request(c), self.tmp / "run"
+        was = c["design"].read_text()
+        real = Stack.run_declared
+
+        def during(st, *a, **k):                 # swapped while stage 3's tool runs, and left so
+            r = real(st, *a, **k)
+            if Path(st.dir).name == "03_int":
+                self.set_design(c, SWAP(was))
+            return r
+        Stack.run_declared = during
+        try:
+            rc, rec = self.drive(req, out, *answered(c))
+        finally:
+            Stack.run_declared = real
+        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "03_int"), rec)
+        self.assertIn("changed while 03_int ran", rec["reason"])
+        self.assertIn("design", rec["reason"])
+        self.assertFalse((out / "03_int" / "SEALED.json").exists())
+        self.set_design(c, was)
+        real_stage = D._stage
+
+        def around(p, sd, *a, **k):              # the re-check's B6: swapped before a stage, back after it
+            if p["stage"] == "04_prof":
+                self.set_design(c, SWAP(was))
+            try:
+                return real_stage(p, sd, *a, **k)
+            finally:
+                self.set_design(c, was)
+        D._stage = around
+        try:
+            rc, rec = self.drive(req, out)
+        finally:
+            D._stage = real_stage
+        self.assertEqual((rc, rec["status"], rec["stage"]), (2, "failed", "04_prof"), rec)
+        self.assertIn("before 04_prof started", rec["reason"])
+        rc, rec = self.drive(req, out)
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        for s in ("01_qc", "02_anno", "03_int", "04_prof"):
+            self.assertEqual(json.loads((out / s / "SEALED.json").read_text())["inputs"]["design"], sha(c["design"]))
+
+    # ---- A: rule 2 read from every place a step is declared, and the places agree
+    def test_A2_rule_2_reads_every_key_of_every_step_and_the_shipped_profile_only(self):
+        c = cohort(self.tmp / "c", "a", assay="scrna")
+        self.sheet(c, rename=("ambient_h5", "matrix"))   # the aligner's call, not a denoised object
+        cr = {"tool": "cellranger", "version": "7.1.0"}
+
+        def req(name, amb, aln=cr, **over):
+            return request(c, name=name, parts="matrix", context=scrna(),
+                           upstream={"alignment": aln, "ambient": amb}, **over)
+        refused = [({"tool": "none", "version": "CellBender 0.3.0"}, cr, "is 'CellBender 0.3.0', not a release number"),
+                   ({"tool": "none", "version": "0.3.0"}, cr, "a step nothing performed has no version"),
+                   ({"tool": "none", "ran": True, "command": "cellbender remove-background"}, cr,
+                    "command, ran is not a step field"),
+                   ({"tool": ["none"]}, cr, "it is one tool's name"),
+                   ({"tool": "none; cellbender ran"}, cr, "upstream.allowed.scrna.ambient: none"),
+                   ({"tool": "none\u200b"}, cr, "upstream.allowed.scrna.ambient: none"),
+                   ({"tool": "remover_x"}, cr, "upstream.allowed.scrna.ambient: none"),
+                   ({"tool": "none"}, {"tool": "cellranger count + cellbender remove-background"},
+                    "upstream.allowed.scrna.alignment"),
+                   ({"tool": "none"}, {"tool": "cellranger", "version": "7.1.0-cellbender"}, "not a release number")]
+        for i, (amb, aln, said) in enumerate(refused):
+            with self.subTest(said=said, amb=amb):
+                rc, why = self.plan(req(f"r{i}.yml", amb, aln))
+                self.assertEqual(rc, 2, why)
+                self.assertIn(said, why)
+        for i, (amb, aln) in enumerate([({"tool": "NONE "}, cr), ({"tool": "none"}, {"tool": "Cell Ranger", "version": "v7.1.0"})]):
+            self.assertEqual(self.plan(req(f"ok{i}.yml", amb, aln)), (0, ""))
+        st = stages(c)                           # the family never runs the remover on cells: no decision
+        st[0]["params"]["cellbender"] = "/path/to/cellbender"
+        rc, why = self.plan(req("cb.yml", {"tool": "none"}, stages=st))
+        self.assertEqual(rc, 2, why)
+        self.assertIn("params set cellbender, with which its tool performs ambient itself", why)
+        plug = self.tmp / "plugins" / "qc@scqc"  # a plugin by path whose profile has the rule removed
+        shutil.copytree(Path(__file__).resolve().parent.parent / "plugins" / "single-cell" / "qc@scqc", plug)
+        prof = self.tmp / "loose.yml"
+        text = (Path(__file__).resolve().parent.parent / "sch" / "profile" / "single-cell.yml").read_text()
+        prof.write_text(text.replace("ambient: [none]", "ambient: [none, cellbender]"))
+        m = plug / "plugin.yml"
+        m.write_text(m.read_text().replace("profile: single-cell/1.0", f"profile: {prof}"))
+        st = stages(c)
+        st[0]["plugin"] = str(plug)
+        rc, why = self.plan(req("byp.yml", {"tool": "cellbender"}, stages=st))
+        self.assertEqual(rc, 2, why)
+        self.assertIn("only from a profile this harness ships", why)
+        sn = cohort(self.tmp / "sn", "a")        # nuclei list what may run too: nothing by silence
+        rc, why = self.plan(request(sn, name="sn.yml", upstream={"alignment": cr, "ambient": {"tool": "remover_x"}}))
+        self.assertEqual(rc, 2, why)
+        self.assertIn("upstream.allowed.snrna.ambient: none, cellbender", why)
+        self.sheet(c, cols={"ambient_tool": lambda lib: "CellBender", "ambient_version": lambda lib: "0.3.0"})
+        rc, why = self.plan(req("a7.yml", {"tool": "none"}))   # the re-check's A7: the samplesheet says it
+        self.assertEqual(rc, 2, why)
+        self.assertIn("the samplesheet's row L1 says ambient_tool='CellBender'", why)
+        self.sheet(sn, cols={"ambient_tool": lambda lib: "CellBender", "ambient_version": lambda lib: "0.3.2"})
+        rc, why = self.plan(request(sn, name="sn2.yml", upstream={"alignment": cr, "ambient": {"tool": "cellbender",
+                                                                                               "version": "0.3.0"}}))
+        self.assertEqual(rc, 2, why)
+        self.assertIn("ambient_version='0.3.2'", why)
+        self.assertEqual(self.calls(), [])
+
+    def test_A3_single_cells_denoised_elsewhere_stop_the_run_at_the_users_decision(self):
+        c = cohort(self.tmp / "c", "a", assay="scrna", extra={"ambient_tool": "CellBender", "ambient_version": "0.3.0"})
+        req = request(c, context=scrna(), upstream={"alignment": {"tool": "cellranger", "version": "7.1.0"},
+                                                     "ambient": {"tool": "CellBender", "version": "0.3.0"}})
+        rc, text = cli("plan", "--request", str(req))
+        self.assertEqual(rc, 0, text)
+        self.assertIn("the user's: upstream.ambient", text)
+        self.assertIn("UNANSWERED - nothing runs (accept | decline)", text)
+        out = self.tmp / "run"
+        rc, rec = self.drive(req, out, *answered(c))
+        self.assertEqual((rc, rec["status"], rec["stage"]), (3, "waiting", "01_qc"), rec)
+        self.assertEqual([d["name"] for d in rec["waiting_for"]], ["upstream.ambient"])
+        rc, rec = self.drive(req, out, "--answer", "upstream.ambient=maybe", "--by", "a tester")
+        self.assertIn("upstream.ambient is answered accept or decline", rec["reason"])
+        rc, rec = self.drive(req, out, "--answer", "upstream.ambient=decline", "--by", "the PI")
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn("declined, nothing runs", rec["reason"])
+        self.assertEqual(self.calls(), [], "unanswered or declined, nothing runs")
+        out2 = self.tmp / "run2"
+        rc, rec = self.drive(req, out2, *answered(c), "--answer", "upstream.ambient=accept")
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        self.assertEqual(json.loads((out2 / "decisions.json").read_text())["upstream.ambient"]["by"], "a tester")
+        rc, text = cli("--json", "events", "--stack", str(out2 / "01_qc"), "--kind", "decision")
+        self.assertIn(("upstream.ambient", "decision/answered", "accept", "a tester"),
+                      [(e["name"], e["kind"], e.get("value"), e.get("by")) for e in json.loads(text)])
+
+    # ---- D: every escape a tool declares is asked, under any spelling
+    def test_D2_scprofiles_escapes_are_asked_and_no_escape_passes_under_another_spelling(self):
+        c = cohort(self.tmp / "c", "a")
+        for i, (k, cmd, over) in enumerate([(3, "run", {"allow": "de,abundance"}), (3, "run", {"force": True}),
+                                            (3, "run", {"no-validate": True}), (3, "run", {"Force": True}),
+                                            (1, "annotate", {"no-exclude": True})]):
+            st = stages(c)
+            st[k]["params"][cmd].update(over)
+            with self.subTest(over=over):
+                rc, why = self.plan(request(c, name=f"e{i}.yml", stages=st))
+                self.assertEqual(rc, 2, why)
+                self.assertIn("--answer", why)
+        out = self.tmp / "run"
+        rc, rec = self.drive(request(c), out, *answered(c), "--answer", "prof.allow=de")
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        prof = [a for k, a in self.calls() if k == "FAKE_SCPROFILE_LOG" and "--h5ad" in a]
+        self.assertTrue(prof and all(a[a.index("--allow") + 1] == "de" for a in prof), prof)
+        self.assertFalse([a for a in prof if "--force" in a or "--no-validate" in a])
+        rc, text = cli("--json", "events", "--stack", str(out / "04_prof"), "--kind", "decision")
+        ev = {e["name"]: (e["kind"], e["value"], e["by"]) for e in json.loads(text)}
+        self.assertEqual(ev["prof.allow"], ("decision/answered", "de", "a tester"))
+        self.assertEqual(ev["prof.force"], ("decision/unanswered", None, None))
+
+    @unittest.skipUnless(os.environ.get("SCH_REAL_TOOLS"), "SCH_REAL_TOOLS names no checkouts of the real tools")
+    def test_D3_the_manifests_are_the_real_tools_escapes_when_their_checkouts_are_here(self):
+        import subprocess
+        root = Path(os.environ["SCH_REAL_TOOLS"])
+        plugins = Path(__file__).resolve().parent.parent / "plugins" / "single-cell"
+        py = [os.environ.get("SCH_REAL_PY", sys.executable)]
+        compared = []
+        for plugin, name, argv in [("qc@scqc", "scQC", py + ["scqc_cli.py", "describe"]),
+                                   ("anno@scanno", "scAnno", py + ["bin/scanno", "describe"]),
+                                   ("int@scintegrate", "scIntegrate", py + ["-m", "scintegrate.cli", "describe"])]:
+            d = root / name
+            if not d.is_dir():
+                continue
+            r = subprocess.run(argv, cwd=str(d), capture_output=True, text=True, env=dict(os.environ, PYTHONPATH=str(d)))
+            said = json.loads(r.stdout)
+            declared = {str(e.get("flag") or e.get("what")) for e in said.get("escapes") or []}
+            m = yamlish.load(plugins / plugin / "plugin.yml")
+            asked = {x["escape"] for x in m.get("decisions") or [] if x.get("escape")}
+            self.assertEqual(declared, asked | set(m.get("escapes_not_asked") or {}), f"{name} at {d}")
+            compared.append(name)
+        if (root / "scProfile").is_dir():        # no describe: each listed escape is a flag of its `run`
+            src = (root / "scProfile" / "scprofile" / "cli.py").read_text()
+            m = yamlish.load(plugins / "prof@scprofile" / "plugin.yml")
+            for x in [x for x in m["decisions"] if x.get("escape")]:
+                self.assertIn(f'r.add_argument("{x["escape"]}"', src, x)
+            compared.append("scProfile")
+        self.assertTrue(compared, f"no tool checkout under {root}")
+
+    # ---- the observation: a flag an adapter owns is refused when the plan is made
+    def test_an_owned_flag_is_refused_when_the_plan_is_made_and_the_manifests_copy_run_py(self):
+        import ast
+        c = cohort(self.tmp / "c", "a")
+        for i, (k, cmd, flag) in enumerate([(0, None, "samplesheet"), (1, "annotate", "out_h5ad"),
+                                            (2, "integrate", "out"), (3, "run", "design")]):
+            st = stages(c)
+            (st[k]["params"][cmd] if cmd else st[k]["params"])[flag] = "/somewhere"
+            with self.subTest(flag=flag):
+                rc, why = self.plan(request(c, name=f"o{i}.yml", stages=st))
+                self.assertEqual(rc, 2, why)
+                self.assertIn("sets itself from the stack (its `owned:`)", why)
+        plugins = Path(__file__).resolve().parent.parent / "plugins" / "single-cell"
+        for plugin, cmd in [("qc@scqc", None), ("anno@scanno", None), ("int@scintegrate", "integrate"),
+                            ("prof@scprofile", "run")]:
+            def keys(n):                         # the names OWNED declares, not the reasons beside them
+                if isinstance(n, ast.Dict):
+                    return {k.value: keys(v) for k, v in zip(n.keys, n.values)}
+                return {e.value: None for e in n.elts} if isinstance(n, (ast.Tuple, ast.List)) else None
+            tree = ast.parse((plugins / plugin / "run.py").read_text())
+            owned = [keys(n.value) for n in tree.body if isinstance(n, ast.Assign)
+                     and any(getattr(t, "id", "") == "OWNED" for t in n.targets)][0]
+            want = ({f"{c_}.{f}" for c_, fl in owned.items() for f in fl} if plugin == "anno@scanno" else
+                    {f"{cmd}.{f}" for f in owned} if cmd else set(owned))
+            self.assertEqual(set(yamlish.load(plugins / plugin / "plugin.yml")["owned"]), want, plugin)
 
 
 if __name__ == "__main__":

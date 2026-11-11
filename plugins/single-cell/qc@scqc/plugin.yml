@@ -33,6 +33,22 @@ decisions:
 # scQC's escapes the driver passes nothing for, each with why (`scqc describe` escapes[]).
 escapes_not_asked:
   "a REVIEW finding": "scQC proceeds and keeps the finding in gates[]; no decision is recorded against it"
+# Where scQC's samplesheet says what ran upstream (scQC engine/graph.py: a library with a non-empty
+# `ambient_h5` arrives already denoised, by `ambient_tool` at `ambient_version`, with its params and who
+# produced it; `ambient_skip_*` declares the step declined; engine/steps.py NOT_FACTORS). The driver reads
+# every row and refuses a request whose upstream block says otherwise (autodev W042 fix 2, A).
+upstream_columns:
+  ambient:
+    tool: ambient_tool
+    version: ambient_version
+    performed: [ambient_h5, ambient_params, ambient_produced_by]
+    declined: [ambient_skip_reason, ambient_skip_approved_by]
+# The params with which scQC performs an upstream step itself: on an assay whose profile allows only
+# `none` for that step, the driver refuses them (scQC's own policy never runs CellBender on cells either).
+runs_upstream:
+  ambient: [cellbender]
+# The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
+owned: [project, samplesheet]
 wraps:
   tool: scQC
   version: "0.4.0"

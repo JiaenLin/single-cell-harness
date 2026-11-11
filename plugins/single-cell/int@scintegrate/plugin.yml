@@ -33,6 +33,8 @@ decisions:
     unanswered: tool-default
     what: "the labels whose cells are withheld from the integration (comma-separated), or null"
 
+# The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
+owned: [integrate.h5ad, integrate.out, integrate.species, integrate.assay]
 wraps:
   tool: scIntegrate
   version: "0.5.0"

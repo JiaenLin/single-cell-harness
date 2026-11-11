@@ -53,8 +53,22 @@ checkpoint_kinds: [align, ambient, impute, "integrate:corrected-counts"]
 # An assay or a step not listed takes any declared name (single nuclei: CellBender is theirs).
 upstream:
   steps: [alignment, ambient]
+  # What may run upstream of each assay, by name (rule 2; autodev W042 fix 2, A). Every assay lists
+  # every step, and a name no list holds is refused: nothing is allowed by silence. A name is compared
+  # NFKC, case-folded, with spaces, `_` and `-` folded away; `none` is the step not performed. A tool
+  # made for an assay enters by a line here, reviewed - never by a request.
   allowed:
-    scrna: {ambient: [none]}
+    scrna:
+      alignment: [cellranger, celescope, starsolo, alevin-fry, simpleaf, kallisto-bustools, bd-rhapsody, parse-split-pipe, dropseq-tools, zumis]
+      ambient: [none]
+    snrna:
+      alignment: [cellranger, celescope, starsolo, alevin-fry, simpleaf, kallisto-bustools, bd-rhapsody, parse-split-pipe, dropseq-tools, zumis]
+      ambient: [none, cellbender]
+  # What a cohort may DELIVER already performed where it may not run (D-031): calibrated on nuclei,
+  # never run by the family on cells, but single cells denoised elsewhere are the user's decision. The
+  # run stops before stage 1 at `upstream.<step>` (accept | decline), recorded with who.
+  ask:
+    scrna: {ambient: [cellbender]}
 
 required:
   mask:

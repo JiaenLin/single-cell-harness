@@ -494,7 +494,39 @@ def _select_words(sel: str) -> list:
     return [tuple(x.split("=", 1)) for x in parts if "=" in x]
 
 
-def sized(cfg: dict, over: dict | None = None) -> dict:
+#: A memory size as the scheduler reads it: a whole number and its unit (autodev W042 fix 2, F).
+MEM = re.compile(r"(\d+)([kmgtp]?b)")
+
+
+def check_size(size: dict) -> dict:
+    """A SIZE IS A POSITIVE NUMBER IN ITS UNIT, OR IT IS REFUSED BEFORE ANYTHING IS SUBMITTED (autodev W042
+    fix 2, F): ncpus a whole number above zero, mem a whole number above zero with its unit (kb, mb, gb,
+    tb), walltime [[h:]m:]s above zero - in its own word or inside a `select`. Returns the words as the
+    scheduler is given them (mem's unit in lower case)."""
+    words = {k: v for k, v in dict(size or {}).items() if v is not None}
+    for k, v in _select_words(words.get("select") or ""):
+        words.setdefault(f"select.{k}", v)
+    out = {}
+    for k, v in words.items():
+        w, t = k.split(".")[-1], str(v).strip()
+        if w == "ncpus" and not (t.isdigit() and t.isascii() and int(t) > 0):
+            raise ExecutorError(f"{k} {v!r} is not a number of cpus above zero")
+        if w == "mem":
+            m = MEM.fullmatch(t.lower()) if t.isascii() else None
+            if not m or int(m.group(1)) <= 0:
+                raise ExecutorError(f"{k} {v!r} is not a memory size above zero with its unit (8gb, 512mb)"
+                                    + ("; a number with no unit is read by the scheduler as bytes" if t.isdigit()
+                                       else ""))
+            t = t.lower()
+        if w == "walltime":
+            secs = _seconds(t) if re.fullmatch(r"\d+(:\d+){0,2}", t) else None
+            if not secs:
+                raise ExecutorError(f"{k} {v!r} is not a walltime above zero ([[h:]m:]s)")
+        out[k] = t
+    return out
+
+
+def sized(cfg: dict, over: dict | None = None, base: dict | None = None) -> dict:
     """ONE JOB'S RESOURCES AND QUEUE FROM THREE DECLARATIONS (autodev W042, ROUTE R03 run 2).
     The site file gives the queues, each with its ceilings (`pbs.queues`: [{queue, walltime, ncpus,
     mem}, ...] in the order they are to be tried), and its defaults; a request or a tool gives a
@@ -506,14 +538,22 @@ def sized(cfg: dict, over: dict | None = None) -> dict:
     `queues` declared, the block's `queue` is used, as before."""
     over = dict(over if over is not None else cfg)
     cfg = dict(cfg)
-    if any(k in over for k in SIZE) and "select" not in over or (
-            "select" not in cfg and any(k in cfg for k in SIZE)):
-        # A SIZE THE REQUEST DOES NOT STATE KEEPS THE SITE'S VALUE (autodev W042 fix 1, F): the
-        # site's `select` is read into its words and the stated ones are laid over them, so a size
-        # that names only ncpus keeps the site's memory, and the queue is chosen with it.
-        words = dict(_select_words(cfg.get("select") or ""))
-        words.update({k: str(cfg[k]) for k in SIZE if cfg.get(k)})
-        cfg["select"] = ":".join(["1"] + [f"{k}={v}" for k, v in words.items()])
+    for layer in (base, over, cfg):
+        check_size({k: v for k, v in dict(layer or {}).items() if k in (*SIZE, "walltime", "select")})
+    if "walltime" in cfg:
+        cfg["walltime"] = str(cfg["walltime"]).strip()
+    site_sel = str((base or {}).get("select") or ("" if "select" in over else cfg.get("select") or ""))
+    if any(k in over for k in (*SIZE, "select")) or ("select" not in cfg and any(k in cfg for k in SIZE)):
+        # EVERY SIZE WORD IS LAID OVER THE SITE'S (autodev W042 fix 1 and 2, F): the site's `select` is
+        # read into its words and the stated ones - a request's own `select` among them - are laid over
+        # them, so a size that names only ncpus keeps the site's memory and any other word it declares,
+        # and the queue is chosen with them.
+        words = dict(_select_words(site_sel))
+        chunks = re.match(r"^\s*(\d+)\s*(:|$)", str(over.get("select") or site_sel or "1"))
+        words.update(dict(_select_words(over.get("select") or "")))
+        words.update({k: str(cfg[k]) for k in SIZE if cfg.get(k) is not None})
+        words = {k: (v.strip().lower() if k == "mem" else v.strip()) for k, v in words.items()}
+        cfg["select"] = ":".join([chunks.group(1) if chunks else "1"] + [f"{k}={v}" for k, v in words.items()])
     queues = cfg.get("queues")
     if not queues or "queue" in over:
         return cfg
@@ -550,7 +590,7 @@ class PbsExecutor(LocalExecutor):
         (`sized`)."""
         base = {k: v for k, v in self.config.items() if k != "plugins"}
         over = dict((self.config.get("plugins") or {}).get(name or "") or {})
-        return sized({**base, **over}, over)
+        return sized({**base, **over}, over, base)
 
     @staticmethod
     def _command(cfg: dict, which: str) -> list:
