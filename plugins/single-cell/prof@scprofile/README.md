@@ -10,7 +10,7 @@ and never copied.
 
 The calls are a stage-4 job's, in this order:
 1. `doctor`, told the run's own `--prefix` and `--references`, kept as a record of what the node holds
-   (its exit code is about every plugin scProfile knows, not this run, so it is recorded, not fatal);
+   (scProfile's doctor exits 0 whenever it completes, missing plugins included; its exit is recorded, not fatal);
 2. one `run`, with every flag the stage declares, by scProfile's own name.
 
 Each runs as `python -m scprofile.cli <command>` with `PYTHONPATH` set to the declared checkout and
