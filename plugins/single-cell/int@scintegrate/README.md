@@ -32,7 +32,10 @@ recorded as `dropped` and is never removed from the view.
 
 Since scIntegrate 0.6.0, when `--drop-labels` withholds cells that have rows in the part's `X_pca`, the PCA
 is refit on the retained cells: `X_pca` is then in the layer as rewritten, NaN on the withheld rows
-(`keep_input_pca` keeps the part's). Since 0.7.0 the design's key column travels under the design's own
+(`keep_input_pca` keeps the part's). Both are scIntegrate's declared escapes (`describe` escapes[]): through the
+stage driver each is the user's decision (`decisions:` in plugin.yml), passed only as an answer recorded with
+who gave it (`--answer int.drop_labels=... --by`, `--answer int.keep_input_pca=true --by`), never as a request
+param; unanswered, nothing is withheld and the PCA is refitted. Since 0.7.0 the design's key column travels under the design's own
 name, last: the batch column itself when the key is `batch_key` (nothing added), added from the batch
 column when the part lacks it, the part's own kept when it equals the batch column. This adapter means
 state version 2, which is 0.7.0's.
