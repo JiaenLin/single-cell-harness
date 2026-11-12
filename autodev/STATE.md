@@ -84,6 +84,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
+- **THE NETWORK FAILED from about 2026-11-12T12:12Z to before 13:00Z** (name lookups failed): both Opus agents ended
+  with an API error. W056's wave A had pushed everything (so B and C started); W065's continuation had pushed nothing
+  and was relaunched. The job mirror hung on its connection and was restarted. No job was on the cluster.
 - **THE MACHINE WAS REBOOTED at about 2026-11-12T10:08Z (18:08 local).** The session restarted on the PI's CONTINUE.
   The session's scratch folder was EMPTIED: every agent clone and private environment, the saved briefs, the
   verifiers' notes, the headless tools, the pulled joint object and the incident's manifest are gone; a brief or a
@@ -100,11 +103,12 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the builder of **W056's WAVE A** (the design read D6); the CONTINUATION of **W065** (its
-  three changes are built at `0870714`: the host sets all 12 channels from the allocation, de starts 2 workers and
-  not the machine's count, abundance's agree reads 3 lines on three runs, the gate job is predicted again; one route
-  was left open, the plugin SELFTEST launch: the continuation routes every launch site through the one function).
-  NEXT for an Opus slot: W064's fix round 1; W065's lean verification; W063's set-up; W061's T and H.
+- **Running now (2 Opus), launched 13:05Z after the network failure:** the builder of **W056's WAVES B and C** (wave A
+  is pushed at `8809bca`: the declared set, the walk over it, the guess deleted; B: the stand-ins and a drift test
+  against each tool's own parser; C: both jobs regenerated with the predicted role list written first); the
+  CONTINUATION of **W065** (every launch site of a plugin's code through the one function).
+  NEXT for an Opus slot: W064's fix round 1; W065's lean verification; W056's one verification of A, B and C;
+  W063's set-up; W061's T and H.
 - **W058 is VERIFIED: PASS** (`0d963b9`, the verifier's docs pen `fe881a1`; GAP-C88 closed by measurement); it merges
   after W055, on which it is stacked.
 - **W055's GATE JOB RAN AND MISSED (6) (PBS 792123, 120 GB): three findings only the cluster could show.** (1) `de`'s
