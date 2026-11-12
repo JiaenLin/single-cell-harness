@@ -100,10 +100,14 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   claims in 8 files the first sweep had read; seven files and 47 undecided rows are left; then the second draw; two
   defects of the report page itself are GAP-C130). The second Fable slot: A6.2's measurement, when the first
   cohort's joint object (3.2 GB, being pulled into scratch with its checksum) has arrived.
-- **W058 is BUILT** (scProfile `0d963b9`; proof table 14 rows) and its BUILD JOB IS ON THE CLUSTER: **PBS 791942**
-  (two isolated groups' environments from their locks, each selftest; asks 1 h 30 min), after two preflights read OK
-  (791915 on the original file; 791924 on the dated copy whose recipe line was corrected). On AS PREDICTED: W055's
-  dev-suite job can read those environments.
+- **W058's BUILD JOB READ AS PREDICTED** (PBS 791942, sealed in about twenty minutes: both isolated groups built from
+  their locks, each selftest as predicted, the main group not rebuilt), after two preflights. W058 (`0d963b9`) waits for
+  its lean verification with the scProfile batch (item 5). GAP-C88 closes when it merges.
+- **W055's dev-suite job is NOT SUBMITTABLE as written** (found 2026-11-12T08:50Z, before any submission): its recipe
+  holds a placeholder for the run folder, submits from the harness's own folder, sends its log beside the tool and has
+  no CHECK_ONLY branch; no dev-suite job has gone through `gate.py` before. A small builder task after W055's verdict:
+  the job filed as a job of the first cohort's stage 4 (run folder under that project's runs, the log in it, the
+  environments' prefix passed, a preflight branch, a proof table), then its preflight and the run.
 - **QUEUED for an Opus slot, in this order** (the direction review of 2026-11-12, D-049; launch the next only when
   fewer than 2 Opus agents run; a failed check takes the next slots; every registration carries THE CLASS and THE
   SIZE, every hand-back a proof table checked by `proof.py`):
@@ -169,7 +173,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **791942**, W058's environment build (1 h 30 min). Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+- **On PBS:** nothing. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
   where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the
