@@ -139,7 +139,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   on a docs-only branch, then a seeded draw of 12 claims by ANOTHER agent writes the row (A2.2 +0.125 a repository);
   **D4** (R36's draw rule, design only); **D2** (R08: where a local UI reads a cluster run's state; what turns plain
   language into a request); **D3** (R09: a follow-up as a typed request fragment); **D5** (the maker's missing sites,
-  GAP-C128, after the grade wave's grades); **D6** (the driver's generated check) only if W056's re-check fails.
+  GAP-C128, with GAP-C131, after the grade wave's grades). **D6 (the driver's pins walk) is NEXT, ahead of all of these.**
 - **CLUSTER ONLY, when free:** the scale cohort's parts and a
   two-library stage-1 subset the hour W056 merges; a full stage-4 run of the first cohort at scProfile's `main` after
   W055 merges (for the PI's promotion).
@@ -173,8 +173,14 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **792052**, the PREFLIGHT of W056's regenerated subset job (ten minutes). THE scProfile CHECKOUT is one:
-  W055's gate job (at `c135097`, up to 2 h) goes before W056's subset (at `b5f646a`, 6 h). Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+- **On PBS:** nothing. **792052, the PREFLIGHT of W056's regenerated subset job, read MISSED (18) in two minutes**
+  (the first miss a preflight caught: hours of a 6 h job saved): the recipe, the record of the checkouts and the
+  no-git run all held on the cluster; all 18 misses are strings INSIDE files a param names read as paths (13 labels
+  of the annotation scope that hold a slash, 4 lines of its drawn tree, 1 registry cell naming a reference by key).
+  The walk decides what is a path by the look of a string. With the first verification's FAIL this is the wave's
+  SECOND failed check: no patch; **D6, a Fable design read of the driver's pins walk, takes the next Fable slot**
+  (what is a path is declared by the adapter, field by field, or it is not followed). The lean re-check, running, was
+  told. THE scProfile CHECKOUT is one: W055's gate job (at `c135097`) goes next. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
   where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the
