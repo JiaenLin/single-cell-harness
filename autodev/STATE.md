@@ -75,11 +75,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus):** the builder of **W054's fix round 2, the last** (Lab, from `f2ee369`; brief
-  `q_w054fix2.txt`): fix round 1's lean re-check found its main fix SOUND (no input makes the converter use the values
-  of a failed read; live `main` writes silent garbage, GAP-C127) and FAILED on one reason the round caused: records
-  holding none of the six fields were put where the deployed Studio says "left out over its budget", false on the
-  family's own ordinary object. Then a lean re-check, then Lab's deploy (D-045); nothing is deployed on a FAIL; a third
+- **Running now (2 Opus):** the lean RE-CHECK of **W054's fix round 2, the last** (Lab, head `fdb8888`: beside a
+  listed record the left-out list holds only what a cap or a long value left out, proved on a truth table of 25 record
+  states each opened in the deployed Studio, 0 false sentences; an LZF file now gets a true message with a way forward).
+  On PASS Lab deploys (D-045); nothing is deployed on a FAIL; a third
   failed verification sends the Lab-Studio contract to a root design review (RULES item 20). And the VERIFIER of
   **W056** (the driver's integration, built at `4438681`: the verified driver and W045 merged by hand onto `main`'s
   line, suite 962 with every parent's test ids present, the first cohort's chained request finished, its subset and
