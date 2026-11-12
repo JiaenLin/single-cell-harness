@@ -106,10 +106,13 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **791723**, W056's SUBSET of the first cohort's chained run (one request, four stages, 5 of 10 libraries;
-  asks 6 h; the driver submits each stage). On AS PREDICTED and a PASS: the full job `01_chain_w056.pbs` (10 h). Checkouts
-  on the cluster: the harness `4438681` (W056's head), and every tool at its `main` (scQC `8106f50`, scAnno `9fb561c`,
-  scIntegrate `2fc7a6c`, scProfile `b5f646a`).
+- **On PBS:** nothing. **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+  the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
+  checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
+  where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the
+  attacks list: the check script's project root one level too high; a subset predicted identical to a full-cohort run
+  though scQC pools libraries for its floors; the parts step dying on an object written by current anndata).
+  Checkouts on the cluster: the harness `4438681` (W056's head), every tool at its `main`.
 - **Merged 2026-11-12, the eleventh, both in one step: scIntegrate `2fc7a6c`** (W039 + W046: withheld cells out of the
   PCA, a wrong-result defect; the design's key column kept; names checked before anything runs; state version 2) **and
   the harness `1717eed`** (W052: the adapter at state version 2, the stand-in as strict as the tool, a mount whose
