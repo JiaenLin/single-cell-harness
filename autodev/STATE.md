@@ -84,12 +84,20 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus):** the builder of **W056's fix round 1** (the driver's integration: no git where a job runs,
-  the check script's root, the subset's prediction, an anndata-written object; a CHECK_ONLY branch asked of it mid-run;
-  brief `q_w056fix1.txt`); the builder of **W058** (scProfile, ROUTE R31: a lock for every group and platform, the
-  cluster build job with its preflight; stacked on W055's head `55a60d5`; brief `q_w058build.txt`).
+- **INCIDENT, 2026-11-12T07:15Z (15:15 local), repaired by 07:36Z (D-050):** a test written by W056's fix-round
+  builder linked every program on the PATH into its temp folder, and the suite's clean-up chmods every path of the
+  temp tree, following symlinks: 395 real programs on this machine went to mode 0644 (everything in Homebrew but git;
+  uv and its Python; the agent runtime's own binary). Every other agent's tools stopped (W057's check ended
+  incomplete) and one records push failed. The builder was stopped; nothing of that code was pushed. The coordinator
+  restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
+  links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
+  MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
+- **Running now (2 Opus):** the CONTINUATION of **W056's fix round 1** (brief `q_w056fix1b.txt`: the clean-up made
+  unable to follow a symlink and the no-git PATH rebuilt as wrapper scripts BEFORE any test; then the round as briefed,
+  with the CHECK_ONLY branch and a proof table); the builder of **W058** (scProfile, ROUTE R31; told the tools are back).
 - **Running now (2 Fable):** the design agent **D1** (the cohort-run skill, [waves/W059.md](waves/W059.md)); the
-  independent CHECKER of **W057** (Studio at `ece0be4`; on PASS the Studio deploys, D-045).
+  designer's WORDING ROUND on **W057** (four points from its check, which ended incomplete when node stopped; then a
+  Fable check completes what was not run: hand-made bundles, a phone's width, the ragged tables, the tests on `main`).
 - **QUEUED for an Opus slot, in this order** (the direction review of 2026-11-12, D-049; launch the next only when
   fewer than 2 Opus agents run; a failed check takes the next slots; every registration carries THE CLASS and THE
   SIZE, every hand-back a proof table checked by `proof.py`):

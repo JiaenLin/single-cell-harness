@@ -44,6 +44,11 @@ prediction's row shows its arithmetic from the tool's code. A field a deployed a
 field, each opened in the deployed build. `python3 -I <HARNESS>/setup/autodev/proof.py <wave file>` must print
 `PROOF: n rows, 0 incomplete` before you hand back; no verifier is launched without it. Then read
 <HARNESS>/autodev/ATTACKS.md (one screen: what the table does not catch) and run what applies.
+THE MACHINE is the PI's own and every agent shares it (added 2026-11-12, after one test set mode 0644 on 395 real
+programs): never chmod, move, delete or write anything outside your clone, your scratch folder and the files your
+brief names. A test's clean-up never follows a symlink (skip symlinks before any chmod or removal), and no test links
+a real program or a file outside its temp tree into a folder it later cleans up: a stand-in for "a program is
+absent" is a folder of small wrapper scripts. If a system tool fails with "permission denied", stop and report.
 THE WAVE FILE you append to is inside the harness repository and its leak guard reads it: write no site path into it (a dated
 scratch folder, a scheduler job id with its host suffix, a queue name). Say "a dated scratch folder on the cluster".
 GAPS: name at most 3 new gaps, and only ones that block a ROUTE item (<HARNESS>/autodev/ROUTE.md) or are a wrong
