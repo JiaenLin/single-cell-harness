@@ -112,7 +112,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   instances not ok, not 8 of 8. The gate did not pass: W055 and W058 (both verified) wait. **W065 is registered**
   ([waves/W065.md](waves/W065.md): the host gives every plugin its allocation; abundance's fields declared; the job
   predicted again) and takes the NEXT free Opus slot. THE DEV SUITE IS NOT SUBMITTED AGAIN BEFORE IT.
-- **Running now (1 Fable):** the independent CHECKER of **W062** (the Studio at `7e350a2`; on PASS it deploys, D-045).
+- **Running now (0 Fable).** Next in the Fable queue: D5 with GAP-C131 (the maker's missing sites; how the fixture tier
+  counts a partial), which the scProfile line needs after W065.
 - **scQC's `main` is `16f1c32` since 2026-11-12T10:45Z (D-052): a docs-only merge** (about 150 corrected lines from
   three sweeps; no executed file changed, so every gate at `8106f50` stands). It does NOT count for A2.2: each of three
   seeded draws found one false claim in twelve, each in a line no sweep had touched. **W060 is held**: seven Fable runs
@@ -192,11 +193,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   is told to be written again with gzip. Limits live: "over its budget" said of a record left out after a long value;
   "no run record" said when the only candidate could not be inspected (both Studio's wording: W057). GAP-C119, C125,
   C127 closed.
-- **Studio's `main` is `e475703` since 2026-11-12T08:41Z (D-051, the standing go D-045)**: W057 is live: the Run card
-  says what a bundle holds, for bundles written before and after W054 (no reason stated that the bundle does not
-  state; a record shown as "k of 6 fields"); a pseudobulk table whose rows do not match its header is refused with
-  its line and what to do, never offered with shifted counts. Limits live: Overview still says the counts can be
-  saved on a refused table (GAP-C129); four counted wording limits. Before it the same day: W053 (`8fb0d0a`), W051.
+- **Studio's `main` is `db78d6e` since 2026-11-12T11:00Z (D-053, the standing go D-045)**: W062 is live: the Studio says
+  of a fact only what its source lets it say. A bundle of today names NO integration method ("This bundle gives no
+  source for an integration method, so none is named here.") and cites nothing from a name; the pseudobulk sentence
+  appears only with a usable table; a log-normalised total is not called counts. Before it the same day: W057
+  (`e475703`: the Run card; a ragged table refused), W053, W051. Limits live, none false (four counted wordings).
 - **Merged 2026-11-12, the tenth: scProfile `b5f646a`** (the batch W035 + W040 + W047; last re-check PASS; DE gate 791483
   AS PREDICTED): the maker's prose verb; the host writes no run into a plugin; the site strings gone; a design record is
   read only in the maker's own form. No score moves by itself: it releases the plugin line.
