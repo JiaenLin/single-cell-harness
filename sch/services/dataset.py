@@ -357,6 +357,19 @@ def read_manifest(path) -> tuple:
     return list(r.fieldnames or []), list(r)
 
 
+def manifest_cell(row: dict, column: str) -> str:
+    """One cell of a manifest row AS THE STACK READS IT: its text, the white space around it stripped. The one place
+    the stack and the driver's walk read a cell, so a padded cell names, for both, the file without the padding
+    (autodev W056 D6 fix round)."""
+    return (row.get(column) or "").strip()
+
+
+def part_path(manifest, cell: str) -> Path:
+    """The file a parts cell names, as the stack opens it: absolute as written, else beside the manifest. No `~` and no
+    variable is expanded: `~/x` is `<the manifest's folder>/~/x` (autodev W056 D6 fix round)."""
+    return Path(cell) if Path(cell).is_absolute() else Path(manifest).parent / cell
+
+
 # ---------------------------------------------------------------------------- the service
 class Dataset(Service):
     """The observations, and the contributions folded over them.
@@ -439,7 +452,7 @@ class Dataset(Service):
                                    f"(columns: {', '.join(header)})")
             out, seen = [], set()
             for n, row in enumerate(rows, 1):
-                s, p = (row.get(self.scope) or "").strip(), (row.get(self.parts) or "").strip()
+                s, p = manifest_cell(row, self.scope), manifest_cell(row, self.parts)
                 if not s or not p:
                     raise DatasetError(f"{m}: row {n} leaves {self.scope!r} or {self.parts!r} empty")
                 if self.joiner in s:
@@ -448,7 +461,7 @@ class Dataset(Service):
                 if s in seen:
                     raise DatasetError(f"{m}: {self.scope} {s!r} names two parts; a scope is one part")
                 seen.add(s)
-                path = Path(p) if Path(p).is_absolute() else m.parent / p
+                path = part_path(m, p)
                 if path.is_dir() or (path.exists() and path.suffix != ".h5ad"):
                     raise DatasetError(f"{m}: the part of {s!r} is {path.name!r}; this kernel reads a "
                                        f"part's identities from an .h5ad, and no reader is written "

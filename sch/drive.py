@@ -428,12 +428,49 @@ def _param(params: dict, path: str) -> tuple:
     return (True, block[rest]) if isinstance(block, dict) and rest in block else (False, None)
 
 
-def _values(v, e: dict, what: str, base: Path | None = None, texts: list | None = None) -> list:
-    """The paths ONE DECLARED value names (autodev W056, D6): it is text - one path, or each piece where its entry
-    declares `list` - absolute or `~/` (the running user's home); a relative one is read beside the file naming it
-    where its reader says `relative_to: file` (`base`), and refused by name otherwise: its tool reads it from its own
-    working directory, where nothing the set holds is. None, false or empty names nothing. `texts`, when given, gets
-    each path's piece as written, in order (a job's header says an input as it is given, autodev W056 wave C)."""
+#: Who reads a samplesheet's parts column: the stack itself (services/dataset.py part_files), whose cell reader the walk
+#: shares (autodev W056 D6 fix round).
+PARTS_BY = "the request's schema (parts)"
+
+#: Where a relative value would be read from, said when it is refused (autodev W056 D6 fix round, item 4: the stage's
+#: run directory is where a tool starts, but a step it hands to a scheduler starts where that scheduler starts it).
+WHERE_RUN = ("its tool reads it from the folder it runs in (the stage's run directory; a step the tool hands to a "
+             "scheduler starts wherever the scheduler starts it), not from the request's, and what it names there "
+             "would not be pinned")
+
+
+def _misread(x: str, kind: str, how: str) -> str | None:
+    """Why one declared value's text would not name, for the reader that opens it, the file the walk would pin - or
+    None (autodev W056 D6 fix round). What the walk cannot mirror exactly is refused by name, never guessed."""
+    if x != x.strip():
+        return ("padded with white space: the stack strips a cell (services/dataset.py manifest_cell) and its tool's "
+                "reader is its own, so which file it opens is not what is written: write the cell with no space "
+                "around it") if how == "cell" else (
+            "padded with white space, which its tool is handed as written and may strip or keep, so the file it "
+            "opens is not certainly the one written: write the path with no space around it")
+    if x[:1] in "\"'":
+        return ("quoted: no shell reads a declared value, so the quotes are part of the path its reader is handed: "
+                "write it without them")
+    if re.match(r"[^/=\s]+=", x):
+        return ("the <name>=<file> form (a name, =, then a file), not one path: the walk pins one path and cannot pin "
+                "the file such a form names: give the file alone, absolute" + (" or ~/" if how == "word" else ""))
+    if how == "nested" and x.startswith("~"):
+        return ("a home (~) inside a file its tool reads, which that tool may or may not expand: write it absolute")
+    if kind == "file" and how != "cell" and len(x) > 1 and x.endswith("/"):
+        return "which ends in /, a folder's form, and it is declared a file: write the file's path without the /"
+    return None
+
+
+def _values(v, e: dict, what: str, base: Path | None = None, texts: list | None = None, how: str = "word") -> list:
+    """The paths ONE DECLARED value names, AS THE READER THAT OPENS IT READS IT (autodev W056, D6; its fix round): it is
+    text - one path, or each piece where its entry declares `list` - absolute, or relative and read beside the file
+    naming it where its reader says `relative_to: file` (`base`), and refused by name otherwise. `how` is that reader:
+    `word`, a param or an answer, handed to its tool as one word, as written but for a leading `~/`, the running user's
+    home (the driver's `_home`, which the walk mirrors); `cell`, a samplesheet cell as the stack reads it (no `~` and no
+    variable is expanded in a cell: by the stack, `services/dataset.py` part_path, nor by scQC); `nested`, a value
+    inside a declared file, read by its tool. A value a reader could take for another file is refused by name
+    (`_misread`). None, false or empty names nothing. `texts`, when given, gets each path's piece as written, in order
+    (a job's header says an input as it is given, autodev W056 wave C)."""
     if v is None or v is False or v == "":
         return []
     if not isinstance(v, str):
@@ -444,20 +481,27 @@ def _values(v, e: dict, what: str, base: Path | None = None, texts: list | None 
     for x in (v.split(e["list"]) if e.get("list") else [v]):
         if not x:
             continue
-        if texts is not None and (x.startswith(("/", "~/")) or (base is not None and not _climbs(x))):
+        why = _misread(x, str(e.get("kind") or "file"), how)
+        if why:
+            raise RequestError(f"{what}: {x!r} is {why}" if what.startswith("--answer") else f"{what} is {x!r}, {why}")
+        home = how == "word" and x.startswith("~/")
+        if texts is not None and (x.startswith("/") or home or (base is not None and not _climbs(x))):
             texts.append(x)
         if x.startswith("/"):
             out.append(Path(x))
-        elif x.startswith("~/"):
+        elif home:
             out.append(Path(os.path.expanduser(x)))
         elif base is not None and not _climbs(x):
             out.append(base / x)
         else:
             raise RequestError((f"{what}: {x!r} is a relative path" if what.startswith("--answer") else
                                 f"{what} is {x!r}, a relative path") + (" out of its tool's working directory" if
-                               _climbs(x) else "") + "; its tool reads it from its own working directory (the stage's "
-                               "run directory), not from the request's, and what it names there would not be pinned: "
-                               "write it absolute, or ~/")
+                               _climbs(x) else "") + (
+                " (a ~ in a cell is no home: neither the stack nor its tool expands it)" if how == "cell" and
+                x.startswith("~") else "") + (
+                " (no reader expands an environment variable: the driver, the stack and the tools are handed the "
+                "text as written)" if x.startswith("$") else "") + "; " + WHERE_RUN + ": write it absolute" + (
+                ", or ~/" if how == "word" else ""))
     return out
 
 
@@ -465,15 +509,22 @@ def _cells(f: Path, r: dict) -> list:
     """[(at, where, value)] of a file's declared columns or keys, as its tool reads them (autodev W056, D6): a table by
     its header, exactly (the delimiter its suffix says, else its header's: a TAB or a comma; a byte-order mark, CRLF
     and a quoted cell holding a newline read as the csv module reads them), each row `<column>[<row>]`, a column it
-    lacks an empty cell a row; a JSON or YAML document by its key paths (`[*]` for every element)."""
+    lacks an empty cell a row; a JSON or YAML document by its key paths (`[*]` for every element). THE DELIMITER IS READ
+    FROM THE TABLE, never from its suffix, as the stack's own reader reads it (services/dataset.py read_manifest: the
+    header's TABs against its commas, a tie refused; one column needs none); a declared column its header holds twice
+    is refused, since which one its tool reads is its own (autodev W056 D6 fix round)."""
     if r["format"] == "table":
         text = f.read_text(encoding="utf-8-sig")
-        sep = {".csv": ",", ".tsv": "\t", ".txt": "\t"}.get(f.suffix.lower())
-        if sep is None:
-            top = text.split("\n", 1)[0]
-            sep = "\t" if top.count("\t") >= top.count(",") else ","
-        rows = list(csv.reader(io.StringIO(text, newline=""), delimiter=sep))
+        top = text.split("\n", 1)[0]
+        tabs, commas = top.count("\t"), top.count(",")
+        if tabs and tabs == commas:
+            raise ValueError(f"its header has {tabs} TAB(s) and {commas} comma(s), so it parses two ways")
+        rows = list(csv.reader(io.StringIO(text, newline=""), delimiter="\t" if tabs > commas or not commas else ","))
         head = rows[0] if rows else []
+        twice = [a for a in r["at"] if head.count(a) > 1]
+        if twice:
+            raise ValueError(f"its header holds {', '.join(map(repr, twice))} more than once, and which one its tool "
+                             f"reads is the tool's own")
         return [(a, f"{a}[{i}]", (row[head.index(a)] if head.index(a) < len(row) else "") if a in head else "")
                 for a in r["at"] for i, row in enumerate(rows[1:], 1)]
     doc = json.loads(f.read_text(encoding="utf-8")) if r["format"] == "json" else yamlish.load(f)
@@ -510,7 +561,7 @@ def _named_by(out: list, role: str, f: Path, r: dict, by: str) -> list:
     counts = {a: [0, 0] for a in r["at"]}
     for a, where, v in got:
         texts: list = []
-        paths = _values(v, r["each"], f"{role} {f}: {where} ({by})", base, texts)
+        paths = _values(v, r["each"], f"{role} {f}: {where} ({by})", base, texts, "nested")
         counts[a][0] += bool(paths)
         counts[a][1] += 1
         for j, p in enumerate(paths):
@@ -519,10 +570,14 @@ def _named_by(out: list, role: str, f: Path, r: dict, by: str) -> list:
 
 
 def _sheet_cells(out: list, req: dict, sheet: Path, readers: list) -> list:
-    """The request's samplesheet as the stack reads it (services/dataset.py read_manifest): each cell of a column a
+    """The request's samplesheet AS THE STACK READS IT (services/dataset.py read_manifest, and manifest_cell for each
+    cell: one reader, so what the stack strips the walk strips; autodev W056 D6 fix round): each cell of a column a
     reader declares - the request's parts column, beside the sheet; the first stage's tool's columns, as its adapter
-    declares them - as `observations.<column>[<library>]`. A column declared twice is one role, read the stricter way."""
-    from .services.dataset import read_manifest
+    declares them - as `observations.<column>[<library>]`. A column declared twice is one role, read the stricter way.
+    A column only the stack reads is pinned as the stack opens it (part_path: stripped, beside the sheet, no `~`); a
+    column a tool reads is the cell as written, so one the stack would strip is refused by name: its tool's reader is
+    its own (scQC strips most of its columns and also reads `matrix` as written)."""
+    from .services.dataset import manifest_cell, read_manifest
     try:
         _head, rows = read_manifest(sheet)
     except Exception:                            # noqa: BLE001 - the stack's own init says what is wrong
@@ -534,14 +589,16 @@ def _sheet_cells(out: list, req: dict, sheet: Path, readers: list) -> list:
     reads = []
     for col, decls in cols.items():
         base = sheet.parent if all(r["relative_to"] == "file" for r, _b in decls) else None
+        stack = all(b == PARTS_BY for _r, b in decls)
         each = {**decls[0][0]["each"], "check": min((str(r["each"].get("check") or "pinned") for r, _b in decls),
                                                     key=CHECKS.index),
                 "names": next((r["each"]["names"] for r, _b in decls if r["each"].get("names")), None)}
         by, k = " and ".join(b for _r, b in decls), 0
         for i, row in enumerate(rows, 1):
-            lib = str(row.get(req["keys"]["sample"]) or i).strip()
+            lib = manifest_cell(row, req["keys"]["sample"]) or str(i)
             texts: list = []
-            paths = _values(row.get(col), each, f"observations {sheet}: {col}[{lib}] ({by})", base, texts)
+            paths = _values(manifest_cell(row, col) if stack else (row.get(col) or ""), each,
+                            f"observations {sheet}: {col}[{lib}] ({by})", base, texts, "cell")
             k += bool(paths)
             for j, f in enumerate(paths):
                 _item(out, f"observations.{col}[{lib}]" + (f"#{j}" if len(paths) > 1 else ""), f, each, by, texts[j],
@@ -582,7 +639,7 @@ def declared(req: dict, answers: dict | None = None) -> list:
               "the request")
     first = req["stages"][0] if req["stages"] else {}
     readers = [] if req.get("object") else [({"format": "table", "at": [str(req["parts"])], "relative_to": "file",
-                                               "each": {"kind": "file"}}, "the request's schema (parts)")]
+                                               "each": {"kind": "file"}}, PARTS_BY)]
     mine = ((first.get("files") or {}).get("observations") or {}).get("names")
     if mine and readers and first.get("reads") == "libraries":
         readers.append((mine, f"{first['plugin']} files.observations"))
@@ -2031,6 +2088,13 @@ def _said_declared(req: dict, answers, now: dict) -> list:
     return out
 
 
+def _only_here(here: list, now: dict, cap: int = 40) -> list:
+    """The PINS text's `only here:` lines: the first `cap` roles checked only where the job runs, and how many more
+    (autodev W056 D6 fix round, item 4: the list is capped, and the cap is said)."""
+    return [f"  only here: {k} {now[k]['path']}" for k in here[:cap]] + (
+        [f"  only here: {len(here) - cap} more, not listed ({len(here)} in all, each checked)"] if len(here) > cap else [])
+
+
 def expected(req: dict, file, answers: dict | None = None, checkouts=None, present: bool = False) -> tuple:
     """(holds, lines, differences): the run's set now - with the job's answers (autodev W049) - against
     the set a job was generated for (autodev W042 fix 2, C), content only (a copy keeps no modification
@@ -2065,7 +2129,7 @@ def expected(req: dict, file, answers: dict | None = None, checkouts=None, prese
     lines = [f"  pinned: {sum(1 for v in a.values() if v != 'absent')} of the run's files as the job was generated; "
              f"{len(here)} checked here only"]
     lines += _said_declared(req, answers, now)
-    lines += [f"  only here: {k} {now[k]['path']}" for k in here[:40]]
+    lines += _only_here(here, now)
     # a tool the job states (--tool, autodev W049 fix 1): its checkout here against the commit stated, clean
     where = "here" if checkouts is None else "at submission"
     lines += [f"  tool: {v['stated']} at {v['git']}, clean, as this job states ({k} {now[k]['path']})"

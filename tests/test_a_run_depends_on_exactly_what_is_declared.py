@@ -308,5 +308,156 @@ class AJobSaysWhatItRuns(M.TheClusterPath):
                 self.assertNotIn(", clean", head.split("scQC (01_qc):")[1].split("\n")[0])
 
 
+# ------------------------------------------------------------------------- a declared value, as its reader reads it
+NESTED = """  observations:
+    names: {format: table, relative_to: none, at: [lists],
+            each: {kind: file, names: {format: table, at: [path], relative_to: file, each: {kind: file}}}}
+"""
+
+
+def forms(tmp: Path, opener) -> list:
+    """THE ONE TEST's inputs (autodev W056 D6 fix round): [(reader, form, request, answers, role, what it must be)] -
+    for each declared reader, a value in each form a reader could read two ways (padding, `~`, a variable, a doubled
+    separator, quotes, a trailing `/`, the `<name>=<file>` form, a nested table's delimiter or repeated column). What
+    it must be is the file the value's OPENER opens (a Path), or the refusal's words (a tuple). `opener(sheet, cell)`
+    is the file the stack opens for a parts cell (services/dataset.py part_path of manifest_cell)."""
+    home, real = tmp / "home", tmp / "real"
+    (home / "h").mkdir(parents=True)
+    (real / "folder").mkdir(parents=True)
+    (real / "bc.csv").write_text("BC00001-1\n")
+    (real / "folder" / "inside.txt").write_text("in the folder\n")
+    for f in ("reg.tsv", "d.yml", "bc.csv", "L1.h5ad"):  # a home's file of each name: a home is never a cell's
+        (home / "h" / f).write_text(f"the home's {f}\n")
+    out, n = [], [0]
+
+    def case(reader, form, extra=None, parts=None, set_=None, answers=None, role=None, want=None, nested=None):
+        n[0] += 1
+        d = tmp / f"c{n[0]}"
+        c = cohort(d, "a", extra={k: (v(d) if callable(v) else v) for k, v in (extra or {}).items()})
+        (d / "~" / "h").mkdir(parents=True)      # what a cell's `~/h/L1.h5ad` names for the stack: beside the sheet
+        (d / "~" / "h" / "L1.h5ad").write_text("beside the sheet, in a folder named ~\n")
+        st = stages(c)
+        if nested is not None:                   # a copy of qc@scqc whose sheet column names a list of files
+            adapter = d / "qc_nested"
+            shutil.copytree(FAMILY / "qc@scqc", adapter, ignore=shutil.ignore_patterns("__pycache__"))
+            y = adapter / "plugin.yml"
+            t = y.read_text()
+            i, j = t.index("  observations:\n"), t.index("ambient_metrics]}\n") + len("ambient_metrics]}\n")
+            y.write_text(t[:i] + NESTED + t[j:])
+            st[0]["plugin"] = str(adapter)
+            (d / "inner.tsv").write_text("the file a list names\n")
+            (d / "list.tsv").write_text(nested.format(d=d))
+        for stage, path, v in (set_ or []):
+            put(st[stage]["params"], path, v(d) if callable(v) else v)
+        req = request(c, stages=st, **({"parts": parts} if parts else {}))
+        w = want(d, c) if callable(want) else want
+        out.append((reader, form, req, answers or {}, role, w))
+
+    sheet = lambda d: d / "samplesheet.tsv"   # noqa: E731
+    lib1 = lambda d: d / "libs" / "L1.h5ad"   # noqa: E731
+    parts = "observations.part_file[L1]"
+    # 1. the request's parts column, which the stack alone reads: pinned as the stack opens it
+    for form, cell in (("padded", lambda d: f" {lib1(d)} "), ("~/ (no home in a cell)", "~/h/L1.h5ad"),
+                       ("a doubled /", lambda d: f"{d}//libs/L1.h5ad"), ("quoted", lambda d: f'"{lib1(d)}"'),
+                       ("a / after the file", lambda d: f"{lib1(d)}/")):
+        cellf = cell if callable(cell) else (lambda d, v=cell: v)
+        case("the parts column (the stack)", form, extra={"part_file": cellf}, parts="part_file", role=parts,
+             want=lambda d, c, f=cellf: opener(sheet(d), f(d) if not f(d).startswith('"') else f(d)[1:-1]))
+    # 2. a column the first stage's tool reads (qc@scqc files.observations): as written, or refused
+    bc = "observations.cellbender_barcodes[L1]"
+    for form, cell, want in (
+            ("padded", f"{real}/bc.csv ", ("cellbender_barcodes[L1]", "padded with white space", "no space around it")),
+            ("~/", "~/h/bc.csv", ("cellbender_barcodes[L1]", "a relative path", "is no home")),
+            ("an environment variable", "$HOME/h/bc.csv", ("cellbender_barcodes[L1]", "environment variable")),
+            ("a doubled /", f"{real}//bc.csv", real / "bc.csv"), ("quoted", f'"{real}/bc.csv"', real / "bc.csv")):
+        case("a tool's column (scQC)", form, extra={"cellbender_barcodes": cell}, role=bc, want=want)
+    case("a tool's column (scQC)", "a / after a folder", extra={"aligner_cells": f"{real}/folder/"},
+         role="observations.aligner_cells[L1]", want=real / "folder")
+    # 3. a declared param, handed to its tool as one word (the driver's _home expands a leading ~/)
+    reg = "01_qc.registry"
+    for form, v, want in (
+            ("padded", lambda d: f"{d}/registry.tsv ", ("(qc@scqc): registry is", "padded with white space")),
+            ("~/", "~/h/reg.tsv", lambda d, c: Path(D._home("~/h/reg.tsv"))),
+            ("an environment variable", "$HOME/h/reg.tsv", ("registry", "environment variable")),
+            ("quoted", lambda d: f'"{d}/registry.tsv"', ("registry", "quoted")),
+            ("a / after the file", lambda d: f"{d}/registry.tsv/", ("registry", "ends in /")),
+            ("a doubled /", lambda d: f"{d}//registry.tsv", lambda d, c: d / "registry.tsv")):
+        case("a param (qc registry)", form, set_=[(0, "registry", v)], role=reg, want=want)
+    case("a param (prof run.section)", "the <name>=<file> form", set_=[(-1, "run.section", f"de={real}/bc.csv")],
+         role="04_prof.run.section", want=("run.section", "the <name>=<file> form"))
+    # 4. an answer: its decision's param's value, a word as a param is
+    for form, v, want in (("padded", f"{home}/h/d.yml ", ("--answer qc.decisions", "padded with white space")),
+                          ("~/", "~/h/d.yml", lambda d, c: Path(D._home("~/h/d.yml")))):
+        case("an answer (qc.decisions)", form, answers={"qc.decisions": v}, role="answer[qc.decisions]", want=want)
+    # 5. a declared nested reader: a list of files a sheet column names, read by its tool
+    deep = "observations.lists[L1]>path[1]"
+    for form, text, want in (
+            ("padded", "path\tnote\n inner.tsv\tx\n", ("lists[L1]", ": path[1]", "padded with white space")),
+            ("~/", "path\tnote\n~/h/bc.csv\tx\n", ("lists[L1]", ": path[1]", "a home (~)")),
+            ("commas under a .tsv name", "path,note\ninner.tsv,x\n", lambda d, c: d / "inner.tsv"),
+            ("its column twice", "path\tpath\ninner.tsv\t{d}/libs/L2.h5ad\n", ("lists", "more than once"))):
+        case("a nested reader (a list a cell names)", form, extra={"lists": lambda d: d / "list.tsv"}, nested=text,
+             role=deep, want=want)
+    return out
+
+
+def judge(reader, form, req, answers, role, want) -> tuple:
+    """(verdict, line): `pinned` when the role's file is the file its reader opens and an edit of that file is seen;
+    `refused` with the refusal; `another file`, `no role` or `unseen` otherwise."""
+    try:
+        r = D.load(str(req))
+        walk = D.run_inputs(r, answers)
+    except D.RequestError as e:
+        return "refused", str(e)
+    if role not in walk:
+        return "no role", f"{role} is not in the set"
+    got = walk[role]["path"]
+    if isinstance(want, tuple):
+        return "pinned, not refused", f"{role} {got}"
+    if not (os.path.exists(got) and os.path.samefile(got, want)):
+        return "another file", f"{role} pinned {got}; its reader opens {want}"
+    mine = lambda w: {k: v for k, v in D.flat(w).items() if k == role or k.startswith(role + "/")}  # noqa: E731
+    a = mine(walk)                               # a folder's files are its role's too
+    f = Path(want) / "inside.txt" if Path(want).is_dir() else Path(want)
+    f.chmod(0o644)
+    f.write_bytes(f.read_bytes() + b"edited between two steps\n")
+    b = mine(D.run_inputs(r, answers))
+    return ("pinned", f"{role} {got}: the file opened; the edit seen") if a != b else (
+        "unseen", f"{role} {got}: the file opened, and the edit is not seen")
+
+
+class EachDeclaredValueIsReadAsItsReaderReadsIt(M._Base):
+    def test_each_declared_reader_and_form_pins_the_file_opened_or_is_refused_by_name(self):
+        """THE ONE TEST of the class (autodev W056 D6 fix round): every declared value the walk takes is read as the
+        component that opens it reads it - a samplesheet cell through the stack's own reader (services/dataset.py
+        read_manifest, manifest_cell), a param or an answer as the word its tool is handed (`_home`) - and a value a
+        reader would take for another file is refused by name. For each reader and form: the file pinned is the file
+        opened and an edit of it is seen, or the walk refuses it, naming it."""
+        from sch.services.dataset import manifest_cell, part_path
+        old = os.environ.get("HOME")
+        os.environ["HOME"] = str(self.tmp / "home")
+        self.addCleanup(lambda: os.environ.pop("HOME") if old is None else os.environ.__setitem__("HOME", old))
+        got = []
+        for reader, form, req, answers, role, want in forms(
+                self.tmp, lambda sheet, cell: part_path(sheet, manifest_cell({"c": cell}, "c"))):
+            verdict, line = judge(reader, form, req, answers, role, want)
+            ok = verdict == ("refused" if isinstance(want, tuple) else "pinned") and (
+                not isinstance(want, tuple) or all(w in line for w in want))
+            got += [] if ok else [f"{reader}, {form}: {verdict}: {line}"]
+        self.assertEqual(got, [], "\n".join(got))
+        c = cohort(self.tmp / "plan", "a", extra={"cellbender_barcodes": f"{self.tmp}/real/bc.csv "})
+        rc, text = cli("plan", "--request", str(request(c)))
+        self.assertEqual(rc, 2, text)
+        self.assertIn("cellbender_barcodes[L1] (qc@scqc files.observations) is", text)
+        self.assertIn("padded with white space", text)
+
+    def test_the_pins_text_says_how_many_only_here_lines_it_leaves_out(self):
+        """Item 4 (autodev W056 D6 fix round): the PINS text's `only here:` list is capped at 40, and says the rest."""
+        now = {f"r{i:02d}": {"path": f"/x/{i}"} for i in range(43)}
+        lines = D._only_here(sorted(now), now)
+        self.assertEqual((len(lines), lines[-1]), (41, "  only here: 3 more, not listed (43 in all, each checked)"))
+        self.assertEqual(D._only_here(sorted(now)[:40], now)[-1], "  only here: r39 /x/39", "40 or fewer: no count")
+
+
 if __name__ == "__main__":
     unittest.main()

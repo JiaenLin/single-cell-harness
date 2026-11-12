@@ -61,7 +61,8 @@ runs_upstream:
     - {param: cellbender, tool: CellBender, assays: [snrna]}
 # WHAT scQC OPENS, DECLARED (autodev W056, design read D6; PLUGIN_FORMAT `files:`): a run depends on exactly these and
 # on the request's and the site's own files; every other flag is text (scqc_cli.py:605-647 parses them and opens
-# none). Each entry cites scQC 8106f50's line that opens it, from its working directory, the stage's run directory.
+# none). Each entry cites scQC 8106f50's line that opens it, from the folder it runs in (the stage's run directory; a
+# step scQC hands to PBS starts where PBS starts it: engine/executor.py:405 writes a `cd` only for a task that names one).
 files:
   scqc: {kind: checkout}                   # scqc_cli.py, which run.py runs (:135, :148)
   registry: {kind: file}                   # modules/00_ingest/ingest.py:193 reads it; its path column (:198) is never
@@ -72,7 +73,8 @@ files:
   cellbender: {kind: path, check: present} # adapters/cellbender.py:755
   celescope: {kind: path, check: present}  # the align route: adapters/celescope.py:1112
   cellranger: {kind: path, check: present} # the align route: adapters/cellranger.py:841
-  # the samplesheet's cells scQC opens, each as written, from its working directory: matrix (ingest.py:162),
+  # the samplesheet's cells scQC opens, from the folder it runs in; stripped at every read but matrix and fastq_r1,
+  # which its planner also reads as written (engine/graph.py:52, :112, :119), so the walk refuses a padded cell: matrix (ingest.py:162),
   # ambient_h5 (engine/steps.py:496, :508), aligner_cells (steps.py:788), cellbender_barcodes (adapters/
   # cellbender.py:1284, steps.py:793), cellreads_stats (adapters/nuclear_fraction.py:114), fastq_r1 (the align
   # route: adapters/celescope.py:1049), ambient_log and ambient_metrics (steps.py:655). `reference` is a registry
