@@ -75,11 +75,14 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus):** the lean RE-CHECK of **W054's fix round 1** (Lab, head `f2ee369`: one guard every value
-  read goes through, so a failed read is never used as values, GAP-C127; a found-but-unlisted record counted where
-  the deployed Studio reads; suite 512 of 512; on PASS Lab deploys, D-045; nothing is deployed on a FAIL); the
-  builder of **W056** (the driver's integration, [waves/W056.md](waves/W056.md), launched 2026-11-12T04:30Z). No Fable
-  agent is running.
+- **Running now (2 Opus):** the builder of **W054's fix round 2, the last** (Lab, from `f2ee369`; brief
+  `q_w054fix2.txt`): fix round 1's lean re-check found its main fix SOUND (no input makes the converter use the values
+  of a failed read; live `main` writes silent garbage, GAP-C127) and FAILED on one reason the round caused: records
+  holding none of the six fields were put where the deployed Studio says "left out over its budget", false on the
+  family's own ordinary object. Then a lean re-check, then Lab's deploy (D-045); nothing is deployed on a FAIL; a third
+  failed verification sends the Lab-Studio contract to a root design review (RULES item 20). And the builder of
+  **W056** (the driver's integration, [waves/W056.md](waves/W056.md), launched 2026-11-12T04:30Z; its base `133589d`
+  is now on `main`). No Fable agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
   0. **W055's second half** (scProfile, `abundance` through the maker; brief `q_w055cont.txt`, the first builder's
      clone kept). The first half is pushed at `2e5b95a`: the blind grade, a `source` stage and verb in the maker (three
@@ -89,9 +92,6 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
      name), an in-run refusal still reading ok, the job's prediction. Then its verification and the dev-suite job.
   0b. After W054's lean re-check: Lab's deploy, reported, not asked (D-045). After it: Studio's
       Run-card sentences brought in line with what a bundle now carries (a Fable designer's small pass, then a deploy).
-  1. **W052 PASSED its lean re-check** (the harness at `133589d`). Waiting only for the cluster: its subset 791374, then
-     the full job (4 h); on AS PREDICTED both mains move in one step (scIntegrate `2fc7a6c` first, then the harness by
-     its train's three guards), A3.1 +0.1; the stage-3 question goes into the day's report.
   5. **W050's verification** (scAnno `f456431`): brief `q_w050verify.txt`.
   6. **scIntegrate's installer** (GAP-C116), for A1.3: brief `q_w046fix2.txt`, clone `W046g-scIntegrate`.
 - **Studio's `main` is `8fb0d0a` since 2026-11-12T01:39Z (D-045)**: W053 is live: an untested gene carries no p in a saved
@@ -108,13 +108,20 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **791471**, the FULL first-cohort stage 3 through the harness at W052's fix head `133589d` and scIntegrate
-  `2fc7a6c` (asks 4 h; on AS PREDICTED both mains move in one step). Checkouts on the cluster: the harness `133589d`;
-  scQC at `main`; scAnno `f456431`; scIntegrate `2fc7a6c`; scProfile `5c1a3ff` (its `main` is one docs commit ahead).
+- **On PBS:** nothing. Checkouts on the cluster: the harness `133589d` (its tree is `main`'s runtime tree); scQC at
+  `main`; scAnno `f456431`; scIntegrate `2fc7a6c` (= `main`); scProfile `5c1a3ff` (its `main` is one docs commit ahead).
+- **Merged 2026-11-12, the eleventh, both in one step: scIntegrate `2fc7a6c`** (W039 + W046: withheld cells out of the
+  PCA, a wrong-result defect; the design's key column kept; names checked before anything runs; state version 2) **and
+  the harness `1717eed`** (W052: the adapter at state version 2, the stand-in as strict as the tool, a mount whose
+  recorded version differs refused on reload). Gate: PBS 791471, the first cohort's full stage 3 through the harness at
+  both heads, SEALED and AS PREDICTED; the merged tree's runtime files equal the gated head's; suite 891 OK.
+  **A3.1 is 0.61.** GAP-C102, C109 and C123 closed. FOR THE DAY'S REPORT (the PI's, a promotion): the first cohort's
+  promoted stage 3 predates W039; its embeddings move by design at `2fc7a6c` (X_pca refit without the withheld cells);
+  recommendation: re-promote from a run at `main`, numbers in job 791471's record.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
-- **The tally: 7.79 of 20** (mean 0.389; 0.292 this morning, 0.271 at audit pass 0004): A1.1 5/8, A1.2 7/10, A1.3 3/5, A2.1 3/4, A3.2 3/4, A3.1 0.51, A6.2 1/2 moved today. Nine tests are still under 0.5: A2.2, A2.3, A3.4, A4.1, A4.2, A4.3, A5.2, A6.1, A7.1. Counting on a merge, not yet on `main`: A3.1 +0.1 for scIntegrate.
+- **The tally: 7.89 of 20** (mean 0.395; 7.79 on the evening of 2026-11-11, 0.271 at audit pass 0004): A3.1 0.61 moved on 2026-11-12 (scIntegrate's merge); A1.1 5/8, A1.2 7/10, A1.3 3/5, A2.1 3/4, A3.2 3/4, A6.2 1/2 the day before. Nine tests are still under 0.5: A2.2, A2.3, A3.4, A4.1, A4.2, A4.3, A5.2, A6.1, A7.1.
 - **Merged 2026-11-11, five batches before those:** scIntegrate `b148030` (W012 + W025), scProfile `6f970e5` (W013 + W032 + W023), scQC `46ffe90`
   (W020), scAnno `779fd08` (W038), and **the harness `a677e8f` (W029 + W034)**: its train's three jobs all AS PREDICTED at the
   merged commit (stages 1, 2 and 3; PBS 788583, 788586, 788587), the merged tree's runtime files equal the gated head's, the
@@ -125,11 +132,6 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Merged 2026-11-11, the eighth: scQC `de62f78`** (W043: a failed removal audit stops the run before any object is written;
   its integrity checks are never acceptable by name). Both cohorts' promoted stage-1 runs reproduced IDENTICAL at the gated
   commit (PBS 789673, 789675). GAP-119, a wrong-result defect, is closed. scQC's leak-clean half of R13 is still open.
-- **Held to merge together (D-033, D-034):** **W039** (scIntegrate; verified PASS, its gate 789561 AS PREDICTED) moves
-  numbers at state version 1. W046's verifier measured that the harness cannot serve a stale view (a mismatch refuses), so
-  nothing wrong can be served; but the contract needs version 2 in the tool AND in the harness's adapter. Order: W046's
-  fix round, its re-check and jobs; a small harness wave (GAP-C109: the adapter at 2, the stand-in as strict as the tool);
-  the first cohort's stage 3 through the harness at both new heads; both mains in one step. The PI's stage-3 question follows.
 - **Held (D-035): the driver, W041 + W042.** Its last re-check failed on ONE reason and judged all eight of the builder's
   left items limits; five of the first verifier's six reasons are closed. W049 carries the residue, then one verification
   of the whole batch. 
