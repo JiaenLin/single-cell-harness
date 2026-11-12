@@ -55,7 +55,8 @@ everything downstream knows when one does.
 > `env/` and `references/` there), the packages and executables a tool finds through its
 > interpreter or on PATH, and whatever a tool opens that no declaration names (an environment variable, a
 > default outside its checkout, a file derived from a named one, a child process's reads): each adapter's
-> `files:` cites the line of its tool that opens each entry. A job
+> `files:` cites the line of its tool that opens each entry, and a drift test holds it to what the tool
+> says it opens (the flags its parser types a path; scQC's planner's columns; each stand-in's `describe`). A job
 > states the commit of each tool it expects (`sch run --request FILE --job JOB --tool scQC=COMMIT`, 40 hex,
 > by the adapter's tool name): that commit and a clean work tree stand for the files of the param naming
 > the tool too; without `--tool` a checkout, and the param's files, are pinned as they are where the job

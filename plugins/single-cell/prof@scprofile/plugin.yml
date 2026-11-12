@@ -64,6 +64,12 @@ files:
   run.reuse_from: {kind: dir, check: present}   # earlier runs: scprofile/cli.py:490, landscape.py:143; licences are
                                                 # written into them (licence.py:352)
   run.search: {kind: dir, check: present, list: ","}   # scprofile/cli.py:424, provenance.py:326 (is_dir, resolved)
+  run.section: {kind: file}                # a written section (Markdown) carried into the run and rendered: read at
+                                           # scprofile/cli.py:3711 (_carry_section :3679, from :1465), typed a path at
+                                           # :4435. Found by the drift test (autodev W056 wave B). Its `<plugin>=<file>`
+                                           # form (:3698-3700) is no path: refused at the plan as not absolute
+  # Text, decided (wave B): `params` is inline JSON (cli.py:660); a key inside it naming a folder (the velocity
+  # kernel's spliced_source, kernels/velocity.py:136, :1341) is seen by no declaration: a stated limit
 wraps:
   tool: scProfile
   version: "0.1.0"
