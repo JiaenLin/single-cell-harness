@@ -175,8 +175,9 @@ def run(a):
             criteria = ["fail_not_" + cell_col, "fail_umi_floor", "fail_gene_floor",
                         "fail_mito_ceiling", "fail_doublet", "fail_mito_nf"]
             # scQC's two columns for a library's object: a supplied denoised `ambient_h5`, or the
-            # `matrix` it ingests itself (engine/graph.py); one of them, as scQC reads them
-            bcs = barcodes(r.get("ambient_h5") or r["matrix"])
+            # `matrix` it ingests itself (engine/graph.py); one of them, AS scQC READS EACH (autodev W056 D6 fix
+            # round, ATTACKS 1): `ambient_h5` stripped (graph.py:132), `matrix` as written (graph.py:119)
+            bcs = barcodes(str(r.get("ambient_h5") or "").strip() or str(r["matrix"]))
             if MODE == "short":
                 bcs = bcs[1:]
             with open(res / "tables" / f"{sample}.percell.csv", "w", newline="") as fh:

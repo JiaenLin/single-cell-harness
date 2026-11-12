@@ -255,6 +255,43 @@ def planner_columns(root: Path) -> dict:
     return {c: (f"engine/graph.py:{v}" if isinstance(v, int) else f"engine/{v}") for c, v in seen.items()}
 
 
+#: HOW scQC 8106f50 TAKES EACH DECLARED SAMPLESHEET CELL (autodev W056 D6 fix round, ATTACKS 1), read from its planner and
+#: ingest: True where every read of the column by name strips the cell, else the lines reading it as written. The
+#: stand-in reads each column it opens by name the same way (always tested), and this is scQC's own code (under
+#: SCH_REAL_TOOLS). The walk refuses a padded cell of any column a tool reads, so this ties the stand-in, not the walk.
+SCQC_CELLS = {"matrix": "engine/graph.py:52, engine/graph.py:119", "fastq_r1": "engine/graph.py:52, engine/graph.py:112",
+              "ambient_h5": True,
+              "aligner_cells": True, "cellbender_barcodes": True, "cellreads_stats": True, "ambient_log": True,
+              "ambient_metrics": True}
+
+
+def cell_reads(files: dict, columns) -> dict:
+    """{column: True, or the lines reading it as written} - how a reader takes each named samplesheet cell: a read
+    (`.get("<c>")` or `["<c>"]` of `row`, `r` or `by_sample[...]`) inside the receiver of a `.strip()` is stripped
+    (`str(row.get("c") or "").strip()`); any other (`Path(str(row.get("c")))`) is as written. `files`: {label: src}."""
+    def row(b):
+        return (isinstance(b, ast.Name) and b.id in ("row", "r")) or (
+            isinstance(b, ast.Subscript) and isinstance(b.value, ast.Name) and b.value.id == "by_sample")
+    got: dict = {}
+    for label, src in files.items():
+        tree = ast.parse(src)
+        inside = {id(m) for n in ast.walk(tree) if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "strip"
+                  for m in ast.walk(n.func.value)}
+        for n in ast.walk(tree):
+            c = None
+            if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "get" and row(n.func.value) and n.args and \
+                    isinstance(n.args[0], ast.Constant):
+                c = n.args[0].value
+            elif isinstance(n, ast.Subscript) and row(n.value) and isinstance(n.slice, ast.Constant):
+                c = n.slice.value
+            if c in columns:
+                got.setdefault(c, [])
+                if id(n) not in inside:
+                    got[c].append(f"{label}:{n.lineno}")
+    return {c: True if not v else ", ".join(sorted(set(v), key=lambda w: (w.split(":")[0], int(w.split(":")[1]))))
+            for c, v in got.items()}
+
+
 def stand_in_side(tool: str, src: str | None = None) -> dict:
     """What a stand-in says it opens: its `describe` files, plus every flag its parser types a path."""
     f = described(tool)
@@ -431,6 +468,25 @@ class TheDriftTest(unittest.TestCase):
         self.assertEqual(len(got), 1, got)
         self.assertIn("anno@scanno: annotate --gene-key: the scAnno stand-in opens it (path, its parser, type=Path",
                       got[0])
+
+    def test_the_stand_in_takes_each_declared_cell_as_scqc_does_padded_or_not(self):
+        """ATTACKS 1 (autodev W056 D6 fix round): the scQC stand-in died on a padded `ambient_h5` cell that scQC strips,
+        which hid a padded cell the walk pinned as an absent file. Each declared column the stand-in reads by name is
+        read as scQC reads it: stripped, or as written (SCQC_CELLS); and SCQC_CELLS is scQC's own code."""
+        cols = [c for c in manifests()["qc@scqc"]["files"]["observations"]["names"]["at"]]
+        self.assertEqual(sorted(SCQC_CELLS), sorted(cols), "a declared column whose cell reading is not decided")
+        mine = cell_reads({"fake_scqc.py": STAND_INS["scQC"][2].read_text()}, cols)
+        self.assertTrue(mine, "the stand-in reads no declared column by name: nothing compared")
+        want = {c: (True if SCQC_CELLS[c] is True else "as written") for c in mine}
+        self.assertEqual({c: (True if v is True else "as written") for c, v in mine.items()}, want,
+                         f"the stand-in takes a declared cell otherwise than scQC: {mine} against {SCQC_CELLS}")
+        old = STAND_INS["scQC"][2].read_text().replace('str(r.get("ambient_h5") or "").strip()', 'r.get("ambient_h5")')
+        self.assertEqual(cell_reads({"fake_scqc.py": old}, cols).get("ambient_h5", True) is True, False,
+                         "the reader does not see a cell read as written")
+        if (REAL / "scQC" / "engine" / "graph.py").is_file():
+            real = cell_reads({"engine/graph.py": (REAL / "scQC" / "engine" / "graph.py").read_text(),
+                               "ingest.py": (REAL / "scQC" / "modules" / "00_ingest" / "ingest.py").read_text()}, cols)
+            self.assertEqual({c: real.get(c, True) for c in cols}, SCQC_CELLS, "scQC takes a declared cell otherwise")
 
     def test_each_text_column_is_one_scqc_reads_and_none_is_declared(self):
         if not (REAL / "scQC" / "engine" / "graph.py").is_file():
