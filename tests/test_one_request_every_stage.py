@@ -606,14 +606,22 @@ class TheClusterPath(_Base):
         sub.mkdir(exist_ok=True)
         (sub / "qsub").write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "{rec}"\necho 1.test\n')
         (sub / "qsub").chmod(0o755)
+        import shlex
+        from sch.drive import RECIPE_PROGRAMS
+        for n in RECIPE_PROGRAMS:                # W056 fix 1, amendment: where a job is submitted ONLY the recipe's
+            x = shutil.which(n)                  # list is on the PATH - one small wrapper each, never a link
+            if x and not (sub / n).exists():
+                (sub / n).write_text(f'#!/bin/sh\nexec {shlex.quote(os.path.abspath(x))} "$@"\n')
+                (sub / n).chmod(0o755)
         script = "set -e\n" + "\n".join(gate.recipe_of(f.read_text(), f.name, []))
         for _ in range(3):                       # two runs of one job in one second would share a run key
             rec.unlink(missing_ok=True)
-            p = subprocess.run(["bash", "-c", script], capture_output=True, text=True,
-                               env=dict(os.environ, PATH=f"{sub}{os.pathsep}{os.environ['PATH']}"))
+            p = subprocess.run([shutil.which("bash"), "-c", script], capture_output=True, text=True,
+                               env=dict(os.environ, PATH=str(sub)))
             if "cannot be made" not in p.stderr:
                 break
             time.sleep(1.1)
+        self.assertNotIn("command not found", p.stdout + p.stderr, "the recipe ran a command not on RECIPE_PROGRAMS")
         if p.returncode or not rec.exists():
             return p, None
         argv = rec.read_text().splitlines()
@@ -645,7 +653,8 @@ class TheClusterPath(_Base):
         recipe = text.split("# SUBMIT-BEGIN\n")[1].split("# SUBMIT-END")[0]
         self.assertTrue(all(ln.startswith("#   ") for ln in recipe.splitlines()), recipe)
         self.assertIn("qsub -o \"$RUNDIR/logs/\"", recipe)
-        self.assertIn('-m sch checkouts --request', recipe)        # W056 fix 1: what needs git, read where git is
+        self.assertIn("ck_made && echo CHECKOUTS-CLEAN", recipe)   # W056 fix 1: what needs git, read where git is,
+        self.assertNotIn("-m sch", recipe)                         # by the recipe's own shell (the amendment)
         self.assertIn("CHECKOUTS_SHA256=$CK", recipe)
         body = text.split("# SUBMIT-END")[1]
         self.assertEqual([ln for ln in body.splitlines() if "git -C" in ln or "rev-parse" in ln or "git status" in ln],

@@ -82,12 +82,19 @@ SIZE_WORDS = ("ncpus", "mem", "walltime", "select")
 #: interpreter, where run directories go (relative to the job's own directory), and shell lines.
 JOB_SITE = ("harness", "python", "runs", "setup", "submit", "commit_file")
 #: A GENERATED JOB NEVER RUNS GIT WHERE IT RUNS (autodev W056 fix 1, R0): what needs git - a checkout at the commit
-#: the job expects, with no tracked change - is read by the job's SUBMIT recipe where it is submitted (`sch
-#: checkouts`, where git is) into the run folder as CHECKOUTS; the job refuses that record missing, changed after
-#: submission (its sha256 passes with qsub -v), about another run or job, or naming another commit. Where the job
-#: runs it compares what needs no git: the file every checkout carries holding its commit, when the site declares one
-#: (job.yml `commit_file`, a site fact). A site declaring none: each such check is said as not made, and why.
-CHECKOUTS = "CHECKOUTS.json"
+#: the job expects, with no tracked change - is read by the job's SUBMIT recipe where it is submitted, by its own
+#: shell lines and git (RECIPE_PROGRAMS: no python runs there), into the run folder as CHECKOUTS; the job refuses that
+#: record missing, changed after submission (its sha256 passes with qsub -v), about another run or job, or naming
+#: another commit. Where the job runs it compares what needs no git: the file every checkout carries holding its
+#: commit, when the site declares one (job.yml `commit_file`, a site fact). A site declaring none: each such check is
+#: said as not made, and why. The record is one line a field or a checkout, its fields separated by a TAB (the
+#: recipe refuses a value holding a TAB or a newline before it writes one): `record sch-checkouts-1`, `rundir`, `job`,
+#: `pins` (the job's pins digest), `commit_file` (`-`: none), `made_at`, then `checkout ROLE TOP COMMIT TRACKED
+#: COMMIT_FILE` for the harness (ROLE `harness`) and each tool - COMMIT a commit, `-` (not a git checkout) or
+#: `absent`; TRACKED the digest of its tracked changes as `_git_state` reads them, `clean` for none (`-` outside git);
+#: COMMIT_FILE the file's content, `-` where the site declares none.
+CHECKOUTS = "CHECKOUTS.tsv"
+RECORD = "sch-checkouts-1"
 #: What a site's job.yml must declare; the rest is optional.
 JOB_REQUIRED = ("harness", "python", "runs")
 #: An upstream step is its tool's name and its version, nothing else (autodev W042 fix 2, A): a command
@@ -359,8 +366,14 @@ def _checkout_state(got: Path, d: Path) -> dict:
     outside git, its files' digest."""
     if not got.exists():
         return {"path": str(got), "absent": True}
-    return _git_state(d) or ({"path": str(d), "git": None, "tracked_changes": _tree_digest(d)} if got.is_file() else
-                             {"path": str(d), "git": None, "tracked_changes": "the directory itself, walked as the param"})
+    return _git_state(d) or _nogit_state(got, d)
+
+
+def _nogit_state(got: Path, d: Path) -> dict:
+    """A tool's checkout outside git, read with no git (where it is generated, or where a job runs, autodev W056 fix
+    1): its files' digest, or, when the param names the directory itself, that directory walked as the param's."""
+    return ({"path": str(d), "git": None, "tracked_changes": _tree_digest(d)} if got.is_file() else
+            {"path": str(d), "git": None, "tracked_changes": "the directory itself, walked as the param"})
 
 
 def run_inputs(req: dict, answers: dict | None = None, git: bool = True) -> dict:
@@ -1700,12 +1713,42 @@ def _commit_file(top, name) -> str | None:
         return None
 
 
+def _record_text(text: str) -> dict:
+    """The checkouts record a submit recipe's shell lines wrote (CHECKOUTS: one line a field or a checkout, TAB-
+    separated), as the job compares it: {field: value, "harness": entry, "checkouts": {role: entry}}."""
+    rec: dict = {"checkouts": {}}
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    for n, ln in enumerate(lines, 1):
+        f = ln.split("\t")
+        if f[0] == "checkout" and len(f) == 6:
+            role, top, at, tracked, cf = f[1:]
+            if not top or not (tracked in ("clean", "-") or re.fullmatch(r"[0-9a-f]{64}", tracked)):
+                raise ValueError(f"line {n}: {role}'s tracked changes are neither `clean` nor a digest")
+            e = {"path": top, "absent": True} if at == "absent" else {
+                "path": top, "git": None if at == "-" else at, "tracked_changes": CLEAN if tracked == "clean" else
+                None if tracked == "-" else tracked, "commit_file": None if cf == "-" else cf}
+            if role == "harness":
+                rec["harness"] = e
+            else:
+                rec["checkouts"][role] = e
+        elif len(f) == 2 and f[0] in ("record", "rundir", "job", "pins", "commit_file", "made_at") and f[0] not in rec:
+            rec[f[0]] = f[1]
+        else:
+            raise ValueError(f"line {n} is not a line of a checkouts record")
+    if rec.get("record") != RECORD:
+        raise ValueError(f"its first line does not say `record\t{RECORD}`")
+    rec["pins_sha256"] = rec.get("pins")
+    return rec
+
+
 def _record_of(path, doc: dict) -> tuple:
     """(the checkouts record a job's submit recipe made, None) or (None, why it is not read): it must be this
     run's (it names the run folder it lies in) and this job's (the pins it was compared with)."""
     p = Path(path)
     try:
-        rec = json.loads(p.read_text(encoding="utf-8"))
+        rec = _record_text(p.read_text(encoding="utf-8"))
         about = Path(str(rec["rundir"])).resolve()
     except (OSError, ValueError, KeyError, TypeError) as e:
         return None, (f"the record of the checkouts this job's submit recipe makes where git is, {p}, cannot be read "
@@ -1719,10 +1762,12 @@ def _record_of(path, doc: dict) -> tuple:
     return rec, None
 
 
-def _from_record(now: dict, rec: dict, doc: dict) -> tuple:
+def _from_record(now: dict, rec: dict, doc: dict, dirs: dict) -> tuple:
     """(the set with each checkout as the record read it at submission, lines, differences): where the job runs only
     what needs no git is compared - the site's commit file, when it declares one; otherwise each check is said as
-    not made, and why (autodev W056 fix 1, R0)."""
+    not made, and why (autodev W056 fix 1, R0). A checkout that was not a git checkout at submission is read here
+    from its files (`_nogit_state`, `dirs`: `_checkout_dirs`), as where the job was generated: the recipe's shell
+    lines read no files' digest."""
     cf, lines, bad = doc.get("commit_file"), [], []
     h = rec.get("harness") or {}
     if doc.get("harness") and (h.get("git") != doc["harness"] or h.get("tracked_changes") != CLEAN):
@@ -1739,14 +1784,20 @@ def _from_record(now: dict, rec: dict, doc: dict) -> tuple:
         if not isinstance(r, dict) or not r.get("path"):
             bad.append(f"{k} {e['path']} (the submit recipe's record names no such checkout)")
             continue
+        if r.get("absent"):
+            bad.append(f"{k} {e['path']} (absent where the job was submitted, present here: the submit recipe's record "
+                       f"read nothing of it)")
+            continue
         top, d = Path(r["path"]).resolve(), Path(e["path"]).resolve()
         if d != top and top not in d.parents:
             bad.append(f"{k} (the record read the checkout {top} at submission; this job reads {d})")
             continue
-        now[k] = {"path": r["path"], "git": r.get("git"), "tracked_changes": r.get("tracked_changes")}
         if not r.get("git"):
-            lines.append(f"  not compared here: {k} {top} (not a git checkout at submission: its files' digest is the record's)")
-        elif not cf:
+            now[k] = _nogit_state(*dirs[k]) if k in dirs else now[k]
+            lines.append(f"  here: {k} {top}: not a git checkout at submission; its files are compared here")
+            continue
+        now[k] = {"path": r["path"], "git": r.get("git"), "tracked_changes": r.get("tracked_changes")}
+        if not cf:
             lines.append(f"  not compared here: {k} {top} (the site declares no commit file, and this job runs no git "
                          f"where it runs: its commit and clean work tree are the submit recipe's record)")
         else:
@@ -1780,7 +1831,7 @@ def expected(req: dict, file, answers: dict | None = None, checkouts=None, prese
         if why:
             return False, [f"  differs: {why}"], [("checkouts", None, None)]
         now, pre, extra = _from_record({k: v for k, v in run_inputs(req, answers, git=False).items()
-                                        if k not in JOB_UNPINNED}, rec, doc)
+                                        if k not in JOB_UNPINNED}, rec, doc, _checkout_dirs(req))
     then = {k: v for k, v in then.items() if k not in JOB_UNPINNED}
     stated = {k: v for k, v in then.items() if isinstance(v, dict) and v.get("stated")}
     # a stated tool's commit, clean, stands for the files of the param naming it (autodev W049 fix 1)
@@ -1817,63 +1868,270 @@ def expected(req: dict, file, answers: dict | None = None, checkouts=None, prese
         (k, None, None) for k in gone]
 
 
-def submit_record(req: dict, job_file, rundir) -> tuple:
-    """WHAT NEEDS GIT, READ WHERE GIT IS (autodev W056 fix 1, R0): a generated job's submit recipe runs this where the
-    job is submitted. Every checkout the job pins - the harness, each stage's tool - is read with git (`_git_state`:
-    its commit and tracked changes, whatever its own config tells git) and compared with the job's pins: a stated
-    tool at its commit and clean, any other as it was when the job was generated, the site's commit file naming the
-    commit git reads. Any difference is refused here, before anything is created. Else the run folder is made, with
-    the record (CHECKOUTS) and the harness's commit (TOOL_HEAD.txt, the run key's); returns (the record's sha256,
-    lines). Reads no data file and runs no tool."""
-    text = Path(job_file).read_text(encoding="utf-8")
-    try:
-        doc = json.loads(text.split("<<'SCH_PINS_END'\n", 1)[1].split("\nSCH_PINS_END", 1)[0])
-        pins = doc["files"]
-    except (IndexError, ValueError, KeyError, TypeError):
-        raise RequestError(f"{job_file} carries no pins: it is not a job `sch run --request ... --job` generated") from None
-    if (pins.get("request") or {}).get("sha256") != req["sha256"]:
-        raise RequestError(f"the request {req['path']} has sha256 {req['sha256'][:12]}, and {Path(job_file).name} was "
-                           f"generated for {str((pins.get('request') or {}).get('sha256'))[:12]}: generate the job again "
-                           f"from the request as it is")
-    cf, root, bad, lines = doc.get("commit_file"), Path(__file__).resolve().parent.parent, [], []
-    h = _git_state(root) or {"path": str(root), "git": None}
-    if doc.get("harness") and (h.get("git") != doc["harness"] or h.get("tracked_changes") != CLEAN):
-        bad.append(f"the harness {h['path']}: this job expects {doc['harness']}, clean; here {_said_state(h)}")
-    if cf and h.get("git") and _commit_file(h["path"], cf) != h["git"]:
-        bad.append(f"the harness {h['path']}: its {cf} names {_commit_file(h['path'], cf) or 'nothing'}, git reads {h['git']}")
-    got = {}
-    for role, (named, d) in sorted(_checkout_dirs(req).items()):
-        st, then = _checkout_state(named, d), pins.get(role)
-        if then is None:
-            bad.append(f"{role}: not among the job's pins")
-        elif then.get("stated") and (not st.get("git") or st["git"] != then["git"] or st.get("tracked_changes") != CLEAN):
-            bad.append(f"{role} {st['path']} ({then['stated']}): this job expects {then['git']}, clean; here {_said_state(st)}")
-        elif not then.get("stated") and not then.get("absent") and _digest(st, False) != _digest(then, False):
-            bad.append(f"{role} {st['path']}: not as it was when the job was generated ({_said_state(then)}); here "
-                       f"{_said_state(st)}")
-        if cf and st.get("git") and _commit_file(st["path"], cf) != st["git"]:
-            bad.append(f"{role} {st['path']}: its {cf} names {_commit_file(st['path'], cf) or 'nothing'}, git reads "
-                       f"{st['git']} (the site declares {cf} as every checkout's commit, which the job compares where it runs)")
-        got[role] = {**st, "commit_file": _commit_file(st["path"], cf) if cf and not st.get("absent") else None}
-        lines.append(f"  checkout: {role} {st['path']} {_said_state(st)}")
-    if bad:
-        raise RequestError("REFUSED, nothing submitted: " + "; ".join(bad))
-    out = Path(rundir)
-    try:
-        out.mkdir()
-    except OSError as e:
-        raise RequestError(f"the run folder {out} cannot be made ({type(e).__name__}: {e}): a run folder is new") from None
-    (out / "logs").mkdir()
-    rec = {"what": "each checkout this job runs, read with git where it was submitted (`sch checkouts`, its submit "
-                   "recipe): the job runs no git where it runs, and reads this record", "made_at": _now(),
-           "rundir": str(out.resolve()), "job": Path(job_file).name, "pins_sha256": _pins_sha(doc), "commit_file": cf,
-           "harness": {**h, "commit_file": _commit_file(h["path"], cf) if cf else None}, "checkouts": got}
-    f = out / CHECKOUTS
-    f.write_text(json.dumps(rec, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-    (out / "TOOL_HEAD.txt").write_text(f"{h.get('git') or 'not a git checkout'}\n")
-    for x in (f, out / "TOOL_HEAD.txt"):
-        x.chmod(0o444)
-    return _sha(f), lines
+# ---------------------------------------------------------------------------- what a submit recipe runs
+#: WHAT A SUBMIT RECIPE RUNS (autodev W056 fix 1, amendment; the PI's standing rule for the site the jobs are for):
+#: where a job is SUBMITTED nothing runs but git, the shell's own small tools and the scheduler's submit command - no
+#: python, no tool, no compute; every python process belongs inside a submitted job. THE ONE LIST: `recipe_refused`
+#: reads a recipe's text against it, `job_text` refuses to write a recipe (its own lines and the site's `submit:`
+#: lines) that runs another command, and one test walks the recipe of every job shape the generator writes. Not on
+#: it: a builtin that runs a string or a file as commands (eval, exec, source, `.`, trap, builtin, `command` but
+#: `command -v`). The sha256 tool is whichever is there; the submit command is the scheduler's the site names
+#: (`executor: pbs`: `qsub`, PBS_COMMANDS; a site's `pbs.commands` are the executor's, inside a job). A function the
+#: recipe defines is its body's commands.
+RECIPE_PROGRAMS = ("cd", "mkdir", "pwd", "date", "cat", "printf", "echo", "test", "[", "head", "cut", "tr", "git",
+                   "sha256sum", "shasum")
+RECIPE_BUILTINS = (":", "true", "false", "local", "return", "umask", "set", "unset", "shift", "exit", "read",
+                   "command -v")
+#: The recipe's own shell (W056 fix 1, amendment): it reads each checkout with git where the job is submitted and
+#: writes CHECKOUTS, or refuses by name before anything is made. `ck_one ROLE PATH WANT WHY`: WANT is the commit the
+#: job expects, `-` (not a git checkout when the job was generated) or `any` (absent then: checked where it runs); a
+#: tracked change is refused always - read as `_git_state` reads it (its options; status, the diff against HEAD, and a
+#: file git is told not to look at); WHY is the refusal's words. No line begins with `(` (gate.py's `recipe_of` reads
+#: such a line as a remark) and none but the last names the submit command.
+RECIPE_SHELL = (
+    r"""CK=; CK_BAD=; CK_REC=; CK_CLEAN=""" + CLEAN + r"""; CK_T=$(printf '\t'); CK_N=$(printf '\nx'); CK_N=${CK_N%x}""",
+    r"""ck_git() { git --no-optional-locks --no-replace-objects -c core.fsmonitor=false -c core.trustctime=true """
+    r"""-c core.checkStat=default -C "$@"; }""",
+    r"""ck_sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -d ' ' -f 1; }""",
+    r"""ck_row() { local v w=$1; [ "$1" != checkout ] || w="$1 $2"; for v in "$@"; do if [ "${v#*"$CK_T"}" != "$v" ] """
+    r"""|| [ "${v#*"$CK_N"}" != "$v" ]; then CK_BAD="$CK_BAD; the record's $w line: a value holds a TAB or a newline, """
+    r"""which a record of one line a checkout cannot hold"; return 0; fi; done""",
+    r"""  CK_REC="$CK_REC$1"; shift; for v in "$@"; do CK_REC="$CK_REC$CK_T$v"; done; CK_REC="$CK_REC$CK_N"; }""",
+    r"""ck_one() { local w=$1 p=$2 d top at x hid l t k s=- f=- said; [ "$1" != harness ] || w='the harness'""",
+    r"""  if [ ! -e "$p" ]; then top=$p; at=absent; k=absent; said=absent""",
+    r"""  else d=$p; [ -d "$d" ] || { d=${p%/*}; d=${d:-/}; }""",
+    r"""    if top=$(ck_git "$d" rev-parse --show-toplevel 2>/dev/null) && at=$(ck_git "$d" rev-parse HEAD 2>/dev/null); then""",
+    r"""      x=$(ck_git "$d" ls-files -v 2>/dev/null | cut -c 1 | tr -cd abcdefghijklmnopqrstuvwxyzS) || x=; hid=""",
+    r"""      [ -z "$x" ] || hid=$(ck_git "$d" ls-files -v 2>/dev/null | while IFS= read -r l; do t=${l:0:1}; if [ "$t" = S ] """
+    r"""|| [ -z "${t#[abcdefghijklmnopqrstuvwxyz]}" ]; then printf '%s\n' "$l"; fi; done) || hid=""",
+    r"""      s=$( { ck_git "$d" status --porcelain=v1 --untracked-files=no 2>/dev/null || printf '\1'; printf '\0'; """
+    r"""ck_git "$d" diff --binary HEAD 2>/dev/null || printf '\1'; [ -z "$hid" ] || printf '\0%s' "$hid"; } | ck_sha )""",
+    r"""      k=$at:$s; said="at $at, clean"; [ "$s" = "$CK_CLEAN" ] || said="at $at, with tracked changes"; """
+    r"""[ "$s" != "$CK_CLEAN" ] || s=clean""",
+    r"""      if [ -n "$CK_CF" ]; then x=$(cat "$top/$CK_CF" 2>/dev/null) || x=; if [ "$x" = "$at" ]; then f=$x; else """
+    r"""CK_BAD="$CK_BAD; $w $top: its $CK_CF names ${x:-nothing}, git reads $at (the site declares $CK_CF as every """
+    r"""checkout's commit, which the job compares where it runs)"; fi; fi""",
+    r"""    else top=$d; at=-; k=-; said='not a git checkout'; fi""",
+    r"""  fi""",
+    r"""  [ "$3" = any ] || [ "$3" = "$k" ] || CK_BAD="$CK_BAD; $w $top$4; here $said""" + '"',
+    r"""  ck_row checkout "$1" "$top" "$at" "$s" "$f"; }""",
+    r"""ck_files() ( umask 222 && printf '%s' "$CK_REC" > "$RUNDIR/""" + CHECKOUTS + r"""" && printf '%s\n' """
+    r""""${HC:-not a git checkout}" > "$RUNDIR/TOOL_HEAD.txt" )""",
+    r"""ck_made() { if [ -n "$CK_BAD" ]; then echo "REFUSED, nothing submitted: ${CK_BAD#; }" >&2; return 1; fi""",
+    r"""  if ! mkdir "$RUNDIR" 2>/dev/null || ! mkdir "$RUNDIR/logs"; then echo "REFUSED, nothing submitted: the run """
+    r"""folder $RUNDIR cannot be made: a run folder is new" >&2; return 1; fi""",
+    r"""  ck_files || return 1; CK=$(ck_sha < "$RUNDIR/""" + CHECKOUTS + r"""") || CK=; [ -n "$CK" ]; }""",
+)
+_SH_OPEN = {"if", "then", "else", "elif", "while", "until", "do", "!", "{"}
+_SH_CLOSE = {"fi", "done", "}"}
+_SH_OPS = ("&&", "||", ";;", "|&", "<<<", "<<", ">>", "<&", ">&", "<>", ">|", "&>", ";", "&", "|", "(", ")", "<", ">")
+_SH_REDIRECT = {"<", ">", ">>", "<&", ">&", "<>", ">|", "&>", "<<<"}
+_SH_ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def _sh_quoted(s: str, i: int, cmds: list, defs: set) -> tuple:
+    """(the index past a double-quoted text, its value), from just inside its opening quote."""
+    out = []
+    while i < len(s):
+        ch = s[i]
+        if ch == '"':
+            return i + 1, "".join(out)
+        if ch == "\\":
+            out.append(s[i + 1:i + 2])
+            i += 2
+        elif ch == "`":
+            cmds.append("`")                     # a backquoted command is not read: said as itself
+            i += 1
+        elif s.startswith("$(", i):
+            i = _sh_sub(s, i + 2, cmds, defs)
+            out.append("$(...)")
+        elif s.startswith("${", i):
+            i = _sh_brace(s, i + 2, cmds, defs)
+            out.append("${...}")
+        else:
+            out.append(ch)
+            i += 1
+    cmds.append('"')                             # never closed
+    return i, "".join(out)
+
+
+def _sh_brace(s: str, i: int, cmds: list, defs: set) -> int:
+    """The index past a `${...}`, its own substitutions walked."""
+    while i < len(s):
+        ch = s[i]
+        if ch == "}":
+            return i + 1
+        if ch == '"':
+            i, _v = _sh_quoted(s, i + 1, cmds, defs)
+        elif ch == "'":
+            j = s.find("'", i + 1)
+            i = len(s) if j < 0 else j + 1
+        elif ch == "\\":
+            i += 2
+        elif s.startswith("$(", i):
+            i = _sh_sub(s, i + 2, cmds, defs)
+        elif s.startswith("${", i):
+            i = _sh_brace(s, i + 2, cmds, defs)
+        elif ch == "`":
+            cmds.append("`")
+            i += 1
+        else:
+            i += 1
+    cmds.append("${")
+    return i
+
+
+def _sh_sub(s: str, i: int, cmds: list, defs: set) -> int:
+    """A `$(...)` (or `<(...)`) walked: its commands into `cmds`; the index past its `)`."""
+    toks, i = _sh_tokens(s, i, cmds, defs, sub=True)
+    _sh_walk(toks, cmds, defs)
+    return i
+
+
+def _sh_tokens(s: str, i: int, cmds: list, defs: set, sub: bool = False) -> tuple:
+    """([("w", a word's value) or ("op", an operator)], the index past it): a newline is a `;`."""
+    toks, word, depth = [], None, 0
+
+    def end():
+        nonlocal word
+        if word is not None:
+            toks.append(("w", word))
+            word = None
+    while i < len(s):
+        ch = s[i]
+        if sub and ch == ")" and depth == 0:
+            end()
+            return toks, i + 1
+        if ch in " \t":
+            end()
+            i += 1
+        elif ch == "\n":
+            end()
+            toks.append(("op", ";"))
+            i += 1
+        elif ch == "#" and word is None:
+            j = s.find("\n", i)
+            i = len(s) if j < 0 else j
+        elif ch == "\\":
+            word = (word or "") + ("" if s[i + 1:i + 2] == "\n" else s[i + 1:i + 2])
+            i += 2
+        elif ch == "'":
+            j = s.find("'", i + 1)
+            if j < 0:
+                cmds.append("'")
+                return toks, len(s)
+            word = (word or "") + s[i + 1:j]
+            i = j + 1
+        elif ch == '"':
+            i, v = _sh_quoted(s, i + 1, cmds, defs)
+            word = (word or "") + v
+        elif ch == "`":
+            cmds.append("`")
+            i += 1
+        elif s.startswith("$(", i) or (ch in "<>" and s[i + 1:i + 2] == "("):
+            i = _sh_sub(s, i + 2, cmds, defs)
+            word = (word or "") + "$(...)"
+        elif s.startswith("${", i):
+            i = _sh_brace(s, i + 2, cmds, defs)
+            word = (word or "") + "${...}"
+        elif ch in ";&|()<>":
+            if ch in "<>" and word is not None and word.isdigit():
+                word = None                      # a descriptor's number: part of its redirection
+            end()
+            op = next(o for o in _SH_OPS if s.startswith(o, i))
+            depth += {"(": 1, ")": -1}.get(op, 0)
+            toks.append(("op", op))
+            i += len(op)
+        else:
+            word = (word or "") + ch
+            i += 1
+    end()
+    if sub:
+        cmds.append("$(")                        # never closed
+    return toks, i
+
+
+def _sh_walk(toks: list, cmds: list, defs: set):
+    """Each command word of a token list into `cmds`; each function it defines into `defs`."""
+    expect, i, n = True, 0, len(toks)
+    while i < n:
+        kind, v = toks[i]
+        if kind == "op":
+            if v in _SH_REDIRECT:
+                i += 2                           # the redirection and its target
+                continue
+            if v == "<<":
+                cmds.append("<<")                # a here-document is not read: said as itself
+                i += 2
+                continue
+            expect = v != ")"
+            i += 1
+            continue
+        if not expect:
+            i += 1
+        elif v in _SH_OPEN:
+            i += 1
+        elif v in _SH_CLOSE:
+            expect, i = False, i + 1
+        elif _SH_ASSIGN.match(v):
+            i += 1
+        elif v == "for":                         # for NAME [in WORDS]; do
+            while i < n and not (toks[i] == ("w", "do") and toks[i - 1] == ("op", ";")):
+                i += 1
+            i += 1
+        elif toks[i + 1:i + 3] == [("op", "("), ("op", ")")]:
+            defs.add(v)                          # a function: its body is walked as it comes
+            i += 3
+        else:
+            if v == "command" and toks[i + 1:i + 2] == [("w", "-v")]:
+                v, i = "command -v", i + 1
+            cmds.append(v)
+            expect, i = False, i + 1
+
+
+def recipe_commands(text: str) -> tuple:
+    """(every command a shell text runs, as its word, the functions it defines): the first word of each simple
+    command - after `;`, `&&`, `||`, `|`, `&`, a newline, `(`, `{`, `!`, `if then else elif while until do` - and
+    in every `$(...)`, `${...}` and process substitution, recursively; assignments and redirections before it
+    skipped. What it does not read as shell (a backquote, a here-document, a quote never closed, `case`, `[[`) is
+    said as itself, so it is never on the list."""
+    cmds: list = []
+    defs: set = set()
+    toks, _i = _sh_tokens(text, 0, cmds, defs)
+    _sh_walk(toks, cmds, defs)
+    return cmds, defs
+
+
+def recipe_refused(text: str, submit: str = "qsub") -> list:
+    """The commands a recipe's text runs that a submit recipe may not: any but RECIPE_PROGRAMS, RECIPE_BUILTINS, the
+    site's submit command and a function the text defines."""
+    cmds, defs = recipe_commands(text)
+    ok = {*RECIPE_PROGRAMS, *RECIPE_BUILTINS, str(submit), *defs}
+    return [c for c in cmds if c not in ok]
+
+
+def _sh(v, what: str, path: bool = False) -> str:
+    """A value as one shell word of a recipe line (a comment line of the job), quoted; a path's `~/` left for that
+    machine's shell. A value holding a newline or another control character is refused by name: it would end the
+    comment line and run as a line of the job's body, and the record holds no TAB or newline."""
+    import shlex
+    s = str(v)
+    if re.search(r"[\x00-\x1f\x7f]", s):
+        raise RequestError(f"--job: {what} {s!r} holds a newline, a TAB or another control character, which a job's "
+                           f"submit recipe (its comment lines) and its checkouts record cannot hold")
+    return ('"$HOME"/' + shlex.quote(s[2:])) if path and s.startswith("~/") else shlex.quote(s)
+
+
+def _checkout_words(req: dict) -> dict:
+    """{checkout role: the path its tool param names, as the request writes it}: what a job's submit recipe reads
+    where the job is submitted, on that machine (`~/` is its home) - never a path of the machine generating it."""
+    out = {}
+    for p in req["stages"]:
+        tool = p.get("tool_param")
+        v = dict(_leaves(p["params"])).get(tool) if tool else None
+        if _paths(v, None):
+            out[f"{p['stage']}.{tool}@checkout"] = str(v).split(",")[0].strip()
+    return out
 
 
 # ---------------------------------------------------------------------------- the job (run 2)
@@ -1959,7 +2217,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
     line. Nothing about a cohort or a site is in this function: the request, the site file, the
     prediction and the checks bring all of it."""
     import shlex
-    from .services.executor import PBS_REQUIRED, PbsExecutor
+    from .services.executor import PBS_COMMANDS, PBS_REQUIRED, PbsExecutor
     q = shlex.quote
     job_path = Path(job_path).resolve()
     jobs = job_path.parent
@@ -1989,11 +2247,10 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
     given, _new = answers_of(req, answers, by)   # refused here, not on the cluster (autodev W049)
     tail = "".join(f" --answer {q(a)}" for a in (answers or [])) + (f" --by {q(by)}" if by else "")
     hn = str(job["harness"])
-    hn_sh = ('"$HOME"/' + q(hn[2:])) if hn.startswith("~/") else q(hn)
-    py = str(job["python"])
-    py_sh = ('"$HOME"/' + q(py[2:])) if py.startswith("~/") else q(py)
+    hn_sh = _sh(hn, "the site's harness", path=True)
+    py_sh = _sh(job["python"], "the site's python", path=True)
     at = str(where or jobs)
-    at = at if re.fullmatch(r"[~A-Za-z0-9_./-]+", at) else q(at)   # `~` left for the shell to read
+    at = at if re.fullmatch(r"[~A-Za-z0-9_./-]+", at) else _sh(at, "--where")   # `~` left for the shell to read
     key = f"$(date -u +%Y%m%dT%H%M%SZ)__sch-${{HC:0:7}}__{stage}" + (f"__{purpose}" if purpose else "")
     name = re.sub(r"[^A-Za-z0-9_]", "_", f"sch_{stage}")[:15]
     reports = " ".join(f'"$RUNDIR"/{p["stage"]}/report/report.json' for p in req["stages"])
@@ -2020,6 +2277,54 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
     pins_doc = json.dumps({"generated_at": _now(), "policy": POLICY, "harness": commit, "commit_file": cf,
                            "files": {k: {x: y for x, y in v.items() if x != "path"} for k, v in pins.items()}},
                           sort_keys=True)
+    # THE SUBMIT RECIPE RUNS ONLY RECIPE_PROGRAMS (autodev W056 fix 1, amendment): its own shell reads each checkout the
+    # job pins with git where the job is submitted - by the path the request writes, never this machine's - and makes
+    # the record or refuses by name; a recipe that would run anything else is refused here, before the job is written
+    sub = PBS_COMMANDS[0]                        # the scheduler the site names (executor: pbs) submits with it
+    sub_sh, runs = _sh(sub, "the site's submit command", path=True), _sh(job["runs"], "the site's runs")
+    jq, site_lines = _sh(job_path.name, "the job's file name"), [str(ln) for ln in (job.get("submit") or [])]
+    for ln in site_lines:
+        _sh(ln, "the site's submit: line")       # a newline would end the comment and run in the job's body
+        if set(recipe_commands(ln)[0]) & {"'", '"', "$(", "${", "`"}:
+            raise RequestError(f"--job: the site's submit: line {ln!r} is not a whole line of shell (a quote or a "
+                               f"substitution never closed): every recipe line after it would read as another")
+    words, calls = _checkout_words(req), []
+    for role in sorted(_checkout_dirs(req)):
+        e = pins.get(role) or {}
+        # WANT: a stated tool at its commit, clean; any other as it was when the job was generated (its commit and
+        # the digest of its tracked changes, `_git_state`'s); `-` not a git checkout then; `any` absent then
+        want, why = (f"{e['git']}:{CLEAN}", f" ({e['stated']}): this job expects {e['git']}, clean") if e.get("stated") \
+            else ("any", ": absent where the job was generated") if e.get("absent") else (
+                f"{e['git']}:{e['tracked_changes']}", f": not as it was when the job was generated ({_said_state(e)})"
+            ) if e.get("git") else ("-", ": not as it was when the job was generated (not a git checkout)")
+        calls.append(f"ck_one {_sh(role, 'a checkout role')} {_sh(words[role], role, path=True)} {want} {_sh(why, role)}")
+    recipe = [
+        f"cd {at}", *site_lines,
+        f"HN={hn_sh}; HC=$(git -C \"$HN\" rev-parse HEAD)",
+        "[ -z \"$(git -C \"$HN\" status --porcelain)\" ] && echo HARNESS-CLEAN",
+        f"mkdir -p {runs}/{stage}; RUNS=$(cd {runs}/{stage} && pwd -P)",
+        f"RUNDIR=$RUNS/{key}",
+        *RECIPE_SHELL,
+        f"CK_CF={cf or ''}; CK_REQ={_sh(os.path.relpath(req['path'], jobs), 'the request')}; CK_JOB={jq}; "
+        "CK_X=$(ck_sha 2>/dev/null < \"$CK_REQ\") || CK_X=; CK_X=${CK_X:-unreadable}",
+        f"[ \"$CK_X\" = {req['sha256']} ] || CK_BAD=\"$CK_BAD; the request $CK_REQ has sha256 ${{CK_X:0:12}}, and $CK_JOB "
+        f"was generated for {req['sha256'][:12]}: generate the job again from the request as it is\"",
+        "[ \"${RUNDIR#*,}\" = \"$RUNDIR\" ] || CK_BAD=\"$CK_BAD; the run folder $RUNDIR holds a comma, which the "
+        "scheduler's -v list cannot pass\"",
+        f"ck_row record {RECORD}; ck_row rundir \"$RUNDIR\"; ck_row job \"$CK_JOB\"; ck_row pins "
+        f"{_pins_sha(json.loads(pins_doc))}; ck_row commit_file \"${{CK_CF:--}}\"; ck_row made_at "
+        "\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"",
+        f"ck_one harness \"$HN\" {f'{commit}:{CLEAN}' if commit else 'any'} " + _sh(f": this job expects {commit}, clean" if commit else
+                                                         ": not a git checkout when the job was generated", "the harness"),
+        *calls,
+        "ck_made && echo CHECKOUTS-CLEAN",
+        f"[ -n \"$CK\" ] && {sub_sh} -o \"$RUNDIR/logs/\" -v \"RUNDIR=$RUNDIR,HARNESSHEAD=$HC,CHECKOUTS_SHA256=$CK\" {jq}"]
+    bad = recipe_refused("\n".join(recipe), sub)
+    if bad:
+        raise RequestError(f"--job: the submit recipe would run {', '.join(dict.fromkeys(bad))}; where a job is "
+                           f"submitted only {' '.join(RECIPE_PROGRAMS)}, the shell's builtins that run no other program "
+                           f"and {sub} run (the site's submit: lines are the recipe's too): every python process "
+                           f"belongs inside a submitted job")
     out = [
         "#!/bin/bash", f"#PBS -N {name}", f"#PBS -q {cfg['queue']}", f"#PBS -l select={cfg['select']}",
         f"#PBS -l walltime={cfg['walltime']}", "#PBS -j oe",
@@ -2033,7 +2338,8 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"job.yml sha256 {_sha(site / 'job.yml')[:16]})",
         f"#   harness   {commit or 'not a git checkout: unpinned'}" + (f" (the job refuses another)" if commit else ""),
         "#   checkouts this job runs no git where it runs: its submit recipe reads every checkout with git where the job "
-        "is submitted (`sch checkouts`) into $RUNDIR/" + CHECKOUTS + ", which the job refuses missing, changed after "
+        "is submitted (its own shell lines; no python runs there) into $RUNDIR/" + CHECKOUTS + ", which the job refuses "
+        "missing, changed after "
         "submission, about another run or job, or naming another commit; where it runs it compares " + (
             f"each checkout's {cf} (the site's commit file)" if cf else "nothing more: the site declares no commit file, "
             "so a checkout moved between submission and the job's start is not seen there (said in PINS.txt)"),
@@ -2051,17 +2357,11 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"#   this job  {cfg.get('queue_chosen') or 'the site block queue'}",
         f"#   answers   {tail.strip() or 'none'}",
         "#", "# THE PREDICTION, WRITTEN BEFORE ANY RUN:", *pre, "#",
-        "# The submit recipe (the login node; the CLEAN line must print before the qsub):",
+        "# The submit recipe (the login node; the CLEAN lines must print before the qsub). It runs git, the shell's own",
+        "# small tools and the submit command, nothing else (no python): it reads each checkout with git and writes",
+        f"# $RUNDIR/{CHECKOUTS}, one TAB-separated line a checkout, or refuses by name before anything is made.",
         "# SUBMIT-BEGIN",
-        f"#   cd {at}",
-        *[f"#   {ln}" for ln in (job.get("submit") or [])],
-        f"#   HN={hn_sh}; PY={py_sh}; HC=$(git -C \"$HN\" rev-parse HEAD)",
-        "#   [ -z \"$(git -C \"$HN\" status --porcelain)\" ] && echo HARNESS-CLEAN",
-        f"#   mkdir -p {q(str(job['runs']))}/{stage}; RUNS=$(cd {q(str(job['runs']))}/{stage} && pwd -P)",
-        f"#   RUNDIR=$RUNS/{key}",
-        f"#   CK=$(SCH_SITE={q(os.path.relpath(site, jobs))} PYTHONPATH=\"$HN\" \"$PY\" -m sch checkouts --request "
-        f"{q(os.path.relpath(req['path'], jobs))} --job {q(job_path.name)} --rundir \"$RUNDIR\") && echo CHECKOUTS-CLEAN",
-        f"#   qsub -o \"$RUNDIR/logs/\" -v RUNDIR=$RUNDIR,HARNESSHEAD=$HC,CHECKOUTS_SHA256=$CK {q(job_path.name)}",
+        *[f"#   {ln}" for ln in recipe],
         "# SUBMIT-END",
         "set -euo pipefail",
         "cd \"$PBS_O_WORKDIR\"",

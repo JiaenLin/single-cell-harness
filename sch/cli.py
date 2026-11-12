@@ -167,23 +167,6 @@ def cmd_plan(a):
     return 0 if p["admitted"] else 2
 
 
-def cmd_checkouts(a):
-    """A GENERATED JOB'S SUBMIT RECIPE, WHERE GIT IS (harness W056 fix 1): every checkout the job pins, read with
-    git and compared with the job; refused by name, or the run folder made with the record the job reads. The
-    record's sha256 is printed (the recipe passes it with qsub -v); everything else goes to stderr."""
-    from .drive import RequestError, load, submit_record
-    try:
-        req = load(a.request, files=False)
-        sha, lines = submit_record(req, a.job, a.rundir)
-    except RequestError as e:
-        print(f"REFUSED: {e}", file=sys.stderr)
-        return 2
-    for ln in lines:
-        print(ln, file=sys.stderr)
-    print(sha)
-    return 0
-
-
 def cmd_mount(a):
     st = _stack(a)
     escapes = {}
@@ -1572,15 +1555,11 @@ def build_parser():
                    "its job gives, so the plan and its set are the run's (harness W049)")
     p.add_argument("--by", help="with --answer: who made the decision")
     p.add_argument("--checkouts", metavar="FILE", help="with --expect: the record a generated job's submit recipe "
-                   "made where git is (sch checkouts); each checkout is compared from it and no git is run (harness W056)")
+                   "made where git is, by its own shell lines (CHECKOUTS.tsv); each checkout is compared from it and no git "
+                   "is run (harness W056)")
     p.add_argument("--present", action="store_true", help="with --expect: every input must be present and readable where "
                    "the job runs (a generated job's CHECK_ONLY preflight; harness W056)")
     p.set_defaults(fn=cmd_plan)
-    p = sub.add_parser("checkouts", help="a generated job's submit recipe: read each checkout it pins with git, where "
-                       "the job is submitted, into its run folder (harness W056)")
-    p.add_argument("--request", required=True); p.add_argument("--job", required=True, type=Path)
-    p.add_argument("--rundir", required=True, help="the run folder to make (it must not exist)")
-    p.set_defaults(fn=cmd_checkouts)
     p = sub.add_parser("mount"); stackable(p); p.add_argument("plugin"); p.add_argument("--param", action="append")
     p.add_argument("--name"); p.add_argument("--escape", action="append", metavar="GATE")
     p.add_argument("--why"); p.add_argument("--by"); p.set_defaults(fn=cmd_mount)

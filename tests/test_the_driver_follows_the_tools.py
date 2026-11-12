@@ -583,23 +583,25 @@ class AJobStatesTheToolsItExpects(M.TheClusterPath):
         # WHERE IT RUNS (no git): the record absent, changed, another run's, forged to name another commit; the
         # commit file moved after submission - each refused before any tool, by name
         def writable(rd):
-            r = rd / "CHECKOUTS.json"
+            r = rd / "CHECKOUTS.tsv"
             r.chmod(0o644)
             return r
 
         def forged(rd):
             r = writable(rd)
-            rec = json.loads(r.read_text())
-            rec["checkouts"]["01_qc.scqc@checkout"]["git"] = v2
-            r.write_text(json.dumps(rec))
+            rows = [ln.split("\t") for ln in r.read_text().splitlines()]
+            for x in rows:
+                if x[:2] == ["checkout", "01_qc.scqc@checkout"]:
+                    x[3] = v2
+            r.write_text("".join("\t".join(x) + "\n" for x in rows))
             return {"CHECKOUTS_SHA256": hashlib.sha256(r.read_bytes()).hexdigest()}
 
         def another(rd):
             r = writable(rd)
-            shutil.copy(held / "CHECKOUTS.json", r)
+            shutil.copy(held / "CHECKOUTS.tsv", r)
             return {"CHECKOUTS_SHA256": hashlib.sha256(r.read_bytes()).hexdigest()}
         for name, between, words in (
-                ("absent", lambda rd: writable(rd).unlink(), "CHECKOUTS.json, is absent; the recipe passed"),
+                ("absent", lambda rd: writable(rd).unlink(), "CHECKOUTS.tsv, is absent; the recipe passed"),
                 ("changed", lambda rd: writable(rd).write_text(writable(rd).read_text() + " "), "; the recipe passed "),
                 ("another_run", another, f"was made for the run {held}"),
                 ("forged", forged, f"(scQC: this job expects {v1}, clean; at submission at {v2}, clean)"),
@@ -613,7 +615,7 @@ class AJobStatesTheToolsItExpects(M.TheClusterPath):
                 self.assertFalse((rd / "01_qc").exists(), "nothing ran")
                 head(v1)
 
-    def _held(self, c, name, check_text=None, inputs_present=False):
+    def _held(self, c, name, check_text=None, inputs_present=False, where="stand-ins"):
         """The four stand-ins as one checkout at v1 carrying the site's HEAD.txt, named by the request, and the job
         generated stating v1 for each tool with the site's commit file (as the R0 test builds them)."""
         o = self.tmp / "origin" / "stand-ins"
@@ -623,7 +625,7 @@ class AJobStatesTheToolsItExpects(M.TheClusterPath):
         v1 = commit(o, "v1")
         (o / "NOTES.md").write_text("docs only\n")
         v2 = commit(o, "v2: docs only")
-        tool = self.tmp / "tools" / "stand-ins"
+        tool = self.tmp / "tools" / where
         git(self.tmp, "clone", "-q", str(o), str(tool))
         git(tool, "checkout", "-q", "--detach", v1)
         (tool / "HEAD.txt").write_text(v1 + "\n")
@@ -645,6 +647,175 @@ class AJobStatesTheToolsItExpects(M.TheClusterPath):
         states = [x for t in ("scQC", "scAnno", "scIntegrate", "scProfile") for x in ("--tool", f"{t}={v1}")]
         f, _ = self.job(c, req, name=name, extra=states, commit_file="HEAD.txt", check_text=check_text)
         return f, tool, v1, v2
+
+    def test_W056_amendment_every_recipe_the_generator_writes_runs_only_the_list(self):
+        """THE CLASS (W056 fix 1, amendment; the PI's rule for the site the jobs are for): every command a generated
+        submit recipe runs is on the generator's one list - RECIPE_PROGRAMS, RECIPE_BUILTINS, the site's submit
+        command, a function the recipe defines - walked for every job shape the generator writes: one to four
+        stages, the site's commit file declared and not, a tool stated, as found and absent, a site `submit:` line.
+        The same reading refuses a recipe given an interpreter line, naming it; the generator refuses to write a job
+        whose site line runs another program."""
+        from sch import drive
+        c = cohort(self.tmp / "c", "a")
+        o, _v0, v1, _v2 = self.origin()
+        tool = self.tmp / "tools" / "scQC"
+        git(self.tmp, "clone", "-q", str(o), str(tool))
+        harness = self.harness()
+        jobs = c["dir"] / "00_driver" / "jobs"
+        jobs.mkdir(parents=True, exist_ok=True)
+        os.environ["SCH_SITE"] = str(self.site)
+
+        def recipe(n, cf, scqc, tools, submit=()):
+            yamlish.dump({"harness": str(harness), "python": sys.executable, "runs": "../../runs/sch",
+                          **({"commit_file": cf} if cf else {}), **({"submit": list(submit)} if submit else {})},
+                         self.site / "job.yml")
+            req = request(c, name=f"r{n}.yml", stages=stages(c)[:n], resources={    # each stage the request has
+                k: v for k, v in self.SIZES.items() if k in ("drive", "qc", "anno", "int", "prof")[:n + 1]})
+            doc = yamlish.load(req)
+            doc["stages"][0]["params"]["scqc"] = str(scqc)
+            os.chmod(req, 0o644)
+            yamlish.dump(doc, req)
+            text = drive.job_text(drive.load(str(req)), jobs / f"s{n}.pbs", tools=tools)
+            return "\n".join(ln[4:] for ln in text.split("# SUBMIT-BEGIN\n")[1].split("# SUBMIT-END")[0].splitlines())
+        walked = 0
+        for n in (1, 2, 3, 4):
+            for cf in (None, "HEAD.txt"):
+                for scqc, tools in ((tool / "fake_scqc.py", [f"scQC={v1}"]), (tool / "fake_scqc.py", []),
+                                    (self.tmp / "absent" / "fake_scqc.py", [])):
+                    with self.subTest(stages=n, commit_file=cf, scqc=scqc.parent.name, stated=bool(tools)):
+                        r = recipe(n, cf, scqc, tools)
+                        cmds, _defs = drive.recipe_commands(r)
+                        self.assertEqual(drive.recipe_refused(r), [], r)
+                        self.assertTrue({"git", "qsub", "mkdir", "cat", "printf"} <= set(cmds), cmds)  # the walk sees them
+                        self.assertNotIn("python", r)
+                        self.assertNotIn("-m sch", r)
+                        self.assertEqual(r.count("\nck_one "), n + 1, "the harness and each stage's checkout")
+                        walked += 1
+        self.assertEqual(walked, 24)
+        r = recipe(4, "HEAD.txt", tool / "fake_scqc.py", [], submit=["echo submitting by the site line"])
+        self.assertEqual(drive.recipe_refused(r), [])
+        self.assertIn("\necho submitting by the site line\n", r)
+        with self.assertRaises(drive.RequestError) as e:
+            recipe(4, "HEAD.txt", tool / "fake_scqc.py", [], submit=["echo the site's line"])
+        self.assertIn("submit: line \"echo the site's line\" is not a whole line of shell", str(e.exception))
+        with self.assertRaises(drive.RequestError) as e:
+            recipe(4, "HEAD.txt", tool / "fake_scqc.py", [], submit=["module load git"])
+        self.assertIn("--job: the submit recipe would run module; where a job is submitted only cd mkdir", str(e.exception))
+        good = recipe(4, "HEAD.txt", tool / "fake_scqc.py", [f"scQC={v1}"])
+        for line, named in (
+                ('CK=$(SCH_SITE=../site PYTHONPATH="$HN" "$PY" -m sch checkouts --request ../r.yml --job s.pbs '
+                 '--rundir "$RUNDIR") && echo CHECKOUTS-CLEAN', "$PY"),             # 22d3b82's own line
+                ("python3 -c 'print(1)'", "python3"), ("x=$(python3 -c 1)", "python3"), ("echo 1 | python3", "python3"),
+                ("echo `python3`", "`"), ('eval "python3 -c 1"', "eval"), ("command python3", "command"),
+                ("exec python3", "exec"), (". ./env.sh", "."), ("sch run --request r.yml", "sch"),
+                ('[ -n "$(env python3)" ]', "env"), ("f() { python3; }; f", "python3"),
+                ("if true; then python3; fi", "python3"), ("for v in a; do python3; done", "python3"),
+                ("case a in a) python3;; esac", "case"), ("CK=${x:-$(python3)}", "python3")):
+            with self.subTest(wrong=line):
+                self.assertIn(named, drive.recipe_refused(good + "\n" + line))
+
+    def test_W056_amendment_the_recipes_shell_reads_a_checkout_as_git_state_does(self):
+        """The record is made by shell (W056 fix 1, amendment): its TRACKED field is `_git_state`'s digest of the
+        checkout's tracked changes - `clean` for none - in every state ATTACKS 22 names (an edit, a staged edit,
+        assume-unchanged, skip-worktree, a stat cache trusted by the checkout's own config with size and mtime kept,
+        a replace object), so a stated tool is refused on each and a tool as found passes only as it was; outside
+        git it reads `-`, and the job reads the files where it runs."""
+        from sch import drive
+        o, _v0, v1, _v2 = self.origin()
+        tool = self.tmp / "tools" / "scQC"
+        git(self.tmp, "clone", "-q", str(o), str(tool))
+        git(tool, "checkout", "-q", "--detach", v1)
+        sh = self.tmp / "one.sh"
+        sh.write_text("\n".join(drive.RECIPE_SHELL) + '\nCK_CF=\nck_one 01_qc.scqc@checkout "$1" any ": x"\n'
+                      'printf "%s" "$CK_REC"; printf "BAD=%s\\n" "$CK_BAD"\n')
+
+        def state(name, d=tool):
+            p = subprocess.run([shutil.which("bash"), str(sh), str(d / "fake_scqc.py")], capture_output=True, text=True)
+            self.assertEqual(p.returncode, 0, p.stderr)
+            got, want = p.stdout.split("\n")[0].split("\t"), drive._git_state(d)
+            with self.subTest(state=name):
+                if want is None:
+                    self.assertEqual(got[3:5], ["-", "-"], got)
+                else:
+                    self.assertEqual(got[:4], ["checkout", "01_qc.scqc@checkout", want["path"], want["git"]])
+                    self.assertEqual(got[4], "clean" if want["tracked_changes"] == drive.CLEAN else want["tracked_changes"])
+            return got[4]
+        f = tool / "fake_scqc.py"
+        text = f.read_text()
+        self.assertEqual(state("clean"), "clean")
+        f.write_text(text + "# edited\n")
+        self.assertNotEqual(state("an edit"), "clean")
+        git(tool, "add", "fake_scqc.py")
+        self.assertNotEqual(state("a staged edit"), "clean")
+        git(tool, "reset", "-q")
+        git(tool, "update-index", "--assume-unchanged", "fake_scqc.py")
+        self.assertEqual(git(tool, "status", "--porcelain"), "", "git itself is told to see nothing")
+        self.assertNotEqual(state("assume-unchanged"), "clean")
+        git(tool, "update-index", "--no-assume-unchanged", "fake_scqc.py")
+        git(tool, "checkout", "-q", "--", "fake_scqc.py")
+        git(tool, "update-index", "--skip-worktree", "fake_scqc.py")
+        self.assertNotEqual(state("skip-worktree"), "clean")
+        git(tool, "update-index", "--no-skip-worktree", "fake_scqc.py")
+        self.assertEqual(state("clean again"), "clean")
+        git(tool, "config", "core.trustctime", "false")
+        git(tool, "config", "core.checkStat", "minimal")
+        time.sleep(1.1)
+        git(tool, "update-index", "--refresh")
+        st = f.stat()
+        f.write_text(text.replace("import", "imporT", 1))
+        os.utime(f, ns=(st.st_atime_ns, st.st_mtime_ns))
+        self.assertEqual(git(tool, "status", "--porcelain"), "", "git itself is told to see nothing")
+        self.assertNotEqual(state("a stat cache trusted, size and mtime kept"), "clean")
+        f.write_text(text + "# edited\n")
+        git(tool, "replace", v1, commit(tool, "v3: edited"))
+        git(tool, "checkout", "-q", "--detach", v1)
+        self.assertNotEqual(state("a replace object"), "clean")
+        plain = self.tmp / "plain"
+        plain.mkdir()
+        shutil.copy(FIXTURES / "fake_scqc.py", plain / "fake_scqc.py")
+        self.assertEqual(state("outside git", plain), "-")
+
+    def test_W056_amendment_the_recipe_refuses_by_name_and_no_value_breaks_it(self):
+        """WHERE THE JOB IS SUBMITTED (W056 fix 1, amendment), by the recipe's shell, nothing made: a commit file that
+        disagrees with git, refused by name. ATTACKS 2: a path holding a quote, a space, a `$` and a `;` is one word -
+        the record holds it verbatim, the job accepts the record (PREFLIGHT: OK) and nothing it spells runs; a path
+        holding a newline is refused where the job is generated; a TAB in the path the machine resolves (git's top of
+        a linked checkout) is refused by the recipe, nothing made."""
+        from sch import drive
+        check = ('#!/bin/bash\nif [ "${CHECK_ONLY:-}" = 1 ]; then echo "VERDICT (x): AS PREDICTED - preflight"; exit 0; '
+                 'fi\necho "VERDICT (x): MISSED - not run"\n')
+        c = cohort(self.tmp / "c", "a")
+        f, tool, v1, v2 = self._held(c, "hostile.pbs", check, inputs_present=True, where="it's a $HOME; touch PWNED dir")
+        p, rd = self.run_job(f, "hostile", lambda rd: {"CHECK_ONLY": "1"})
+        self.assertIsNotNone(rd, p.stdout[-800:] + p.stderr[-1500:])
+        self.assertEqual(p.stdout.strip().splitlines()[-1], "PREFLIGHT: OK", p.stdout[-2000:] + p.stderr[-800:])
+        rows = [ln.split("\t") for ln in (rd / "CHECKOUTS.tsv").read_text().splitlines()]
+        self.assertIn(["checkout", "01_qc.scqc@checkout", str(tool.resolve()), v1, "clean", v1], rows)
+        self.assertEqual([x for x in self.tmp.rglob("*PWNED*") if x.name == "PWNED"], [], "nothing the path spells ran")
+        runs = rd.parent
+        made = sorted(runs.iterdir())
+        (tool / "HEAD.txt").write_text(v2 + "\n")
+        p, rd = self.run_job(f, "disagrees")
+        self.assertIsNone(rd, p.stdout[-800:])
+        self.assertIn(f"REFUSED, nothing submitted: 01_qc.scqc@checkout {tool.resolve()}: its HEAD.txt names {v2}, "
+                      f"git reads {v1} (the site declares HEAD.txt", p.stderr)
+        self.assertEqual(sorted(runs.iterdir()), made, "nothing made")
+        (tool / "HEAD.txt").write_text(v1 + "\n")
+        real = tool.with_name("real\tdir")
+        tool.rename(real)
+        tool.symlink_to(real)
+        p, rd = self.run_job(f, "tab")
+        self.assertIsNone(rd, p.stdout[-800:])
+        self.assertIn("REFUSED, nothing submitted: the record's checkout 01_qc.scqc@checkout line: a value holds a TAB "
+                      "or a newline", p.stderr)
+        self.assertEqual(sorted(runs.iterdir()), made, "nothing made")
+        req = yamlish.load(c["dir"] / "request.yml")
+        req["stages"][0]["params"]["scqc"] = str(self.tmp / "tools" / "a\nb" / "fake_scqc.py")
+        yamlish.dump(req, c["dir"] / "request.nl.yml")
+        with self.assertRaises(drive.RequestError) as e:
+            drive.job_text(drive.load(str(c["dir"] / "request.nl.yml")), f.parent / "nl.pbs", tools=[f"scQC={v1}"])
+        self.assertIn("holds a newline, a TAB or another control character", str(e.exception))
+        self.assertFalse((f.parent / "nl.pbs").exists())
 
     def test_W056_A1_CHECK_ONLY_runs_everything_before_the_first_tool_and_stops_on_one_PREFLIGHT_line(self):
         """A1 (BRIEFS 0b; gate.py preflight): with CHECK_ONLY=1 the job runs its checkouts and pins, every input

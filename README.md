@@ -52,10 +52,18 @@ everything downstream knows when one does.
 > is generated, and one absent there is checked only where the job runs. **A generated job never runs git
 > where it runs** (a compute node may have none; harness W056): what needs git - each checkout, the
 > harness's and every tool's, at the commit the job expects with no tracked change - is read where the job
-> is SUBMITTED, by its own recipe (`sch checkouts`, between `SUBMIT-BEGIN` and `SUBMIT-END`), which refuses
-> another commit or a tracked change before anything is made, and otherwise makes the run folder with that
-> record (`CHECKOUTS.json`, and `TOOL_HEAD.txt`, the harness's commit the run key carries) and passes the
-> record's sha256 with `qsub -v`. The job refuses the record missing, changed after submission, made for
+> is SUBMITTED, by its own recipe (between `SUBMIT-BEGIN` and `SUBMIT-END`), which runs git, the shell's own
+> small tools (`cd mkdir pwd date cat printf echo test [ head cut tr`, a sha256 tool) and `qsub`, nothing else:
+> no python, no tool and no compute run where a job is submitted, and the generator refuses to write a recipe
+> (the site's `submit:` lines among it) that would run another command (`RECIPE_PROGRAMS` in `sch/drive.py`).
+> Its shell lines read each checkout as the job's pins do (its commit, and the digest of its tracked changes as
+> `_git_state` reads them) and refuse by name, before anything is made: a stated tool at another commit or with
+> a tracked change, any other checkout not as it was when the job was generated, a commit file that disagrees
+> with git, the request edited since. Otherwise they make the run folder with the record (`CHECKOUTS.tsv`, one
+> TAB-separated line a field or a checkout: its top, commit, tracked changes, `clean` for none, and commit
+> file; each value checked to hold no TAB or newline before it is written; and `TOOL_HEAD.txt`, the harness's
+> commit the run key carries) and pass the record's sha256 with `qsub -v`. A person may run the same lines by
+> hand; no `sch` verb writes the record. The job refuses the record missing, changed after submission, made for
 > another run or job, or naming another commit (`VERDICT (pins): MISSED`, before any tool), and where it
 > runs compares what needs no git: the file in every checkout's top directory holding its commit, when the
 > site declares one (`commit_file:` in the site's `job.yml`; a `here:` line). A site declaring none: the job
