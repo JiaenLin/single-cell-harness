@@ -80,9 +80,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   of a failed read; live `main` writes silent garbage, GAP-C127) and FAILED on one reason the round caused: records
   holding none of the six fields were put where the deployed Studio says "left out over its budget", false on the
   family's own ordinary object. Then a lean re-check, then Lab's deploy (D-045); nothing is deployed on a FAIL; a third
-  failed verification sends the Lab-Studio contract to a root design review (RULES item 20). And the builder of
-  **W056** (the driver's integration, [waves/W056.md](waves/W056.md), launched 2026-11-12T04:30Z; its base `133589d`
-  is now on `main`). No Fable agent is running.
+  failed verification sends the Lab-Studio contract to a root design review (RULES item 20). And the VERIFIER of
+  **W056** (the driver's integration, built at `4438681`: the verified driver and W045 merged by hand onto `main`'s
+  line, suite 962 with every parent's test ids present, the first cohort's chained request finished, its subset and
+  full jobs generated; W045 has had no verification before this one). No Fable agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
   0. **W055's second half** (scProfile, `abundance` through the maker; brief `q_w055cont.txt`, the first builder's
      clone kept). The first half is pushed at `2e5b95a`: the blind grade, a `source` stage and verb in the maker (three
@@ -108,8 +109,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** nothing. Checkouts on the cluster: the harness `133589d` (its tree is `main`'s runtime tree); scQC at
-  `main`; scAnno `f456431`; scIntegrate `2fc7a6c` (= `main`); scProfile `5c1a3ff` (its `main` is one docs commit ahead).
+- **On PBS:** **791723**, W056's SUBSET of the first cohort's chained run (one request, four stages, 5 of 10 libraries;
+  asks 6 h; the driver submits each stage). On AS PREDICTED and a PASS: the full job `01_chain_w056.pbs` (10 h). Checkouts
+  on the cluster: the harness `4438681` (W056's head), and every tool at its `main` (scQC `8106f50`, scAnno `9fb561c`,
+  scIntegrate `2fc7a6c`, scProfile `b5f646a`).
 - **Merged 2026-11-12, the eleventh, both in one step: scIntegrate `2fc7a6c`** (W039 + W046: withheld cells out of the
   PCA, a wrong-result defect; the design's key column kept; names checked before anything runs; state version 2) **and
   the harness `1717eed`** (W052: the adapter at state version 2, the stand-in as strict as the tool, a mount whose
