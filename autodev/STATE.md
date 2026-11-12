@@ -92,10 +92,12 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the lean RE-CHECK of **W056's fix round 1 with its amendment** (head `d9347d1`: a submit
-  recipe that runs only git, the shell's small tools and the submit command, by a closed list and a walking test; the
-  record made by shell; proof table 32 rows; a FAIL is the wave's second and goes to a design read); the builder of
-  **W055's GATE JOB** (W055 is VERIFIED: PASS; A3.2 4/4 and A4.3 3/9 count on merge).
+- **Running now (2 Opus):** the lean RE-CHECK of **W056's fix round 1 with its amendment** (head `d9347d1`; told of the
+  preflight's miss; whatever it says, the pins walk goes to the design read D6); the VERIFIER of **W058** (scProfile's
+  group locks at `0d963b9`; its build job read AS PREDICTED).
+- **W055's GATE JOB is written and its PREFLIGHT is on the cluster (PBS 792083)**: a prediction true to the code (de
+  passes; abundance's agree fails on 3 figure lines; cellchat's fixture lines fail as `partial`, GAP-C131); proof table
+  31 rows. On OK the run (asks 1 h); on AS PREDICTED scProfile's `main` moves to `c135097` and A3.2 is 4/4.
 - **Running now (2 Fable):** the DESIGN READ **D6** of the driver's pins walk (W056's second failed check; into
   [waves/W056.md](waves/W056.md)); the designer-builder of **W062** ([waves/W062.md](waves/W062.md), wave S of W061's
   design: the Studio says of a fact only what its source lets it say; it ends the false Methods sentence for bundles
@@ -125,11 +127,12 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   2. (done: PASS) W055's verification; its gate job is being written; then its preflight, the run and the merge.
   3. **Cold reproduction 1** (ROUTE R11): the first cohort's stage 1 from the record and the docs alone, by a fresh
      agent; the coordinator submits its job. A2.3 +0.25. Its hand-back lists every doc line that misled it.
-  4. **The grade wave** (scProfile, stacked on W055 and W058): decoupler, scenic and velocity graded BLIND in one run
-     with the maker unchanged between them, each grade recorded first; then only their comment hits (the prose verb) and
+  4. **The grade wave** (scProfile, on W055 and W058 once merged): ONE held-out plugin, decoupler, graded BLIND, as
+     the catalogue says (one at a time: a blind grade cannot be taken back, so three in one run is the PI's to allow:
+     asked in the day's report with the direction review's reason; until then one). The review's form, if allowed:
+     decoupler, scenic and velocity graded blind in one run with the maker unchanged, each grade recorded first; then only their comment hits (the prose verb) and
      their sources (the source stage). A4.3 to 6/9; conform green, so A4.1 can count on the dev-suite job; scProfile's
-     0.1 of A3.1. The last three plugins stay the before-and-after test. THE PI IS TOLD (the reading "one at a time"
-     was the pre-decider's): a word before this starts keeps it one at a time.
+     0.1 of A3.1. The last three plugins stay the before-and-after test.
   5. **One lean verification of the scProfile batch** (W058 and the grade wave).
   6. **W050's lean verification** (scAnno `f456431`; brief `q_w050verify.txt`; the second cohort's stage 4 needs it).
   7. **W059's builder** (the cohort-run skill, to design D1), after W056 merges. Its verification IS item 8.
