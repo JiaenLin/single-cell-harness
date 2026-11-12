@@ -285,6 +285,27 @@ names; nothing in tiers I to III changes.
     the failed one; (d) the pool keeps every candidate tried with its result, and a result chosen from several is
     reported with how many were tried. For an analysis result that last line is what keeps a search from being a
     fishing trip: the tools never search analysis choices for an effect.
+21. **Design and direction are Fable's; building and verifying are Opus's** (the PI, 2026-11-12: "use more fable for
+    development design and directions"). The coordinator's reading, adjustable:
+    (a) DESIGN. Before a builder starts a wave that is not a small fix (a new wave of size M or larger; a redesign;
+    anything that changes a contract between two tools, or between a tool and a deployed app; a fix round after a
+    wave's SECOND failed verification), a Fable 5.2 agent writes the wave's design into its wave file: the problem from
+    the root; the design BY CONSTRUCTION (what makes the class of defect impossible, not the cases shown); one other
+    design and what it gives up; the steps; the acceptance check and the attacks the builder must run before hand-back;
+    what the design gives up. The Opus builder builds that design; an objection goes in its plan with the reason and is
+    recorded, never acted on silently. A small fix round's design is the coordinator's, in its brief (the coordinator is
+    a Fable agent). A held-out plugin's blind grade comes BEFORE any design: the design follows the grade.
+    (b) DIRECTION. A Fable direction review reads GOALS, ROUTE, the ledgers and the day's verdicts and says: which
+    tests under their bar move soonest, by which waves, in what order; what is stuck and why; what to stop; which of
+    the day's failed verifications were the design's, the builder's or outside the wave, and the one change that would
+    have caught each kind at the builder. Once a day in FULL mode, and after three failed verifications in a day. Its
+    note is kept in `autodev/audits/`; the coordinator applies it to ROUTE and the queue and records what it did not
+    apply and why.
+    (c) Item 20's count moves from three failed verifications to two.
+    (d) THE CAP: at most 2 Opus agents at once (the PI, D-039), beside at most 2 Fable agents (a designer, a design
+    reviewer or a direction reviewer), launched only while design or direction work is queued in STATE.md, never to fill
+    a slot. A Fable agent is launched with model `fable` and no effort set, and is read-only on code unless the wave is
+    a UI wave (D-026). The earlier limit of one Fable agent was the coordinator's own wording, not the PI's.
 20. **When fixing keeps failing, the root design is checked** (the PI, 2026-11-12: "when the fine tune did not work for many
     times, use fable to check root design"). A component whose fixes have failed verification three times (the
     coordinator's reading of "many") gets no further fix round until a Fable 5.2 agent has read its design from the root:

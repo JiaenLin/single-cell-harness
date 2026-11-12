@@ -61,8 +61,17 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   stayed in its clone. No agent was resumed (an agent resumes on the session's model): each was launched fresh with its
   brief from `<scratchpad>/relaunch/` and told to read its predecessor's clone and wave-file plan first. Today's meter
   before the stop: 16.3 M output tokens, 46 launches.
-- **THE CAP IS TWO OPUS AGENTS (D-039), beside at most one Fable designer or reviewer.** The heartbeat's prompt and RULES
-  item 6 carry it. Stopped items' briefs are in `<scratchpad>/relaunch/q_*.txt`; their clones keep what they wrote.
+- **THE CAP IS TWO OPUS AGENTS (D-039), beside at most TWO FABLE agents (D-048).** RULES items 6 and 21 and the
+  heartbeat's prompt carry it. Stopped items' briefs are in `<scratchpad>/relaunch/q_*.txt`; their clones keep what
+  they wrote.
+- **THE PI, 2026-11-12 (D-048): "use more fable for development design and directions".** RULES item 21: a Fable agent
+  writes the DESIGN of every wave that is not a small fix into its wave file before the Opus builder starts (the
+  problem from the root, the design by construction, one other design, the attacks the builder must run); a Fable
+  DIRECTION review orders the queue once a day and after three failed verifications in a day; the root design review
+  (item 20) triggers at two failed verifications. Opus builds and verifies. **The Fable queue:** (1) the direction
+  review, RUNNING (its note: `audits/DIRECTION_20261112.md`); (2) the designs it names, in its order, each before its
+  builder: expected first the harness's next waves after W056 (the run record Lab reads, the Service request as the
+  driver's input, the cohort-run skill, the scale cohort) and scIntegrate's installer.
 - **THE PI, 2026-11-12 (D-043): "USE PREDECIDER, REDUCE THE DECISION REQUIRED".** The order of fixes and what takes a slot
   is decided and reported, never asked. A question that is the PI's (a promotion, a threshold the data cannot decide)
   is held for the day's report with its numbers and a recommendation; no work waits on it.
@@ -81,7 +90,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   MISSED before any tool ran: the generated job needs git where a job runs. Brief `q_w056fix1.txt`; then a lean re-check
   and the subset again); the builder of **W055's second half** (scProfile, `abundance` through the maker, from
   `2e5b95a`; launched 2026-11-12T06:30Z).
-- **Running now (1 Fable):** the designer of **W057** ([waves/W057.md](waves/W057.md)): the Studio's Run card says what a
+- **Running now (2 Fable):** the DIRECTION reviewer (RULES item 21b; launched 2026-11-12T06:50Z); the designer of **W057** ([waves/W057.md](waves/W057.md)): the Studio's Run card says what a
   bundle holds, for bundles written before and after W054 (no reason stated that the bundle does not state); a table
   whose header is not as wide as its rows is refused (GAP-C117's Studio half). Then one independent check and its deploy.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
