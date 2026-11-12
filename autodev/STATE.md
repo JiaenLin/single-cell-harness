@@ -105,11 +105,13 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   its source; it deploys only after W062 is live).
 - **W058 is VERIFIED: PASS** (`0d963b9`, the verifier's docs pen `fe881a1`; GAP-C88 closed by measurement); it merges
   after W055, on which it is stacked.
-- **W055's GATE JOB MISSED (8) on NO graded output (PBS 792091):** each plugin's suite process was killed at the job's
-  own memory request (32 GB of 32 GB, exit 137, after 12.5 minutes); the request was the build job's and the suite had
-  never run on the cluster. Resubmitted as a dated copy with 120 GB (`dev_suite_w055.r1.pbs`; the prediction stands):
-  its preflight (792117) read OK and the run is PBS 792123. If it is killed again at 120 GB the suite has a runaway on the cluster and
-  that is a finding of its own.
+- **W055's GATE JOB RAN AND MISSED (6) (PBS 792123, 120 GB): three findings only the cluster could show.** (1) `de`'s
+  fixture tiers FAIL: on a node of 256 cores, inside 8, its parallel library started workers for the MACHINE: 63 GB, a
+  time-out, and the node's open-file table exhausted (GAP-C133; on `main` too; the cause of the first run's memory
+  kill). (2) abundance's agree has 5 lines, 2 of them monitoring fields it does not declare. (3) cellchat: 8 of 9
+  instances not ok, not 8 of 8. The gate did not pass: W055 and W058 (both verified) wait. **W065 is registered**
+  ([waves/W065.md](waves/W065.md): the host gives every plugin its allocation; abundance's fields declared; the job
+  predicted again) and takes the NEXT free Opus slot. THE DEV SUITE IS NOT SUBMITTED AGAIN BEFORE IT.
 - **Running now (2 Fable):** the independent CHECKER of **W062** (the Studio at `7e350a2`: a fact said only as its
   source lets it be; built, proof table 22 rows; on PASS the Studio deploys, D-045); the small FIXER of the lines
   scQC's second docs draw found (relaunched; then the docs-only branch merges, uncounted).
@@ -205,7 +207,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **792123**, W055's gate job with 120 GB (its preflight 792117 read OK). Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+- **On PBS:** nothing. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
   where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the
