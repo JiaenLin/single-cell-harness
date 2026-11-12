@@ -50,6 +50,9 @@ ledger. Of the 9 new waves verified that day, 5 failed first verification, on ca
 | 38 | A check that reads a file's parse, not the file | Give the file what the parser hides: a repeated key (the planted value first), a trailing second document, a byte-order mark, a comment the format forbids | the scProfile batch (the maker's record) |
 | 39 | An identity checked only where a thing is made, not where it is restored | Make it under one version, change the declaration, then restore or reload: is the old result served under the new identity? | W052 (a mount reloaded under a new state version) |
 | 40 | An option the parser accepts and the code never passes on | For each option of each command, find where its value is used; one that is parsed and dropped changes nothing when given | W052 fix 1 (`ask --upto`, older than the fix) |
+| 41 | A strict reader that refuses, with no way forward, a correct file written again by something other than its writer | Rewrite the file with the same content (key order, indent, line ends, a final newline) and read the refusal: does it say what to do? | the scProfile batch (the byte-exact record reader) |
 
 ## Inbox (a verifier appends here; one line each: the defect, the attack, the wave)
 
+- A run's seal that compares the answers one command holds with the stages' seals, never the record on disk: two resumes of one `--out` started together with different answers end with one failed, the other sealed (`agreed:`) and decisions.json holding the failed one's escape, which no tool received (caught only at the next resume): start two commands on one run directory at once - W049 fix 1
+- A record check that compares the plan with a copy of the plan: a stage's seal records the params its adapter was handed, not the tool's argv, so an adapter that drops a decided flag seals with `agreed: ... the params each tool was handed`: make the adapter drop one and read the line - W049 fix 1

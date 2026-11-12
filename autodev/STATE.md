@@ -75,20 +75,16 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus):** the verifier of **scProfile's last lean re-check** (the batch at `5c1a3ff`; its DE gate 791483 is
-  on the cluster); the verifier of **W049's lean re-check** (the driver at `110417c`: an answer for a sealed stage
-  refused, the run's record compared with each stage's seal, a job states each tool's commit). No Fable agent is running
-  (the root design review of Lab's run section is in: the design was the cause; W054 builds its recommendation).
+- **Running now (2 Opus):** the builder of **W054** (Lab: the run section rebuilt as a closed reader, one file per
+  conversion; a live defect); the verifier of **W049's lean re-check** (the driver at `110417c`). No Fable agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
-  0. **W054** (Lab, a LIVE defect, so first): the run section rebuilt as a closed reader (six named fields per record, no
-     walk) and one file per conversion, as the root design review recommends
-     (`audits/ROOT_DESIGN_W017_run_section.md`): brief `<scratchpad>/relaunch/q_w054build.txt`. Then its verification and
-     its deploy, reported, not asked (D-045).
+  0. **The plugin line starts** (scProfile's batch merged at `b5f646a`): the first held-out plugin through the maker,
+     abundance (ROUTE R24, with R45's source step, R32's interaction contrast and R46's fixture point): register and
+     launch at the next free slot. A4.1, A4.3, A3.2 and A3.1 wait on this line.
+  0b. After W054: its verification, then Lab's deploy, reported, not asked (D-045).
   1. **W052 PASSED its lean re-check** (the harness at `133589d`). Waiting only for the cluster: its subset 791374, then
      the full job (4 h); on AS PREDICTED both mains move in one step (scIntegrate `2fc7a6c` first, then the harness by
      its train's three guards), A3.1 +0.1; the stage-3 question goes into the day's report.
-  2. After scProfile's fix: its lean re-check, the DE gate again, the merge on a PASS (D-044), then the plugin line,
-     abundance first (A4.1, A4.3, A3.2).
   4. After W049's re-check: W045 brought onto it, and the first cohort's chained run as the gate (the job generated with
      `--tool` for all four tools).
   5. **W050's verification** (scAnno `f456431`): brief `q_w050verify.txt`.
@@ -97,9 +93,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   DE file, the table or the volcano; the volcano follows the cutoff's own correction; a cutoff is rounded to two figures
   before it is applied. Before it the same day: W051, the words and elements (`192057b`, D-042). Lab's `main` is
   `ca0cc73` (D-038), with three known exotic-input defects (fix-up 6 is queued; its deploy needs no question now).
-- **scProfile's batch is NOT merged**: its DE gate (790813) read AS PREDICTED and its fix held, but the lean re-check
-  failed on two record forgeries; the coordinator's attempt to merge with the gaps registered was refused by the
-  permission layer and is not retried (D-044).
+- **Merged 2026-11-12, the tenth: scProfile `b5f646a`** (the batch W035 + W040 + W047; last re-check PASS; DE gate 791483
+  AS PREDICTED): the maker's prose verb; the host writes no run into a plugin; the site strings gone; a design record is
+  read only in the maker's own form. No score moves by itself: it releases the plugin line.
 - **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
@@ -108,9 +104,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
 - **On PBS:** **791471**, the FULL first-cohort stage 3 through the harness at W052's fix head `133589d` and scIntegrate
-  `2fc7a6c` (asks 4 h; on AS PREDICTED both mains move in one step); **791483**, the DE gate at the scProfile batch's
-  head `5c1a3ff`. Checkouts on the cluster: the harness `133589d`; scQC at `main`; scAnno `f456431`; scIntegrate
-  `2fc7a6c`; scProfile `5c1a3ff`.
+  `2fc7a6c` (asks 4 h; on AS PREDICTED both mains move in one step). Checkouts on the cluster: the harness `133589d`;
+  scQC at `main`; scAnno `f456431`; scIntegrate `2fc7a6c`; scProfile `5c1a3ff` (its `main` is one docs commit ahead).
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
