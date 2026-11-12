@@ -92,13 +92,15 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the builder of **W056's WAVE A** (the design read D6: the declarations, the walk over
-  them with the look-based code deleted, and the re-check's one slip; brief `q_w056A.txt`; the lean re-check FAILED on
-  the walk's guess and that slip, and found every other part of the fix round closed and holding); the VERIFIER of
-  **W058** (scProfile's group locks at `0d963b9`).
-- **W055's GATE JOB IS RUNNING: PBS 792091** (asks 1 h), after its preflight read OK (792083). Its prediction is true
-  to the code (de passes; abundance's agree fails on 3 figure lines; cellchat's fixture lines fail as `partial`,
-  GAP-C131). On AS PREDICTED scProfile's `main` moves to `c135097` and A3.2 is 4/4.
+- **Running now (1 Opus):** the builder of **W056's WAVE A** (the design read D6; brief `q_w056A.txt`). The second
+  slot: W061's L1 (the lab's facts table; a live wrong result) is next, to be registered from the design.
+- **W058 is VERIFIED: PASS** (`0d963b9`, the verifier's docs pen `fe881a1`; GAP-C88 closed by measurement); it merges
+  after W055, on which it is stacked.
+- **W055's GATE JOB MISSED (8) on NO graded output (PBS 792091):** each plugin's suite process was killed at the job's
+  own memory request (32 GB of 32 GB, exit 137, after 12.5 minutes); the request was the build job's and the suite had
+  never run on the cluster. Resubmitted as a dated copy with 120 GB (`dev_suite_w055.r1.pbs`; the prediction stands):
+  its preflight is PBS 792117, then the run. If it is killed again at 120 GB the suite has a runaway on the cluster and
+  that is a finding of its own.
 - **Running now (2 Fable):** the designer-builder of **W062** (the Studio says of a fact only what its source lets it
   say); the DESIGN of **W063** (D9, [waves/W063.md](waves/W063.md)): the protocol of a cold reproduction (A2.3, 0 of 4).
 - **D6 IS WRITTEN** ([waves/W056.md](waves/W056.md), "Design read (D6)"): the files a driven run depends on are exactly
@@ -188,7 +190,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **792091**, W055's dev-suite gate job (asks 1 h). 792052 (W056's subset preflight) read MISSED (18): see D6. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+- **On PBS:** **792117**, the preflight of W055's gate job as resubmitted with 120 GB. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
   where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the
