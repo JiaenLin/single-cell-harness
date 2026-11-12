@@ -84,6 +84,14 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
+- **THE MACHINE WAS REBOOTED at about 2026-11-12T10:08Z (18:08 local).** The session restarted on the PI's CONTINUE.
+  The session's scratch folder was EMPTIED: every agent clone and private environment, the saved briefs, the
+  verifiers' notes, the headless tools, the pulled joint object and the incident's manifest are gone; a brief or a
+  record that names a file under `<scratchpad>/` written before 10:08Z names nothing. What survived: every pushed
+  branch, this repository (the wave files as the agents left them), the cohort folder, the cluster. Four agents were
+  cut off: W062's designer had pushed its branch and written its as-built note (so it went to its check); W056's wave
+  A, W064 and the scQC fixer had pushed nothing and were relaunched fresh. The job mirror and the heartbeat were
+  restarted. EVERY BRIEF NOW SAYS: push after every commit.
 - **INCIDENT, 2026-11-12T07:15Z (15:15 local), repaired by 07:36Z (D-050):** a test written by W056's fix-round
   builder linked every program on the PATH into its temp folder, and the suite's clean-up chmods every path of the
   temp tree, following symlinks: 395 real programs on this machine went to mode 0644 (everything in Homebrew but git;
@@ -92,9 +100,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the builder of **W056's WAVE A** (the design read D6; brief `q_w056A.txt`); the builder of
-  **W064** ([waves/W064.md](waves/W064.md), wave L1 of W061's design: the lab states a fact only with its source; it
-  deploys only after W062 is live).
+- **Running now (2 Opus), relaunched fresh after the reboot:** the builder of **W056's WAVE A** (the design read D6;
+  brief `q_w056A.txt`, re-saved); the builder of **W064** (wave L1 of W061's design: the lab states a fact only with
+  its source; it deploys only after W062 is live).
 - **W058 is VERIFIED: PASS** (`0d963b9`, the verifier's docs pen `fe881a1`; GAP-C88 closed by measurement); it merges
   after W055, on which it is stacked.
 - **W055's GATE JOB MISSED (8) on NO graded output (PBS 792091):** each plugin's suite process was killed at the job's
@@ -102,8 +110,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   never run on the cluster. Resubmitted as a dated copy with 120 GB (`dev_suite_w055.r1.pbs`; the prediction stands):
   its preflight (792117) read OK and the run is PBS 792123. If it is killed again at 120 GB the suite has a runaway on the cluster and
   that is a finding of its own.
-- **Running now (2 Fable):** the designer-builder of **W062** (the Studio says of a fact only what its source lets it
-  say); a small FIXER of the lines scQC's second docs draw found (then the docs-only branch merges, uncounted).
+- **Running now (2 Fable):** the independent CHECKER of **W062** (the Studio at `7e350a2`: a fact said only as its
+  source lets it be; built, proof table 22 rows; on PASS the Studio deploys, D-045); the small FIXER of the lines
+  scQC's second docs draw found (relaunched; then the docs-only branch merges, uncounted).
 - **D9 IS WRITTEN** ([waves/W063.md](waves/W063.md), "Design"): the protocol of a cold reproduction: a closed record
   pack, the tool at the record's commit, a comparison sealed before the attempt, and the attempt run as a SEPARATE
   headless session (a subagent of this session is not cold). Runs in order: stage 1 (27 min), stage 4, stage 2, stage 3;
