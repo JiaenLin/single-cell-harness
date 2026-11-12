@@ -69,11 +69,16 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **DEPLOYS OF STUDIO AND LAB ARE NOT ASKED since 2026-11-12 (D-045, the PI's own answer: "Deploy, and stop asking"):** once
   an independent check says ready and the deploy workflow's own tests succeed, deploy and report right after with what
   went live and its limits. The PI can withdraw this at any time. Service is never touched.
+- **THE PI, 2026-11-12 (D-046): "when the fine tune did not work for many times, use fable to check root design".** RULES
+  item 20: after a component's third failed verification no further fix round is launched until a Fable agent has
+  reviewed its root design; the next round builds the recommendation. Running now for Lab's run section (W017, five
+  failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
 - **Running now (2 Opus):** the verifier of **scProfile's last lean re-check** (the batch at `5c1a3ff`; its DE gate 791483 is
   on the cluster); the verifier of **W049's lean re-check** (the driver at `110417c`: an answer for a sealed stage
-  refused, the run's record compared with each stage's seal, a job states each tool's commit). No Fable agent is running.
+  refused, the run's record compared with each stage's seal, a job states each tool's commit). Fable 5.2: the ROOT DESIGN
+  review of Lab's run section (read-only; `audits/ROOT_DESIGN_W017_run_section.md`).
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
   1. **W052 PASSED its lean re-check** (the harness at `133589d`). Waiting only for the cluster: its subset 791374, then
      the full job (4 h); on AS PREDICTED both mains move in one step (scIntegrate `2fc7a6c` first, then the harness by
@@ -84,7 +89,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
      `--tool` for all four tools).
   5. **W050's verification** (scAnno `f456431`): brief `q_w050verify.txt`.
   6. **scIntegrate's installer** (GAP-C116), for A1.3: brief `q_w046fix2.txt`, clone `W046g-scIntegrate`.
-  7. **Lab's W017 fix-up 6** (three defects live since D-038): brief `q_w017fix6.txt`, clone `W017g-lab`.
+  7. **Lab's run section**: whatever its root design review recommends (the briefed fix-up 6 waits for it; the three
+     defects are live since D-038); its deploy needs no question (D-045).
 - **Studio's `main` is `8fb0d0a` since 2026-11-12T01:39Z (D-045)**: W053 is live: an untested gene carries no p in a saved
   DE file, the table or the volcano; the volcano follows the cutoff's own correction; a cutoff is rounded to two figures
   before it is applied. Before it the same day: W051, the words and elements (`192057b`, D-042). Lab's `main` is

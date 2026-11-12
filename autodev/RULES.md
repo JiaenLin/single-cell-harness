@@ -285,6 +285,13 @@ names; nothing in tiers I to III changes.
     the failed one; (d) the pool keeps every candidate tried with its result, and a result chosen from several is
     reported with how many were tried. For an analysis result that last line is what keeps a search from being a
     fishing trip: the tools never search analysis choices for an effect.
+20. **When fixing keeps failing, the root design is checked** (the PI, 2026-11-12: "when the fine tune did not work for many
+    times, use fable to check root design"). A component whose fixes have failed verification three times (the
+    coordinator's reading of "many") gets no further fix round until a Fable 5.2 agent has read its design from the root:
+    what the component is for; what each failed fix tried and why it failed; whether the failures share a cause that is in
+    the design and not in the code; at least two other designs, each with what it removes and what it gives up; and one
+    recommendation: redesign, narrow the claim, or stop. Its note is kept in `autodev/audits/`. The next round builds the
+    recommendation, not another patch. The reviewer is read-only and runs beside the two Opus agents.
 19. **The route is checked for sufficiency.** After a route change, and before a full audit, one independent agent
     reads ROUTE.md against GOALS.md and answers: if every item lands as written, does each test reach its bar, and
     what is missing? (On 2026-11-11 four route items were found by accident, inside other waves' verdicts.)
