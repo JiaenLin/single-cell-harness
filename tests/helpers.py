@@ -15,6 +15,53 @@ from sch.plugin.test import table_fixture  # noqa: E402
 PLUGINS = ROOT / "plugins"
 
 
+def _chmod_own(p, mode) -> None:
+    """chmod the path itself, NEVER what a link names (see `release_tree`); best effort, as a clean-up is."""
+    if os.path.islink(p):
+        return
+    try:
+        if os.chmod in os.supports_follow_symlinks:     # macOS: lchmod; elsewhere the islink above is the guard
+            os.chmod(p, mode, follow_symlinks=False)
+        else:
+            os.chmod(p, mode)
+    except OSError:
+        pass
+
+
+def read_only(paths) -> None:
+    """Make each of `paths` read-only (0444), as delivered data are; a symlink among them is skipped, never followed:
+    what it names is not the test's own file."""
+    for p in paths:
+        _chmod_own(p, 0o444)
+
+
+def release_tree(root) -> None:
+    """THE CLEAN-UP OF A TEST'S TEMP TREE (harness W056 fix 1): every directory made 0755 and every file 0644 so the
+    tree can be removed, then removed. A SYMLINK IS NEVER FOLLOWED - not chmodded, not walked into - BY
+    CONSTRUCTION: on 2026-11-12 a clean-up that chmodded every path it walked (`Path.chmod` follows links) set mode
+    0644 on about 395 real programs a test had linked into its tree from the PATH. Only the tree's own entries change
+    mode; `shutil.rmtree` then unlinks a link without touching what it names."""
+    root = Path(root)
+    if root.is_symlink() or not root.is_dir():
+        return
+    todo = [str(root)]
+    while todo:
+        d = todo.pop()
+        _chmod_own(d, 0o755)                        # before listing it: a 0444 directory cannot be walked
+        try:
+            entries = list(os.scandir(d))
+        except OSError:
+            continue
+        for e in entries:
+            if e.is_symlink():
+                continue
+            if e.is_dir(follow_symlinks=False):
+                todo.append(e.path)
+            else:
+                _chmod_own(e.path, 0o644)
+    shutil.rmtree(root, ignore_errors=True)
+
+
 def fresh_stack(n=200, plugin_paths=None):
     tmp = Path(tempfile.mkdtemp(prefix="sch-test-"))
     rows, design = table_fixture(tmp, n=n)
@@ -126,8 +173,7 @@ def library_cohort(dest: Path, libraries: int = 4, droplets: int = 120, assay: s
     sheet.write_text("# a samplesheet as a QC tool reads it\n" + "\n".join(lines) + "\n")
     # DELIVERED DATA ARE IMMUTABLE (LAYOUT: data/ is never written): read-only, as a mount demands
     # of every observation file a plugin is handed (ARCHITECTURE E2; harness W010).
-    for f in [sheet] + sorted((dest / "objects").glob("*.h5ad")):
-        f.chmod(0o444)
+    read_only([sheet] + sorted((dest / "objects").glob("*.h5ad")))
     registry = dest / "registry.tsv"
     registry.write_text("species\tbuild\tpath\nspecies_x\tref_1\treferences/species_x/ref_1\n")
     design = dest / "design.csv"

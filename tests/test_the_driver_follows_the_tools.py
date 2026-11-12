@@ -529,6 +529,90 @@ class AJobStatesTheToolsItExpects(M.TheClusterPath):
         git(tool, "checkout", "-q", "--detach", v1)
         missed(f"at {v1}, with tracked changes")
 
+    def test_W056_a_job_runs_no_git_where_it_runs_and_what_needs_git_is_read_where_it_is_submitted(self):
+        """R0 (the cluster: a compute node has no git; every tool read "not a git checkout" and the job refused).
+        The recipe reads each checkout with git where the job is submitted, into the run folder; the job, with NO
+        git on its PATH, reads that record and compares the site's commit file. Each wrong input is refused by the
+        one that can see it: the recipe (git) or the job (the record, the commit file)."""
+        import hashlib
+        c = cohort(self.tmp / "c", "a")
+        o = self.tmp / "origin" / "stand-ins"            # the four stand-ins as one checkout of their own
+        shutil.copytree(FIXTURES, o, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        (o / ".gitignore").write_text("HEAD.txt\n__pycache__/\n*.pyc\n")
+        git(o, "init", "-q")
+        v1 = commit(o, "v1")
+        (o / "NOTES.md").write_text("docs only\n")
+        v2 = commit(o, "v2: docs only")
+        tool = self.tmp / "tools" / "stand-ins"
+        git(self.tmp, "clone", "-q", str(o), str(tool))
+        git(tool, "checkout", "-q", "--detach", v1)
+
+        def head(at):                            # the site's commit file, rewritten at every pull
+            (tool / "HEAD.txt").write_text(at + "\n")
+        head(v1)
+        req = request(c, resources=self.SIZES)
+        doc = yamlish.load(req)
+        for st, (k, rel) in zip(doc["stages"], (("scqc", "fake_scqc.py"), ("scanno", "fake_scanno.py"),
+                                                ("scintegrate", "fake_scintegrate"), ("scprofile", "fake_scprofile"))):
+            st["params"][k] = str(tool / rel)
+        os.chmod(req, 0o644)
+        yamlish.dump(doc, req)
+        states = [x for t in ("scQC", "scAnno", "scIntegrate", "scProfile") for x in ("--tool", f"{t}={v1}")]
+        f, _ = self.job(c, req, name="held.pbs", extra=states, commit_file="HEAD.txt")
+        p, held = self.run_job(f, "held")
+        self.assertIsNotNone(held, p.stdout[-1500:] + p.stderr[-1500:])
+        self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: AS PREDICTED", p.stdout[-2500:] + p.stderr[-800:])
+        pins = (held / "PINS.txt").read_text()
+        self.assertIn(f"  here: 01_qc.scqc@checkout {tool.resolve()}: its HEAD.txt names {v1}, the commit git read at "
+                      f"submission", pins)
+        self.assertIn("  harness: at ", pins)
+        self.assertEqual((held / "TOOL_HEAD.txt").read_text().strip(), (self.harness() / "HEAD.txt").read_text().strip())
+        # WHERE IT IS SUBMITTED (git): another commit, a tracked change - refused, nothing made, nothing submitted
+        git(tool, "checkout", "-q", "--detach", v2)
+        head(v2)
+        p, rd = self.run_job(f, "moved")
+        self.assertIsNone(rd, p.stdout[-800:])
+        self.assertIn(f"(scQC): this job expects {v1}, clean; here at {v2}, clean", p.stderr)
+        git(tool, "checkout", "-q", "--detach", v1)
+        head(v1)
+        (tool / "fake_scqc.py").write_text((tool / "fake_scqc.py").read_text() + "# edited\n")
+        p, rd = self.run_job(f, "edited")
+        self.assertIsNone(rd, p.stdout[-800:])
+        self.assertIn(f"this job expects {v1}, clean; here at {v1}, with tracked changes", p.stderr)
+        git(tool, "checkout", "-q", "--", "fake_scqc.py")
+        # WHERE IT RUNS (no git): the record absent, changed, another run's, forged to name another commit; the
+        # commit file moved after submission - each refused before any tool, by name
+        def writable(rd):
+            r = rd / "CHECKOUTS.json"
+            r.chmod(0o644)
+            return r
+
+        def forged(rd):
+            r = writable(rd)
+            rec = json.loads(r.read_text())
+            rec["checkouts"]["01_qc.scqc@checkout"]["git"] = v2
+            r.write_text(json.dumps(rec))
+            return {"CHECKOUTS_SHA256": hashlib.sha256(r.read_bytes()).hexdigest()}
+
+        def another(rd):
+            r = writable(rd)
+            shutil.copy(held / "CHECKOUTS.json", r)
+            return {"CHECKOUTS_SHA256": hashlib.sha256(r.read_bytes()).hexdigest()}
+        for name, between, words in (
+                ("absent", lambda rd: writable(rd).unlink(), "CHECKOUTS.json, is absent; the recipe passed"),
+                ("changed", lambda rd: writable(rd).write_text(writable(rd).read_text() + " "), "; the recipe passed "),
+                ("another_run", another, f"was made for the run {held}"),
+                ("forged", forged, f"(scQC: this job expects {v1}, clean; at submission at {v2}, clean)"),
+                ("pulled", lambda rd: head(v2), f"here its HEAD.txt names {v2}: the checkout moved after the job was submitted")):
+            with self.subTest(where_it_runs=name):
+                p, rd = self.run_job(f, name, between)
+                self.assertIsNotNone(rd, p.stderr[-800:])
+                self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: MISSED (1)", p.stdout[-1500:])
+                self.assertIn("VERDICT (pins): MISSED", (rd / "FAILED.txt").read_text())
+                self.assertIn(words, (rd / "FAILED.txt").read_text())
+                self.assertFalse((rd / "01_qc").exists(), "nothing ran")
+                head(v1)
+
     def test_a_tool_no_stage_runs_a_commit_that_is_not_one_or_one_tool_twice_is_refused(self):
         c = cohort(self.tmp / "c", "a")
         req = request(c, resources=self.SIZES)

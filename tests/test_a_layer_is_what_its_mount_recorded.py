@@ -20,7 +20,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from helpers import FIXTURES, HAVE_H5PY, PLUGINS, PROTO_HEAD, fresh_stack, library_cohort, write_plugin
+from helpers import FIXTURES, HAVE_H5PY, PLUGINS, PROTO_HEAD, fresh_stack, library_cohort, release_tree, write_plugin
 from sch.cli import main
 
 COLUMN = PROTO_HEAD + '''
@@ -220,12 +220,7 @@ class TheVerifiersReproductionThroughTheAdapters(unittest.TestCase):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-        for p in self.tmp.rglob("*"):
-            try:
-                p.chmod(0o755 if p.is_dir() else 0o644)
-            except OSError:
-                pass
-        shutil.rmtree(self.tmp, ignore_errors=True)
+        release_tree(self.tmp)                   # never follows a link (W056 fix 1)
 
     def test_scintegrate_mounted_at_1_and_moved_to_2_is_refused_by_name(self):
         import test_the_harness_runs_scintegrate as T

@@ -26,7 +26,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from helpers import FIXTURES, HAVE_H5PY, PROTO_HEAD, ROOT, write_plugin
+from helpers import FIXTURES, HAVE_H5PY, PROTO_HEAD, ROOT, read_only, release_tree, write_plugin
 from sch.cli import main
 from sch.kernel import Stack
 
@@ -78,8 +78,7 @@ def libraries(dest: Path, n_libraries=3, n_obs=12, stem=None):
         rows.append(f"{s}\t{part}")
     manifest = dest / "observations.tsv"
     manifest.write_text("\n".join(rows) + "\n")
-    for f in [manifest] + sorted((dest / "objects").rglob("*.h5ad")):
-        f.chmod(0o444)
+    read_only([manifest] + sorted((dest / "objects").rglob("*.h5ad")))
     refs = {}
     for name in ("tree.json", "scope.json", "corpus.db", "store.npz"):
         (dest / "refs").mkdir(parents=True, exist_ok=True)
@@ -122,12 +121,7 @@ class _Base(unittest.TestCase):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-        for p in self.tmp.rglob("*"):
-            try:
-                p.chmod(0o755 if p.is_dir() else 0o644)
-            except OSError:
-                pass
-        shutil.rmtree(self.tmp, ignore_errors=True)
+        release_tree(self.tmp)                   # never follows a link (W056 fix 1)
 
     def init(self, manifest, *context):
         rc, out = cli("init", str(self.stack), "--profile", "single-cell/1.0",
@@ -596,8 +590,7 @@ def synthetic_cohort(dest: Path, n_libraries=3, per_type=30):
         rows.append(f"{s}\t{part}")
     manifest = dest / "observations.tsv"
     manifest.write_text("\n".join(rows) + "\n")
-    for f in [manifest] + sorted((dest / "objects").glob("*.h5ad")):
-        f.chmod(0o444)
+    read_only([manifest] + sorted((dest / "objects").glob("*.h5ad")))
     return manifest, dest / "tree.json", dest / "corpus.db"
 
 

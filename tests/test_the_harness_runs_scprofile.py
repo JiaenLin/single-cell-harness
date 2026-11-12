@@ -28,7 +28,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from helpers import FIXTURES, HAVE_H5PY, PROTO_HEAD, ROOT, write_plugin
+from helpers import FIXTURES, HAVE_H5PY, PROTO_HEAD, ROOT, read_only, release_tree, write_plugin
 from sch.cli import main
 from sch.kernel import Stack
 
@@ -74,8 +74,7 @@ def integrated(dest: Path, n=N, parts=1):
     manifest.write_text("\n".join(rows) + "\n")
     design = dest / "design.csv"
     design.write_text("sample,age\nL1,a1\nL2,a2\nL3,a1\n")
-    for p in [manifest, design] + sorted((dest / "objects").glob("*.h5ad")):
-        p.chmod(0o444)
+    read_only([manifest, design] + sorted((dest / "objects").glob("*.h5ad")))
     return manifest, design, dest / "objects" / "integrated.h5ad"
 
 
@@ -111,12 +110,7 @@ class _Base(unittest.TestCase):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-        for p in self.tmp.rglob("*"):
-            try:
-                p.chmod(0o755 if p.is_dir() else 0o644)
-            except OSError:
-                pass
-        shutil.rmtree(self.tmp, ignore_errors=True)
+        release_tree(self.tmp)                   # never follows a link (W056 fix 1)
 
     def init(self, manifest, *context, design=None):
         extra = ["--design", str(design)] if design else []

@@ -29,7 +29,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from helpers import FIXTURES, HAVE_H5PY
+from helpers import FIXTURES, HAVE_H5PY, release_tree
 from sch import yamlish
 from sch.cli import main
 
@@ -197,12 +197,7 @@ class _Base(unittest.TestCase):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-        for p in self.tmp.rglob("*"):
-            try:
-                p.chmod(0o755 if p.is_dir() else 0o644)
-            except OSError:
-                pass
-        shutil.rmtree(self.tmp, ignore_errors=True)
+        release_tree(self.tmp)                   # never follows a link (W056 fix 1)
 
     def calls(self) -> list:
         out = []

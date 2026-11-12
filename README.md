@@ -47,11 +47,21 @@ everything downstream knows when one does.
 > `env/` and `references/` there), the interpreter and the packages and executables a tool finds through
 > it or on PATH, a document's second level, a URL inside a document (recorded as an absent path). A job
 > states the commit of each tool it expects (`sch run --request FILE --job JOB --tool scQC=COMMIT`, 40 hex,
-> by the adapter's tool name): its pins check that tool's checkout WHERE THE JOB RUNS against it and a
-> clean work tree, which stand for the files of the param naming the tool too (a `tool:` line when it
-> holds; `VERDICT (pins): MISSED` naming the tool at another commit or with tracked changes); without
-> `--tool` a checkout, and the param's files, are pinned as they are where the job is generated, and
-> one absent there is checked only where the job runs. What may have run upstream of an assay is what the first stage's tool accepts
+> by the adapter's tool name): that commit and a clean work tree stand for the files of the param naming
+> the tool too; without `--tool` a checkout, and the param's files, are pinned as they are where the job
+> is generated, and one absent there is checked only where the job runs. **A generated job never runs git
+> where it runs** (a compute node may have none; harness W056): what needs git - each checkout, the
+> harness's and every tool's, at the commit the job expects with no tracked change - is read where the job
+> is SUBMITTED, by its own recipe (`sch checkouts`, between `SUBMIT-BEGIN` and `SUBMIT-END`), which refuses
+> another commit or a tracked change before anything is made, and otherwise makes the run folder with that
+> record (`CHECKOUTS.json`, and `TOOL_HEAD.txt`, the harness's commit the run key carries) and passes the
+> record's sha256 with `qsub -v`. The job refuses the record missing, changed after submission, made for
+> another run or job, or naming another commit (`VERDICT (pins): MISSED`, before any tool), and where it
+> runs compares what needs no git: the file in every checkout's top directory holding its commit, when the
+> site declares one (`commit_file:` in the site's `job.yml`; a `here:` line). A site declaring none: the job
+> runs on the record alone and says, per checkout, `not compared here` and why - a checkout moved between
+> submission and the job's start is then not seen. Either way a tracked file edited between submission and
+> the job's start, its commit unchanged, is not seen where the job runs: only git sees it. What may have run upstream of an assay is what the first stage's tool accepts
 > there (its adapter's `upstream_accepts:`, drift-tested against the tool's own code), with rule 2 over
 > it from the profile: no family tool performs ambient removal on single cells, and single cells
 > delivered denoised, by any remover's name, stop at the user's `upstream.ambient` (D-031), whatever

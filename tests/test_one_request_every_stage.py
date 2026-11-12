@@ -18,17 +18,19 @@ asserted against the world (the tools' argv, the files, the records), never the 
 The tools are the suite's stand-ins (`fixtures/fake_*`), which honour each tool's flags and status
 contract and compute nothing.
 """
+import importlib.util
 import io
 import json
 import os
 import shutil
 import sys
 import tempfile
+import time
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from helpers import FIXTURES, HAVE_H5PY, write_part
+from helpers import FIXTURES, HAVE_H5PY, read_only, release_tree, write_part
 from sch import yamlish
 from sch.cli import main
 from sch.kernel import Stack
@@ -75,8 +77,7 @@ def cohort(dest: Path, shape: str, libraries: int = 4, droplets: int = 40, assay
     (dest / "design.csv").write_text(f"{r['sample']},{r['condition']}\n" + "".join(
         f"L{i + 1},{'control' if i % 2 == 0 else 'treated'}\n" for i in range(libraries)))
     (dest / "registry.tsv").write_text("species\tbuild\tpath\nspecies_x\tref_1\treferences/species_x/ref_1\n")
-    for f in [dest / "samplesheet.tsv", dest / "design.csv"] + sorted((dest / "libs").glob("*.h5ad")):
-        f.chmod(0o444)
+    read_only([dest / "samplesheet.tsv", dest / "design.csv"] + sorted((dest / "libs").glob("*.h5ad")))
     return {"dir": dest, "roles": r, "design": dest / "design.csv"}
 
 
@@ -146,12 +147,7 @@ class _Base(unittest.TestCase):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-        for p in self.tmp.rglob("*"):
-            try:
-                p.chmod(0o755 if p.is_dir() else 0o644)
-            except OSError:
-                pass
-        shutil.rmtree(self.tmp, ignore_errors=True)
+        release_tree(self.tmp)                   # never follows a link (W056 fix 1)
 
     def calls(self) -> list:
         out = []
@@ -270,9 +266,7 @@ class OneRequestEveryStage(_Base):
             got = json.loads((out / "out.json").read_text())["answer"]["hands_on"]
             handed = {"libraries": {k: str(out / v) for k, v in got["libraries"].items()},
                       "joint": str(out / got["joint"]) if got["joint"] else None}
-            for p in out.rglob("*"):                 # a deliverable is read-only: the kernel's own rule
-                if p.is_file():
-                    p.chmod(0o444)
+            read_only(p for p in out.rglob("*") if p.is_file())   # a deliverable is read-only: the kernel's own rule
             reps.append(sd)
         return reps, None
 
@@ -528,20 +522,60 @@ class TheClusterPath(_Base):
             self.assertFalse((self.tmp / f"r_{who}").exists())
         self.assertEqual(self.calls(), [], "no tool started")
 
-    def job(self, c, req, check_ok=True, name=None, extra=()):
-        """The job generated for `req`, in a stage's jobs/ directory, with its site's job.yml; `extra`: more
-        of `sch run --job`'s own options (W049 fix 1: `--tool`)."""
+    def harness(self) -> Path:
+        """The harness under test as a checkout of its own (W056 fix 1): its code copied and committed, so the job
+        generated from it states that commit and its recipe reads it clean with git, as on the cluster."""
         import subprocess
         harness = self.tmp / "harness"
         if not harness.exists():
+            root = Path(__file__).resolve().parent.parent
             harness.mkdir()
-            (harness / "sch").symlink_to(Path(__file__).resolve().parent.parent / "sch")
-            head = subprocess.run(["git", "-C", str(Path(__file__).resolve().parent.parent), "rev-parse",
-                                   "HEAD"], capture_output=True, text=True).stdout.strip()
-            (harness / "HEAD.txt").write_text(head + "\n")
+            for d in ("sch", "plugins"):
+                shutil.copytree(root / d, harness / d, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            shutil.copy(root / ".gitignore", harness / ".gitignore")
+            g = lambda *a: subprocess.run(["git", "-C", str(harness), *a], capture_output=True, text=True,  # noqa: E731
+                                          check=True).stdout.strip()
+            g("init", "-q")
+            g("add", "-A")
+            g("-c", "user.email=t", "-c", "user.name=t", "-c", "commit.gpgsign=false", "commit", "-qm", "under test")
+            (harness / "HEAD.txt").write_text(g("rev-parse", "HEAD") + "\n")   # the site's commit file
+        return harness
+
+    #: EVERY COMMAND A GENERATED JOB CALLS BY NAME (W056 fix 1), read from the job's body (`job_text`: rm, grep,
+    #: hostname, date, cat, find and the chmod it runs, tee, head, tr, tail, cut, bash for its checks), the test's
+    #: checks (ls, wc, tr), the executor's child job (hostname, date), the stand-in scheduler (bash) and the stand-in
+    #: tools' `#!/usr/bin/env python3`; the interpreter and the scheduler are named by absolute paths. One left out
+    #: reads "command not found", which `run_job` refuses.
+    JOB_COMMANDS = ("bash", "cat", "chmod", "cut", "date", "find", "grep", "head", "hostname", "ls", "python3", "rm",
+                    "tail", "tee", "tr", "wc")
+
+    def nogit(self) -> str:
+        """A PATH WITHOUT GIT, where a job runs (W056 fix 1, ATTACKS 1): one tiny wrapper script per command the job
+        calls, each exec-ing that program by its absolute path. NEVER A LINK TO A REAL PROGRAM: on 2026-11-12 this
+        folder held a link to every program on the PATH, and the clean-up, following them, set them all 0644."""
+        import shlex
+        d = self.tmp / "nogit-bin"
+        if not d.exists():
+            d.mkdir()
+            for n in self.JOB_COMMANDS:
+                x = sys.executable if n == "python3" else shutil.which(n)
+                self.assertIsNotNone(x, f"{n}, which a generated job calls, is not on this machine's PATH")
+                (d / n).write_text(f'#!/bin/sh\nexec {shlex.quote(os.path.abspath(x))} "$@"\n')
+                (d / n).chmod(0o755)
+        self.assertIsNone(shutil.which("git", path=str(d)), "no git on the PATH where the job runs")
+        self.assertEqual([p.name for p in d.iterdir() if p.is_symlink()], [], "a wrapper, never a link")
+        return str(d)
+
+    def job(self, c, req, check_ok=True, name=None, extra=(), commit_file=None):
+        """The job generated for `req`, in a stage's jobs/ directory, with its site's job.yml, by the harness under
+        test's own generator; `extra`: more of `sch run --job`'s own options (W049 fix 1: `--tool`); `commit_file`:
+        the site's (W056 fix 1)."""
+        import subprocess
+        harness = self.harness()
         # this interpreter may keep its packages in the user's site, which a job hides by default
         yamlish.dump({"harness": str(harness), "python": sys.executable, "runs": "../../runs/sch",
-                      "setup": ["unset PYTHONNOUSERSITE"]}, self.site / "job.yml")
+                      "setup": ["unset PYTHONNOUSERSITE"], **({"commit_file": commit_file} if commit_file else {})},
+                     self.site / "job.yml")
         jobs = c["dir"] / "00_driver" / "jobs"
         pred, chk = c["dir"] / "00_driver" / "PREDICTION.txt", c["dir"] / "00_driver" / "checks.sh"
         jobs.mkdir(parents=True, exist_ok=True)
@@ -551,19 +585,49 @@ class TheClusterPath(_Base):
                        f"if [ \"$n\" -eq {want} ]; then echo \"VERDICT (four reports): AS PREDICTED - $n\"\n"
                        "else echo \"VERDICT (four reports): MISSED - $n\"; fi\n")
         f = jobs / (name or ("drive.pbs" if check_ok else "drive_missed.pbs"))
-        rc, text = cli("--json", "run", "--request", str(req), "--job", str(f), "--predict", str(pred),
-                       "--check", str(chk), "--purpose", "w042", *answered(c), *extra)
-        self.assertEqual(rc, 0, text)
-        return f, json.loads(text)
+        g = subprocess.run([sys.executable, "-m", "sch", "--json", "run", "--request", str(req), "--job", str(f),
+                            "--predict", str(pred), "--check", str(chk), "--purpose", f.stem, *answered(c), *extra],
+                           cwd=str(self.tmp), capture_output=True, text=True, env=dict(os.environ, PYTHONPATH=str(harness)))
+        self.assertEqual(g.returncode, 0, g.stdout + g.stderr)
+        return f, json.loads(g.stdout)
 
-    def run_job(self, f, name):
+    def run_job(self, f, name, between=None):
+        """The job as the coordinator submits it (W056 fix 1, R0): its recipe as gate.py extracts and runs it, where
+        git is, with a stand-in qsub recording what it is given; then its body WHERE NO GIT IS (a PATH without it),
+        with what the recipe passed. `between(rundir)`: done after the submission, before the job starts; it may
+        return environment to pass instead. Returns (the recipe's process and None when it refused, else the job's
+        process and its run folder)."""
         import subprocess
-        rundir = self.tmp / name
-        (rundir / "logs").mkdir(parents=True)
-        p = subprocess.run(["bash", str(f)], cwd=str(self.tmp), capture_output=True, text=True,
-                           env=dict(os.environ, RUNDIR=str(rundir), PBS_O_WORKDIR=str(f.parent),
-                                    HARNESSHEAD="test"))
-        return p, rundir
+        spec = importlib.util.spec_from_file_location("gate", Path(__file__).resolve().parent.parent / "setup" /
+                                                      "autodev" / "gate.py")
+        gate = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gate)
+        sub, rec = self.tmp / "submit-bin", self.tmp / f"{name}.qsub"
+        sub.mkdir(exist_ok=True)
+        (sub / "qsub").write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "{rec}"\necho 1.test\n')
+        (sub / "qsub").chmod(0o755)
+        script = "set -e\n" + "\n".join(gate.recipe_of(f.read_text(), f.name, []))
+        for _ in range(3):                       # two runs of one job in one second would share a run key
+            rec.unlink(missing_ok=True)
+            p = subprocess.run(["bash", "-c", script], capture_output=True, text=True,
+                               env=dict(os.environ, PATH=f"{sub}{os.pathsep}{os.environ['PATH']}"))
+            if "cannot be made" not in p.stderr:
+                break
+            time.sleep(1.1)
+        if p.returncode or not rec.exists():
+            return p, None
+        argv = rec.read_text().splitlines()
+        env = dict(x.split("=", 1) for x in argv[argv.index("-v") + 1].split(","))
+        rundir = Path(env["RUNDIR"])
+        got = between(rundir) if between else None
+        env.update(got if isinstance(got, dict) else {})
+        q = subprocess.run(["bash", str(f)], cwd=str(self.tmp), capture_output=True, text=True,
+                           env=dict(os.environ, PBS_O_WORKDIR=str(f.parent), PATH=self.nogit(), **env))
+        said = [str(p) for p in sorted(rundir.rglob("*")) if p.is_file() and not p.is_symlink()
+                and p.stat().st_size < 1 << 20 and b"command not found" in p.read_bytes()]
+        self.assertFalse("command not found" in q.stdout + q.stderr or said, (said, q.stderr[-800:], "a command "
+                         "the job calls is missing from JOB_COMMANDS"))
+        return q, rundir
 
     def test_the_job_is_generated_from_the_request_and_its_body_runs_it_to_the_gate(self):
         import subprocess
@@ -581,7 +645,11 @@ class TheClusterPath(_Base):
         recipe = text.split("# SUBMIT-BEGIN\n")[1].split("# SUBMIT-END")[0]
         self.assertTrue(all(ln.startswith("#   ") for ln in recipe.splitlines()), recipe)
         self.assertIn("qsub -o \"$RUNDIR/logs/\"", recipe)
-        self.assertIn('mkdir "$RUNDIR" "$RUNDIR/logs"', recipe)
+        self.assertIn('-m sch checkouts --request', recipe)        # W056 fix 1: what needs git, read where git is
+        self.assertIn("CHECKOUTS_SHA256=$CK", recipe)
+        body = text.split("# SUBMIT-END")[1]
+        self.assertEqual([ln for ln in body.splitlines() if "git -C" in ln or "rev-parse" in ln or "git status" in ln],
+                         [], "the job's body runs no git")
         self.assertNotIn(str(self.tmp), text.split("# SUBMIT-END")[1].replace(str(self.site), "")
                          .replace(sys.executable, "").replace(str(self.tmp / "harness"), ""),
                          "the body names the cohort's files relative to the job, nowhere else")
@@ -591,6 +659,8 @@ class TheClusterPath(_Base):
         seal = (rundir / "SEALED.txt").read_text()
         self.assertIn("VERDICT (drive): SEALED - 4 stages from one request", seal)
         self.assertIn("VERDICT (four reports): AS PREDICTED - 4", seal)
+        self.assertIn("  not compared here: 01_qc.scqc@checkout ", (rundir / "PINS.txt").read_text(),
+                      "a site declaring no commit file: each check not made is said, and why")
         for sd in ("01_qc", "02_anno", "03_int", "04_prof"):
             cost = json.loads((rundir / sd / "report" / "report.json").read_text())["cost"]
             self.assertEqual(cost["measured_by"], ["scheduler"], sd)
@@ -612,16 +682,21 @@ class TheClusterPath(_Base):
         req = request(c, resources=self.SIZES)
         f, _rec = self.job(c, req)
         self.assertIn(f'check_pin request "$REQUEST" {sha(req)}', f.read_text())
-        req.write_text(req.read_text() + "# edited after the job was generated\n")
-        p, rundir = self.run_job(f, "edited")
+        was = req.read_text()
+        req.write_text(was + "# edited after the job was generated\n")
+        p, rundir = self.run_job(f, "edited_before")          # W056 fix 1: before submission, the recipe refuses
+        self.assertIsNone(rundir, p.stdout[-800:])
+        self.assertIn("was generated for", p.stderr)
+        req.write_text(was)
+        p, rundir = self.run_job(f, "edited", between=lambda rd: req.write_text(was + "# edited after submission\n"))
         self.assertNotEqual(p.returncode, 0)
         self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: MISSED (1)")
         self.assertIn("VERDICT (pins): MISSED - the request", (rundir / "FAILED.txt").read_text())
         self.assertFalse((rundir / "01_qc").exists(), "nothing ran")
         f2, _rec = self.job(c, req, name="drive2.pbs")   # generated again, as another job
         chk = c["dir"] / "00_driver" / "checks.sh"
-        chk.write_text(chk.read_text() + "echo 'VERDICT (added): AS PREDICTED'\n")
-        p, rundir = self.run_job(f2, "edited_check")
+        p, rundir = self.run_job(f2, "edited_check", between=lambda rd: chk.write_text(
+            chk.read_text() + "echo 'VERDICT (added): AS PREDICTED'\n"))
         self.assertIn("VERDICT (pins): MISSED - the check", (rundir / "FAILED.txt").read_text())
         self.assertFalse((rundir / "01_qc").exists(), "nothing ran")
 
