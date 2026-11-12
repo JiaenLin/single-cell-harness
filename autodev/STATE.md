@@ -100,10 +100,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the builder of **W056's WAVE A** (the design read D6; relaunched after the reboot); the
-  builder of **W065** ([waves/W065.md](waves/W065.md), GAP-C133: the host gives every plugin its allocation;
-  abundance's monitoring fields declared; the gate job predicted again; stacked on W058 with W055's docs commit).
-  NEXT for an Opus slot: W064's fix round 1; then W063's set-up (the cold reproduction), then W061's T and H.
+- **Running now (2 Opus):** the builder of **W056's WAVE A** (the design read D6); the CONTINUATION of **W065** (its
+  three changes are built at `0870714`: the host sets all 12 channels from the allocation, de starts 2 workers and
+  not the machine's count, abundance's agree reads 3 lines on three runs, the gate job is predicted again; one route
+  was left open, the plugin SELFTEST launch: the continuation routes every launch site through the one function).
+  NEXT for an Opus slot: W064's fix round 1; W065's lean verification; W063's set-up; W061's T and H.
 - **W058 is VERIFIED: PASS** (`0d963b9`, the verifier's docs pen `fe881a1`; GAP-C88 closed by measurement); it merges
   after W055, on which it is stacked.
 - **W055's GATE JOB RAN AND MISSED (6) (PBS 792123, 120 GB): three findings only the cluster could show.** (1) `de`'s
