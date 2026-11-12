@@ -101,8 +101,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
 - **Running now (2 Opus), relaunched fresh after the reboot:** the builder of **W056's WAVE A** (the design read D6;
-  brief `q_w056A.txt`, re-saved); the builder of **W064** (wave L1 of W061's design: the lab states a fact only with
-  its source; it deploys only after W062 is live).
+  brief `q_w056A.txt`, re-saved; nothing pushed yet at 10:51Z); the builder of **W064** (wave L1 of W061's design; its
+  branch is pushed and moving, `38cb8bd` at 10:51Z; it deploys after an independent check, W062 being live).
+  NEXT for an Opus slot: **W065** (GAP-C133).
 - **W058 is VERIFIED: PASS** (`0d963b9`, the verifier's docs pen `fe881a1`; GAP-C88 closed by measurement); it merges
   after W055, on which it is stacked.
 - **W055's GATE JOB RAN AND MISSED (6) (PBS 792123, 120 GB): three findings only the cluster could show.** (1) `de`'s
@@ -194,7 +195,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   is told to be written again with gzip. Limits live: "over its budget" said of a record left out after a long value;
   "no run record" said when the only candidate could not be inspected (both Studio's wording: W057). GAP-C119, C125,
   C127 closed.
-- **Studio's `main` is `db78d6e` since 2026-11-12T11:00Z (D-053, the standing go D-045)**: W062 is live: the Studio says
+- **Studio's `main` is `db78d6e` since 2026-11-12T10:45Z (D-053, the standing go D-045)**: W062 is live: the Studio says
   of a fact only what its source lets it say. A bundle of today names NO integration method ("This bundle gives no
   source for an integration method, so none is named here.") and cites nothing from a name; the pseudobulk sentence
   appears only with a usable table; a log-normalised total is not called counts. Before it the same day: W057
