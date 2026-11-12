@@ -64,7 +64,8 @@ everything downstream knows when one does.
 > the job's start, its commit unchanged, is not seen where the job runs: only git sees it. **A job run with
 > `CHECK_ONLY=1`** (`qsub -v`; the program's ten-minute `gate.py preflight`) runs everything before its first
 > tool call - the checkouts and pins, every input present and readable where it runs (`sch plan --expect ...
-> --present`), and its check script with `CHECK_ONLY=1` and `REQUEST` in its environment, which grades each
+> --present`; a samplesheet cell written relative that names no file at either end is said as a word, such as a
+> registry's species/build, not missed), and its check script with `CHECK_ONLY=1` and `REQUEST` in its environment, which grades each
 > line that has a reference run on that reference - and stops: one line per miss, then `PREFLIGHT: OK` or
 > `PREFLIGHT: MISSED (n)`; no stage runs, nothing is sealed, and no `GATE:` line is printed. An `--answer`
 > that is not JSON but which the request's format reads as a boolean (`True`, `False`) is refused by name: the

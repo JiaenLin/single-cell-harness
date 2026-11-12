@@ -1790,6 +1790,12 @@ def expected(req: dict, file, answers: dict | None = None, checkouts=None, prese
     bad = {k for k, _x, _y in d}
     here = [k for k in sorted(b) if a.get(k) in (None, "absent") and k not in bad]
     gone = [k for k in sorted(now) if present and k not in bad and (now[k].get("absent") or now[k].get("unreadable"))]
+    # a samplesheet cell written RELATIVE that names no file where the job was generated nor where it runs may be a word
+    # with a slash (a registry's species/build): said, not missed - its tool reads it; an absolute or ~/ one is a file
+    top = os.path.abspath(Path(req["observations"]).parent) if req.get("observations") else None
+    words = [k for k in gone if top and k.startswith("observations.") and now[k].get("absent") and a.get(k) in (None, "absent")
+             and os.path.commonpath([os.path.abspath(now[k]["path"]), top]) == top]
+    gone = [k for k in gone if k not in words]
     lines = [f"  pinned: {sum(1 for v in a.values() if v != 'absent')} of the run's files as the job was generated; "
              f"{len(here)} checked here only"]
     lines += [f"  only here: {k} {now[k]['path']}" for k in here[:40]]
@@ -1802,6 +1808,8 @@ def expected(req: dict, file, answers: dict | None = None, checkouts=None, prese
               f"{stated[k]['git']}, clean; {where} {_said_state(now.get(k))})" if k in stated else
               f"  differs: {k} {(now.get(k) or then.get(k) or {}).get('path', '')} ({x or 'not named'} when the job "
               f"was generated, {y or 'not named'} now)" for k, x, y in d]
+    lines += [f"  not a file here: {k} {now[k]['path']} (a samplesheet cell written relative, naming no file where the job "
+              f"was generated or where it runs: read as a word, such as a registry's species/build)" for k in words]
     lines += [f"  differs: {k} {now[k]['path']} (" + ("absent" if now[k].get("absent") else f"unreadable: "
               f"{now[k]['unreadable']}") + " where the job runs: its preflight finds every input present and readable "
               "before the first tool call)" for k in gone]
@@ -2142,7 +2150,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         "--checkouts \"$RUNDIR/" + CHECKOUTS + "\" $PRESENT > \"$RUNDIR/PINS.txt\" 2>&1",
         "prc=$?",
         "set -e",
-        "grep -E '^  (pinned|only here|tool|harness|here|not compared here):' \"$RUNDIR/PINS.txt\" || true",
+        "grep -E '^  (pinned|only here|tool|harness|here|not compared here|not a file here):' \"$RUNDIR/PINS.txt\" || true",
         "if [ \"$prc\" -ne 0 ]; then",
         "  why=$(grep -E '^  (differs|request refused)' \"$RUNDIR/PINS.txt\" | head -n 12 | tr '\\n' ';' || true)",
         "  [ -n \"$why\" ] || why=$(tail -n 3 \"$RUNDIR/PINS.txt\" | tr '\\n' ' ' || true)",

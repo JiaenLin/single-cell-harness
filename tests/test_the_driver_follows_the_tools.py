@@ -711,6 +711,21 @@ class AJobStatesTheToolsItExpects(M.TheClusterPath):
         ok, lines, _ = D.expected(r, pins, {}, present=True)
         self.assertFalse(ok, lines)
         self.assertTrue(any("not_yet_made" in ln and "absent where the job runs" in ln for ln in lines), lines)
+        # a samplesheet cell written relative with a slash that names no file (a registry's species/build) is said and
+        # not missed; an absolute cell naming no file is a file absent: missed
+        sheet = Path(r["observations"])
+        os.chmod(sheet, 0o644)
+        rows = sheet.read_text().splitlines()
+        sheet.write_text("\n".join([rows[0] + "\trefkey\tbam"] + [x + "\tspecies_x/ref_9\t/nonexistent_w056/x.bam"
+                                                                      for x in rows[1:]]) + "\n")
+        r = D.load(request(c, stages=st))
+        pins.write_text(json.dumps({"files": {k: {x: y for x, y in v.items() if x != "path"}
+                                              for k, v in D.run_inputs(r, {}).items()}}))
+        ok, lines, _ = D.expected(r, pins, {}, present=True)
+        self.assertFalse(ok, lines)
+        self.assertTrue(any(ln.startswith("  not a file here: observations.refkey[") for ln in lines), lines)
+        self.assertFalse(any(ln.startswith("  differs: observations.refkey[") for ln in lines), lines)
+        self.assertTrue(any("/nonexistent_w056/x.bam" in ln and "absent where the job runs" in ln for ln in lines), lines)
 
     def test_a_tool_no_stage_runs_a_commit_that_is_not_one_or_one_tool_twice_is_refused(self):
         c = cohort(self.tmp / "c", "a")
