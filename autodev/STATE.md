@@ -103,18 +103,22 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the builder of **W056's D6 fix round** (a declared value read as its reader reads it; the
-  cohort's check script made to read a real run; both jobs regenerated; waiting on its own commit hook at 15:08Z);
-  **W063's COLD ATTEMPT 1** (stage 1), a SEPARATE headless session started by the coordinator from
-  `<scratchpad>/a23/` (D-055; one Opus slot; not an agent of this session, so no task id: its folder is
-  `a23/launch/run1_<stamp>/`, its end line `COLD: ...` or `NOT COLD`). W063's set-up is BUILT and probe 1 read
-  (tools exact, five outside reads refused; the CLI's five built-in parts ruled INFO). The kit, the criteria note and
-  every launch folder are copied to the first cohort's `stages/01_qc/a23/` (survives a reboot; the scratch does
-  not; never under this repository: the leak guard reads its untracked folders too).
-  AFTER THE ATTEMPT: read `pack_run1/out/job.pbs` before anything runs (waves/W063.md, step 5), record its md5,
-  submit it unchanged through the gate (preflight, then the run), then the grading job with NEW and SINCE.
-  NEXT for an Opus slot: W056's lean re-check, then its preflight, subset and full run; decoupler's blind grade
-  (scProfile at `a2694ec`); W061's T (the integration tool records the run's six fields); W067's S1.
+- **Running now (2 Opus):** the LEAN RE-CHECK of **W056's D6 fix round** (the branch at `90dea9a`; the round built:
+  one reader for every declared value, a value a reader could take for another file refused by name, the cohort's
+  check script reading a real run's layout, both jobs regenerated: subset md5 `8ef49ef9...`, full `194dc596...`; proof
+  table 39 rows; **the cluster preflight of the subset job read `PREFLIGHT: OK`, PBS 794434**: pins, C0 and C3 AS
+  PREDICTED). On its PASS: submit the subset run through the gate (6 h), then the full run (10 h), then the train
+  merge and A1.2; a FAIL goes to a design read. **W063's COLD ATTEMPT 1** (stage 1), a SEPARATE headless session
+  started by the coordinator at 15:40Z from `<scratchpad>/a23/` (D-055; one Opus slot; not an agent of this session,
+  so no agent id: its folder is `a23/launch/run1_20261112T154032Z/`, its end line `COLD: ...` or `NOT COLD`).
+  W063's set-up is BUILT and probe 1 read (tools exact, five outside reads refused; the CLI's five built-in parts
+  ruled INFO). The kit, the criteria note and every launch folder are copied to the first cohort's
+  `stages/01_qc/a23/` (survives a reboot; the scratch does not; never under this repository: the leak guard reads
+  its untracked folders too). AFTER THE ATTEMPT: read `pack_run1/out/job.pbs` before anything runs (waves/W063.md,
+  step 5), record its md5, submit it unchanged through the gate (preflight, then the run), then the grading job
+  with NEW and SINCE.
+  NEXT for an Opus slot: decoupler's blind grade (scProfile at `a2694ec`); W061's T (the integration tool records
+  the run's six fields); W067's S1.
 - **Merged 2026-11-12T14:16Z, the twelfth: scProfile `a2694ec`** (the batch **W055 + W058 + W065**, each verified PASS; the
   gate PBS 793345 AS PREDICTED at that commit): `abundance` through the maker with a declared control as its
   reference level, a covariate refused by name and an interaction named as not fitted; a source stage (three plugins
