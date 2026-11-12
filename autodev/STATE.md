@@ -96,8 +96,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   untouched; but its regenerated job's submit recipe runs python where a job is submitted, which the PI's rule for the
   login nodes forbids: a closed list of what a recipe may run, one walking test, the record made by shell; then both
   jobs regenerated); the VERIFIER of **W055** (scProfile at `55a60d5`; its one verification).
-- **Running now (1 Fable):** the RESIDUE SWEEP of scQC's docs (a ledger a claim; then a second draw). The second
-  Fable slot: A6.2's measurement next (the first cohort's real final object through the live Lab into the live Studio).
+- **Running now (1 Fable):** the THIRD sweep of scQC's docs (the residue sweep, by a ledger a claim, found 26 false
+  claims in 8 files the first sweep had read; seven files and 47 undecided rows are left; then the second draw; two
+  defects of the report page itself are GAP-C130). The second Fable slot: A6.2's measurement, when the first
+  cohort's joint object (3.2 GB, being pulled into scratch with its checksum) has arrived.
 - **W058 is BUILT** (scProfile `0d963b9`; proof table 14 rows) and its BUILD JOB IS ON THE CLUSTER: **PBS 791942**
   (two isolated groups' environments from their locks, each selftest; asks 1 h 30 min), after two preflights read OK
   (791915 on the original file; 791924 on the dated copy whose recipe line was corrected). On AS PREDICTED: W055's
