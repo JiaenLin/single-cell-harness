@@ -91,16 +91,33 @@ def cmd_stack(a):
         _emit(a, st.decl)
         st.close()
         return 0
-    view, _ = st.materialise()
-    lines = [f"  observations   {st.dataset.observations.name}: {view.n_total} observations, {view.n} kept      immutable"]
+    # A STACK SHOWS WHAT ITS MOUNTS RECORDED (W052 fix 1): each plugin at the version and
+    # state_version its layer was computed under, and where its plugin.yml now declares another, the
+    # difference and the way out. Such a view is not materialised: it is not served.
+    refusal = st._identity_refusal()
+    if refusal:
+        lines = [f"  observations   {st.dataset.observations.name}: the view is not served - {refusal[0]}"]
+    else:
+        view, _ = st.materialise()
+        lines = [f"  observations   {st.dataset.observations.name}: {view.n_total} observations, {view.n} kept      immutable"]
     for r in st.registry.runtimes:
         tag = {"mounted": "mounted", "invalid": "INVALID", "rebuild": "REBUILD", "refused": "refused"}.get(r.state, r.state)
+        if r.mismatch:
+            tag = "MISMATCH"
         kind = "checkpoint" if r.is_checkpoint else "stack"
         contribs = ", ".join(c.capability() for c in st.dataset.contributions_of(r.name)) or "-"
-        lines.append(f"  ▸ {r.name:<22} {r.manifest.version:<8} sv{r.manifest.state_version!s:<3} {kind:<10} {tag:<8} {contribs}")
-    _emit(a, st.declaration(), "\n".join(lines))
+        lines.append(f"  ▸ {r.name:<22} {r.version!s:<8} sv{r.state_version!s:<3} {kind:<10} {tag:<8} {contribs}")
+        if r.mismatch:
+            d = r.declared
+            lines.append(f"      recorded version {r.version} state_version {r.state_version!r}; its plugin.yml "
+                         f"now declares version {d['version']} state_version {d['state_version']!r}")
+    decl = st.declaration()
+    if refusal:
+        decl.update(served=False, reason=refusal[0], fix=refusal[1])
+        lines.append(f"  fix: {refusal[1]}")
+    _emit(a, decl, "\n".join(lines))
     st.close()
-    return 0
+    return 2 if refusal else 0
 
 
 def cmd_plan(a):
@@ -1733,8 +1750,13 @@ def main(argv=None) -> int:
     from .services.dataset import DatasetError
     from .services.invariant import InvariantFailure
     from .stack import StackError
+    from .kernel import IdentityMismatch
     try:
         return a.fn(a)
+    except IdentityMismatch as e:
+        _emit(a, {"status": "refused", "reason": e.reason, "fix": e.fix, "plugins": e.names},
+              f"  refused: {e.reason}\n  fix: {e.fix}")
+        return 2
     except DisposeError as e:
         # E5: work this command started could not be confirmed ended. Said, never a traceback,
         # and never a success: whatever the command printed before stands beside this.

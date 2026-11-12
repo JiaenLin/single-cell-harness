@@ -61,6 +61,13 @@ protocol = _protocol()
 #: STATE_VERSION scIntegrate declares (`scintegrate describe`): an object whose embeddings moved
 #: without this moving would be served from a cached view keyed on the old ones (D6).
 STATE_VERSION = 2
+
+
+def exact(v) -> bool:
+    """These numbers, exactly: an integer equal to STATE_VERSION. 2.0, "2" and true are not (D6)."""
+    return type(v) is int and v == STATE_VERSION
+
+
 #: scIntegrate's command line, as a stage-3 job runs it: `python -m scintegrate.cli`, with the
 #: checkout on PYTHONPATH.
 MODULE = "scintegrate.cli"
@@ -267,7 +274,7 @@ if not isinstance(described, dict):
 record["describe"] = {"exit": p.returncode, "version": described.get("version"),
                       "commit": described.get("commit"), "state_version": described.get("state_version"),
                       "wall_s": wall, "log": rel(log)}
-if described.get("state_version") != STATE_VERSION:
+if not exact(described.get("state_version")):
     refuse(f"scIntegrate declares state_version {described.get('state_version')!r}; this adapter's layer "
            f"means state_version {STATE_VERSION}, and a cached view keyed on one would serve the other's "
            f"embeddings (D6)", "update the adapter to scIntegrate's numbers and bump its state_version")
@@ -323,7 +330,7 @@ if status.get("status") == "refused" and rc == 2:
            ref.get("fix") or f"read {log}")
 # THE NUMBERS AGAIN, from the run's own record: `describe` is asked first and could be another process's
 # word than the integrate that ran (a checkout moved between the calls); the layer is keyed on this one.
-if status.get("state_version") != STATE_VERSION:
+if not exact(status.get("state_version")):
     died(f"scintegrate integrate recorded state_version {status.get('state_version')!r} in its STATUS.json, where "
          f"its describe declared {described.get('state_version')!r}; this adapter's layer means state_version "
          f"{STATE_VERSION} (D6), so its object is not read; read {log}")
@@ -359,6 +366,15 @@ def safe(name):
 
 try:
     with h5py.File(part, "r") as fp, h5py.File(obj, "r") as fo:
+        # THE NUMBERS A THIRD TIME, from the object itself: scIntegrate writes its state_version into
+        # the object's own provenance (`uns/scintegrate/provenance`). An object that says other
+        # numbers than its run's describe and STATUS - or none - is not read (W052 fix 1).
+        made_at = h5read.uns_scalar(fo, "scintegrate", "provenance", "state_version")
+        if not exact(made_at):
+            died(f"scIntegrate's object {obj} records state_version {made_at!r} in its own provenance "
+                 f"(uns/scintegrate/provenance), where its describe and STATUS.json said "
+                 f"{status.get('state_version')!r}; this adapter's layer means state_version {STATE_VERSION} "
+                 f"(D6), so the object is not read; read {log}")
         p_idx, o_idx = h5read.index(fp), h5read.index(fo)
         if len(set(o_idx)) != len(o_idx) or set(o_idx) != set(p_idx) or len(o_idx) != len(p_idx):
             only_o, only_p = len(set(o_idx) - set(p_idx)), len(set(p_idx) - set(o_idx))

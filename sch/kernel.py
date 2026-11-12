@@ -23,6 +23,7 @@ from . import CONTRACT, __version__, yamlish
 from .core import Context
 from .profile import load_profile, Profile
 from .registry import Manifest, MountResult, Registry, fold_key, FoldCache
+from .registry.runtime import differences
 from .registry.manifest import load_manifest, parse_capability, ManifestError
 from .services.dataset import (Dataset, Contribution, DatasetError, ObservationsChanged, PIN,
                                PINNED, pin_digest, remedy)
@@ -35,6 +36,22 @@ from .services.report import ReportService
 from .stack import compose, load_layers, StackError
 
 CONTRACT_MAJOR = int(CONTRACT.split(".")[0])
+
+
+class IdentityMismatch(StackError):
+    """A layer whose mount recorded one identity while its plugin.yml now declares another (W052
+    fix 1). Nothing that reads that layer is served: the view, a probe or scratch run over it, a
+    report of its numbers, a mount above it. `reason` names each plugin and both identities, `fix`
+    says what to do; `sch stack` and the doctor's runtime check show the same difference."""
+
+    def __init__(self, reason: str, fix: str, names: list):
+        super().__init__(f"{reason}; fix: {fix}")
+        self.reason, self.fix, self.names = reason, fix, names
+
+
+def _contract_major(c):
+    m = re.match(r"^(\d+)", str(c if c is not None else ""))
+    return int(m.group(1)) if m else None
 
 
 class Stack:
@@ -83,8 +100,68 @@ class Stack:
         self.plugin_paths = self._plugin_paths()
         state = self.dir / "state.json"
         if state.exists():
-            self.registry.load(state, self._manifest)
+            self.registry.load(state, self._manifest, self.profile.accepts)
+            self._read_run_records()
             self._restore_contributions()
+
+    def _read_run_records(self):
+        """WHAT A MOUNT RECORDED, IN ITS OWN RUN TOO (W052 fix 1). Besides state.json, a mount's run
+        directory records what computed its layer: in.json, what the kernel handed the plugin
+        (`plugin_version`, `state_version`, `contract`), and out.json, what the plugin said back
+        (`version`, `state_version`, `contract`, where it states them). Each is compared with the
+        plugin.yml as it is now, so a record edited to match leaves the others to say otherwise."""
+        for rt in self.registry.runtimes:
+            if rt.state not in ("mounted", "invalid", "rebuild"):
+                continue
+            declared = dict(rt.declared, contract=rt.manifest.contract_major)
+            for rel, fields in (("in.json", (("plugin_version", "version"), ("state_version", "state_version"),
+                                             ("contract", "contract"))),
+                                ("out/out.json", (("version", "version"), ("state_version", "state_version"),
+                                                  ("contract", "contract")))):
+                f = self.run_dir(rt.name) / rel
+                if not f.is_file():
+                    continue
+                try:
+                    rec = json.loads(f.read_text())
+                except ValueError:
+                    rt.mismatch.append({"record": rel, "field": "the file", "recorded": "unreadable",
+                                        "declared": "a JSON record"})
+                    continue
+                got = {mine: rec.get(theirs) for theirs, mine in fields if theirs in rec}
+                if "contract" in got:
+                    got["contract"] = _contract_major(got["contract"])
+                rt.mismatch += differences(rel, got, declared)
+
+    def _identity_refusal(self, upto: str | None = None):
+        """(reason, fix, names) for the runtimes a view up to `upto` would fold whose record is not
+        their plugin.yml, or None. Every plugin is named with both identities."""
+        bad = self.registry.mismatched(upto)
+        if not bad:
+            return None
+        reasons, fixes = [], []
+        for rt in bad:
+            d = rt.declared
+            where = "; ".join(f"{x['record']} {x['field']} {x['recorded']!r}, plugin.yml {x['declared']!r}"
+                              for x in rt.mismatch)
+            reasons.append(f"{rt.name} was mounted at version {rt.version} state_version {rt.state_version!r} "
+                           f"and its plugin.yml ({rt.manifest.dir}) now declares version {d['version']} "
+                           f"state_version {d['state_version']!r} ({where}): its layer was computed under "
+                           f"the first and is not served under the second")
+            if rt.is_checkpoint:
+                fixes.append(f"{rt.name} is a checkpoint, which cannot be unmounted: sch fork this stack "
+                             f"to a new folder and sch run there")
+            else:
+                deps = [r.name for r in self.registry.dependents(rt.name)]
+                fixes.append(f"sch unmount {rt.name}, then mount it again" +
+                             (f" (that invalidates {', '.join(deps)}, which read from it: mount them "
+                              f"again too)" if deps else ""))
+        return "; ".join(reasons), "; ".join(fixes), [rt.name for rt in bad]
+
+    def refuse_mismatched(self, upto: str | None = None):
+        r = self._identity_refusal(upto)
+        if r:
+            self.prov.append("identity/refused", plugins=r[2], reason=r[0], fix=r[1])
+            raise IdentityMismatch(*r)
 
     def _restore_contributions(self):
         """Rebuild the contribution list from each mounted plugin's own out.json on disk.
@@ -226,8 +303,8 @@ class Stack:
         self.registry.save(self.dir / "state.json")
         decl = dict(self.decl)
         decl.pop("composed_from", None)
-        decl["plugins"] = {r.name: {"plugin": str(r.manifest.dir), "version": r.manifest.version,
-                                    "state_version": r.manifest.state_version,
+        decl["plugins"] = {r.name: {"plugin": str(r.manifest.dir), "version": r.version,
+                                    "state_version": r.state_version,
                                     "params": r.params, "state": r.state,
                                     **({"escapes": r.escapes} if r.escapes else {})}
                            for r in self.registry.runtimes}
@@ -238,9 +315,11 @@ class Stack:
         """The stack itself: what regenerates the view. This is the artifact."""
         return {"profile": self.profile.id, "observations": self.dataset.digest(),
                 "keys": self.keymap(), "sentinels": self.sentinels(),
-                "plugins": [{"name": r.name, "version": r.manifest.version,
-                             "state_version": r.manifest.state_version, "params": r.params,
-                             "layer": r.layer, "state": r.state, "reads_from": r.reads_from}
+                "plugins": [{"name": r.name, "version": r.version,
+                             "state_version": r.state_version, "params": r.params,
+                             "layer": r.layer, "state": r.state, "reads_from": r.reads_from,
+                             **({"mismatch": {"declared": r.declared, "differences": r.mismatch}}
+                                if r.mismatch else {})}
                             for r in self.registry.runtimes],
                 "cannot_show": {r.name: r.manifest.data.get("cannot_show", [])
                                 for r in self.registry.runtimes}}
@@ -250,7 +329,9 @@ class Stack:
         return fold_key(self.dataset.digest(), self.registry.fold_entries(upto), self.profile.id)
 
     def materialise(self, upto: str | None = None, filtered: bool = True):
-        """The fold, cached on the exact tuple (D6). Returns (View, cache_dir)."""
+        """The fold, cached on the exact tuple (D6). Returns (View, cache_dir). Refused, by name,
+        when a layer it folds was recorded under another identity than its plugin.yml declares."""
+        self.refuse_mismatched(upto)
         key = self.fold_key_for(upto) + ("" if filtered else "-full")
         hit = self.cache.lookup(key)
         contribs = self._contributions(upto)
@@ -378,6 +459,10 @@ class Stack:
         if m.cls != "method":
             plan.update(admitted=False, reason=f"{m.name} is class {m.cls}; only methods mount",
                         fix="ask it through the probe or gate service")
+            return plan
+        below = self._identity_refusal()      # a mount reads the whole view: every layer under it
+        if below:
+            plan.update(admitted=False, reason=below[0], fix=below[1])
             return plan
         if self.registry.get(name):
             plan.update(admitted=False, reason=f"{name} is already mounted", fix="choose --name")
@@ -628,6 +713,7 @@ class Stack:
             upto: str | None = None) -> dict:
         """Ask a probe. `upto` materialises the view BELOW a mounted plugin, which is the view a
         gate saw when that plugin mounted — so an agent can reproduce any refusal's number."""
+        self.refuse_mismatched(upto)
         m = self.resolve_plugin(probe_ref)
         if upto:
             view, _ = self.materialise(upto=upto)
@@ -643,6 +729,7 @@ class Stack:
     # ------------------------------------------------------------- scratch (A1, A2)
     def scratch(self, script: str, label: str | None = None, params: dict | None = None) -> dict:
         """Run arbitrary code against a READ-ONLY view. Nothing it produces is quotable."""
+        self.refuse_mismatched()
         script = Path(script).resolve()
         sid = f"{int(time.time())}-{script.stem}" if not label else label
         run_dir = self.dir / "scratch" / sid
@@ -682,6 +769,7 @@ class Stack:
 
     # ------------------------------------------------------------- report, fork
     def report(self, include_scratch: bool = False) -> dict:
+        self.refuse_mismatched()               # a report quotes every layer's numbers
         return self.reports.render(self.dir / "report" / "report.json", self.declaration(),
                                    include_scratch=include_scratch)
 

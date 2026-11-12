@@ -21,6 +21,31 @@ from .manifest import Capability, Manifest, ManifestError, parse_capability
 
 STATES = ("registered", "mounted", "invalid", "rebuild", "unmounted", "refused", "died")
 
+#: WHAT A MOUNT RECORDED IS WHAT ITS LAYER IS (harness W052 fix 1). A mount records the identity of
+#: what computed its layer: the plugin's version, its state_version (its numbers, versioned) and the
+#: layer kind it was mounted as. A stack reopened later rebuilds each runtime from the plugin.yml it
+#: names, and that file can have moved since (a pull, a checkout, an edit). The identity a runtime
+#: is folded, keyed, saved and shown under is therefore the RECORDED one, never the declared one;
+#: and where the two differ the runtime carries the difference, and the kernel serves nothing that
+#: reads its layer until it is unmounted and mounted again.
+IDENTITY = ("version", "state_version", "layer")
+
+
+def identity_of(manifest) -> dict:
+    """What a plugin.yml declares now, in the fields a mount records."""
+    return {"version": manifest.version, "state_version": manifest.state_version, "layer": manifest.layer}
+
+
+def same_value(a, b) -> bool:
+    """Equal AND of one type: a state_version 2 is not 2.0, 1 is not True, and "2" is not 2."""
+    return type(a) is type(b) and a == b
+
+
+def differences(record: str, recorded: dict, declared: dict) -> list:
+    """Each field `record` holds that differs from what is declared now, by name."""
+    return [{"record": record, "field": k, "recorded": recorded[k], "declared": declared.get(k)}
+            for k in recorded if not same_value(recorded[k], declared.get(k))]
+
 
 class RegistryError(RuntimeError):
     pass
@@ -62,22 +87,40 @@ class Runtime:
     escapes: dict = field(default_factory=dict)
     dir: Path | None = None
     fork: Context | None = None
+    recorded: dict = field(default_factory=dict)       # IDENTITY as the mount recorded it
+    mismatch: list = field(default_factory=list)       # differences(): a record against plugin.yml
+
+    def __post_init__(self):
+        if not self.recorded:                          # a fresh mount records what it is mounted under
+            self.recorded = identity_of(self.manifest)
+
+    @property
+    def version(self) -> str:
+        return self.recorded.get("version")
+
+    @property
+    def state_version(self):
+        return self.recorded.get("state_version")
 
     @property
     def layer(self) -> str:
-        return self.manifest.layer
+        return self.recorded.get("layer")
 
     @property
     def is_checkpoint(self) -> bool:
         return self.layer == "checkpoint"
 
+    @property
+    def declared(self) -> dict:
+        return identity_of(self.manifest)
+
     def fold_entry(self) -> tuple:
-        return (self.name, self.manifest.version, self.manifest.state_version, self.params)
+        return (self.name, self.version, self.state_version, self.params)
 
     def to_state(self) -> dict:
         return {"name": self.name, "state": self.state, "params": self.params,
                 "plugin_dir": str(self.manifest.dir) if self.manifest.dir else None,
-                "version": self.manifest.version, "state_version": self.manifest.state_version,
+                "version": self.version, "state_version": self.state_version,
                 "layer": self.layer, "reads_from": self.reads_from, "escapes": self.escapes,
                 "invalid_reason": self.invalid_reason, "mounted_at": self.mounted_at}
 
@@ -108,8 +151,13 @@ class Registry:
         return [r.name for r in self.runtimes]
 
     # ------------------------------------------------------------- admission
-    def admit(self, manifest: Manifest, profile_accepts) -> tuple:
-        """X1: compare the contract MAJOR only. Profile: refuse an unknown one rather than guess."""
+    def admit(self, manifest: Manifest, profile_accepts, reopening: bool = False) -> tuple:
+        """X1: compare the contract MAJOR only. Profile: refuse an unknown one rather than guess.
+        A declared state_version is an integer exactly: 2.0, "2" and true are refused (D6)."""
+        sv = manifest.state_version
+        if sv is not None and type(sv) is not int:
+            return False, (f"{manifest.name}: declares state_version {sv!r}, which is not an integer"),\
+                "declare state_version as an integer (D6)"
         if manifest.contract_major is None:
             return False, f"{manifest.name}: manifest has no contract version", "add `contract: \"1.0\"`"
         if manifest.contract_major != self.contract_major:
@@ -121,7 +169,7 @@ class Registry:
         if manifest.layer not in ("stack", "checkpoint"):
             return False, f"{manifest.name}: layer {manifest.layer!r} is not stack|checkpoint", "declare layer"
         prior = [h for h in self.history if h["name"] == manifest.name]
-        if prior and prior[-1]["layer"] == "checkpoint" and manifest.layer == "stack":
+        if not reopening and prior and prior[-1]["layer"] == "checkpoint" and manifest.layer == "stack":
             return False, (f"{manifest.name}: was mounted as a checkpoint and now declares stack; "
                            f"a checkpoint cannot be converted to stack (A3)"), "keep layer: checkpoint"
         return True, "", ""
@@ -281,14 +329,38 @@ class Registry:
         Path(path).write_text(json.dumps({"runtimes": self.snapshot(), "history": self.history},
                                          indent=1, sort_keys=True, default=str))
 
-    def load(self, path, manifest_loader):
+    def load(self, path, manifest_loader, profile_accepts=None):
+        """Each runtime as its mount recorded it, beside what its plugin.yml declares now.
+
+        The manifest is read from the plugin directory the mount named, so it is the CURRENT one;
+        the identity is the recorded one (absent fields recorded as None, which differ from any
+        declaration). Every difference is kept on the runtime, and so is a refusal of the
+        admission the mount passed, asked again of the current manifest: what `admit` refuses at a
+        mount it refuses at every reopening (ATTACKS 21: the same check at another moment)."""
         data = json.loads(Path(path).read_text())
         self.history = list(data.get("history", []))
         for s in data["runtimes"]:
             m = manifest_loader(s["plugin_dir"])
+            rec = {k: s.get(k) for k in IDENTITY}
             rt = Runtime(name=s["name"], manifest=m, params=s["params"], state=s["state"],
                          provides=m.provides, reads_from=s.get("reads_from", []),
                          invalid_reason=s.get("invalid_reason", ""), mounted_at=s.get("mounted_at", 0),
-                         escapes=s.get("escapes", {}))
+                         escapes=s.get("escapes", {}), recorded=rec)
+            rt.mismatch = differences("state.json", rec, identity_of(m))
+            if profile_accepts is not None:
+                ok, reason, _fix = self.admit(m, profile_accepts, reopening=True)
+                if not ok:
+                    rt.mismatch.append({"record": "admission", "field": "plugin.yml",
+                                        "recorded": "admitted at its mount", "declared": reason})
             rt.fork = self.ctx.fork(f"plugin:{rt.name}")
             self.runtimes.append(rt)
+
+    def mismatched(self, upto: str | None = None) -> list:
+        """The runtimes a view up to `upto` would fold whose record is not their plugin.yml."""
+        out = []
+        for r in self.runtimes:
+            if r.name == upto:
+                break
+            if r.state == "mounted" and r.mismatch:
+                out.append(r)
+        return out

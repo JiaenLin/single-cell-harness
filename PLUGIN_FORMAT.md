@@ -202,6 +202,12 @@ bumping `state_version` serves stale numbers that look correct and match their o
 there is no cheaper place to catch that than here, and the kernel's companion (§16) catches the
 rest by raising when a re-run differs under an unchanged tuple.
 
+A bump does not re-key a layer that is already mounted: a layer is what its mount recorded. A stack
+that mounted the plugin before its `version` or `state_version` moved is refused, by name, until that
+plugin is unmounted and mounted again (`sch stack` shows both numbers); a stack mounted after the
+move is unaffected. A comment or a doc field changed in `plugin.yml` changes neither number and
+refuses nothing. The number is an integer exactly: `2.0`, `"2"` and `true` are refused at admission.
+
 Contribute a **whole value, never a delta** — the full mask, the full column. A delta cannot be
 removed from the middle of a stack, which is the operation the entire design is for.
 

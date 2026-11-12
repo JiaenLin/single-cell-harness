@@ -21,6 +21,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -446,6 +447,70 @@ sys.exit(run.finish(headline="masked one"))
         err = (self.stack / "plugins" / "int_scintegrate" / "stderr.log").read_text()
         self.assertIn("recorded state_version 1 in its STATUS.json, where its describe declared 2", err)
         self.assertEqual(self.view()["digest"], before["digest"])
+
+    def test_an_object_whose_own_provenance_carries_other_numbers_is_not_read(self):
+        """The same fact a third time (W052 fix 1, L1): describe and STATUS say 2, and the object the
+        integrate wrote records another state_version in `uns/scintegrate/provenance`, or none, or 2.0.
+        The object is not read: the mount dies naming what the object says, and the view is unchanged."""
+        for planted in ("1", "3", "absent", "2.0", '"2"'):
+            with self.subTest(provenance=planted):
+                shutil.rmtree(self.stack, ignore_errors=True)
+                self.init(self.manifest, "--context", "assay=snrna", "--context", "species=species_x")
+                before = self.view()
+                os.environ["FAKE_SCINTEGRATE_PROV_STATE_VERSION"] = planted
+                rc, r = self.mount(block(self.design))
+                self.assertEqual((rc, r["status"]), (2, "died"), f"an object at {planted} was read: {r}")
+                err = (self.stack / "plugins" / "int_scintegrate" / "stderr.log").read_text()
+                said = {"absent": "None", "2.0": "2.0", '"2"': "'2'"}.get(planted, planted)
+                self.assertIn(f"records state_version {said} in its own provenance", err)
+                self.assertEqual(self.view()["digest"], before["digest"])
+        os.environ.pop("FAKE_SCINTEGRATE_PROV_STATE_VERSION")
+        shutil.rmtree(self.stack, ignore_errors=True)
+        self.init(self.manifest, "--context", "assay=snrna", "--context", "species=species_x")
+        rc, r = self.mount(block(self.design))
+        self.assertEqual((rc, r["status"]), (0, "mounted"), r)
+
+    def test_a_state_version_that_is_not_an_integer_exactly_is_refused_where_it_is_read(self):
+        """L2: 2.0 equals 2 in Python, and so did the adapter's checks; a state version is an integer
+        exactly. describe at 2.0 is refused before anything runs; a STATUS.json at 2.0 is a death."""
+        cases = (({"FAKE_SCINTEGRATE_STATE_VERSION": "2.0"}, "refused",
+                  "scIntegrate declares state_version 2.0; this adapter's layer means state_version 2"),
+                 ({"FAKE_SCINTEGRATE_STATE_VERSION": "true"}, "refused", "declares state_version True"),
+                 ({"FAKE_SCINTEGRATE_STATUS_STATE_VERSION": "2.0"}, "died",
+                  "recorded state_version 2.0 in its STATUS.json"))
+        for env, status, words in cases:
+            with self.subTest(env=env):
+                shutil.rmtree(self.stack, ignore_errors=True)
+                for k in self.ENV[1:]:
+                    os.environ.pop(k, None)
+                os.environ.pop("FAKE_SCINTEGRATE_PROV_STATE_VERSION", None)
+                os.environ.update(env)
+                self.init(self.manifest, "--context", "assay=snrna", "--context", "species=species_x")
+                rc, r = self.mount(block(self.design))
+                self.assertEqual((rc, r["status"]), (2, status), f"{env} was accepted: {r}")
+                said = r["reason"] if status == "refused" else \
+                    (self.stack / "plugins" / "int_scintegrate" / "stderr.log").read_text()
+                self.assertIn(words, said)
+
+    def test_the_declaration_the_adapters_constant_and_the_tools_describe_are_one_integer(self):
+        """The verifier's L4: plugin.yml's `state_version` is what the view is keyed on, the adapter's
+        STATE_VERSION what it checks the tool against, `describe` what the tool says. One integer, three
+        places; with SCH_TEST_SCINTEGRATE naming a checkout, the real tool's describe is the third."""
+        from sch.registry.manifest import load_manifest
+        here = ROOT / "plugins" / "single-cell" / "int@scintegrate"
+        declared = load_manifest(here).state_version
+        wraps = re.findall(r"(?m)^\s+state_version:\s*(\S+)\s*$", (here / "plugin.yml").read_text())
+        constant = re.findall(r"(?m)^STATE_VERSION = (\S+)$", (here / "run.py").read_text())
+        real = os.environ.get("SCH_TEST_SCINTEGRATE")
+        tool = Path(real) if real else FAKE
+        p = subprocess.run([sys.executable, "-m", "scintegrate.cli", "describe"], cwd=str(tool),
+                           env={**os.environ, "PYTHONPATH": str(tool)}, capture_output=True, text=True)
+        described = json.loads(p.stdout[p.stdout.index("{"):]).get("state_version")
+        self.assertIs(type(declared), int, f"plugin.yml declares {declared!r}")
+        self.assertEqual(wraps, [str(declared)], "the wraps block repeats another number")
+        self.assertEqual(constant, [str(declared)], f"run.py's STATE_VERSION is {constant}")
+        self.assertIs(type(described), int, f"describe says {described!r}")
+        self.assertEqual(described, declared, f"{'the real' if real else 'the stand-in'} describe says {described}")
 
     # ----------------------------------------------------------------------- the stage record
     def test_scintegrates_refusal_is_the_mounts_refusal_with_its_fix(self):

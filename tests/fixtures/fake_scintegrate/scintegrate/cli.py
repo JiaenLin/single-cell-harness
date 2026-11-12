@@ -49,8 +49,11 @@ Environment:
     FAKE_SCINTEGRATE_LOG              append {"argv", "argv0", "cwd", "pythonpath"} per call
     FAKE_SCINTEGRATE_MODE             ok (default) | refuse | fail | unsealed | short | other_argv |
                                       reversed (rows written last first) | relabel (l1 rewritten)
-    FAKE_SCINTEGRATE_STATE_VERSION    what `describe` and STATUS report (default 2, 2fc7a6c's)
+    FAKE_SCINTEGRATE_STATE_VERSION    what `describe`, STATUS and the object's provenance report, as a
+                                      JSON value (default 2, 2fc7a6c's; `2.0` or `"2"` plant a non-integer)
     FAKE_SCINTEGRATE_STATUS_STATE_VERSION   what STATUS alone reports (default: the above)
+    FAKE_SCINTEGRATE_PROV_STATE_VERSION     what the object's `uns/scintegrate/provenance` alone
+                                      reports (default: the above; `absent` writes none)
 """
 import argparse
 import csv
@@ -62,8 +65,9 @@ import time
 from pathlib import Path
 
 MODE = os.environ.get("FAKE_SCINTEGRATE_MODE", "ok")
-STATE_VERSION = int(os.environ.get("FAKE_SCINTEGRATE_STATE_VERSION", "2"))
-STATUS_STATE_VERSION = int(os.environ.get("FAKE_SCINTEGRATE_STATUS_STATE_VERSION", str(STATE_VERSION)))
+STATE_VERSION = json.loads(os.environ.get("FAKE_SCINTEGRATE_STATE_VERSION", "2"))
+STATUS_STATE_VERSION = json.loads(os.environ.get("FAKE_SCINTEGRATE_STATUS_STATE_VERSION", json.dumps(STATE_VERSION)))
+PROV_STATE_VERSION = os.environ.get("FAKE_SCINTEGRATE_PROV_STATE_VERSION", json.dumps(STATE_VERSION))
 VERSION, COMMIT = "0.0.0-fake", "e" * 40
 ASSAYS = ("scrna", "snrna")
 GRAPH_METHODS = ("bbknn",)
@@ -82,10 +86,11 @@ def log_call():
 
 
 # ---------------------------------------------------------------------------- an .h5ad, with h5py
-def write_object(path, index, obs, obsm=None, obsp=None, copy_from=None):
+def write_object(path, index, obs, obsm=None, obsp=None, copy_from=None, provenance=None):
     """An .h5ad holding obs (`{name: (kind, values)}`, kind cat|str|int|float, or a node of
     `copy_from` to copy as it is), obsm (`{key: array}`) and obsp (`{key: (data, indices, indptr,
-    shape)}`, compressed sparse rows)."""
+    shape)}`, compressed sparse rows); with `provenance` (`{key: value}`), the tool's own record in
+    `uns/scintegrate/provenance`, each value a scalar dataset as anndata writes one."""
     import h5py
     import numpy as np
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -130,7 +135,19 @@ def write_object(path, index, obs, obsm=None, obsp=None, copy_from=None):
             c.create_dataset("data", data=data)
             c.create_dataset("indices", data=indices)
             c.create_dataset("indptr", data=indptr)
-        f.create_group("uns")
+        u = f.create_group("uns")
+        u.attrs["encoding-type"], u.attrs["encoding-version"] = "dict", "0.1.0"
+        if provenance is not None:
+            g = u.create_group("scintegrate").create_group("provenance")
+            for grp in (u["scintegrate"], g):
+                grp.attrs["encoding-type"], grp.attrs["encoding-version"] = "dict", "0.1.0"
+            for key, v in provenance.items():
+                if isinstance(v, str):
+                    d = g.create_dataset(key, data=v, dtype=vlen)
+                    d.attrs["encoding-type"], d.attrs["encoding-version"] = "string", "0.2.0"
+                else:
+                    d = g.create_dataset(key, data=np.array(v))
+                    d.attrs["encoding-type"], d.attrs["encoding-version"] = "numeric-scalar", "0.2.0"
 
 
 def ring(n, step=1, scale=1.0):
@@ -452,7 +469,11 @@ def integrate(a):
             obs = {c: ("str", _column_text(v[1])[1:] if v[0] == "copy" else v[1][1:]) for c, v in obs.items()}
             obsm = {k: v[1:] for k, v in obsm.items()}
             obsp = {}
-        write_object(out / "objects" / a.object_name, index, obs, obsm, obsp)
+        # the tool's provenance, as 2fc7a6c writes it: its state_version among the run's own words
+        prov = {"tool": "scintegrate", "version": VERSION}
+        if PROV_STATE_VERSION != "absent":
+            prov["state_version"] = json.loads(PROV_STATE_VERSION)
+        write_object(out / "objects" / a.object_name, index, obs, obsm, obsp, provenance=prov)
     (out / "tables").mkdir(parents=True, exist_ok=True)
     (out / "tables" / "scib_aggregate.csv").write_text(
         "method,total\n" + "".join(f"{m},{0.5 + i / 100:.6f}\n" for i, m in enumerate(methods)))

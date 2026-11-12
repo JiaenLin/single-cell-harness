@@ -87,6 +87,9 @@ its first word is the declared checkout's `cli.py`:
 - `refused`: the mount is refused with scIntegrate's reason and fix;
 - a record whose `state_version` is not this adapter's, whatever `describe` said: the plugin died, and its
   object is not read;
+- an object whose own provenance (`uns/scintegrate/provenance/state_version`, written by scIntegrate)
+  is not this adapter's, or records none: the plugin died, and the object is not read. Each of the
+  three must be the integer exactly: `2.0`, `"2"` and `true` are not 2;
 - anything else, including no record of the call: the plugin died, and stderr says why.
 
 The object read is the one `objects/*.h5ad` the record lists.
