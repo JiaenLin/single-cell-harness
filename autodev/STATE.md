@@ -103,12 +103,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the builder of **W056's D6 fix round** (the verification of waves A to C FAILED on one slip:
-  a padded sheet cell is pinned as an absent path while the tool opens the real file; everything else of the declared
-  set held, on the cluster too; the fix round also makes the cohort's check script read a real run: links, a
-  tab-separated sheet); the builder of **W064's fix round 1** (the lab).
-  NEXT for an Opus slot: W056's lean re-check, then its preflight, subset and full run; W063's set-up; W061's T and
-  H; decoupler's blind grade.
+- **Running now (2 Opus):** the builder of **W056's D6 fix round** (a declared value read as its reader reads it; the
+  cohort's check script made to read a real run; both jobs regenerated); the builder of **W063's SET-UP** (the cold
+  reproduction's kit for run 1: the pack, the criteria note, the grading job, the headless launch and its probe).
+  NEXT for an Opus slot: W056's lean re-check, then its preflight, subset and full run; decoupler's blind grade
+  (scProfile at `a2694ec`); W061's T (the integration tool records the run's six fields); W067's S1.
 - **Merged 2026-11-12T14:16Z, the twelfth: scProfile `a2694ec`** (the batch **W055 + W058 + W065**, each verified PASS; the
   gate PBS 793345 AS PREDICTED at that commit): `abundance` through the maker with a declared control as its
   reference level, a covariate refused by name and an interaction named as not fitted; a source stage (three plugins
@@ -116,17 +115,13 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   and a plugin takes its allocation, not the machine, at every place the host starts one. **A3.2 is 4/4; the tally is
   8.14 of 20 (mean 0.407).** `de` passes the dev suite on the cluster. GAP-C88, C133 and 054 closed; GAP-C135 opened
   (what a plugin's own child processes read).
-- **Running now (0 Fable).**
+- **Running now (1 Fable):** the lean RE-CHECK of **W064's fix round 1** (the lab at `537cfaa`; on PASS it deploys).
 - **D5 IS WRITTEN** ([waves/W067.md](waves/W067.md), "Design"): the maker's worksheet finds a site by how a library is
   called, not by what is decided; the design gives a closed list of 8 decisions and three answer forms, and lets a
   plugin declare through the maker, before any run, the end each fixture instance must reach (graded exactly). Waves:
   S1, S2 (scProfile; abundance's agree to zero), H1 and S3 (the ladder; cellchat), H2 (the inventory). **A4.1 stays 0
   of 9 until the leak scan is green: the plugin line takes the three held-out plugins that hold the hits first**
   (decoupler next, graded blind, one at a time until the PI allows three).
-- **W064's independent check FAILED on two small facts** (a log record's base of none stated as "base 0, as
-  recorded"; a total said summed from X that was the sum of its log); the design holds everywhere else. NOT deployed:
-  nothing false is live (the Studio words the old lab's guesses as unsourced). **Fix round 1 is registered in
-  [waves/W064.md](waves/W064.md) and is FIRST for the next Opus slot**; then one lean re-check and the deploy.
 - **D4 IS WRITTEN** ([waves/W066.md](waves/W066.md), "Design"): the draw rule for never-seen tools: a frame from the
   catalogue's own fields, seven closed exclusion reasons, a seed nobody types, the plugin compared with the tool run
   alone. Its small script and the conversions wait for the maker to be stable.
