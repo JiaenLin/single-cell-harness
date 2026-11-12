@@ -116,9 +116,13 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   and a plugin takes its allocation, not the machine, at every place the host starts one. **A3.2 is 4/4; the tally is
   8.14 of 20 (mean 0.407).** `de` passes the dev suite on the cluster. GAP-C88, C133 and 054 closed; GAP-C135 opened
   (what a plugin's own child processes read).
-- **Running now (1 Fable):** the DESIGN of **W067** (D5, [waves/W067.md](waves/W067.md)): what the maker cannot yet
-  say (a level order, an added statement, the model frame: GAP-C128) and what the fixture tier grades for a plugin whose
-  honest result is partial (GAP-C131), from the three recorded blind grades.
+- **Running now (0 Fable).**
+- **D5 IS WRITTEN** ([waves/W067.md](waves/W067.md), "Design"): the maker's worksheet finds a site by how a library is
+  called, not by what is decided; the design gives a closed list of 8 decisions and three answer forms, and lets a
+  plugin declare through the maker, before any run, the end each fixture instance must reach (graded exactly). Waves:
+  S1, S2 (scProfile; abundance's agree to zero), H1 and S3 (the ladder; cellchat), H2 (the inventory). **A4.1 stays 0
+  of 9 until the leak scan is green: the plugin line takes the three held-out plugins that hold the hits first**
+  (decoupler next, graded blind, one at a time until the PI allows three).
 - **W064's independent check FAILED on two small facts** (a log record's base of none stated as "base 0, as
   recorded"; a total said summed from X that was the sum of its log); the design holds everywhere else. NOT deployed:
   nothing false is live (the Studio words the old lab's guesses as unsourced). **Fix round 1 is registered in
