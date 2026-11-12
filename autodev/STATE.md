@@ -92,19 +92,21 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the CONTINUATION of **W056's fix round 1** (brief `q_w056fix1b.txt`: the clean-up made
-  unable to follow a symlink BEFORE any test; then the round as briefed, with the CHECK_ONLY branch and a proof table);
-  the VERIFIER of **W055** (scProfile at `55a60d5`; its one verification, checks 10 and 11).
-- **Running now (2 Fable):** W057's COMPLETION CHECK (Studio at `e475703`, after the designer's four-point wording
-  round; on PASS the Studio deploys, D-045); the DRAW on scQC's docs-truth branch `69644c1` (seed 20261112, 12 claims;
-  none false: the branch merges and A2.2 counts scQC).
-- **W058 is BUILT** (scProfile `0d963b9`: a lock for every group and platform, two groups had none; proof table 14 rows,
-  0 incomplete). Its ten-minute PREFLIGHT is on the cluster (PBS 791915); on OK its build job goes in (1 h 30 min);
-  it is verified with the scProfile batch (item 5).
+- **Running now (2 Opus):** the AMENDMENT to **W056's fix round 1** (the round is built at `22d3b82`, the machine
+  untouched; but its regenerated job's submit recipe runs python where a job is submitted, which the PI's rule for the
+  login nodes forbids: a closed list of what a recipe may run, one walking test, the record made by shell; then both
+  jobs regenerated); the VERIFIER of **W055** (scProfile at `55a60d5`; its one verification).
+- **Running now (2 Fable):** W057's COMPLETION CHECK (Studio at `e475703`; on PASS the Studio deploys, D-045); the
+  RESIDUE SWEEP of scQC's docs (the first draw found 1 FALSE in 12, a claim about "every" criterion the sweep had not
+  touched: scQC does not count yet; now a ledger a claim, every quantified claim against the code's whole set; then a
+  second draw).
+- **W058 is BUILT** (scProfile `0d963b9`; proof table 14 rows). Its first PREFLIGHT read OK (PBS 791915, under two
+  minutes); the real submission then stopped at a recipe line that fails under `set -e` outside a preflight: corrected
+  as a dated copy (`scprofile_isolated_groups_build.r1.pbs`), preflighted again (PBS 791924); on OK the build goes in.
 - **QUEUED for an Opus slot, in this order** (the direction review of 2026-11-12, D-049; launch the next only when
   fewer than 2 Opus agents run; a failed check takes the next slots; every registration carries THE CLASS and THE
   SIZE, every hand-back a proof table checked by `proof.py`):
-  1. **W056's lean re-check** when its fix round hands back. Beside it on the cluster, in order: `gate.py preflight`
+  1. **W056's lean re-check** when its amendment hands back. Beside it on the cluster, in order: `gate.py preflight`
      of the regenerated subset job (ten minutes), the subset, the first cohort's full chained run, the merge (A1.2 8/10).
   2. (running) W055's ONE verification. Its dev-suite job waits for W058's built environments.
   3. **Cold reproduction 1** (ROUTE R11): the first cohort's stage 1 from the record and the docs alone, by a fresh

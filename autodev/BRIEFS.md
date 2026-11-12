@@ -87,7 +87,10 @@ last act is to print one line, `GATE: AS PREDICTED` or `GATE: MISSED (n)`. It ho
 everything it does before its first tool call (its pins, every input and reference run present and readable where the
 job runs, its check script graded on the reference runs themselves) and stops with `PREFLIGHT: OK` or
 `PREFLIGHT: MISSED (n)`; the coordinator runs that for ten minutes (`gate.py preflight`) before the real submission.
-A job never needs a program the place it runs lacks (a compute node has no git). WALLTIME: the time its model's run
+A job never needs a program the place it runs lacks (a compute node has no git), and its SUBMIT RECIPE runs nothing
+but git, the shell's small tools and the scheduler's submit command: no python, no tool and no compute where a job
+is submitted (the PI's standing rule for the cluster's login nodes); a recipe line is written to succeed under
+`set -e` in both modes (a `[ .. ] && ..` that is false ends the submission: found on the first preflighted job). WALLTIME: the time its model's run
 measured, with a margin, never a queue's maximum. SUBSET: a job that asks for more than 2 hours comes with
 `<name>.subset.pbs`: the same steps on a declared subset, its own prediction (with its arithmetic: a subset is not
 predicted identical to a full run for a tool that pools its inputs), minutes long. Write a reproduction job when the
