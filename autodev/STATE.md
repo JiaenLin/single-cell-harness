@@ -70,16 +70,14 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
 - **Running now (2 Opus):** the builder of **W053** (Studio, from its `main` `192057b`: an untested gene carries no p in a
-  saved DE file, on screen or in the volcano; the volcano's line under an FDR cutoff; the PI: "Fix it next"); the
-  builder of **W052's fix round 1** (the harness: a mount's recorded state version is compared on load, so a stack
-  mounted before a bump is refused by name instead of served stale). No Fable agent is running.
+  saved DE file, on screen or in the volcano; the volcano's line under an FDR cutoff); the builder of **scProfile's last
+  small fix** (GAP-C122, in clone `W047-scProfile` at `95ed6bd`). No Fable agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
-  1. **scProfile's last small fix** (GAP-C122: a repeated JSON key refused when a record is read; a version literal held
-     to its form; the confirm verb checks before it writes; five sentences made true), in clone `W047-scProfile` at
-     `95ed6bd`; then a lean re-check, the DE gate again, the merge on a PASS (D-044), and the plugin line, abundance
-     first (A4.1, A4.3, A3.2).
-  2. After W052's fix round: its lean re-check, the subset and the full job re-pinned, BOTH mains in one step
-     (scIntegrate `2fc7a6c` first), A3.1 +0.1; the stage-3 question goes into the day's report.
+  1. **W052's lean re-check** (the harness, fix round 1 built at `133589d`: a mount's recorded identity is compared on
+     every reopening and a mismatch refused by name). Its subset 791374 is on the cluster; the full job follows it;
+     then BOTH mains in one step (scIntegrate `2fc7a6c` first), A3.1 +0.1; the stage-3 question goes into the day's report.
+  2. After scProfile's fix: its lean re-check, the DE gate again, the merge on a PASS (D-044), then the plugin line,
+     abundance first (A4.1, A4.3, A3.2).
   3. After W053: a short check (Fable, by looking and reading), then the PI's go for the deploy.
   4. **W049's fix round 1** (the driver): brief `q_w049fix1.txt`. Then its re-check, W045 brought onto it, the first
      cohort's chained run as the gate.
@@ -98,9 +96,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** nothing. Today's last: 790835 (the harness subset at W052's first head) and 790813 (scProfile's DE gate at
-  `95ed6bd`), both AS PREDICTED. Checkouts on the cluster: the harness `26db35d`; scQC at `main`; scAnno `f456431`;
-  scIntegrate `2fc7a6c`; scProfile `95ed6bd`.
+- **On PBS:** **791374**, the subset of the first cohort's stage 3 through the harness at W052's fix head `133589d` and
+  scIntegrate `2fc7a6c`. Checkouts on the cluster: the harness `133589d`; scQC at `main`; scAnno `f456431`; scIntegrate
+  `2fc7a6c`; scProfile `95ed6bd`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
