@@ -112,9 +112,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   instances not ok, not 8 of 8. The gate did not pass: W055 and W058 (both verified) wait. **W065 is registered**
   ([waves/W065.md](waves/W065.md): the host gives every plugin its allocation; abundance's fields declared; the job
   predicted again) and takes the NEXT free Opus slot. THE DEV SUITE IS NOT SUBMITTED AGAIN BEFORE IT.
-- **Running now (2 Fable):** the independent CHECKER of **W062** (the Studio at `7e350a2`: a fact said only as its
-  source lets it be; built, proof table 22 rows; on PASS the Studio deploys, D-045); the small FIXER of the lines
-  scQC's second docs draw found (relaunched; then the docs-only branch merges, uncounted).
+- **Running now (2 Fable):** the independent CHECKER of **W062** (the Studio at `7e350a2`; on PASS it deploys, D-045);
+  the THIRD DRAW on scQC's docs branch `16f1c32` (seed 20261114; the second draw's lines are fixed; none false: scQC
+  counts for A2.2 and the branch merges on it).
 - **D9 IS WRITTEN** ([waves/W063.md](waves/W063.md), "Design"): the protocol of a cold reproduction: a closed record
   pack, the tool at the record's commit, a comparison sealed before the attempt, and the attempt run as a SEPARATE
   headless session (a subagent of this session is not cold). Runs in order: stage 1 (27 min), stage 4, stage 2, stage 3;
@@ -128,10 +128,6 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **W061's DESIGN IS WRITTEN** (D8): 23 statements the pair makes about an object, 8 guessed from a name today; after
   W062: L1 and L2 (the lab; Opus builders: a wrong result), T and H (the integration tool writes the run's six
   fields, the harness passing the stage and the run key by argv). A6.2 to 2 of 2 on a new stage-3 run, re-measured.
-- **scQC's docs do NOT count for A2.2 yet (W060 held):** the second draw (seed 20261113) found 1 FALSE in 12 again, a
-  rule the code dropped in August and whose stale comment in the code misled three sweeps. Five Fable runs corrected
-  about 140 lines. Next for it: the drawer's listed lines fixed in one small run, then the docs-only branch `ba85f8e`+
-  merges as an improvement, uncounted. The direction review's "cheap points" was wrong for a repository this size.
 - **A6.2 MEASURED on the first cohort's real joint object** ([audits/A62_MEASUREMENT_20261112.md](audits/A62_MEASUREMENT_20261112.md)):
   1 of 2, the score unchanged at 0.5 but now measured. Half 1 YES: the lab's documented command, no flag, 61 s,
   1.84 GB, a bundle equal to the object in every value compared (all 34,290 gene totals, all rows of 5 embeddings); the
