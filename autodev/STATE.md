@@ -54,6 +54,26 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 
 ## The queue: [`ROUTE.md`](ROUTE.md)
 
+> **PAUSED BY THE PI since 2026-11-12T16:48Z (D-056): "pause development, wait for resume".** Nothing is graded,
+> launched, merged or deployed until the PI says resume. What was done at the pause, and what a resume does:
+> - **Both builders were STOPPED** (not resumable on their model: a resume launches each FRESH, Opus max).
+>   **W056** (the canonical table form, to design read 2): no code written; the branch is `90dea9a`, pushed, clean.
+>   **W068** (decoupler): the blind grade and change 2 are PUSHED (`autodev/W068-decoupler` at `ab629ca`, four
+>   commits); left: the as-built note, the proof table, change 3 (the gate job). Their rows in `ledger/waves.tsv`
+>   say exactly where each stood.
+> - **The heartbeat is DELETED** (both schedules). On resume: create it again (README, the heartbeat row) and check
+>   the job mirror is alive (`autodev/.machinery/pbs/mirror.log` moving; else restart `setup/autodev/pbs_mirror.sh`).
+> - **One job is still running on the cluster and was left alone: the cold reproduction's run, PBS 794590**
+>   (W063; submitted 16:28:23Z). It seals by itself. On resume: grade it, then the grading job (waves/W063.md,
+>   step 7). The cluster's scQC checkout stays at `f57bc6e` until then.
+> - **Order on resume:** (1) grade 794590 and run the grading job; (2) W056's builder, then its preflight, ONE lean
+>   re-check, the subset, the full run; (3) W068's continuation; then W061's T and W067's S1. No Fable agent is
+>   owed. The day's report to the PI (the batched questions below, and the site notes' rows from the cold
+>   attempts) is owed at resume.
+> - **Volatile:** the session's scratch folder (the builders' clones, `a23/`) is emptied by a reboot. Everything
+>   needed is pushed or in this repository, or (the cold reproduction's kit, criteria and both attempts'
+>   transcripts) in the first cohort's `stages/01_qc/a23/`.
+
 Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone stale).
 
 - **The account's weekly limit stopped all six agents at about 10:50Z on 2026-11-11** (it resets 2026-11-15T21:00Z). The PI
