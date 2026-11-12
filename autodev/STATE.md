@@ -75,29 +75,24 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus):** the lean RE-CHECK of **W054's fix round 2, the last** (Lab, head `fdb8888`: beside a
-  listed record the left-out list holds only what a cap or a long value left out, proved on a truth table of 25 record
-  states each opened in the deployed Studio, 0 false sentences; an LZF file now gets a true message with a way forward).
-  On PASS Lab deploys (D-045); nothing is deployed on a FAIL; a third
-  failed verification sends the Lab-Studio contract to a root design review (RULES item 20). And the VERIFIER of
-  **W056** (the driver's integration, built at `4438681`: the verified driver and W045 merged by hand onto `main`'s
-  line, suite 962 with every parent's test ids present, the first cohort's chained request finished, its subset and
-  full jobs generated; W045 has had no verification before this one). No Fable agent is running.
+- **Running now (2 Opus):** the VERIFIER of **W056** (the driver's integration, built at `4438681`; W045 has had no
+  verification before this one; its subset job is PBS 791723); the builder of **W055's second half** (scProfile,
+  `abundance` through the maker, from `2e5b95a`: the suite red there, the design step, an in-run refusal, the job's
+  prediction; launched 2026-11-12T06:30Z).
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
-  0. **W055's second half** (scProfile, `abundance` through the maker; brief `q_w055cont.txt`, the first builder's
-     clone kept). The first half is pushed at `2e5b95a`: the blind grade, a `source` stage and verb in the maker (three
-     plugins with a DOI that resolves and an exact pin), the fixture tier accepting no refusal, abundance's leak hits
-     gone. Left: the suite is red there (3 of 124), the design step (the reference level from the host: the effect's
-     sign is reversed between the fixture's two shapes today; a covariate; the interaction fitted or refused by
-     name), an in-run refusal still reading ok, the job's prediction. Then its verification and the dev-suite job.
-  0b. After W054's lean re-check: Lab's deploy, reported, not asked (D-045). After it: Studio's
-      Run-card sentences brought in line with what a bundle now carries (a Fable designer's small pass, then a deploy).
+  0. After W056's verification and W055's second half: their re-checks or fix rounds first (a wave in flight before a
+     new one).
   5. **W050's verification** (scAnno `f456431`): brief `q_w050verify.txt`.
   6. **scIntegrate's installer** (GAP-C116), for A1.3: brief `q_w046fix2.txt`, clone `W046g-scIntegrate`.
+- **Lab's `main` is `fdb8888` since 2026-11-12T06:26Z (D-047, the standing go D-045)**: W054 is live: the converter opens
+  only the file it is given; a run record gives six short strings and nothing else; a dataset whose read fails is never
+  used as values (live Lab before this wrote silent garbage from a damaged or LZF-compressed part: GAP-C127); an LZF file
+  is told to be written again with gzip. Limits live: "over its budget" said of a record left out after a long value;
+  "no run record" said when the only candidate could not be inspected (both Studio's wording: W057). GAP-C119, C125,
+  C127 closed.
 - **Studio's `main` is `8fb0d0a` since 2026-11-12T01:39Z (D-045)**: W053 is live: an untested gene carries no p in a saved
   DE file, the table or the volcano; the volcano follows the cutoff's own correction; a cutoff is rounded to two figures
-  before it is applied. Before it the same day: W051, the words and elements (`192057b`, D-042). Lab's `main` is
-  `ca0cc73` (D-038), with three known exotic-input defects (fix-up 6 is queued; its deploy needs no question now).
+  before it is applied. Before it the same day: W051, the words and elements (`192057b`, D-042).
 - **Merged 2026-11-12, the tenth: scProfile `b5f646a`** (the batch W035 + W040 + W047; last re-check PASS; DE gate 791483
   AS PREDICTED): the maker's prose verb; the host writes no run into a plugin; the site strings gone; a design record is
   read only in the maker's own form. No score moves by itself: it releases the plugin line.
