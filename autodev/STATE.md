@@ -103,12 +103,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the builder of **W056's WAVES B and C**; the VERIFIER of **W065** (built at `a2694ec`: all
-  12 channels from the allocation; 13 launch sites of a plugin's code routed through the one function and 11 host-only
-  ones named, walked by a test; a launch with no share gets 1). Its gate job's PREFLIGHT is on the cluster (PBS
-  793323; it probes the allocation where the job runs before any plugin); on OK the run; on AS PREDICTED and a PASS
-  the scProfile batch merges: W055, W058, W065 (A3.2 4/4).
-  NEXT for an Opus slot: W064's fix round 1; W056's one verification of A, B and C; W063's set-up; W061's T and H.
+- **Running now (2 Opus):** the VERIFIER of **W065** (its gate job read AS PREDICTED; the scProfile batch merges on
+  its PASS); the VERIFIER of **W056's waves A, B and C** (the declared set, the drift test against each tool, both jobs
+  regenerated at `4f5a3a1`; the subset job's preflight is on the cluster, PBS 793445, and must read OK with exactly
+  the 42 predicted roles).
+  NEXT for an Opus slot: W064's fix round 1; W063's set-up; W061's T and H.
 - **W058 is VERIFIED: PASS** (`0d963b9`, the verifier's docs pen `fe881a1`; GAP-C88 closed by measurement); it merges
   after W055, on which it is stacked.
 - **W055's GATE JOB RAN AND MISSED (6) (PBS 792123, 120 GB): three findings only the cluster could show.** (1) `de`'s
@@ -220,9 +219,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** nothing. **793345, the scProfile batch's gate job at `a2694ec`, read AS PREDICTED** (sealed in ten minutes
-  inside 8 cores: de PASSES the dev suite on the cluster; abundance's agree fails on exactly its 3 known lines; cellchat
-  as predicted). The batch (W055 and W058 verified; W065's verification running) merges on W065's PASS. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+- **On PBS:** **793445**, the preflight of W056's regenerated subset job. 793345 (the scProfile batch's gate) read AS
+  PREDICTED. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
   where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the
