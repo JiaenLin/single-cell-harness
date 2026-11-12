@@ -99,8 +99,15 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   submitted and predicted ok for a plugin whose code ends partial (GAP-C131), so the job is being written anew with
   a preflight and a prediction true to the code; then preflight, run, merge.
 - **Running now (2 Fable):** the THIRD sweep of scQC's docs (seven files and 47 undecided rows; then the second
-  draw); the MEASUREMENT of A6.2 on the first cohort's real joint object (3.2 GB, pulled into scratch, checksum equal
-  on both sides) through the live Lab (`fdb8888`) into the live Studio (`e475703`), values compared with the object.
+  draw); the DESIGN of **W061** (D8, [waves/W061.md](waves/W061.md)): what the hand-off states about a real object is
+  recorded, not guessed.
+- **A6.2 MEASURED on the first cohort's real joint object** ([audits/A62_MEASUREMENT_20261112.md](audits/A62_MEASUREMENT_20261112.md)):
+  1 of 2, the score unchanged at 0.5 but now measured. Half 1 YES: the lab's documented command, no flag, 61 s,
+  1.84 GB, a bundle equal to the object in every value compared (all 34,290 gene totals, all rows of 5 embeddings); the
+  Studio opens it with 0 page errors. Half 2 PARTLY: the card shows the tool, its version and commit, not the run.
+  **And the live pair says FALSE things of this object (GAP-C132):** "harmony" with its citation in the Methods text
+  (the object records another method; the lab guesses from an embedding's name); raw counts "absent" (dropped from a
+  split object with no note); "Total counts" drawn from log-normalised sums. W061 is registered for it, design first.
 - **W058's BUILD JOB READ AS PREDICTED** (PBS 791942, sealed in about twenty minutes: both isolated groups built from
   their locks, each selftest as predicted, the main group not rebuilt), after two preflights. W058 (`0d963b9`) waits for
   its lean verification with the scProfile batch (item 5). GAP-C88 closes when it merges.
@@ -135,8 +142,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   **D4** (R36's draw rule, design only); **D2** (R08: where a local UI reads a cluster run's state; what turns plain
   language into a request); **D3** (R09: a follow-up as a typed request fragment); **D5** (the maker's missing sites,
   GAP-C128, after the grade wave's grades); **D6** (the driver's generated check) only if W056's re-check fails.
-- **CLUSTER ONLY, when free:** A6.2's missing half is a MEASUREMENT (the first cohort's real final object through
-  Lab's converter, opened in the deployed Studio: +0.5): to do once W057 is live; the scale cohort's parts and a
+- **CLUSTER ONLY, when free:** the scale cohort's parts and a
   two-library stage-1 subset the hour W056 merges; a full stage-4 run of the first cohort at scProfile's `main` after
   W055 merges (for the PI's promotion).
 - **NOT APPLIED from the direction review (D-049):** a daily restart of the coordinator's session (the PI's to do;
