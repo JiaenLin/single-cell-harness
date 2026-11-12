@@ -76,17 +76,17 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
 - **Running now (2 Opus):** the builder of **W054** (Lab: the run section rebuilt as a closed reader, one file per
-  conversion; a live defect); the verifier of **W049's lean re-check** (the driver at `110417c`). No Fable agent is running.
+  conversion; a live defect); the builder of **W055** (scProfile, the plugin line's first wave: `abundance` graded blind
+  through the maker, then the maker fixed; a DOI and a pin for `de`, `cellchat` and `abundance`). No Fable agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
-  0. **The plugin line starts** (scProfile's batch merged at `b5f646a`): the first held-out plugin through the maker,
-     abundance (ROUTE R24, with R45's source step, R32's interaction contrast and R46's fixture point): register and
-     launch at the next free slot. A4.1, A4.3, A3.2 and A3.1 wait on this line.
+  0. **W056, the driver's integration** (the batch is VERIFIED at `110417c`): merge it by hand with W052's branch (they
+     conflict in the kernel's report and the scIntegrate stand-in), bring W045 (one object into parts) onto it, finish
+     the first cohort's chained request and generate its job with `--tool` for all four tools, a subset first. To
+     register and launch at the next free slot. A1.2, A6.3, A7.1 and A3.4 wait on this line.
   0b. After W054: its verification, then Lab's deploy, reported, not asked (D-045).
   1. **W052 PASSED its lean re-check** (the harness at `133589d`). Waiting only for the cluster: its subset 791374, then
      the full job (4 h); on AS PREDICTED both mains move in one step (scIntegrate `2fc7a6c` first, then the harness by
      its train's three guards), A3.1 +0.1; the stage-3 question goes into the day's report.
-  4. After W049's re-check: W045 brought onto it, and the first cohort's chained run as the gate (the job generated with
-     `--tool` for all four tools).
   5. **W050's verification** (scAnno `f456431`): brief `q_w050verify.txt`.
   6. **scIntegrate's installer** (GAP-C116), for A1.3: brief `q_w046fix2.txt`, clone `W046g-scIntegrate`.
 - **Studio's `main` is `8fb0d0a` since 2026-11-12T01:39Z (D-045)**: W053 is live: an untested gene carries no p in a saved
