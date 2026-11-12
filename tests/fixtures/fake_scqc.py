@@ -4,7 +4,8 @@
 It honours the parts of scQC's contract the adapter reads, and nothing more, as scQC's own
 `tests/fixtures/fake_rscript.py` stands in for its doublet detector:
 
-    describe                  the declaration, as JSON (`state_version` is what the adapter checks)
+    describe                  the declaration, as JSON (`state_version` is what the adapter checks, and
+                              `files`, what `run` opens: its flags and the samplesheet's columns)
     run --project P ...       the `run` subcommand's flags, parsed as scQC's parser declares them, so
                               a flag scQC does not have fails here as it would there
 
@@ -57,10 +58,38 @@ def barcodes(part):
         return [x.decode() if isinstance(x, bytes) else str(x) for x in obs[idx][()]]
 
 
+#: THE FILES scQC OPENS, as its `describe` would declare them (`files`; scQC's own `describe` declares none and its
+#: parser types none of its flags a path: the gap harness autodev W056 wave B names): each flag of a command naming
+#: a file or a folder it READS, by its dest, with its kind, and the samplesheet's columns it opens, each cell as
+#: written (adapters/cellbender.py:1284, engine/steps.py:496, :508, :655, :788, ingest.py:162, the align route's
+#: celescope.py:1049). What it writes (`--project`) is not an input. `run` refuses an absent one, as scQC does; the
+#: adapter's `files:` and `owned:` are tied to this by tests/test_the_adapters_declare_what_their_tools_open.py.
+FILES = {"flags": {"run": {"samplesheet": "file", "registry": "file", "decisions": "file", "python": "path",
+                           "rscript": "path", "cellbender": "path", "celescope": "path", "cellranger": "path"}},
+         "columns": {"run.samplesheet": {c: "path" for c in (
+             "matrix", "ambient_h5", "aligner_cells", "cellbender_barcodes", "cellreads_stats", "fastq_r1",
+             "ambient_log", "ambient_metrics")}}}
+IS = {"file": os.path.isfile, "dir": os.path.isdir, "path": os.path.exists}
+
+
+def absent(cmd, a, rows=()):
+    """The first file this call's declared flags and columns name that is not here, said as scQC says it, or None."""
+    for dest, kind in FILES["flags"].get(cmd, {}).items():
+        v = getattr(a, dest, None)
+        if v and not IS[kind](str(v)):
+            return f"--{dest.replace('_', '-')} {str(v)!r} is not a {'file or folder' if kind == 'path' else kind}"
+    for col, kind in FILES["columns"].get(f"{cmd}.samplesheet", {}).items():
+        for r in rows:
+            v = str(r.get(col) or "").strip()
+            if v and not IS[kind](v):
+                return f"the samplesheet's {col} of {r.get('sample')} ({v!r}) names no file here"
+    return None
+
+
 def describe():
     print(json.dumps({"contract": "1.0", "name": "scqc", "version": "0.0.0-fake",
                       "state_version": STATE_VERSION, "layer": "stack", "reversible": True,
-                      "sees": ["design"], "cannot_show": ["a stand-in shows nothing"],
+                      "sees": ["design"], "cannot_show": ["a stand-in shows nothing"], "files": FILES,
                       # scQC's own escapes (engine/declare.py:78-85 at c5b1a1b); harness W042 fix 1, D
                       "escapes": [{"what": "a DERIVED threshold", "how": "decisions.yml with value, class, "
                                    "approved_by, verbatim", "recorded": "reports/payload.json parameters[].decided_by"},
@@ -79,9 +108,11 @@ CELLBENDER_RUNS = {"snrna": True, "scrna": False}
 
 def run(a):
     project = Path(a.project)
-    rows = read_sheet(a.samplesheet)
-    if not Path(a.registry).is_file():
-        print(f"scqc run: --registry {a.registry!r} is not a file", file=sys.stderr)
+    why = absent("run", a) or (None if a.registry else "--registry is required")
+    rows = [] if why else read_sheet(a.samplesheet)
+    why = why or absent("run", a, rows)
+    if why:
+        print(f"scqc run: {why}", file=sys.stderr)
         return 2
     described = {"samplesheet": rows, "mode": a.mode,
                  "args": {k: v for k, v in sorted(vars(a).items()) if k not in ("project", "fn")}}

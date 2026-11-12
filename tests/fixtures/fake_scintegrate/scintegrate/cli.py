@@ -490,6 +490,23 @@ def integrate(a):
     return _finish(out, rec, "ok", 0, "every method compared and the object written")
 
 
+#: THE FILES scIntegrate OPENS, as its `describe` would declare them (`files`; scIntegrate's `describe` declares
+#: none, its parser types these `type=Path`: scintegrate/cli.py:1391, :1451 at 2fc7a6c, `_common`): each flag of a
+#: command naming a file it READS, by its dest; what it writes (`--out`) is not an input. `integrate` refuses an
+#: absent one, as scIntegrate does; tied to the adapter by tests/test_the_adapters_declare_what_their_tools_open.py.
+FILES = {"flags": {"integrate": {"h5ad": "file", "design": "file"}}}
+IS = {"file": os.path.isfile, "dir": os.path.isdir, "path": os.path.exists}
+
+
+def absent(a):
+    """The first file this call's declared flags name that is not here, or None."""
+    for dest, kind in FILES["flags"].get(a.cmd, {}).items():
+        v = getattr(a, dest, None)
+        if v and not IS[kind](str(v)):
+            return f"--{dest.replace('_', '-')} {str(v)!r} is not a {kind}"
+    return None
+
+
 # ---------------------------------------------------------------------------- the parser (2fc7a6c's flags)
 class _Removed(argparse.Action):
     def __call__(self, parser, _ns, _values, option_string=None):
@@ -539,7 +556,7 @@ def main():
     a = parser().parse_args()
     if a.cmd == "describe":
         print(json.dumps({"name": "scintegrate", "version": VERSION, "commit": COMMIT,
-                          "state_version": STATE_VERSION,
+                          "state_version": STATE_VERSION, "files": FILES,
                           "axes": {"assay": {"required": False, "accepted": list(ASSAYS)},
                                    "species": {"required": True}},
                           # scIntegrate's own escape (scintegrate/cli.py:1385 at b148030); harness W042 fix 1, D
@@ -556,6 +573,10 @@ def main():
     if a.cmd == "doctor":
         print("scintegrate doctor (stand-in): nothing measured")
         return 0
+    why = absent(a)
+    if why:
+        print(f"scintegrate {a.cmd}: error: {why}", file=sys.stderr)
+        return 2
     return integrate(a)
 
 

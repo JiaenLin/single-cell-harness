@@ -5,7 +5,8 @@ without scanpy, anndata or a marker corpus.
 It honours the parts of scAnno's contract the adapter relies on, and nothing more, as
 `fake_scqc.py` stands in for scQC:
 
-    describe                 the declaration, as JSON (`state_version` is what the adapter checks)
+    describe                 the declaration, as JSON (`state_version` is what the adapter checks, and
+                             `files`, what each command opens, as scAnno's parser types it)
     cluster | annotate | rescue | embed
                              each parsed with the flags scAnno's own parser declares for it (at
                              d0ee926), so a flag scAnno does not have fails here as it would there
@@ -182,6 +183,27 @@ def outcome(st, cmd, n_obs, headline):
     return None
 
 
+#: THE FILES scAnno OPENS, as its `describe` would declare them (`files`; scAnno's `describe` declares none, its
+#: parser types each of these `type=Path`: scanno/cli.py:2468, :2511, :2528, :2550, :2570, :2588, :2597, :2664,
+#: :2904 at 9fb561c): each flag of a command naming a file it READS, by its dest. What it writes (`--out`,
+#: `--out-dir`, `--status-dir`, ...) is not an input. Every command refuses an absent one, as scAnno does; the
+#: adapter's `files:` and `owned:` are tied to this by tests/test_the_adapters_declare_what_their_tools_open.py.
+FILES = {"flags": {"cluster": {"h5ad": "file"}, "rescue": {"h5ad": "file"}, "embed": {"h5ad": "file"},
+                   "annotate": {"h5ad": "file", "tree": "file", "scope": "file", "l1_tree": "file", "db": "file",
+                                "store": "file"}}}
+IS = {"file": os.path.isfile, "dir": os.path.isdir, "path": os.path.exists}
+
+
+def absent(a):
+    """The first file this call's declared flags name that is not here, said as scAnno's parser would, or None."""
+    for dest, kind in FILES["flags"].get(a.cmd, {}).items():
+        v = getattr(a, dest, None)
+        for x in (v if isinstance(v, list) else [v] if v else []):
+            if not IS[kind](str(x)):
+                return f"--{dest.replace('_', '-')} {str(x)!r} is not a {kind}"
+    return None
+
+
 # ---------------------------------------------------------------------------- the commands
 def describe(_a):
     print(json.dumps({"contract": "1.0", "name": "scanno", "version": VERSION, "commit": COMMIT,
@@ -189,7 +211,7 @@ def describe(_a):
                       "reversible": True, "sees": [], "escapes": ESCAPES + (
                           [{"flag": "--drift", "lifts": "a stand-in's new escape", "recorded": "nowhere"}]
                           if MODE == "escape_drift" else []),
-                      "cannot_show": ["a stand-in shows nothing"]}))
+                      "cannot_show": ["a stand-in shows nothing"], "files": FILES}))
     return 0
 
 
@@ -397,6 +419,10 @@ def main(argv=None):
         sp.add_argument("--status-dir")
         sp.add_argument("--by")
     a = p.parse_args(argv)
+    why = absent(a)
+    if why:
+        print(f"scanno {a.cmd}: error: {why}", file=sys.stderr)
+        return 2
     return a.fn(a)
 
 

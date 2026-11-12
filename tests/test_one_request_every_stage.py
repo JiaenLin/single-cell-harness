@@ -84,14 +84,18 @@ def cohort(dest: Path, shape: str, libraries: int = 4, droplets: int = 40, assay
 def stages(c: dict, lib: bool = True) -> list:
     """Each stage's tool flags, verbatim, by the tool's own names. `lib`: the library column written
     into each tool's own flag by hand, as the driver writes keys.sample there (W042); without it,
-    the request leaves them to the driver."""
+    the request leaves them to the driver. The declared tree and environments' folder are made beside the cohort:
+    a stand-in refuses an absent declared file, as its tool does (autodev W056 wave B)."""
+    (c["dir"] / "refs").mkdir(exist_ok=True)
+    (c["dir"] / "refs" / "tree.json").write_text("{}\n")
+    (c["dir"] / "declared_prefix").mkdir(exist_ok=True)
     out = [
         {"plugin": "qc@scqc", "params": {"scqc": str(FIXTURES / "fake_scqc.py"),
                                          "registry": str(c["dir"] / "registry.tsv"), "executor": "local",
                                          "allow_local": True, "dbr": 0.06, "seed": 0}},
         {"plugin": "anno@scanno", "params": {
             "scanno": str(FIXTURES / "fake_scanno.py"), "cluster": {"resolutions": "0.5,1.0", "seed": 0},
-            "annotate": {"cluster_key": ["leiden_0p5", "leiden_1p0"], "tree": "/refs/tree.json",
+            "annotate": {"cluster_key": ["leiden_0p5", "leiden_1p0"], "tree": str(c["dir"] / "refs" / "tree.json"),
                          "species": "species_x", "tissue": "tissue_x"},
             "embed": {"label_obs": ["scanno_cell_type=cell_type"], "seed": 0,
                       "sample_key": c["roles"]["sample"]}}},
@@ -104,7 +108,7 @@ def stages(c: dict, lib: bool = True) -> list:
             "scprofile": str(FIXTURES / "fake_scprofile"),
             "run": {"kernel": "de,abundance", "label_key": "cell_type", "sample_key": c["roles"]["sample"],
                     "batch_key": "sample", "embedding": "X_harmony", "no_cache": True,
-                    "prefix": "/declared/prefix", "timeout": 600}}},
+                    "prefix": str(c["dir"] / "declared_prefix"), "timeout": 600}}},
     ]
     if not lib:
         del out[1]["params"]["embed"]["sample_key"]

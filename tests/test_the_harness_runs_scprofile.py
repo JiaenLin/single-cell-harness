@@ -78,11 +78,16 @@ def integrated(dest: Path, n=N, parts=1):
     return manifest, design, dest / "objects" / "integrated.h5ad"
 
 
+#: The environments' folder each test declares (`run.prefix`, a `present` dir): made by _Base.setUp, since the
+#: stand-in refuses an absent declared folder as scProfile does (autodev W056 wave B).
+PREFIX = ["/declared/prefix"]
+
+
 def block(**over):
     """run's flags, as a stage declares them: scProfile's names, `-` written `_`."""
     b = {"kernel": "de,abundance", "label_key": "cell_type", "sample_key": "sample",
          "batch_key": "sample", "embedding": "X_int", "control": ["age=a1"], "no_cache": True,
-         "prefix": "/declared/prefix", "timeout": 600}
+         "prefix": PREFIX[0], "timeout": 600}
     for k, v in over.items():
         if v is None:
             b.pop(k, None)
@@ -97,6 +102,8 @@ class _Base(unittest.TestCase):
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="sch-scprof-"))
+        (self.tmp / "declared_prefix").mkdir()
+        PREFIX[0] = str(self.tmp / "declared_prefix")
         self.stack = self.tmp / "stack"
         self.calls = self.tmp / "scprofile_calls.jsonl"
         self._env = {k: os.environ.get(k) for k in self.ENV}
@@ -179,7 +186,7 @@ class TheHarnessRunsScprofile(_Base):
         self.assertEqual((rc, r["status"]), (0, "mounted"), r)
         # the calls, in order, as a stage-4 job makes them: doctor told the run's prefix, then run
         self.assertEqual([c["argv"][0] for c in self.calls_of()], ["doctor", "run"])
-        self.assertEqual(self.calls_of("doctor")[0]["argv"], ["doctor", "--prefix", "/declared/prefix"])
+        self.assertEqual(self.calls_of("doctor")[0]["argv"], ["doctor", "--prefix", PREFIX[0]])
         call = self.calls_of("run")[0]
         res = self.run_dir / "scprofile"
         self.assertEqual(call["pythonpath"], str(FAKE))

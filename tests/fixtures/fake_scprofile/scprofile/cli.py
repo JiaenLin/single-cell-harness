@@ -4,6 +4,8 @@ through `sch` without anndata, pydeseq2, pertpy or any plugin environment.
 It honours the parts of scProfile's contract the adapter relies on, and nothing more:
 
     doctor      one line per declared environment; exit 0 (1 in mode doctor_fail)
+    describe    `files` only: what `run` opens, as scProfile would declare it. scProfile has no `describe`
+                (prof plugin.yml), the gap harness autodev W056 wave B names; the adapter never calls this
     run         parsed with the flags scProfile's own parser declares for it (0.1.0, 6f970e5), so a
                 flag scProfile does not have fails here as it would there
 
@@ -177,9 +179,33 @@ def run(a):
     return finish("ok", 0, "kernels ran, results merged, report written")
 
 
+#: THE FILES scProfile's `run` OPENS, as a `describe` would declare them (`files`): each flag naming a file or a folder
+#: it READS, by its dest. Its parser types `--h5ad`, `--design`, `--section` and `--reuse-from` `type=Path`
+#: (scprofile/cli.py:4457, :4507, :4435, :4442 at b5f646a); `--prefix`, `--references` and `--search` it types as text
+#: and opens (runner.py:777, refs.py:160, provenance.py:326). `--section` is a Markdown file or `<plugin>=<file>`
+#: (cli.py:3698-3700), `--search` folders joined by a comma. What it writes (`--out`) is not an input. `run` refuses
+#: an absent one; tied to the adapter by tests/test_the_adapters_declare_what_their_tools_open.py.
+FILES = {"flags": {"run": {"h5ad": "file", "design": "file", "section": "file", "reuse_from": "dir", "prefix": "dir",
+                           "references": "dir", "search": "dir"}}}
+IS = {"file": os.path.isfile, "dir": os.path.isdir, "path": os.path.exists}
+
+
+def absent(a):
+    """The first file this call's declared flags name that is not here, or None."""
+    for dest, kind in FILES["flags"].get(a.cmd, {}).items():
+        v = str(getattr(a, dest, None) or "")
+        if dest == "section" and "=" in v and not os.path.exists(v):
+            v = v.partition("=")[2].strip()              # scProfile's `<plugin>=<file>` (cli.py:3698-3700)
+        for x in (v.split(",") if dest == "search" else [v]):
+            if x and not IS[kind](x):
+                return f"--{dest.replace('_', '-')} {x!r} is not a {kind}"
+    return None
+
+
 def parser():
     ap = argparse.ArgumentParser(prog="scprofile")
     sub = ap.add_subparsers(dest="cmd")
+    sub.add_parser("describe")
     d = sub.add_parser("doctor")
     d.add_argument("--prefix")
     d.add_argument("--references")
@@ -221,7 +247,14 @@ def main():
     if a.cmd == "doctor":
         print(f"scprofile doctor (stand-in): prefix {a.prefix or '(none)'}")
         return 1 if MODE == "doctor_fail" else 0
+    if a.cmd == "describe":
+        print(json.dumps({"name": "scprofile", "files": FILES}))
+        return 0
     if a.cmd == "run":
+        why = absent(a)
+        if why:
+            print(f"scprofile run: error: {why}", file=sys.stderr)
+            return 2
         return run(a)
     return 2
 
