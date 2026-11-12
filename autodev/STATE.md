@@ -96,10 +96,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   untouched; but its regenerated job's submit recipe runs python where a job is submitted, which the PI's rule for the
   login nodes forbids: a closed list of what a recipe may run, one walking test, the record made by shell; then both
   jobs regenerated); the VERIFIER of **W055** (scProfile at `55a60d5`; its one verification).
-- **Running now (2 Fable):** W057's COMPLETION CHECK (Studio at `e475703`; on PASS the Studio deploys, D-045); the
-  RESIDUE SWEEP of scQC's docs (the first draw found 1 FALSE in 12, a claim about "every" criterion the sweep had not
-  touched: scQC does not count yet; now a ledger a claim, every quantified claim against the code's whole set; then a
-  second draw).
+- **Running now (1 Fable):** the RESIDUE SWEEP of scQC's docs (a ledger a claim; then a second draw). The second
+  Fable slot: A6.2's measurement next (the first cohort's real final object through the live Lab into the live Studio).
 - **W058 is BUILT** (scProfile `0d963b9`; proof table 14 rows) and its BUILD JOB IS ON THE CLUSTER: **PBS 791942**
   (two isolated groups' environments from their locks, each selftest; asks 1 h 30 min), after two preflights read OK
   (791915 on the original file; 791924 on the dated copy whose recipe line was corrected). On AS PREDICTED: W055's
@@ -154,9 +152,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   is told to be written again with gzip. Limits live: "over its budget" said of a record left out after a long value;
   "no run record" said when the only candidate could not be inspected (both Studio's wording: W057). GAP-C119, C125,
   C127 closed.
-- **Studio's `main` is `8fb0d0a` since 2026-11-12T01:39Z (D-045)**: W053 is live: an untested gene carries no p in a saved
-  DE file, the table or the volcano; the volcano follows the cutoff's own correction; a cutoff is rounded to two figures
-  before it is applied. Before it the same day: W051, the words and elements (`192057b`, D-042).
+- **Studio's `main` is `e475703` since 2026-11-12T08:41Z (D-051, the standing go D-045)**: W057 is live: the Run card
+  says what a bundle holds, for bundles written before and after W054 (no reason stated that the bundle does not
+  state; a record shown as "k of 6 fields"); a pseudobulk table whose rows do not match its header is refused with
+  its line and what to do, never offered with shifted counts. Limits live: Overview still says the counts can be
+  saved on a refused table (GAP-C129); four counted wording limits. Before it the same day: W053 (`8fb0d0a`), W051.
 - **Merged 2026-11-12, the tenth: scProfile `b5f646a`** (the batch W035 + W040 + W047; last re-check PASS; DE gate 791483
   AS PREDICTED): the maker's prose verb; the host writes no run into a plugin; the site strings gone; a design record is
   read only in the maker's own form. No score moves by itself: it releases the plugin line.
