@@ -103,10 +103,12 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the VERIFIER of **W056's waves A, B and C** (told of the preflight's result); the builder
-  of **W064's fix round 1** (the lab: a null is not a value; a total says what was summed; a failed read states no
-  fact). NEXT for an Opus slot: W056's one fix round (the check script's two reads, with the verification's
-  findings); W063's set-up; W061's T and H; decoupler's blind grade.
+- **Running now (2 Opus):** the builder of **W056's D6 fix round** (the verification of waves A to C FAILED on one slip:
+  a padded sheet cell is pinned as an absent path while the tool opens the real file; everything else of the declared
+  set held, on the cluster too; the fix round also makes the cohort's check script read a real run: links, a
+  tab-separated sheet); the builder of **W064's fix round 1** (the lab).
+  NEXT for an Opus slot: W056's lean re-check, then its preflight, subset and full run; W063's set-up; W061's T and
+  H; decoupler's blind grade.
 - **Merged 2026-11-12T14:16Z, the twelfth: scProfile `a2694ec`** (the batch **W055 + W058 + W065**, each verified PASS; the
   gate PBS 793345 AS PREDICTED at that commit): `abundance` through the maker with a declared control as its
   reference level, a covariate refused by name and an interaction named as not fitted; a source stage (three plugins
