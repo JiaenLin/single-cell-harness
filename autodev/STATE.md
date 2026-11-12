@@ -96,9 +96,13 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   recipe that runs only git, the shell's small tools and the submit command, by a closed list and a walking test; the
   record made by shell; proof table 32 rows; a FAIL is the wave's second and goes to a design read); the builder of
   **W055's GATE JOB** (W055 is VERIFIED: PASS; A3.2 4/4 and A4.3 3/9 count on merge).
-- **Running now (2 Fable):** the SECOND DRAW on scQC's docs branch `ba85f8e` (seed 20261113; three sweeps corrected
-  it: 404 ledger rows, 38 false claims beyond the first sweep's corrections); the DESIGN of **W061** (D8,
-  [waves/W061.md](waves/W061.md)): what the hand-off states about a real object is recorded, not guessed.
+- **Running now (2 Fable):** the DESIGN READ **D6** of the driver's pins walk (W056's second failed check: what a
+  driven run depends on is declared, never guessed from a string's look; into [waves/W056.md](waves/W056.md)); the DESIGN
+  of **W061** (D8, [waves/W061.md](waves/W061.md)): what the hand-off states about a real object is recorded, not guessed.
+- **scQC's docs do NOT count for A2.2 yet (W060 held):** the second draw (seed 20261113) found 1 FALSE in 12 again, a
+  rule the code dropped in August and whose stale comment in the code misled three sweeps. Five Fable runs corrected
+  about 140 lines. Next for it: the drawer's listed lines fixed in one small run, then the docs-only branch `ba85f8e`+
+  merges as an improvement, uncounted. The direction review's "cheap points" was wrong for a repository this size.
 - **A6.2 MEASURED on the first cohort's real joint object** ([audits/A62_MEASUREMENT_20261112.md](audits/A62_MEASUREMENT_20261112.md)):
   1 of 2, the score unchanged at 0.5 but now measured. Half 1 YES: the lab's documented command, no flag, 61 s,
   1.84 GB, a bundle equal to the object in every value compared (all 34,290 gene totals, all rows of 5 embeddings); the
