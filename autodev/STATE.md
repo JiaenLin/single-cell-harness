@@ -72,15 +72,15 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
 - **Running now (2 Opus):** the builder of **scProfile's last small fix** (GAP-C122, clone `W047-scProfile` at `95ed6bd`);
-  the verifier of **W052's lean re-check** (the harness at `133589d`; its subset 791374 is on the cluster). No Fable
-  agent is running.
+  the builder of **W049's fix round 1** (the driver: an answer for a sealed stage refused; a job states the tools it
+  expects). No Fable agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
-  1. After W052's re-check and its subset: the full job (4 h), then BOTH mains in one step (scIntegrate `2fc7a6c` first),
-     A3.1 +0.1; the stage-3 question goes into the day's report.
+  1. **W052 PASSED its lean re-check** (the harness at `133589d`). Waiting only for the cluster: its subset 791374, then
+     the full job (4 h); on AS PREDICTED both mains move in one step (scIntegrate `2fc7a6c` first, then the harness by
+     its train's three guards), A3.1 +0.1; the stage-3 question goes into the day's report.
   2. After scProfile's fix: its lean re-check, the DE gate again, the merge on a PASS (D-044), then the plugin line,
      abundance first (A4.1, A4.3, A3.2).
-  4. **W049's fix round 1** (the driver): brief `q_w049fix1.txt`. Then its re-check, W045 brought onto it, the first
-     cohort's chained run as the gate.
+  4. After W049's fix round: its re-check, W045 brought onto it, the first cohort's chained run as the gate.
   5. **W050's verification** (scAnno `f456431`): brief `q_w050verify.txt`.
   6. **scIntegrate's installer** (GAP-C116), for A1.3: brief `q_w046fix2.txt`, clone `W046g-scIntegrate`.
   7. **Lab's W017 fix-up 6** (three defects live since D-038): brief `q_w017fix6.txt`, clone `W017g-lab`.

@@ -49,6 +49,7 @@ ledger. Of the 9 new waves verified that day, 5 failed first verification, on ca
 | 37 | A record of what a step computed on that is assembled partly from what the step was handed | Miswire the step's call (another column's levels under the right name) and read whether the record, and the check that reads it, still agree with the step's own result | W048 fix 2 (the fixture's computed-design record) |
 | 38 | A check that reads a file's parse, not the file | Give the file what the parser hides: a repeated key (the planted value first), a trailing second document, a byte-order mark, a comment the format forbids | the scProfile batch (the maker's record) |
 | 39 | An identity checked only where a thing is made, not where it is restored | Make it under one version, change the declaration, then restore or reload: is the old result served under the new identity? | W052 (a mount reloaded under a new state version) |
+| 40 | An option the parser accepts and the code never passes on | For each option of each command, find where its value is used; one that is parsed and dropped changes nothing when given | W052 fix 1 (`ask --upto`, older than the fix) |
 
 ## Inbox (a verifier appends here; one line each: the defect, the attack, the wave)
 
