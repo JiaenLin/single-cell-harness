@@ -112,7 +112,16 @@ silently produces a different dataset.
 contributes a whole value, never a delta. Every contributing plugin declares `state_version`, and a
 cached materialisation is valid only for the exact tuple — observations digest, ordered stack of
 `(plugin, version, state_version, params)`, profile version. Anything else is a miss, never a
-partial hit. ([ADR-0010](docs/adr/0010-materialisation-is-a-versioned-fold.md))
+partial hit. ([ADR-0010](docs/adr/0010-materialisation-is-a-versioned-fold.md)) The tuple is the one
+each mount RECORDED, never what its plugin.yml declares later: a mount records its version,
+state_version and layer kind in `state.json`, and its run's `in.json` and `out.json` record the
+version, the state_version and the contract again. Those fields, and the admission the mount passed,
+are what a reopening compares; the rest of plugin.yml (its needs, provides, entry, words) is not, so
+a change there without a bump is the author's defect D6 already names. A stack reopened after a
+plugin's declaration moved (a pull, a checkout, an edit) does not serve that layer under the new
+numbers: the view, a probe, a scratch run, a report and a mount above
+it are refused by name, `sch stack` and `sch doctor --runtime` show both identities, and the way out
+is to unmount that plugin and mount it again. A stack mounted after the move is unaffected.
 
 ---
 

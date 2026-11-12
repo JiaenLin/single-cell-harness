@@ -60,18 +60,25 @@ protocol = _protocol()
 #: The numbers this adapter's layer means. It must equal `state_version` in plugin.yml AND the
 #: STATE_VERSION scIntegrate declares (`scintegrate describe`): an object whose embeddings moved
 #: without this moving would be served from a cached view keyed on the old ones (D6).
-STATE_VERSION = 1
+STATE_VERSION = 2
+
+
+def exact(v) -> bool:
+    """These numbers, exactly: an integer equal to STATE_VERSION. 2.0, "2" and true are not (D6)."""
+    return type(v) is int and v == STATE_VERSION
+
+
 #: scIntegrate's command line, as a stage-3 job runs it: `python -m scintegrate.cli`, with the
 #: checkout on PYTHONPATH.
 MODULE = "scintegrate.cli"
 #: `scintegrate integrate`'s flags, in the order its parser declares them (scintegrate/cli.py at
-#: 0.5.0: `_common`, then integrate's own), `-` written `_`. The flags the adapter sets itself are
+#: 0.7.0: `_common`, then integrate's own), `-` written `_`. The flags the adapter sets itself are
 #: in the list, so every call is written in scIntegrate's order.
 FLAGS = ("h5ad", "out", "batch_key", "label_key", "species", "assay", "l1_key", "drop_labels",
          "score_against", "colour_by", "scanvi_max_epochs", "coarse_from_path", "label_sentinel",
          "design", "design_sample_col", "bio_factor", "k", "n_pcs", "seed", "min_per_k", "min_dist",
-         "indicates_below", "methods", "n_latent", "max_epochs", "w_bio", "n_cores",
-         "scib_resolutions", "no_fast_leiden", "object_name")
+         "indicates_below", "methods", "keep_input_pca", "n_latent", "max_epochs", "w_bio",
+         "n_cores", "scib_resolutions", "no_fast_leiden", "object_name")
 #: The flags the adapter sets and a parameter may not, each with the reason.
 OWNED = {"h5ad": "the stack's one part, which scIntegrate reads in place",
          "out": "a path inside the run, which the adapter sets",
@@ -83,7 +90,7 @@ APPEND = ("label_sentinel", "bio_factor")
 #: takes only true, false or null. Any other value would be written after the flag and argparse
 #: would read it as an option of its own (verifier W026 D1, through scAnno). For the same reason no
 #: value at all may begin with "-".
-BARE = ("coarse_from_path", "no_fast_leiden")
+BARE = ("coarse_from_path", "keep_input_pca", "no_fast_leiden")
 #: Flags an earlier scIntegrate had, with what happened to them: a declaration written for 0.4.x is
 #: told why, not only that the flag is unknown.
 REMOVED = {"lisi_subsample": "it was removed in scIntegrate 0.5.0, which scores iLISI and cLISI on "
@@ -267,7 +274,7 @@ if not isinstance(described, dict):
 record["describe"] = {"exit": p.returncode, "version": described.get("version"),
                       "commit": described.get("commit"), "state_version": described.get("state_version"),
                       "wall_s": wall, "log": rel(log)}
-if described.get("state_version") != STATE_VERSION:
+if not exact(described.get("state_version")):
     refuse(f"scIntegrate declares state_version {described.get('state_version')!r}; this adapter's layer "
            f"means state_version {STATE_VERSION}, and a cached view keyed on one would serve the other's "
            f"embeddings (D6)", "update the adapter to scIntegrate's numbers and bump its state_version")
@@ -321,6 +328,12 @@ if status.get("status") == "refused" and rc == 2:
     ref = status.get("refusal") or {}
     refuse(f"scIntegrate integrate refused: {ref.get('reason') or status.get('headline')}",
            ref.get("fix") or f"read {log}")
+# THE NUMBERS AGAIN, from the run's own record: `describe` is asked first and could be another process's
+# word than the integrate that ran (a checkout moved between the calls); the layer is keyed on this one.
+if not exact(status.get("state_version")):
+    died(f"scintegrate integrate recorded state_version {status.get('state_version')!r} in its STATUS.json, where "
+         f"its describe declared {described.get('state_version')!r}; this adapter's layer means state_version "
+         f"{STATE_VERSION} (D6), so its object is not read; read {log}")
 if not (rc == 0 and status.get("status") == "ok" and seal == SEALED and not (P / RUNNING).exists()):
     # scIntegrate's record says what happened; it is quoted, not interpreted
     died(f"scintegrate integrate did not finish ok: exit {rc}, STATUS {status.get('status')!r} "
@@ -353,6 +366,15 @@ def safe(name):
 
 try:
     with h5py.File(part, "r") as fp, h5py.File(obj, "r") as fo:
+        # THE NUMBERS A THIRD TIME, from the object itself: scIntegrate writes its state_version into
+        # the object's own provenance (`uns/scintegrate/provenance`). An object that says other
+        # numbers than its run's describe and STATUS - or none - is not read (W052 fix 1).
+        made_at = h5read.uns_scalar(fo, "scintegrate", "provenance", "state_version")
+        if not exact(made_at):
+            died(f"scIntegrate's object {obj} records state_version {made_at!r} in its own provenance "
+                 f"(uns/scintegrate/provenance), where its describe and STATUS.json said "
+                 f"{status.get('state_version')!r}; this adapter's layer means state_version {STATE_VERSION} "
+                 f"(D6), so the object is not read; read {log}")
         p_idx, o_idx = h5read.index(fp), h5read.index(fo)
         if len(set(o_idx)) != len(o_idx) or set(o_idx) != set(p_idx) or len(o_idx) != len(p_idx):
             only_o, only_p = len(set(o_idx) - set(p_idx)), len(set(p_idx) - set(o_idx))

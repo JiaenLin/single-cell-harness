@@ -22,6 +22,8 @@ reader cannot read is never skipped: a skipped embedding is a result that silent
 """
 from __future__ import annotations
 
+import json
+
 OBS_ENCODINGS = ("array", "string-array", "categorical", "nullable-integer", "nullable-boolean",
                  "nullable-string-array")
 SPARSE = ("csr_matrix", "csc_matrix")
@@ -93,6 +95,30 @@ def _values(f, name, node):
         return [None if m else v for v, m in zip(vals, node["mask"][()].tolist())]
     raise Unreadable(f"{f.filename}: obs column {name!r} is encoded {enc or 'without a type'!r} "
                      f"(keys {sorted(keys)}); this reader knows {', '.join(OBS_ENCODINGS)}")
+
+
+def uns_scalar(f, *path):
+    """One scalar under `uns` (`uns_scalar(f, "scintegrate", "provenance", "state_version")`), with its
+    type as written: an integer dataset is an int, a float one a float (2.0 stays 2.0), a boolean a
+    bool, text a str. A dict anndata had to write as JSON text is read through. None when absent."""
+    import h5py
+    node = f.get("uns")
+    for i, key in enumerate(path):
+        if isinstance(node, h5py.Dataset):                       # a dict kept as JSON text
+            try:
+                d = json.loads(_text(node[()]) or "")
+            except ValueError:
+                return None
+            for k in path[i:]:
+                if not isinstance(d, dict) or k not in d:
+                    return None
+                d = d[k]
+            return d
+        node = node.get(key) if node is not None else None
+    if not isinstance(node, h5py.Dataset) or node.shape != ():
+        return None
+    v, kind = node[()], node.dtype.kind
+    return bool(v) if kind == "b" else int(v) if kind in "iu" else float(v) if kind == "f" else _text(v)
 
 
 def index(f) -> list:

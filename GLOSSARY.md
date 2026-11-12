@@ -45,7 +45,8 @@ demand, never authoritative. A view is to a stack what a rendered page is to its
 **state_version** — an integer a plugin declares, versioning *what it computes* rather than what it
 is. `version` moves when the wrapper changes; `state_version` moves when the numbers would. Every
 cached materialisation is keyed on it, so it is the difference between a stale view that raises and
-one that quietly agrees with its own provenance.
+one that quietly agrees with its own provenance. A mounted layer keeps the number its mount recorded:
+when the plugin's declaration moves, the stack refuses that layer until it is mounted again.
 
 **capability** — what a plugin declares it `needs` and `provides`, expressed as a contract rather
 than an implementation. "Something that provides an embedding", not "harmony". Swapping the

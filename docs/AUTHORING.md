@@ -70,6 +70,8 @@ cost of the other is an unmount that silently produces a different dataset.
 Then set `state_version: 1`, and treat it as part of releasing: it goes up whenever the plugin
 computes something different for the same inputs — including when the wrapped tool's version moves.
 `version` is the wrapper; `state_version` is the numbers, and every cached view is keyed on it.
+Moving either one means every stack that mounted the plugin before must mount it again: such a stack
+refuses to serve the old layer under the new numbers, and says so (ARCHITECTURE D6).
 
 ## 4. Map capabilities
 

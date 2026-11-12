@@ -12,7 +12,7 @@ when_to_use: >
 class: method
 layer: stack
 reversible: true
-state_version: 1
+state_version: 2
 # The assays scIntegrate accepts (scintegrate/axes.py ASSAYS; `scintegrate describe`). No rule there
 # differs by assay; which one a run is, is the stack's declaration (`--context assay=`), passed to
 # integrate verbatim. There is no default.
@@ -20,11 +20,11 @@ assays: [scrna, snrna]
 
 wraps:
   tool: scIntegrate
-  version: "0.5.0"
+  version: "0.7.0"
   homepage: https://github.com/JiaenLin/scIntegrate
   license: MIT
-  cite: "Lin J. scIntegrate: is integration needed, which method, and one object carrying the answer. Software, version 0.5.0."
-  state_version: 1
+  cite: "Lin J. scIntegrate: is integration needed, which method, and one object carrying the answer. Software, version 0.7.0."
+  state_version: 2
 
 inject: [dataset]
 needs: [observations/raw]

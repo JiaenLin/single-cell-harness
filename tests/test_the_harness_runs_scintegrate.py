@@ -21,6 +21,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -56,12 +57,18 @@ def fake():
     return _load(FAKE / "scintegrate" / "cli.py", "fake_scintegrate_cli")
 
 
-def joint(dest: Path, n=N, parts=1):
+def h5py_file(path):
+    import h5py
+    return h5py.File(path, "r")
+
+
+def joint(dest: Path, n=N, parts=1, library=None):
     """A cohort's joint object - three libraries' observations already in one file - as the one part
     of a manifest, read-only as a deliverable is. obs carries the batch, two label levels, one design
-    factor (`age`) and a QC count; obsm a PCA and a 2-D view; obsp one graph the stand-in will
-    rewrite, one it will write again identically, and one it will drop. The design names `age`,
-    which obs carries, and `diet`, which it does not. Returns (manifest, design, part)."""
+    factor (`age`) and a QC count, and, with `library` (a function of the batch value), a `library`
+    column; obsm a PCA and a 2-D view; obsp one graph the stand-in will rewrite, one it will write
+    again identically, and one it will drop. The design names `age`, which obs carries, and `diet`,
+    which it does not. Returns (manifest, design, part)."""
     import numpy as np
     f = fake()
     dest = Path(dest)
@@ -77,6 +84,7 @@ def joint(dest: Path, n=N, parts=1):
             "cell_compartment": ("str", ["lymphoid"] * n),
             "age": ("cat", ["a2" if lib == "L2" else "a1" for lib in libs]),
             "n_counts": ("int", [100 + i for i in range(n)]),
+            **({"library": ("cat", [library(lib) for lib in libs])} if library else {}),
         }, obsm={"X_pca": rng.normal(size=(n, 6)).astype("float32"),
                  "X_umap": rng.normal(size=(n, 2)).astype("float32")},
             obsp={"bbknn_connectivities": f.ring(n, 2, 0.5),      # what the stand-in writes: unchanged
@@ -107,7 +115,8 @@ def block(design_file, **over):
 
 
 class _Base(unittest.TestCase):
-    ENV = ("FAKE_SCINTEGRATE_LOG", "FAKE_SCINTEGRATE_MODE", "FAKE_SCINTEGRATE_STATE_VERSION")
+    ENV = ("FAKE_SCINTEGRATE_LOG", "FAKE_SCINTEGRATE_MODE", "FAKE_SCINTEGRATE_STATE_VERSION",
+           "FAKE_SCINTEGRATE_STATUS_STATE_VERSION")
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="sch-scint-"))
@@ -198,13 +207,15 @@ class TheHarnessRunsScintegrate(_Base):
             self.assertEqual(Path(c["argv0"]).resolve(), (FAKE / "scintegrate" / "cli.py").resolve())
             self.assertEqual(Path(c["cwd"]).resolve(), P.resolve())
 
-        # the layer: what scIntegrate ADDED or REWROTE; what it copied is the observation's own
+        # the layer: what scIntegrate ADDED or REWROTE; what it copied is the observation's own.
+        # X_pca is a rewrite since 0.6.0: the withheld cells have rows in the part's PCA, so they were
+        # in its fit, and scIntegrate refits it on the retained cells, NaN on the withheld rows.
         out = self.out_json()
         layer = out["answer"]["layer"]
         self.assertEqual(layer["embeddings"]["added"],
                          ["X_harmony", "X_none", "X_umap_bbknn", "X_umap_harmony", "X_umap_none"])
-        self.assertEqual(layer["embeddings"]["rewritten"], ["X_umap"])
-        self.assertEqual(layer["embeddings"]["unchanged"], ["X_pca"])
+        self.assertEqual(layer["embeddings"]["rewritten"], ["X_pca", "X_umap"])
+        self.assertEqual(layer["embeddings"]["unchanged"], [])
         self.assertEqual(layer["graphs"]["added"], [])
         self.assertEqual(layer["graphs"]["rewritten"], ["bbknn_distances"])
         self.assertEqual(layer["graphs"]["unchanged"], ["bbknn_connectivities"])
@@ -212,7 +223,7 @@ class TheHarnessRunsScintegrate(_Base):
         self.assertEqual(layer["columns"]["added"], ["diet"])
         self.assertEqual(layer["columns"]["unchanged"], ["sample", "cell_type", "cell_compartment", "age"])
         self.assertEqual(layer["columns"]["dropped"], ["n_counts"])
-        self.assertEqual(sorted(out["embeddings"]), sorted(layer["embeddings"]["added"] + ["X_umap"]))
+        self.assertEqual(sorted(out["embeddings"]), sorted(layer["embeddings"]["added"] + ["X_pca", "X_umap"]))
         self.assertEqual(sorted(out["graphs"]), ["bbknn_distances"])
         self.assertTrue(any("connectivities" in c and "n_counts" in c for c in out["caveats"]), out["caveats"])
 
@@ -225,8 +236,12 @@ class TheHarnessRunsScintegrate(_Base):
             want = f["obsm"]["X_harmony"][()]
         got = np.load(self.run_dir / "embeddings" / "X_harmony.npy")
         self.assertTrue(np.array_equal(got, want, equal_nan=True))
-        self.assertEqual(int(np.isnan(got).any(axis=1).sum()), sum(1 for i in range(N) if i % 7 == 3),
+        withheld = [i for i in range(N) if i % 7 == 3]
+        self.assertEqual(np.flatnonzero(np.isnan(got).any(axis=1)).tolist(), withheld,
                          "the withheld cells are NaN rows, not missing rows")
+        pca = np.load(self.run_dir / "embeddings" / "X_pca.npy")
+        self.assertEqual(np.flatnonzero(np.isnan(pca).any(axis=1)).tolist(), withheld,
+                         "the refit PCA is NaN on exactly the withheld rows")
         z = np.load(self.run_dir / "graphs" / "bbknn_distances.npz")
         self.assertEqual((str(z["format"]), tuple(z["shape"])), ("csr", (N, N)))
 
@@ -238,12 +253,21 @@ class TheHarnessRunsScintegrate(_Base):
             rows = list(csv.DictReader(fh))
         self.assertEqual([c for c in rows[0] if c.startswith("column__")], ["column__diet"])
         self.assertEqual(rows[0]["column__diet"], "d1")
+        by_id = {x["barcode"]: x for x in rows}
+        self.assertEqual(by_id["joint|L1_BC0003"]["column__diet"], "withheld_from_integration",
+                         "a design column the part lacks reads so on the cells scIntegrate withheld")
 
-        # the stage record is scIntegrate's own, adopted
+        # the stage record is scIntegrate's own, adopted, at the numbers this adapter means
         rec = out["answer"]["stage_record"]
         self.assertEqual(sorted(rec), ["describe", "doctor", "integrate"])
         self.assertEqual((rec["integrate"]["status"], rec["integrate"]["seal"], rec["integrate"]["exit"]),
                          ("ok", "SEALED.txt", 0))
+        self.assertEqual((rec["describe"]["state_version"], rec["integrate"]["state_version"]), (2, 2))
+        # the design is keyed on the batch key itself: its key column is the batch column, nothing added
+        report = json.loads((P / "report.json").read_text())
+        self.assertEqual(report["design_key"], {"column": "sample", "how": "the batch column itself",
+                                                "added": False})
+        self.assertEqual((report["pca"]["source"], report["pca"]["n_withheld_not_fitted"]), ("refit", 3))
         self.assertEqual(out["answer"]["chosen"], "harmony")
         self.assertEqual((out["answer"]["assay"], out["answer"]["species"]), ("snrna", "species_x"))
         self.assertIn("scIntegrate", out["wrapped_versions"])
@@ -343,6 +367,7 @@ class TheHarnessRunsScintegrate(_Base):
         cases = {
             "a bare flag given a value": ("no_fast_leiden", block(self.design, no_fast_leiden="--assay=scrna")),
             "a bare flag given a word": ("coarse_from_path", block(self.design, coarse_from_path="yes")),
+            "0.7.0's bare flag given a word": ("keep_input_pca", block(self.design, keep_input_pca="yes")),
             "a value flag written bare": ("design", block(self.design, design=True)),
             "a value that is an option": ("label_key", block(self.design, label_key="--out=elsewhere")),
             "one of a repeated flag's values": ("bio_factor", block(self.design, bio_factor=["age", "--species=x"])),
@@ -397,12 +422,95 @@ sys.exit(run.finish(headline="masked one"))
         self.assertEqual(self.calls_of(), [])
 
     def test_numbers_scintegrate_versioned_differently_are_refused_before_any_compute(self):
+        """The adapter means state version 2 (scIntegrate 0.7.0). An older scIntegrate (1: 0.5.0, whose
+        PCA kept the withheld cells in its fit) and a newer one are each refused after `describe`."""
+        for version in ("1", "3"):
+            with self.subTest(version=version):
+                shutil.rmtree(self.stack, ignore_errors=True)
+                self.init(self.manifest, "--context", "assay=snrna", "--context", "species=species_x")
+                self.calls.unlink(missing_ok=True)
+                os.environ["FAKE_SCINTEGRATE_STATE_VERSION"] = version
+                rc, r = self.mount(block(self.design))
+                self.assertEqual((rc, r["status"]), (2, "refused"), r)
+                self.assertIn(f"scIntegrate declares state_version {version}; this adapter's layer means "
+                              f"state_version 2", r["reason"])
+                self.assertEqual([c["argv"][0] for c in self.calls_of()], ["describe"])
+
+    def test_an_integrate_whose_own_record_carries_other_numbers_is_a_death(self):
+        """The same fact through another field (ATTACKS 21): `describe` says 2, the integrate that ran records 1
+        in its STATUS.json. Its object is not read: the mount dies, naming both, and the view is unchanged."""
         self.init(self.manifest, "--context", "assay=snrna", "--context", "species=species_x")
-        os.environ["FAKE_SCINTEGRATE_STATE_VERSION"] = "2"
+        before = self.view()
+        os.environ["FAKE_SCINTEGRATE_STATUS_STATE_VERSION"] = "1"
         rc, r = self.mount(block(self.design))
-        self.assertEqual((rc, r["status"]), (2, "refused"), r)
-        self.assertIn("state_version", r["reason"])
-        self.assertEqual([c["argv"][0] for c in self.calls_of()], ["describe"])
+        self.assertEqual((rc, r["status"]), (2, "died"), r)
+        err = (self.stack / "plugins" / "int_scintegrate" / "stderr.log").read_text()
+        self.assertIn("recorded state_version 1 in its STATUS.json, where its describe declared 2", err)
+        self.assertEqual(self.view()["digest"], before["digest"])
+
+    def test_an_object_whose_own_provenance_carries_other_numbers_is_not_read(self):
+        """The same fact a third time (W052 fix 1, L1): describe and STATUS say 2, and the object the
+        integrate wrote records another state_version in `uns/scintegrate/provenance`, or none, or 2.0.
+        The object is not read: the mount dies naming what the object says, and the view is unchanged."""
+        for planted in ("1", "3", "absent", "2.0", '"2"'):
+            with self.subTest(provenance=planted):
+                shutil.rmtree(self.stack, ignore_errors=True)
+                self.init(self.manifest, "--context", "assay=snrna", "--context", "species=species_x")
+                before = self.view()
+                os.environ["FAKE_SCINTEGRATE_PROV_STATE_VERSION"] = planted
+                rc, r = self.mount(block(self.design))
+                self.assertEqual((rc, r["status"]), (2, "died"), f"an object at {planted} was read: {r}")
+                err = (self.stack / "plugins" / "int_scintegrate" / "stderr.log").read_text()
+                said = {"absent": "None", "2.0": "2.0", '"2"': "'2'"}.get(planted, planted)
+                self.assertIn(f"records state_version {said} in its own provenance", err)
+                self.assertEqual(self.view()["digest"], before["digest"])
+        os.environ.pop("FAKE_SCINTEGRATE_PROV_STATE_VERSION")
+        shutil.rmtree(self.stack, ignore_errors=True)
+        self.init(self.manifest, "--context", "assay=snrna", "--context", "species=species_x")
+        rc, r = self.mount(block(self.design))
+        self.assertEqual((rc, r["status"]), (0, "mounted"), r)
+
+    def test_a_state_version_that_is_not_an_integer_exactly_is_refused_where_it_is_read(self):
+        """L2: 2.0 equals 2 in Python, and so did the adapter's checks; a state version is an integer
+        exactly. describe at 2.0 is refused before anything runs; a STATUS.json at 2.0 is a death."""
+        cases = (({"FAKE_SCINTEGRATE_STATE_VERSION": "2.0"}, "refused",
+                  "scIntegrate declares state_version 2.0; this adapter's layer means state_version 2"),
+                 ({"FAKE_SCINTEGRATE_STATE_VERSION": "true"}, "refused", "declares state_version True"),
+                 ({"FAKE_SCINTEGRATE_STATUS_STATE_VERSION": "2.0"}, "died",
+                  "recorded state_version 2.0 in its STATUS.json"))
+        for env, status, words in cases:
+            with self.subTest(env=env):
+                shutil.rmtree(self.stack, ignore_errors=True)
+                for k in self.ENV[1:]:
+                    os.environ.pop(k, None)
+                os.environ.pop("FAKE_SCINTEGRATE_PROV_STATE_VERSION", None)
+                os.environ.update(env)
+                self.init(self.manifest, "--context", "assay=snrna", "--context", "species=species_x")
+                rc, r = self.mount(block(self.design))
+                self.assertEqual((rc, r["status"]), (2, status), f"{env} was accepted: {r}")
+                said = r["reason"] if status == "refused" else \
+                    (self.stack / "plugins" / "int_scintegrate" / "stderr.log").read_text()
+                self.assertIn(words, said)
+
+    def test_the_declaration_the_adapters_constant_and_the_tools_describe_are_one_integer(self):
+        """The verifier's L4: plugin.yml's `state_version` is what the view is keyed on, the adapter's
+        STATE_VERSION what it checks the tool against, `describe` what the tool says. One integer, three
+        places; with SCH_TEST_SCINTEGRATE naming a checkout, the real tool's describe is the third."""
+        from sch.registry.manifest import load_manifest
+        here = ROOT / "plugins" / "single-cell" / "int@scintegrate"
+        declared = load_manifest(here).state_version
+        wraps = re.findall(r"(?m)^\s+state_version:\s*(\S+)\s*$", (here / "plugin.yml").read_text())
+        constant = re.findall(r"(?m)^STATE_VERSION = (\S+)$", (here / "run.py").read_text())
+        real = os.environ.get("SCH_TEST_SCINTEGRATE")
+        tool = Path(real) if real else FAKE
+        p = subprocess.run([sys.executable, "-m", "scintegrate.cli", "describe"], cwd=str(tool),
+                           env={**os.environ, "PYTHONPATH": str(tool)}, capture_output=True, text=True)
+        described = json.loads(p.stdout[p.stdout.index("{"):]).get("state_version")
+        self.assertIs(type(declared), int, f"plugin.yml declares {declared!r}")
+        self.assertEqual(wraps, [str(declared)], "the wraps block repeats another number")
+        self.assertEqual(constant, [str(declared)], f"run.py's STATE_VERSION is {constant}")
+        self.assertIs(type(described), int, f"describe says {described!r}")
+        self.assertEqual(described, declared, f"{'the real' if real else 'the stand-in'} describe says {described}")
 
     # ----------------------------------------------------------------------- the stage record
     def test_scintegrates_refusal_is_the_mounts_refusal_with_its_fix(self):
@@ -433,10 +541,11 @@ sys.exit(run.finish(headline="masked one"))
     def test_an_object_in_another_order_is_compared_by_identity_never_by_position(self):
         """A copied entry is the observation's own in whatever order scIntegrate writes its rows:
         reversed, the PCA, the kept columns and the graph it writes again identically are still
-        unchanged, and every file of the layer names its rows by identity."""
+        unchanged, and every file of the layer names its rows by identity. (`keep_input_pca`: the part's
+        PCA is kept as delivered, so it is a copied entry to compare.)"""
         self.init(self.manifest, "--context", "assay=snrna", "--context", "species=species_x")
         os.environ["FAKE_SCINTEGRATE_MODE"] = "reversed"
-        rc, r = self.mount(block(self.design))
+        rc, r = self.mount(block(self.design, keep_input_pca=True))
         self.assertEqual((rc, r["status"]), (0, "mounted"), r)
         layer = self.out_json()["answer"]["layer"]
         self.assertEqual(layer["embeddings"]["unchanged"], ["X_pca"])
@@ -457,6 +566,108 @@ sys.exit(run.finish(headline="masked one"))
         layer = self.out_json()["answer"]["layer"]
         self.assertEqual(layer["columns"]["rewritten"], ["cell_compartment"])
         self.assertIn("cell_compartment", self.out_json()["columns"])
+
+    # ----------------------------------------------------------------------- 0.7.0: the design's key, names
+    def _fresh(self, library=None):
+        """A new stack over a new joint object (its read-only files removed first)."""
+        shutil.rmtree(self.stack, ignore_errors=True)
+        shutil.rmtree(self.tmp / "objects", ignore_errors=True)
+        for p in (self.tmp / "joint.tsv", self.tmp / "design.csv"):
+            p.unlink(missing_ok=True)
+        self.manifest, self.design, self.part = joint(self.tmp, library=library)
+        self.init(self.manifest, "--context", "assay=snrna", "--context", "species=species_x")
+        self.calls.unlink(missing_ok=True)
+
+    def _design(self, name, text):
+        p = self.tmp / name
+        p.write_text(text)
+        return p
+
+    def test_the_designs_key_column_travels_under_the_designs_own_name(self):
+        """scIntegrate 0.7.0 carries the design's key column under the design's name, LAST: added from
+        the batch column (every cell, the withheld included) when the part lacks it, the part's own kept
+        when it equals the batch column, and the run REFUSED, by name, before anything is computed,
+        when the part's column of that name differs. The stand-in used to drop the key."""
+        keyed = self._design("design_library.csv", "library,age,diet\nL1,a1,d1\nL2,a2,d2\nL3,a1,d2\n")
+        named = self._design("design_named.csv", "age,library,diet\na1,L1,d1\na2,L2,d2\na1,L3,d2\n")
+        for why, library, params, how in (
+                ("absent: added", None, block(keyed),
+                 "added from 'sample': each cell's sample value, the withheld cells included"),
+                ("named by --design-sample-col", None,
+                 block(named, design_sample_col="library", bio_factor=["diet"]),
+                 "added from 'sample': each cell's sample value, the withheld cells included"),
+                ("present and equal: kept", lambda lib: lib, block(keyed),
+                 "the object's own column, equal to 'sample' on every cell")):
+            with self.subTest(why):
+                self._fresh(library)
+                rc, r = self.mount(params)
+                self.assertEqual((rc, r["status"]), (0, "mounted"), r)
+                columns = self.out_json()["answer"]["layer"]["columns"]
+                with h5py_file(self.run_dir / "scintegrate" / "objects" / "cohort_integrated.h5ad") as f:
+                    order = [str(c) for c in f["obs"].attrs["column-order"]]
+                self.assertEqual(order[-1], "library", "the key is the object's last column")
+                report = json.loads((self.run_dir / "scintegrate" / "report.json").read_text())
+                self.assertEqual(report.get("design_key"), {"column": "library", "how": how,
+                                                            "added": library is None})
+                if library is None:
+                    self.assertEqual(columns["added"][-1], "library")
+                    with open(self.view()["path"], newline="") as fh:
+                        rows = list(csv.DictReader(fh))
+                    self.assertEqual([x["column__library"] for x in rows],
+                                     [x["barcode"].split("|")[1].split("_")[0] for x in rows],
+                                     "the key column holds each cell's batch value, withheld cells included")
+                else:
+                    self.assertIn("library", columns["unchanged"])
+                    self.assertNotIn("library", columns["added"] + columns["dropped"])
+        with self.subTest("present and different: refused by name"):
+            self._fresh(lambda lib: {"L1": "L2", "L2": "L1"}.get(lib, lib))
+            rc, r = self.mount(block(keyed))
+            self.assertEqual((rc, r["status"]), (2, "refused"), r)
+            self.assertIn("scIntegrate integrate refused: the design is keyed on 'library'", r["reason"])
+            self.assertIn("column differs from 'sample' on 16 of 24 cells", r["reason"])
+            self.assertEqual(r["fix"], "change the input the refusal names, or the flag it asks for")
+            self.assertFalse(list((self.run_dir / "scintegrate").glob("objects/*")), "nothing was written")
+
+    def test_a_name_the_objects_writer_forbids_is_refused_before_anything_runs(self):
+        """A name the object's writer refuses (a '/', `_index`, the empty name a trailing comma gives)
+        is refused by scIntegrate 0.7.0 before anything is computed, naming the option that carries it;
+        the stand-in used to write it, and the mount died on the layer's file name or the writer's crash."""
+        for why, text, name in (
+                ("a factor holding '/'", "sample,donor/x\nL1,a\nL2,b\nL3,a\n", "'donor/x', a column of --design"),
+                ("a factor named _index", "sample,_index\nL1,a\nL2,b\nL3,a\n", "'_index', a column of --design"),
+                ("a header ending in a comma", "sample,age,\nL1,a1,\nL2,a2,\nL3,a1,\n", "'', a column of --design"),
+                ("a key holding '/'", "lib/run,age\nL1,a1\nL2,a2\nL3,a1\n", "'lib/run', the design's key")):
+            with self.subTest(why):
+                self._fresh()
+                rc, r = self.mount(block(self._design("design_bad.csv", text), bio_factor=None))
+                self.assertEqual((rc, r["status"]), (2, "refused"), r)
+                self.assertIn("the object's writer refuses this name, so nothing was computed: " + name,
+                              r["reason"])
+                self.assertEqual([c["argv"][0] for c in self.calls_of()], ["describe", "doctor", "integrate"])
+                self.assertFalse(list((self.run_dir / "scintegrate").glob("objects/*")), "nothing was written")
+
+    def test_the_withheld_cells_pca_is_refit_unless_keep_input_pca_keeps_it(self):
+        """With withheld cells that have rows in the part's PCA, scIntegrate 0.6.0 and later refits it on
+        the retained cells: X_pca is rewritten. `keep_input_pca` (0.7.0's flag, bare, after `--methods`)
+        keeps the part's as delivered, and so does a run that withholds nothing: X_pca unchanged."""
+        for why, params, source, flag in (
+                ("keep_input_pca", block(self.design, keep_input_pca=True), "input", True),
+                ("nothing withheld", block(self.design, drop_labels=None), "input", False)):
+            with self.subTest(why):
+                self._fresh()
+                rc, r = self.mount(params)
+                self.assertEqual((rc, r["status"]), (0, "mounted"), r)
+                layer = self.out_json()["answer"]["layer"]
+                self.assertEqual(layer["embeddings"]["unchanged"], ["X_pca"])
+                argv = self.calls_of("integrate")[0]["argv"]
+                self.assertEqual("--keep-input-pca" in argv, flag)
+                if flag:
+                    i = argv.index("--keep-input-pca")
+                    self.assertEqual(argv[i - 2:i + 2], ["--methods", "none,harmony,bbknn", "--keep-input-pca",
+                                                         "--n-cores"], "in scIntegrate's parser order")
+                report = json.loads((self.run_dir / "scintegrate" / "report.json").read_text())
+                self.assertEqual(report["pca"]["source"], source)
+                self.assertEqual(report["pca"]["declared"], "--keep-input-pca" if flag else None)
 
 
 # ---------------------------------------------------------------------------- the companion
@@ -616,10 +827,11 @@ def _real_scintegrate():
     return checkout
 
 
-def synthetic_joint(dest: Path):
+def synthetic_joint(dest: Path, library=None):
     """Four invented populations over three libraries with a library shift, Ensembl-shaped invented
-    identifiers of one species, counts and log-normalised values, a PCA, and a design. Nothing here
-    is any study's. Returns (manifest, design)."""
+    identifiers of one species, counts and log-normalised values, a PCA, and a design; with `library`
+    (a function of the batch value), a `library` column too. Nothing here is any study's. Returns
+    (manifest, design)."""
     import anndata as ad
     import numpy as np
     import pandas as pd
@@ -629,7 +841,9 @@ def synthetic_joint(dest: Path):
     libs = [f"L{i}" for i in (1, 2, 3)]
     types = ["Alpha", "Beta", "Gamma", "Delta"]
     lib = np.repeat(libs, 60)
-    lab = np.tile(np.repeat(types, 15), 3)
+    # object, not the types' fixed-width text: "EXCLUDED" written into a 5-character array is "EXCLU",
+    # and `--drop-labels EXCLUDED` withheld no cell here until 2026-11-12 (W052)
+    lab = np.tile(np.repeat(types, 15), 3).astype(object)
     lab[::29] = "EXCLUDED"
     n, g = len(lib), 120
     mu = np.full((n, g), 0.3)
@@ -649,6 +863,8 @@ def synthetic_joint(dest: Path):
     a.obs["sample"] = pd.Categorical(lib)
     a.obs["label"] = pd.Categorical(lab)
     a.obs["coarse"] = pd.Categorical(np.where(np.isin(lab, ["Alpha", "Beta"]), "AB", "GD"))
+    if library:
+        a.obs["library"] = pd.Categorical([library(b) for b in lib])
     sc.pp.pca(a, n_comps=12, svd_solver="arpack", random_state=0)
     part = dest / "objects" / "joint.h5ad"
     part.parent.mkdir(parents=True, exist_ok=True)
@@ -683,17 +899,102 @@ class TheRealScintegrate(_Base):
         out = self.out_json()
         layer = out["answer"]["layer"]
         self.assertIn("X_harmony", layer["embeddings"]["added"])
-        self.assertEqual(layer["embeddings"]["unchanged"], ["X_pca"])
+        # 0.7.0: the EXCLUDED cells have rows in the part's PCA, so scIntegrate refits it on the rest
+        self.assertIn("X_pca", layer["embeddings"]["rewritten"])
+        self.assertEqual(layer["embeddings"]["unchanged"], [])
+        import numpy as np
+        pca = np.load(self.run_dir / "embeddings" / "X_pca.npy")
+        self.assertEqual(np.flatnonzero(np.isnan(pca).any(axis=1)).tolist(), list(range(0, 180, 29)))
         self.assertEqual(layer["graphs"]["added"], ["bbknn_connectivities", "bbknn_distances"])
         self.assertIn("arm", layer["columns"]["added"])
         self.assertEqual(layer["columns"]["rewritten"], [])
-        self.assertEqual(out["answer"]["stage_record"]["integrate"]["status"], "ok")
+        rec = out["answer"]["stage_record"]
+        self.assertEqual(rec["integrate"]["status"], "ok")
+        self.assertEqual((rec["describe"]["state_version"], rec["integrate"]["state_version"]), (2, 2))
+        report = json.loads((self.run_dir / "scintegrate" / "report.json").read_text())
+        self.assertEqual(report["design_key"], {"column": "sample", "how": "the batch column itself",
+                                                "added": False}, "keyed on the batch: nothing added")
         mounted = self.view()
         self.assertEqual((mounted["kept"], mounted["total"]), (before["total"], before["total"]))
         self.assertNotEqual(mounted["digest"], before["digest"])
         rc, done = cli("--json", "unmount", "--stack", str(self.stack), "int@scintegrate")
         self.assertEqual(rc, 0, done)
         self.assertEqual(self.view()["digest"], before["digest"])
+
+    def test_the_stand_in_writes_what_the_real_scintegrate_writes_on_the_same_inputs(self):
+        """ATTACKS 1: a stand-in laxer than its tool passes where the tool refuses. The stand-in and the
+        real scIntegrate each run `integrate`, alone, on the same small inputs, and what each WRITES is
+        compared: the exit and the status, a refusal's own words up to the writer's, the object's obs
+        columns in order and the key column's values, `design_key`, the `pca` record, whether X_pca is
+        the part's and its NaN rows, and the obsm and obsp keys. The numbers are not compared: the
+        stand-in computes a pattern, never an integration."""
+        import h5py
+        import numpy as np
+        for k, sub in (("NUMBA_CACHE_DIR", "numba"), ("MPLCONFIGDIR", "mpl")):
+            os.environ.setdefault(k, str(self.tmp / "cache" / sub))
+        parts = {}
+        for name, library in (("plain", None), ("equal", lambda b: b),
+                              ("other", lambda b: {"L1": "L2", "L2": "L1"}.get(b, b))):
+            synthetic_joint(self.tmp / name, library=library)
+            parts[name] = self.tmp / name / "objects" / "joint.h5ad"
+        designs = {}
+        for name, text in (("batch", "sample,arm\nL1,x\nL2,y\nL3,x\n"), ("library", "library,arm\nL1,x\nL2,y\nL3,x\n"),
+                           ("slash", "sample,donor/x\nL1,a\nL2,b\nL3,a\n"),
+                           ("index", "sample,_index\nL1,a\nL2,b\nL3,a\n")):
+            designs[name] = self.tmp / f"design_{name}.csv"
+            designs[name].write_text(text)
+        cases = (("keyed on the batch key", "plain", "batch", []),
+                 ("the key absent: added", "plain", "library", []),
+                 ("the key present and equal: kept", "equal", "library", []),
+                 ("the key present and different: refused", "other", "library", []),
+                 ("a factor holding '/': refused", "plain", "slash", []),
+                 ("a factor named _index: refused", "plain", "index", []),
+                 ("keep the part's PCA", "plain", "batch", ["--keep-input-pca"]),
+                 ("nothing withheld", "plain", "batch", None))
+
+        def written(out, part):
+            if not (out / "STATUS.json").is_file():
+                return {"status": None}                  # stopped at the parser, before any record
+            st = json.loads((out / "STATUS.json").read_text())
+            seen = {"status": st["status"],
+                    "objects": sorted(p.name for p in out.glob("objects/*.h5ad"))}
+            if st["status"] == "refused":
+                seen["reason"] = str(st["refusal"]["reason"]).split(" (")[0]
+                seen["fix"] = st["refusal"]["fix"]
+                return seen
+            if st["status"] != "ok" or not seen["objects"] or not (out / "report.json").is_file():
+                seen["headline"] = st.get("headline")       # failed, or ok without its products
+                return seen
+            rep = json.loads((out / "report.json").read_text())
+            seen["design_key"] = rep.get("design_key")
+            seen["pca"] = {k: (rep.get("pca") or {}).get(k) for k in
+                           ("source", "declared", "n_withheld_not_fitted", "n_withheld_in_fit")}
+            with h5py.File(out / "objects" / seen["objects"][0], "r") as fo, h5py.File(part, "r") as fp:
+                seen["obs"] = [str(c) for c in fo["obs"].attrs["column-order"]]
+                if "library" in seen["obs"]:
+                    seen["library"] = fake()._column_text(fo["obs"]["library"])
+                mine, theirs = fo["obsm"]["X_pca"][()], fp["obsm"]["X_pca"][()]
+                seen["X_pca is the part's"] = bool(np.array_equal(mine, theirs, equal_nan=True))
+                seen["X_pca NaN rows"] = np.flatnonzero(np.isnan(mine).any(axis=1)).tolist()
+                seen["obsm"], seen["obsp"] = sorted(fo["obsm"]), sorted(fo["obsp"])
+            return seen
+
+        for i, (why, part, design, extra) in enumerate(cases):
+            with self.subTest(why):
+                argv = ["integrate", "--h5ad", str(parts[part]), "--batch-key", "sample", "--label-key", "label",
+                        "--species", "homo_sapiens", "--assay", "scrna", "--l1-key", "coarse",
+                        "--design", str(designs[design]), "--k", "10", "--n-pcs", "12", "--seed", "0",
+                        "--methods", "none,harmony,bbknn", "--n-cores", "1", "--scib-resolutions", "3"]
+                argv += ["--drop-labels", "EXCLUDED"] + extra if extra is not None else []
+                seen = {}
+                for who, checkout in (("stand-in", FAKE), ("scIntegrate", _real_scintegrate())):
+                    out = self.tmp / "runs" / f"{i}-{who}"
+                    p = subprocess.run([sys.executable, "-m", "scintegrate.cli", *argv, "--out", str(out)],
+                                       env=dict(os.environ, PYTHONPATH=str(checkout)), cwd=str(self.tmp),
+                                       capture_output=True, text=True)
+                    seen[who] = (p.returncode, written(out, parts[part]))
+                self.assertEqual(seen["stand-in"], seen["scIntegrate"])
+                self.assertEqual(seen["scIntegrate"][0], 2 if "refused" in why else 0, seen)
 
 
 if __name__ == "__main__":

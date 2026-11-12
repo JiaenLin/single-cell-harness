@@ -14,7 +14,8 @@
     GATE whether THIS clone runs the repository's commit gate, and the command that installs it:
          a note about the clone, never a failure of the architecture (GAP-111)
 
-`sch doctor --runtime <stack>` runs the kernel companions over an existing stack's stream.
+`sch doctor --runtime <stack>` runs the kernel companions over an existing stack's stream, and D6 at
+the stack: each mount's recorded identity against its plugin.yml as it is now.
 """
 from __future__ import annotations
 
@@ -183,11 +184,25 @@ def check_runtime(stack_dir) -> list:
             findings.append({"rule": name, "ok": True, "message": "held"})
         except InvariantFailure as e:
             findings.append({"rule": name, "ok": False, "message": str(e)})
+    # D6 at the stack: each mount's recorded identity is its plugin's declared one (W052 fix 1)
+    bad = [r for r in st.registry.runtimes if r.mismatch]
+    for r in bad:
+        d = r.declared
+        findings.append({"rule": "D6", "ok": False, "message":
+                         f"{r.name} ({r.state}) was mounted at version {r.version} state_version "
+                         f"{r.state_version!r}; its plugin.yml now declares version {d['version']} "
+                         f"state_version {d['state_version']!r}: its layer is not served; sch unmount "
+                         f"{r.name}, then mount it again"})
+    if not bad:
+        findings.append({"rule": "D6", "ok": True, "message": "every mount is the identity its plugin.yml declares"})
+    from .kernel import IdentityMismatch
     try:
         st.report()
         findings.append({"rule": "P2/A2", "ok": True, "message": "report renders; every number resolves"})
     except InvariantFailure as e:
         findings.append({"rule": "P2/A2", "ok": False, "message": str(e)})
+    except IdentityMismatch as e:
+        findings.append({"rule": "P2/A2", "ok": False, "message": f"report refused: {e.reason}"})
     st.close()
     return findings
 
