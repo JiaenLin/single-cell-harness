@@ -77,9 +77,13 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   cohort-value class).
 - **Running now (2 Opus):** the verifier of **scProfile's last lean re-check** (the batch at `5c1a3ff`; its DE gate 791483 is
   on the cluster); the verifier of **W049's lean re-check** (the driver at `110417c`: an answer for a sealed stage
-  refused, the run's record compared with each stage's seal, a job states each tool's commit). Fable 5.2: the ROOT DESIGN
-  review of Lab's run section (read-only; `audits/ROOT_DESIGN_W017_run_section.md`).
+  refused, the run's record compared with each stage's seal, a job states each tool's commit). No Fable agent is running
+  (the root design review of Lab's run section is in: the design was the cause; W054 builds its recommendation).
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
+  0. **W054** (Lab, a LIVE defect, so first): the run section rebuilt as a closed reader (six named fields per record, no
+     walk) and one file per conversion, as the root design review recommends
+     (`audits/ROOT_DESIGN_W017_run_section.md`): brief `<scratchpad>/relaunch/q_w054build.txt`. Then its verification and
+     its deploy, reported, not asked (D-045).
   1. **W052 PASSED its lean re-check** (the harness at `133589d`). Waiting only for the cluster: its subset 791374, then
      the full job (4 h); on AS PREDICTED both mains move in one step (scIntegrate `2fc7a6c` first, then the harness by
      its train's three guards), A3.1 +0.1; the stage-3 question goes into the day's report.
@@ -89,8 +93,6 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
      `--tool` for all four tools).
   5. **W050's verification** (scAnno `f456431`): brief `q_w050verify.txt`.
   6. **scIntegrate's installer** (GAP-C116), for A1.3: brief `q_w046fix2.txt`, clone `W046g-scIntegrate`.
-  7. **Lab's run section**: whatever its root design review recommends (the briefed fix-up 6 waits for it; the three
-     defects are live since D-038); its deploy needs no question (D-045).
 - **Studio's `main` is `8fb0d0a` since 2026-11-12T01:39Z (D-045)**: W053 is live: an untested gene carries no p in a saved
   DE file, the table or the volcano; the volcano follows the cutoff's own correction; a cutoff is rounded to two figures
   before it is applied. Before it the same day: W051, the words and elements (`192057b`, D-042). Lab's `main` is
