@@ -24,14 +24,21 @@ hands_on: {joint: null}
 # The design sheet's column naming each library, where scIntegrate takes it; the driver writes
 # the request's keys.sample here (harness W042, GAP-C92).
 library_key: integrate.design_sample_col
-# The escape scIntegrate declares as the user's (`scintegrate describe` escapes[], cli.py:1385): passed
-# only as an answer recorded with who gave it; unanswered, nothing is withheld (harness W042 fix 1, D).
+# The escapes scIntegrate declares as the user's (`scintegrate describe` escapes[]; 2fc7a6c cli.py:1625-1629):
+# each passed only as an answer recorded with who gave it (harness W042 fix 1, D); unanswered, nothing is
+# withheld, and the PCA is refitted without the withheld cells (W039's default). The second arrived with
+# scIntegrate 0.7.0, which this adapter means since W052; the driver's adapter met it at the merge (W056).
 decisions:
   - name: drop_labels
     param: integrate.drop_labels
     escape: "withholding labels from the integration"
     unanswered: tool-default
     what: "the labels whose cells are withheld from the integration (comma-separated), or null"
+  - name: keep_input_pca
+    param: integrate.keep_input_pca
+    escape: "fitting on the input's PCA although withheld cells are in it"
+    unanswered: tool-default
+    what: "true to fit on the input's own PCA although withheld cells are in it (recorded in report.json pca)"
 
 # The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
 owned: [integrate.h5ad, integrate.out, integrate.species, integrate.assay]

@@ -216,6 +216,7 @@ class ThePlan(_Base):
         self.assertEqual([d["name"] for s in p["stages"] for d in s["decisions"]],
                          ["qc.mode", "qc.decisions", "anno.no_exclude", "anno.background_from_clusters",
                           "anno.gap_min", "anno.tissue_fallback", "anno.marker_species", "int.drop_labels",
+                          "int.keep_input_pca",   # scIntegrate 0.7.0's second escape (autodev W056)
                           "prof.control", "prof.allow", "prof.force", "prof.no_validate"])
         self.assertEqual([d["name"] for s in p["stages"] for d in s["decisions"] if d["unanswered"] == "stop"],
                          ["qc.mode", "qc.decisions", "prof.control"], "an escape does not stop the run (W042 fix 1)")

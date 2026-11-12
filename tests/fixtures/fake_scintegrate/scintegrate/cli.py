@@ -543,9 +543,13 @@ def main():
                           "axes": {"assay": {"required": False, "accepted": list(ASSAYS)},
                                    "species": {"required": True}},
                           # scIntegrate's own escape (scintegrate/cli.py:1385 at b148030); harness W042 fix 1, D
+                          # scIntegrate's own escapes, as 2fc7a6c declares them (cli.py:1625-1629; autodev W056)
                           "escapes": [{"what": "withholding labels from the integration", "how": "--drop-labels",
                                        "recorded": "report.json withheld_from_integration and "
-                                                   "tables/integration_withheld_by_arm.csv"}] + (
+                                                   "tables/integration_withheld_by_arm.csv"},
+                                      {"what": "fitting on the input's PCA although withheld cells are in it",
+                                       "how": "--keep-input-pca",
+                                       "recorded": "report.json pca (declared, n_withheld_in_fit)"}] + (
                               [{"what": "a stand-in's new escape", "how": "--drift"}]
                               if MODE == "escape_drift" else [])}))
         return 0
