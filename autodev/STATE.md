@@ -75,10 +75,12 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus):** the VERIFIER of **W056** (the driver's integration, built at `4438681`; W045 has had no
-  verification before this one; its subset job is PBS 791723); the builder of **W055's second half** (scProfile,
-  `abundance` through the maker, from `2e5b95a`: the suite red there, the design step, an in-run refusal, the job's
-  prediction; launched 2026-11-12T06:30Z).
+- **Running now (2 Opus):** the builder of **W056's fix round 1** (the driver's integration; its verification found
+  the merges, the escape fix and W045's split SOUND and FAILED on: the check script's project root, a subset predicted
+  identical though scQC pools libraries, the parts step dying on an anndata-written object; and its subset job 791723
+  MISSED before any tool ran: the generated job needs git where a job runs. Brief `q_w056fix1.txt`; then a lean re-check
+  and the subset again); the builder of **W055's second half** (scProfile, `abundance` through the maker, from
+  `2e5b95a`; launched 2026-11-12T06:30Z).
 - **Running now (1 Fable):** the designer of **W057** ([waves/W057.md](waves/W057.md)): the Studio's Run card says what a
   bundle holds, for bundles written before and after W054 (no reason stated that the bundle does not state); a table
   whose header is not as wide as its rows is refused (GAP-C117's Studio half). Then one independent check and its deploy.
