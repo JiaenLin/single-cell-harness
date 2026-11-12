@@ -90,9 +90,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   MISSED before any tool ran: the generated job needs git where a job runs. Brief `q_w056fix1.txt`; then a lean re-check
   and the subset again); the builder of **W055's second half** (scProfile, `abundance` through the maker, from
   `2e5b95a`; launched 2026-11-12T06:30Z).
-- **Running now (2 Fable):** the DIRECTION reviewer (RULES item 21b; launched 2026-11-12T06:50Z); the designer of **W057** ([waves/W057.md](waves/W057.md)): the Studio's Run card says what a
-  bundle holds, for bundles written before and after W054 (no reason stated that the bundle does not state); a table
-  whose header is not as wide as its rows is refused (GAP-C117's Studio half). Then one independent check and its deploy.
+- **Running now (2 Fable):** the DIRECTION reviewer (RULES item 21b; launched 2026-11-12T06:50Z); the independent
+  CHECKER of **W057** (Studio, built by its designer at `ece0be4`: the Run card's words true for bundles written before
+  and after W054, told apart by the fields present; a ragged table refused; on PASS the Studio deploys, D-045).
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
   0. After W056's verification and W055's second half: their re-checks or fix rounds first (a wave in flight before a
      new one).
