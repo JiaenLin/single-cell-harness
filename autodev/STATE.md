@@ -103,7 +103,12 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   its preflight (792117) read OK and the run is PBS 792123. If it is killed again at 120 GB the suite has a runaway on the cluster and
   that is a finding of its own.
 - **Running now (2 Fable):** the designer-builder of **W062** (the Studio says of a fact only what its source lets it
-  say); the DESIGN of **W063** (D9, [waves/W063.md](waves/W063.md)): the protocol of a cold reproduction (A2.3, 0 of 4).
+  say); a small FIXER of the lines scQC's second docs draw found (then the docs-only branch merges, uncounted).
+- **D9 IS WRITTEN** ([waves/W063.md](waves/W063.md), "Design"): the protocol of a cold reproduction: a closed record
+  pack, the tool at the record's commit, a comparison sealed before the attempt, and the attempt run as a SEPARATE
+  headless session (a subagent of this session is not cold). Runs in order: stage 1 (27 min), stage 4, stage 2, stage 3;
+  two reach A2.3's bar. Its set-up (the pack, the criteria note, the grading job, the launcher and its probe) is an
+  Opus task for the next free slot, after the two builders now running.
 - **D6 IS WRITTEN** ([waves/W056.md](waves/W056.md), "Design read (D6)"): the files a driven run depends on are exactly
   the files DECLARED for it (the request, the site, each adapter's `files:` key with a reader for a file that names
   files); any other string is text, however it looks. Fix round 1 stands. Three waves: A (declarations and the walk),
