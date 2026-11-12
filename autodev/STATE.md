@@ -108,9 +108,13 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   check script reading a real run's layout, both jobs regenerated: subset md5 `8ef49ef9...`, full `194dc596...`; proof
   table 39 rows; **the cluster preflight of the subset job read `PREFLIGHT: OK`, PBS 794434**: pins, C0 and C3 AS
   PREDICTED). On its PASS: submit the subset run through the gate (6 h), then the full run (10 h), then the train
-  merge and A1.2; a FAIL goes to a design read. **W063's COLD ATTEMPT 1** (stage 1), a SEPARATE headless session
-  started by the coordinator at 15:40Z from `<scratchpad>/a23/` (D-055; one Opus slot; not an agent of this session,
-  so no agent id: its folder is `a23/launch/run1_20261112T154032Z/`, its end line `COLD: ...` or `NOT COLD`).
+  merge and A1.2; a FAIL goes to a design read. **W063's COLD ATTEMPT 2** (stage 1), a SEPARATE headless session
+  started by the coordinator from `<scratchpad>/a23/` (D-055; one Opus slot; not an agent of this session, so no
+  agent id: its folder is `a23/launch/run1_<stamp>/`, its end line `COLD: ...` or `NOT COLD`). **ATTEMPT 1 IS VOID**
+  (15:40Z to 15:56Z): the check printed NOT COLD (3) on two refused Edit calls and a Grep expression it read as a
+  path; nothing outside the pack was read, but the rule written before the launch voids it: its job
+  (`launch/run1_20261112T154032Z/handback/job.pbs`) is NOT submitted and NOT read; only its MISLED rows are used
+  (the docs ledger). The check was amended before attempt 2 (waves/W063.md, Attempts).
   W063's set-up is BUILT and probe 1 read (tools exact, five outside reads refused; the CLI's five built-in parts
   ruled INFO). The kit, the criteria note and every launch folder are copied to the first cohort's
   `stages/01_qc/a23/` (survives a reboot; the scratch does not; never under this repository: the leak guard reads
