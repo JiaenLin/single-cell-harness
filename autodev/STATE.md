@@ -103,7 +103,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Running now (2 Opus):** the builder of **W056's WAVE A** (the design read D6; relaunched after the reboot); the
   builder of **W065** ([waves/W065.md](waves/W065.md), GAP-C133: the host gives every plugin its allocation;
   abundance's monitoring fields declared; the gate job predicted again; stacked on W058 with W055's docs commit).
-  NEXT for an Opus slot: W063's set-up (the cold reproduction's pack, criteria and launcher), then W061's T and H.
+  NEXT for an Opus slot: W064's fix round 1; then W063's set-up (the cold reproduction), then W061's T and H.
 - **W058 is VERIFIED: PASS** (`0d963b9`, the verifier's docs pen `fe881a1`; GAP-C88 closed by measurement); it merges
   after W055, on which it is stacked.
 - **W055's GATE JOB RAN AND MISSED (6) (PBS 792123, 120 GB): three findings only the cluster could show.** (1) `de`'s
@@ -113,8 +113,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   instances not ok, not 8 of 8. The gate did not pass: W055 and W058 (both verified) wait. **W065 is registered**
   ([waves/W065.md](waves/W065.md): the host gives every plugin its allocation; abundance's fields declared; the job
   predicted again) and takes the NEXT free Opus slot. THE DEV SUITE IS NOT SUBMITTED AGAIN BEFORE IT.
-- **Running now (1 Fable):** the independent CHECKER of **W064** (the lab at `a854c8f`: a fact stated only with its
-  source; name-guesses 10 to 0; proof table 29 rows; on PASS the lab deploys, D-045).
+- **Running now (0 Fable).**
+- **W064's independent check FAILED on two small facts** (a log record's base of none stated as "base 0, as
+  recorded"; a total said summed from X that was the sum of its log); the design holds everywhere else. NOT deployed:
+  nothing false is live (the Studio words the old lab's guesses as unsourced). **Fix round 1 is registered in
+  [waves/W064.md](waves/W064.md) and is FIRST for the next Opus slot**; then one lean re-check and the deploy.
 - **D4 IS WRITTEN** ([waves/W066.md](waves/W066.md), "Design"): the draw rule for never-seen tools: a frame from the
   catalogue's own fields, seven closed exclusion reasons, a seed nobody types, the plugin compared with the tool run
   alone. Its small script and the conversions wait for the maker to be stable.
