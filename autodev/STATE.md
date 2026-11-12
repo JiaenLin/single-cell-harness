@@ -92,15 +92,13 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the AMENDMENT to **W056's fix round 1** (a submit recipe that runs no python: a closed
-  list, one walking test, the record made by shell; then both jobs regenerated, ONE lean re-check, the preflight, the
-  subset); the builder of **W055's GATE JOB** (brief `q_w055job.txt`). **W055 is VERIFIED: PASS** at `55a60d5` (the
-  verifier's docs pen `c135097`): A3.2 4/4 and A4.3 3/9 count on merge; its dev-suite job as written could not be
-  submitted and predicted ok for a plugin whose code ends partial (GAP-C131), so the job is being written anew with
-  a preflight and a prediction true to the code; then preflight, run, merge.
-- **Running now (2 Fable):** the THIRD sweep of scQC's docs (seven files and 47 undecided rows; then the second
-  draw); the DESIGN of **W061** (D8, [waves/W061.md](waves/W061.md)): what the hand-off states about a real object is
-  recorded, not guessed.
+- **Running now (2 Opus):** the lean RE-CHECK of **W056's fix round 1 with its amendment** (head `d9347d1`: a submit
+  recipe that runs only git, the shell's small tools and the submit command, by a closed list and a walking test; the
+  record made by shell; proof table 32 rows; a FAIL is the wave's second and goes to a design read); the builder of
+  **W055's GATE JOB** (W055 is VERIFIED: PASS; A3.2 4/4 and A4.3 3/9 count on merge).
+- **Running now (2 Fable):** the SECOND DRAW on scQC's docs branch `ba85f8e` (seed 20261113; three sweeps corrected
+  it: 404 ledger rows, 38 false claims beyond the first sweep's corrections); the DESIGN of **W061** (D8,
+  [waves/W061.md](waves/W061.md)): what the hand-off states about a real object is recorded, not guessed.
 - **A6.2 MEASURED on the first cohort's real joint object** ([audits/A62_MEASUREMENT_20261112.md](audits/A62_MEASUREMENT_20261112.md)):
   1 of 2, the score unchanged at 0.5 but now measured. Half 1 YES: the lab's documented command, no flag, 61 s,
   1.84 GB, a bundle equal to the object in every value compared (all 34,290 gene totals, all rows of 5 embeddings); the
@@ -175,7 +173,8 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** nothing. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+- **On PBS:** **792052**, the PREFLIGHT of W056's regenerated subset job (ten minutes). THE scProfile CHECKOUT is one:
+  W055's gate job (at `c135097`, up to 2 h) goes before W056's subset (at `b5f646a`, 6 h). Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
   where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the
