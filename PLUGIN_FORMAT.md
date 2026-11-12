@@ -564,3 +564,20 @@ def register(inv):
   is quotable (**A2**), and it declares its cost.
 - A check only checks if the regression actually fails it. Introduce the regression, watch it fail,
   revert — and if it cannot be made to fail, the check is decoration.
+
+## Driver keys (harness W041/W042)
+
+What `sch run --request` reads from an adapter's `plugin.yml`, beside the keys above:
+`reads` / `hands_on` (the shapes it takes and gives); `library_key` and `context_params` (where it takes
+the library column and a context axis as its tool's own flag); `decisions` (each choice its tool declares
+as the user's: `name`, `param`, `escape`, `what`, `unanswered: stop | tool-default`) and
+`escapes_not_asked` (a tool escape the driver passes nothing for, with why); `owned` (the params its
+`run.py` sets itself, its OWNED, refused when the plan is made; a test ties the two); `upstream_columns`
+(where its tool's samplesheet says what ran upstream, per step: `tool`, `version`, the `performed` and
+`declined` columns; a first stage must declare it, `{}` if nowhere, and every row must agree with the
+request; read with every family adapter's meaning whatever stage starts); `upstream_accepts` (what its
+tool accepts as performed upstream, per assay and step: `any` or a list of names, read from the tool's own
+code and held by a drift test; a first stage that reads libraries must declare it); `runs_upstream` (per
+step, each `{param, tool, assays}` with which its tool performs the step itself and the assays its own
+policy runs it on: refused elsewhere, and on an assay whose profile says the family never performs the
+step); `tool_param` (the param naming its tool: the checkout holding it is in the run's set).

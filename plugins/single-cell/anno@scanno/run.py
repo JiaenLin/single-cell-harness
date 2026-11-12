@@ -24,6 +24,7 @@ import csv
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -56,13 +57,17 @@ FLAGS = {
     "cluster": ("h5ad", "out", "split_by", "out_dir", "resolutions", "n_top_genes", "n_pcs",
                 "n_neighbors", "seed", "status_dir", "by"),
     "annotate": ("h5ad", "cluster_key", "tree", "resolve", "scope", "l1_tree", "species", "tissue",
-                 "assay", "db", "store", "background_from_clusters", "exclude_flag", "no_exclude",
+                 "assay", "db", "tissue_fallback", "marker_species", "store", "background_from_clusters", "exclude_flag", "no_exclude",
                  "gap_min", "min_tier", "out_gene_key", "gene_key", "use_raw", "out", "out_h5ad",
                  "report", "sample_key", "condition_key", "label_suffix", "label_prefix",
                  "status_dir", "by"),
     "rescue": ("h5ad", "label_key", "sweep_prefix", "cluster_prefix", "unit_key", "from_resolution",
                "to_resolution", "out_key", "out_dir", "out", "out_table", "out_report",
                "status_dir", "by"),
+    # scAnno's `embed` (harness W041): ONE embedding over every library, the joint object a stage-3
+    # job reads. Run only when the stage declares it, after the chain, over the chain's objects.
+    "embed": ("h5ad", "out", "sample_key", "label_obs", "gene_key", "n_hvg", "n_pcs", "n_neighbors",
+              "min_dist", "seed", "status_dir", "by"),
 }
 #: The flags the adapter sets and a parameter may not, each with the reason. Inputs and outputs
 #: live in the run (the kernel's out_dir), and the assay is the stack's declaration.
@@ -79,7 +84,11 @@ OWNED = {
     "rescue": {"h5ad": "annotate's outputs", "out_dir": _IN_RUN, "out": _IN_RUN,
                "out_table": _IN_RUN, "out_report": _IN_RUN,
                "status_dir": "scAnno's record stays beside its output"},
+    "embed": {"h5ad": "the chain's objects, every library", "out": _IN_RUN,
+              "status_dir": "scAnno's record stays beside its output"},
 }
+#: A flag scAnno's parser takes several values for (`nargs`), written as separate words.
+SPREAD = ("h5ad", "label_obs")
 #: A flag scAnno's parser takes again for each value (`action="append"`).
 APPEND = ("cluster_key",)
 #: scAnno's flags that take NO argument (`action="store_true"`, d0ee926's parser): written bare, or
@@ -89,7 +98,7 @@ APPEND = ("cluster_key",)
 #: observations (E2), and `background_from_clusters: "--assay=snrna"` overrode the stack's assay
 #: (rule 2). For the same reason no value at all may begin with "-".
 BARE = {"cluster": (), "annotate": ("resolve", "background_from_clusters", "no_exclude", "use_raw"),
-        "rescue": ()}
+        "rescue": (), "embed": ()}
 #: Read by the kernel, not by scAnno.
 KERNEL_PARAMS = ("timeout",)
 #: scAnno's status contract (scanno/status.py): the record and its seals, beside the output.
@@ -229,9 +238,24 @@ if described.get("state_version") != STATE_VERSION:
            f"means state_version {STATE_VERSION}, and a cached view keyed on one would serve the "
            f"other's labels (D6)", "update the adapter to scAnno's labels and bump its state_version")
 
+# ---- THE USER'S DECISIONS FOLLOW THE TOOL (harness W042 fix 1, D): every escape scAnno declares
+# (`describe` escapes[]) is asked by the driver by name, so a scAnno that declares one this
+# adapter's plugin.yml does not ask (`escape:` under `decisions:`, or `escapes_not_asked:`) is refused
+# here, before any of its work: an escape nobody asks would be a user's decision nobody made.
+_mine = Path(__file__).with_name("plugin.yml").read_text(encoding="utf-8")
+_asked = set(re.findall(r'^\s*escape:\s*"([^"]+)"\s*$', _mine, re.M)) | set(
+    re.findall(r'^\s+"([^"]+)":\s*"[^"]*"\s*$', _mine.split("escapes_not_asked:")[1], re.M)
+    if "escapes_not_asked:" in _mine else [])
+_drift = sorted(str(e.get("flag") or e.get("what")) for e in (described.get("escapes") or [])
+                if str(e.get("flag") or e.get("what")) not in _asked)
+if _drift:
+    refuse(f"scAnno {described.get('version')} declares the escape(s) {', '.join(_drift)}, which this "
+           f"adapter does not ask as the user's decision", "name each in plugin.yml's decisions: (escape:, "
+           f"its param) or escapes_not_asked: (with why), then mount again")
+
 # ---------------------------------------------------------------------------- scAnno's own chain
 P = out_dir / "scanno"
-for sub in LAYOUT:
+for sub in LAYOUT + (("joint",) if "embed" in params else ()):
     (P / sub).mkdir(parents=True, exist_ok=True)
 
 
@@ -243,8 +267,8 @@ def call(cmd, values, label, where):
         if v is None or v is False:
             continue
         flag = "--" + k.replace("_", "-")
-        if k == "h5ad":
-            argv += [flag, *v]
+        if k in SPREAD:
+            argv += [flag, *(str(x) for x in (v if isinstance(v, list) else [v]))]
         elif k in APPEND:
             for x in (v if isinstance(v, list) else [v]):
                 argv += [flag, str(x)]
@@ -315,6 +339,12 @@ if "rescue" in params:
     # scAnno's rule for rescue --out-dir: each written as <input stem>.rescued.h5ad
     final = {lib: produced(P / "rescued" / f"{annotated[lib].stem}.rescued.h5ad", "rescue")
              for lib, _p in parts}
+joint = None
+if "embed" in params:
+    joint = P / "joint" / "joint.h5ad"
+    call("embed", {**params["embed"], "h5ad": [str(final[lib]) for lib, _p in parts], "out": str(joint)},
+         "embed", P / "joint")
+    produced(joint, "embed")
 
 # ---------------------------------------------------------------------------- what scAnno changed
 # Read back from scAnno's own objects, by identity, and compared with each library as delivered.
@@ -363,6 +393,8 @@ for c in layer:
 run.wrapped("scAnno", f"{described.get('version')} ({described.get('commit')})")
 for lib, _p in parts:
     run.object_at(lib, str(final[lib].relative_to(out_dir)))
+if joint is not None:
+    run.object_at("joint", str(joint.relative_to(out_dir)))
 for t in (P / "rescue" / "impact.csv",):
     if t.is_file():
         run.table_at(str(t.relative_to(out_dir)))
@@ -378,6 +410,8 @@ for label, rec in record.items():
 chain = [c for c in FLAGS if c in params]
 run.answer(stage_record=record, argv=argvs, chain=chain, assay=assay, identity_joiner=joiner,
            results=str(P.relative_to(out_dir)),
+           hands_on={"libraries": {lib: str(final[lib].relative_to(out_dir)) for lib, _p in parts},
+                     "joint": str(joint.relative_to(out_dir)) if joint is not None else None},
            layer={"added": [c for c in layer if c in added],
                   "rewritten": [c for c in layer if c in rewritten and c not in added],
                   "dropped": sorted(dropped)})

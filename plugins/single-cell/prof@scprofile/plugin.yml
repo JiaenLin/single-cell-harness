@@ -19,6 +19,42 @@ state_version: 1
 # is no default.
 assays: [scrna, snrna]
 
+# What it reads and hands on (harness W041): the integrated object in, scProfile's object out.
+reads: joint
+hands_on: {joint: null}
+# The column naming each library, in the object and in the design, where scProfile takes it
+# (`run --sample-key`; it keys the design on it, scprofile/inputs.py read_design). The driver
+# writes the request's keys.sample here (harness W042, GAP-C92).
+library_key: run.sample_key
+# The choice scProfile leaves to the user (cannot_show, first line): the driver asks it by name.
+decisions:
+  - name: control
+    param: run.control
+    what: "the control every contrast is read against; every sign in the tables follows it"
+  # scProfile's escapes, LISTED BY HAND: scProfile has no `describe`, so they are read from its parser
+  # (scprofile/cli.py `run`: --allow, --force, --no-validate; kernels.py guard_verdict names --allow as the
+  # guard's escape). Each lifts one of scProfile's refusals, so each is the user's (autodev W042 fix 2, D);
+  # unanswered, its flag is not passed, scProfile's own default.
+  - name: allow
+    param: run.allow
+    escape: "--allow"
+    unanswered: tool-default
+    what: "run these kernels even though their own guard refused (scProfile logs each override)"
+  - name: force
+    param: run.force
+    escape: "--force"
+    unanswered: tool-default
+    what: "run a kernel whose prerequisites are unmet; its result would not mean what the report says"
+  - name: no_validate
+    param: run.no_validate
+    escape: "--no-validate"
+    unanswered: tool-default
+    what: "run without scProfile's static checks of each kernel's declaration and references"
+# The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
+owned: [run.h5ad, run.out, run.design, run.assay, run.organism]
+
+# The param naming the tool itself: the checkout holding it is in the run's set (autodev W049, route 14).
+tool_param: scprofile
 wraps:
   tool: scProfile
   version: "0.1.0"

@@ -88,11 +88,11 @@ def delivery(root: Path, tag: str, libraries: int = 3, droplets: int = 12, extra
     `extra` adds barcodes to a library ({library index: [barcodes]}). Read-only, as delivered.
     Returns the manifest."""
     d = Path(root) / tag
-    lines = ["sample\tassay\tambient_h5"]
+    lines = ["sample\tassay\tambient_h5\tambient_tool\tambient_version\tambient_params\tambient_produced_by"]
     for i in range(libraries):
         bcs = [f"BC{j:05d}-1" for j in range(droplets)] + list((extra or {}).get(i, []))
         write_part(d / "libs" / f"L{i + 1}.h5ad", bcs).chmod(0o444)
-        lines.append(f"L{i + 1}\tsnrna\tlibs/L{i + 1}.h5ad")
+        lines.append(f"L{i + 1}\tsnrna\tlibs/L{i + 1}.h5ad\tCellBender\t0.3.0\tdefaults\ta core facility")
     sheet = d / "sheet.tsv"
     sheet.write_text("\n".join(lines) + "\n")
     sheet.chmod(0o444)
@@ -114,12 +114,14 @@ def library_cohort(dest: Path, libraries: int = 4, droplets: int = 120, assay: s
     dest = Path(dest)
     samples = [f"L{i + 1}" for i in range(libraries)]
     bcs = [f"BC{j:05d}-1" for j in range(droplets)]
-    header = ["sample", "platform", "species", "reference", "assay", "ambient_h5", "condition"]
+    header = ["sample", "platform", "species", "reference", "assay", "ambient_h5", "ambient_tool", "ambient_version",
+              "ambient_params", "ambient_produced_by", "condition"]
     lines = [delimiter.join(header)]
     for i, s in enumerate(samples):
         part = write_part(dest / "objects" / f"{s}_ambient.h5ad", bcs)
         lines.append(delimiter.join([s, "vendor_x", "species_x", "species_x/ref_1", assay,
-                                     str(part), "control" if i % 2 == 0 else "treated"]))
+                                     str(part), "CellBender", "0.3.0", "defaults", "a core facility",
+                                     "control" if i % 2 == 0 else "treated"]))
     sheet = dest / "samplesheet.tsv"
     sheet.write_text("# a samplesheet as a QC tool reads it\n" + "\n".join(lines) + "\n")
     # DELIVERED DATA ARE IMMUTABLE (LAYOUT: data/ is never written): read-only, as a mount demands

@@ -80,6 +80,7 @@ class Handle:
         self.facts["exit"] = self.proc.returncode
         self.facts["stopped"] = self.proc.poll() is not None
         self.facts["seconds"] = round(time.perf_counter() - self.started, 3)
+        self.facts["cost"] = local_cost(self.facts["seconds"])
         return self.facts
 
     def running(self) -> bool:
@@ -209,6 +210,54 @@ SUBMISSION = "SCH_SUBMISSION"
 HELD_FOR_GOOD = re.compile(r"too many failed attempts", re.I)
 
 
+#: WHAT A JOB COST, IN THE SCHEDULER'S OWN WORDS (autodev W042, GAP-C91): PBS Pro's `qstat -x -f`
+#: of an ended job carries `resources_used.<name> = <value>`; walltime and cput as [[h:]m:]s, mem and
+#: vmem with a unit (`123456kb`).
+_USED = re.compile(r"^\s*resources_used\.(\w+)\s*=\s*(\S+)\s*$", re.M)
+_KB = {"b": 1 / 1024, "kb": 1, "mb": 1024, "gb": 1024 ** 2, "tb": 1024 ** 3}
+LOCAL_UNMEASURED = "peak memory: the local executor asks no scheduler, and measures none"
+
+
+def _seconds(v: str) -> int | None:
+    try:
+        parts = [int(x) for x in str(v).split(":")]
+    except ValueError:
+        return None
+    total = 0
+    for x in parts:
+        total = total * 60 + x
+    return total
+
+
+def _kb(v: str) -> int | None:
+    m = re.match(r"^(\d+)([kmgt]?b)?$", str(v).strip().lower())
+    if not m:
+        return None
+    return int(round(int(m.group(1)) * _KB[m.group(2) or "b"]))
+
+
+def scheduler_cost(text: str | None, job=None, why_none: str = "") -> dict:
+    """The cost of one ended job from the scheduler's last answer about it: `from: scheduler` with
+    `wall_s`, `peak_mem_kb` (`mem`, the job's peak resident memory as PBS Pro accounts it), `ncpus`
+    and `cput_s` where given, and `resources_used` verbatim. With no such answer, `from: null` and
+    why: a figure the scheduler did not give is never filled in."""
+    used = dict(_USED.findall((text or "").replace("\n\t", "")))
+    if not used:
+        return {"from": None, "job": job, "wall_s": None, "peak_mem_kb": None,
+                "unknown": why_none or f"the scheduler's last answer about job {job} carried no "
+                                       f"resources_used"}
+    n = used.get("ncpus")
+    return {"from": "scheduler", "job": job, "wall_s": _seconds(used.get("walltime", "")),
+            "peak_mem_kb": _kb(used.get("mem", "")), "ncpus": int(n) if str(n).isdigit() else None,
+            "cput_s": _seconds(used.get("cput", "")) if "cput" in used else None,
+            "resources_used": used}
+
+
+def local_cost(seconds) -> dict:
+    return {"from": "local", "job": None, "wall_s": seconds, "peak_mem_kb": None,
+            "unknown": LOCAL_UNMEASURED}
+
+
 def _sealed_job(jobdir) -> str | None:
     """The job id the seal in a run's job directory names, or None. The directory is made for ONE
     submission (a bare mkdir in `launch`), and only a job running that submission's script writes
@@ -247,6 +296,7 @@ class PbsHandle:
         self.log = None
         self.done = False
         self.comment = None             # the scheduler's last `comment` on the job, if any
+        self.said = None                # the scheduler's last full answer about the job (its cost)
         self.facts = {"requested": False, "stopped": False, "timed_out": False, "exit": None,
                       "seconds": None, "executor": "pbs", "job": job, "seal": None}
 
@@ -267,6 +317,7 @@ class PbsHandle:
         cm = re.search(r"^\s*comment\s*=\s*(.+?)\s*$", (r.stdout or "").replace("\n\t", ""), re.M)
         if st or ex:
             self.comment = cm.group(1) if cm else None
+            self.said = r.stdout
             return (st.group(1) if st else None), (int(ex.group(1)) if ex else None), True
         said = ((r.stderr or "") + (r.stdout or "")).lower()
         return None, None, r.returncode != 0 and "unknown job" in said
@@ -346,7 +397,16 @@ class PbsHandle:
         self.done = True
         self._outcome(ex)
         self.facts["seconds"] = round(time.perf_counter() - self.started, 3)
+        self.facts["cost"] = self._cost(st, ex, known)
         return dict(self.facts)
+
+    def _cost(self, st, ex, known) -> dict:
+        """What the scheduler says the job used, read from its answer that saw the job end."""
+        if self._ended(st, ex, known) and (st or ex is not None):
+            return scheduler_cost(self.said, self.job)
+        return scheduler_cost(None, self.job, (
+            f"the scheduler said nothing about job {self.job} once it had ended (it keeps no "
+            f"history of it, or was not answering); the job's own seal ended the wait"))
 
     def stop(self, grace: float | None = None) -> dict:
         """qdel, then CONFIRM through qstat. Never reports stopped on a job it cannot see end."""
@@ -369,6 +429,7 @@ class PbsHandle:
         if self.facts["stopped"]:
             self.done = True
             self._outcome(ex)
+            self.facts["cost"] = self._cost(st, ex, known)
         self.facts["seconds"] = round(time.perf_counter() - self.started, 3)
         return dict(self.facts)
 
@@ -407,6 +468,132 @@ class PendingSubmission:
         return dict(self.facts)
 
 
+#: A run's size in the scheduler-neutral words a request and a tool declare (autodev W042).
+SIZE = ("ncpus", "mem")
+#: A queue's ceilings, as the site file declares each of its queues (`pbs.queues`).
+CEILINGS = ("walltime", "ncpus", "mem")
+
+
+def _need(cfg: dict) -> dict:
+    """(ncpus, mem in kb, walltime in s) of one job, read from its words or from its `select`."""
+    sel = str(cfg.get("select") or "")
+    chunks = re.match(r"^\s*(\d+)", sel)
+    n = int(chunks.group(1)) if chunks else 1
+    cpus = re.search(r"ncpus=(\d+)", sel)
+    mem = re.search(r"mem=(\w+)", sel)
+    return {"ncpus": n * int(cpus.group(1)) if cpus else None,
+            "mem": n * (_kb(mem.group(1)) or 0) if mem else None,
+            "walltime": _seconds(cfg.get("walltime") or "")}
+
+
+def _select_words(sel: str) -> list:
+    """[(word, value)] of a select's chunk, in its order: `1:ncpus=4:mem=8gb` -> ncpus, mem."""
+    parts = [x for x in str(sel).split(":") if x.strip()]
+    if parts and parts[0].strip().isdigit():
+        parts = parts[1:]
+    return [tuple(x.split("=", 1)) for x in parts if "=" in x]
+
+
+#: A memory size as the scheduler reads it: a whole number and its unit (autodev W042 fix 2, F).
+MEM = re.compile(r"(\d+)([kmgtp]?b)")
+#: One word of a `select` chunk as the scheduler reads it (autodev W042 fix 2, F).
+SELECT_WORD = re.compile(r"[a-z][a-z0-9_]*=[A-Za-z0-9._-]+", re.ASCII)
+
+
+def check_size(size: dict) -> dict:
+    """A SIZE IS A POSITIVE NUMBER IN ITS UNIT, OR IT IS REFUSED BEFORE ANYTHING IS SUBMITTED (autodev W042
+    fix 2, F): ncpus a whole number above zero, mem a whole number above zero with its unit (kb, mb, gb,
+    tb), walltime [[h:]m:]s above zero - in its own word or inside a `select`. Returns the words as the
+    scheduler is given them (mem's unit in lower case)."""
+    words = {k: v for k, v in dict(size or {}).items() if v is not None}
+    sel = str(words.get("select") or "").strip()
+    if sel:                                      # written into the job's #PBS line as it is: each word is
+        parts = sel.split(":")                   # the scheduler's word=value, and nothing else (no newline,
+        if parts[0].isascii() and parts[0].isdigit():                      # `#`, quote or second key)
+            if int(parts[0]) <= 0:
+                raise ExecutorError(f"select {sel!r} asks for {parts[0]} chunks; a job is at least one")
+            parts = parts[1:]
+        bad = [x for x in parts if not SELECT_WORD.fullmatch(x)]
+        if bad:
+            raise ExecutorError(f"select {sel!r}: {bad[0]!r} is not a size word as the scheduler reads one "
+                                f"(word=value: lower-case letters, digits and `_`; the value letters, digits, "
+                                f"`.`, `_`, `-`)")
+    for k, v in _select_words(words.get("select") or ""):
+        words.setdefault(f"select.{k}", v)
+    out = {}
+    for k, v in words.items():
+        w, t = k.split(".")[-1], str(v).strip()
+        if w == "ncpus" and not (t.isdigit() and t.isascii() and int(t) > 0):
+            raise ExecutorError(f"{k} {v!r} is not a number of cpus above zero")
+        if w == "mem":
+            m = MEM.fullmatch(t.lower()) if t.isascii() else None
+            if not m or int(m.group(1)) <= 0:
+                raise ExecutorError(f"{k} {v!r} is not a memory size above zero with its unit (8gb, 512mb)"
+                                    + ("; a number with no unit is read by the scheduler as bytes" if t.isdigit()
+                                       else ""))
+            t = t.lower()
+        if w == "walltime":
+            secs = _seconds(t) if re.fullmatch(r"[0-9]+(:[0-9]+){0,2}", t) else None   # ASCII digits only
+            if not secs:
+                raise ExecutorError(f"{k} {v!r} is not a walltime above zero ([[h:]m:]s)")
+        out[k] = t
+    return out
+
+
+def sized(cfg: dict, over: dict | None = None, base: dict | None = None) -> dict:
+    """ONE JOB'S RESOURCES AND QUEUE FROM THREE DECLARATIONS (autodev W042, ROUTE R03 run 2).
+    The site file gives the queues, each with its ceilings (`pbs.queues`: [{queue, walltime, ncpus,
+    mem}, ...] in the order they are to be tried), and its defaults; a request or a tool gives a
+    run's size as `ncpus`, `mem` and `walltime`. A size is written `select=1:ncpus=N:mem=M`, the
+    scheduler's own words: every word a layer states - in its own word or inside its `select` - is
+    laid over the site's `select`, so a word it does not state keeps the site's value (W042 fix 2).
+    A size that is zero, negative, not a number or (mem) unit-less is refused (`check_size`).
+    The queue is the FIRST declared one whose ceilings hold the job (the site's rule: the queue
+    from the requirement, never the requirement from the queue), unless that layer names a queue;
+    a job no declared queue can hold is refused before any qsub, naming every ceiling. With no
+    `queues` declared, the block's `queue` is used, as before."""
+    over = dict(over if over is not None else cfg)
+    cfg = dict(cfg)
+    for layer in (base, over, cfg):
+        check_size({k: v for k, v in dict(layer or {}).items() if k in (*SIZE, "walltime", "select")})
+    if "walltime" in cfg:
+        cfg["walltime"] = str(cfg["walltime"]).strip()
+    site_sel = str((base or {}).get("select") or ("" if "select" in over else cfg.get("select") or ""))
+    if any(k in over for k in (*SIZE, "select")) or ("select" not in cfg and any(k in cfg for k in SIZE)):
+        # EVERY SIZE WORD IS LAID OVER THE SITE'S (autodev W042 fix 1 and 2, F): the site's `select` is
+        # read into its words and the stated ones - a request's own `select` among them - are laid over
+        # them, so a size that names only ncpus keeps the site's memory and any other word it declares,
+        # and the queue is chosen with them.
+        words = dict(_select_words(site_sel))
+        chunks = re.match(r"^\s*(\d+)\s*(:|$)", str(over.get("select") or site_sel or "1"))
+        words.update(dict(_select_words(over.get("select") or "")))
+        words.update({k: str(cfg[k]) for k in SIZE if cfg.get(k) is not None})
+        words = {k: (v.strip().lower() if k == "mem" else v.strip()) for k, v in words.items()}
+        cfg["select"] = ":".join([chunks.group(1) if chunks else "1"] + [f"{k}={v}" for k, v in words.items()])
+    queues = cfg.get("queues")
+    if not queues or "queue" in over:
+        return cfg
+    need = _need(cfg)
+    said = []
+    for q in queues:
+        q = dict(q or {})
+        if not q.get("queue"):
+            raise ExecutorError(f"executor pbs: pbs.queues has an entry with no queue: {q}")
+        limit = {"walltime": _seconds(q["walltime"]) if q.get("walltime") else None,
+                 "ncpus": int(q["ncpus"]) if q.get("ncpus") else None,
+                 "mem": _kb(str(q["mem"])) if q.get("mem") else None}
+        short = [k for k in CEILINGS if limit[k] is not None and need[k] is not None and need[k] > limit[k]]
+        if not short:
+            return {**cfg, "queue": q["queue"], "queue_chosen": f"the first of pbs.queues to hold "
+                                                                f"{cfg.get('select')} for {cfg.get('walltime')}"}
+        said.append(f"{q['queue']} ({', '.join(f'{k} {q.get(k)}' for k in CEILINGS)}: over on "
+                    f"{', '.join(short)})")
+    raise ExecutorError(f"executor pbs: no declared queue holds select={cfg.get('select')} "
+                        f"walltime={cfg.get('walltime')}: " + "; ".join(said) + ". Size the run "
+                        f"within a queue's ceilings, or declare the queue that holds it in the site "
+                        f"file's pbs.queues")
+
+
 class PbsExecutor(LocalExecutor):
     kind = "pbs"
 
@@ -415,9 +602,11 @@ class PbsExecutor(LocalExecutor):
         self.config = dict(config or {})
 
     def settings(self, name: str | None = None) -> dict:
-        """The `pbs:` block, with `pbs.plugins.<name>` laid over it for this run."""
+        """The `pbs:` block, with `pbs.plugins.<name>` laid over it for this run, sized and queued
+        (`sized`)."""
         base = {k: v for k, v in self.config.items() if k != "plugins"}
-        return {**base, **dict((self.config.get("plugins") or {}).get(name or "") or {})}
+        over = dict((self.config.get("plugins") or {}).get(name or "") or {})
+        return sized({**base, **over}, over, base)
 
     @staticmethod
     def _command(cfg: dict, which: str) -> list:

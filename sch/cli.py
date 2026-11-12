@@ -120,7 +120,34 @@ def cmd_stack(a):
     return 2 if refusal else 0
 
 
+def _drive_refused(a, e):
+    _emit(a, {"status": "refused", "reason": str(e)}, f"  request refused: {e}")
+    return 2
+
+
 def cmd_plan(a):
+    if a.request or not a.plugin:
+        # ONE REQUEST, EVERY STAGE (harness W041): the stages' plan, before anything runs
+        from .drive import RequestError, load, plan_lines
+        if a.plugin or not a.request:
+            raise SystemExit("sch plan: name a plugin (one mount on --stack) or --request (every stage)")
+        try:
+            req = load(a.request)
+        except RequestError as e:
+            return _drive_refused(a, e)
+        from .drive import answers_of
+        try:                                     # the answers a run or a job would give (W049)
+            answers, _new = answers_of(req, a.answer, a.by)
+        except RequestError as e:
+            return _drive_refused(a, e)
+        if a.expect:                             # the set a job was generated for (W042 fix 2, C)
+            from .drive import expected
+            ok, lines, d = expected(req, a.expect, answers)
+            _emit(a, {"status": "pinned" if ok else "differs", "lines": lines,
+                      "differs": [list(x) for x in d]}, "\n".join(plan_lines(req, answers) + lines))
+            return 0 if ok else 2
+        _emit(a, req, "\n".join(plan_lines(req, answers)))
+        return 0
     st = _stack(a)
     p = st.plan(a.plugin, _kv(a.param), a.name)
     lines = [f"  {p['plugin']}  layer {p['layer']}  reversible {p['reversible']}  state_version {p['state_version']}",
@@ -251,6 +278,43 @@ def cmd_fork(a):
 
 
 def cmd_run(a):
+    if a.request:
+        # ONE REQUEST, EVERY STAGE (harness W041): each stage a stack, run as below, then sealed
+        from .drive import RequestError, load, plan_lines, run, write_job
+        if a.job:
+            try:
+                req = load(a.request, files=False)
+                rec = write_job(req, a.job, answers=a.answer, by=a.by, predict=a.predict, check=a.check,
+                                purpose=a.purpose, where=a.where, tools=a.tool)
+            except RequestError as e:
+                return _drive_refused(a, e)
+            _emit(a, rec, "\n".join(plan_lines(req)) + f"\n  JOB {rec['job']} ({rec['lines']} lines, md5 "
+                  f"{rec['md5']})\n  nothing was run: the coordinator submits it by its recipe")
+            return 0
+        if a.predict or a.check or a.purpose or a.where or a.tool:
+            raise SystemExit("--predict, --check, --purpose, --where and --tool belong to sch run --request --job")
+        if not a.out:
+            raise SystemExit("sch run --request needs --out: the run's own directory")
+        try:
+            req = load(a.request)
+            code, rec = run(req, a.out, a.answer, a.by)
+        except RequestError as e:
+            return _drive_refused(a, e)
+        answers = json.loads((Path(a.out) / "decisions.json").read_text())
+        text = "\n".join(plan_lines(req, answers)) + f"\n  {rec['status'].upper()}"
+        if rec["status"] == "waiting":
+            text += f" before {rec['stage']}: " + "; ".join(f"{d['name']} - {d['what']}" for d in rec["waiting_for"])
+        elif rec["status"] == "failed":
+            text += f" at {rec['stage']}: {rec['reason']}\n  fix: {rec['fix']}"
+        text += f"\n  sealed: {', '.join(rec['sealed']) or 'nothing yet'}"
+        if rec.get("agreed"):                    # autodev W049 fix 1: the run's record is its stages' seals
+            text += f"\n  agreed: {rec['agreed']}"
+        if rec["status"] != "sealed":
+            text += f"\n  resume: {rec['resume']}"
+        _emit(a, rec, text)
+        return code
+    if a.answer or a.out or a.by:
+        raise SystemExit("--out, --answer and --by belong to sch run --request")
     st = _stack(a)
     results = st.run_declared()
     text = "\n".join(f"  {r.name}: {r.status}" + (f" — {r.reason}" if r.reason else "") for r in results) or "  nothing to mount"
@@ -1480,8 +1544,15 @@ def build_parser():
                         "key (--key sample=COLUMN), and COLUMN names each part's file")
     p.set_defaults(fn=cmd_init)
     p = sub.add_parser("stack"); stackable(p); p.add_argument("--dump", action="store_true"); p.set_defaults(fn=cmd_stack)
-    p = sub.add_parser("plan"); stackable(p); p.add_argument("plugin"); p.add_argument("--param", action="append")
-    p.add_argument("--name"); p.set_defaults(fn=cmd_plan)
+    p = sub.add_parser("plan"); stackable(p); p.add_argument("plugin", nargs="?"); p.add_argument("--param", action="append")
+    p.add_argument("--name")
+    p.add_argument("--request", help="a request file: the plan of every stage it asks for (harness W041)")
+    p.add_argument("--expect", metavar="FILE", help="with --request: compare the files the run reads with the set "
+                   "a generated job recorded (its PINS.json); exit 2 on any difference (harness W042)")
+    p.add_argument("--answer", action="append", metavar="NAME=VALUE", help="with --request: an answer the run or "
+                   "its job gives, so the plan and its set are the run's (harness W049)")
+    p.add_argument("--by", help="with --answer: who made the decision")
+    p.set_defaults(fn=cmd_plan)
     p = sub.add_parser("mount"); stackable(p); p.add_argument("plugin"); p.add_argument("--param", action="append")
     p.add_argument("--name"); p.add_argument("--escape", action="append", metavar="GATE")
     p.add_argument("--why"); p.add_argument("--by"); p.set_defaults(fn=cmd_mount)
@@ -1502,7 +1573,25 @@ def build_parser():
     p = sub.add_parser("report"); stackable(p); p.add_argument("--include-scratch", action="store_true"); p.set_defaults(fn=cmd_report)
     p = sub.add_parser("fork"); stackable(p); p.add_argument("newdir"); p.add_argument("--without", action="append")
     p.set_defaults(fn=cmd_fork)
-    p = sub.add_parser("run"); stackable(p); p.set_defaults(fn=cmd_run)
+    p = sub.add_parser("run"); stackable(p)
+    p.add_argument("--request", help="a request file: run every stage it asks for, one stack each (harness W041)")
+    p.add_argument("--out", help="with --request: the run's directory; the same command resumes it")
+    p.add_argument("--answer", action="append", metavar="NAME=VALUE",
+                   help="with --request: answer a decision a tool declares as the user's, by its name")
+    p.add_argument("--by", help="with --answer: who made the decision; it is recorded with it")
+    p.add_argument("--job", type=Path, metavar="FILE", help="with --request: write, instead of running, the "
+                   "job that runs this request on the cluster (its site from $SCH_SITE; harness W042)")
+    p.add_argument("--predict", type=Path, metavar="FILE", help="with --job: the prediction, laid into the "
+                   "job's header verbatim, written before any run")
+    p.add_argument("--check", type=Path, metavar="FILE", help="with --job: a script the job runs after the "
+                   "chained run; each VERDICT line it prints is counted by the job's GATE")
+    p.add_argument("--purpose", help="with --job: the run key's last field")
+    p.add_argument("--where", help="with --job: the job's directory as the cluster names it (the submit "
+                   "recipe cds there); default the job's own directory")
+    p.add_argument("--tool", action="append", metavar="TOOL=COMMIT", help="with --job: the commit (40 hex) of "
+                   "a stage's tool, by its adapter's tool name, that the job expects where it runs: its pins check "
+                   "that checkout there, clean, against it (default: the checkout as it is here)")
+    p.set_defaults(fn=cmd_run)
     p = sub.add_parser("events"); stackable(p); p.add_argument("--kind"); p.set_defaults(fn=cmd_events)
     p = sub.add_parser("plugin"); ps = p.add_subparsers(dest="sub", required=True)
     q = ps.add_parser("validate"); q.add_argument("dirs", nargs="+")

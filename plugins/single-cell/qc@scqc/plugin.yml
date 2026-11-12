@@ -14,6 +14,55 @@ layer: stack
 reversible: true
 state_version: 1
 
+# What it reads and hands on (harness W041): the stack's libraries; scQC's per-library objects
+# (annotation reads them) and its joint deliverable (integration and DE read it).
+assays: [scrna, snrna]
+reads: libraries
+hands_on: {libraries: null, joint: null}
+# The choices scQC declares as the user's (`scqc describe` escapes): the driver asks them by name.
+decisions:
+  - name: mode
+    param: mode
+    escape: "the apply step"
+    what: "evidence (measure, remove nothing) or apply (remove what scQC's gates allow); scQC's escape for the apply step"
+  - name: decisions
+    param: decisions
+    escape: "a DERIVED threshold"
+    what: "scQC's approved-threshold record (decisions.yml), or null; a derived threshold is applied only with a recorded human decision"
+
+# scQC's escapes the driver passes nothing for, each with why (`scqc describe` escapes[]).
+escapes_not_asked:
+  "a REVIEW finding": "scQC proceeds and keeps the finding in gates[]; no decision is recorded against it"
+# Where scQC's samplesheet says what ran upstream (scQC engine/graph.py: a library with a non-empty
+# `ambient_h5` arrives already denoised, by `ambient_tool` at `ambient_version`, with its params and who
+# produced it; `ambient_skip_*` declares the step declined; engine/steps.py NOT_FACTORS). The driver reads
+# every row and refuses a request whose upstream block says otherwise (autodev W042 fix 2, A).
+upstream_columns:
+  ambient:
+    tool: ambient_tool
+    version: ambient_version
+    performed: [ambient_h5, ambient_params, ambient_produced_by]
+    declined: [ambient_skip_reason, ambient_skip_approved_by]
+# WHAT scQC ACCEPTS AS PERFORMED UPSTREAM OF EACH ASSAY (autodev W049), read from scQC's own code and
+# held by a drift test (tests/test_the_driver_follows_the_tools.py; the real scQC with SCH_REAL_TOOLS):
+# an aligner by any name - scQC reads the matrix an aligner wrote (`matrix`, `aligner_cells`) and no
+# column naming an aligner (engine/steps.py NOT_FACTORS) - and an ambient remover by any name, a
+# library supplied denoised with its provenance (modules/01_ambient/ambient.py plan_ambient, SUPPLIED:
+# tool, version, params, produced_by; one missing is a refusal), on both of its ASSAYS. Rule 2 over it
+# is the profile's (never_performed, ask_when_delivered), never this list's.
+upstream_accepts:
+  scrna: {alignment: any, ambient: any}
+  snrna: {alignment: any, ambient: any}
+# The params with which scQC performs an upstream step itself, the tool each runs, and the assays scQC's
+# own policy runs it on (modules/01_ambient/ambient.py CELLBENDER_RUNS; drift-tested): set on any other
+# assay, or where the profile says the family never performs the step, the driver refuses them.
+runs_upstream:
+  ambient:
+    - {param: cellbender, tool: CellBender, assays: [snrna]}
+# The param naming scQC itself: the checkout holding it is in the run's set (autodev W049, route 14).
+tool_param: scqc
+# The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
+owned: [project, samplesheet]
 wraps:
   tool: scQC
   version: "0.4.0"

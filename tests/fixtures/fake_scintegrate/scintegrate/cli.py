@@ -407,6 +407,8 @@ def integrate(a):
         g = f["obs"]
         key = g.attrs.get("_index", "_index")
         index = [v if v is not None else "" for v in _column_text(g[key.decode() if isinstance(key, bytes) else key])]
+        # the driver's refusal of a batch with no design row (b148030's read_design; harness W042 fix 1, E)
+        # is _read_design's, reached through _carried below, in the same words (autodev W056, the merge)
         n = len(index)
         try:
             keep, named, added, dk, design, text = _carried(a, g, n)
@@ -539,7 +541,13 @@ def main():
         print(json.dumps({"name": "scintegrate", "version": VERSION, "commit": COMMIT,
                           "state_version": STATE_VERSION,
                           "axes": {"assay": {"required": False, "accepted": list(ASSAYS)},
-                                   "species": {"required": True}}}))
+                                   "species": {"required": True}},
+                          # scIntegrate's own escape (scintegrate/cli.py:1385 at b148030); harness W042 fix 1, D
+                          "escapes": [{"what": "withholding labels from the integration", "how": "--drop-labels",
+                                       "recorded": "report.json withheld_from_integration and "
+                                                   "tables/integration_withheld_by_arm.csv"}] + (
+                              [{"what": "a stand-in's new escape", "how": "--drift"}]
+                              if MODE == "escape_drift" else [])}))
         return 0
     if a.cmd == "doctor":
         print("scintegrate doctor (stand-in): nothing measured")

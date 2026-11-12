@@ -233,6 +233,31 @@ contract**, do not write three more adapters against it.
 > Not yet graded: **numbers**, by the reference cohort's stage-3 run through the harness against
 > scIntegrate run alone at the same commit in the same job (written before it runs).
 >
+> **BUILT ON THE FIXTURE, 2026-11-11 (W041 run 1, branch `autodev/W041-driver`): the stage driver.**
+> A request (`docs/request.example.yml`; schema `sch/drive.py` FIELDS) names the samplesheet, the
+> design, the context once (one assay word, `scrna`/`snrna`, that every stage's adapter declares; the
+> species once, as `species`), the upstream steps by name (alignment, ambient removal: each a tool and
+> its release, nothing else; what may have run is what the first stage's tool accepts, its adapter's
+> `upstream_accepts:`, drift-tested against the tool (W049); rule 2 over it is read only from the profile
+> the harness ships - the family never performs ambient removal on single cells, and single cells
+> delivered denoised, by any name, stop at the user's `upstream.ambient`; the samplesheet's upstream
+> columns must agree whatever stage starts; W042 fixes 1 and 2, W049) and each stage's tool flags verbatim.
+> `sch plan --request FILE` plans it; `sch run --request FILE --out DIR` runs it as one stack per
+> stage, each stage's observations a manifest of what the stage before it handed on (each adapter's
+> `hands_on`, read from that stage's own out.json), the stage's plugin declared in its `stack.yml` and
+> mounted by `run_declared()`, then reported and sealed (outputs read-only). A choice an adapter
+> declares as its tool's user's (`decisions:`: scQC's `mode` and `decisions`, scProfile's `control`)
+> stops the run before that stage, named, until `--answer NAME=VALUE --by WHO` records it; a sealed
+> stage is never re-run; a failed one is kept and named with the resume command. `anno@scanno` gained
+> scAnno's `embed` (off unless declared), the join a stage-3 object comes from. Run 2 (W042): the cluster
+> path - a site file's `executor: pbs` and `pbs.queues` (each queue's ceilings), the request's
+> `resources:` (the cohort's sizes; a queue there is refused), a tool's `resources:` as the default
+> beneath them; each run's `cost` from the scheduler's `resources_used` and the report's `cost` (cells,
+> wall time, peak memory, every figure with its events); one library column (`library_key:` in each
+> adapter, written from `keys.sample`); `sch run --request --job` generates the job. Not run: any
+> cohort's chained run, and no cohort's job is generated yet (the first cohort's request is a draft
+> with three stated unknowns).
+>
 > **BUILT, NOT YET GRADED ON THE COHORT, 2026-11-11 (W036, branch `autodev/W036-prof-adapter`): the
 > fourth adapter, `prof@scprofile`.** `plugins/single-cell/prof@scprofile` runs scProfile's real CLI
 > (`python -m scprofile.cli`, the declared checkout on PYTHONPATH and nothing else) over the one object

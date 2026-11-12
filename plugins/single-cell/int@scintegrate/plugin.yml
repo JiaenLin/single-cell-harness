@@ -18,6 +18,25 @@ state_version: 2
 # integrate verbatim. There is no default.
 assays: [scrna, snrna]
 
+# What it reads and hands on (harness W041): the joint object in, scIntegrate's object out.
+reads: joint
+hands_on: {joint: null}
+# The design sheet's column naming each library, where scIntegrate takes it; the driver writes
+# the request's keys.sample here (harness W042, GAP-C92).
+library_key: integrate.design_sample_col
+# The escape scIntegrate declares as the user's (`scintegrate describe` escapes[], cli.py:1385): passed
+# only as an answer recorded with who gave it; unanswered, nothing is withheld (harness W042 fix 1, D).
+decisions:
+  - name: drop_labels
+    param: integrate.drop_labels
+    escape: "withholding labels from the integration"
+    unanswered: tool-default
+    what: "the labels whose cells are withheld from the integration (comma-separated), or null"
+
+# The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
+owned: [integrate.h5ad, integrate.out, integrate.species, integrate.assay]
+# The param naming the tool itself: the checkout holding it is in the run's set (autodev W049, route 14).
+tool_param: scintegrate
 wraps:
   tool: scIntegrate
   version: "0.7.0"

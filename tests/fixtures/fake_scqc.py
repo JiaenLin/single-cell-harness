@@ -18,7 +18,8 @@ share. It scores nothing: a test using it checks the harness around scQC, never 
 
 Environment:
     FAKE_SCQC_LOG             append {"argv", "cwd"} as one JSON line per call
-    FAKE_SCQC_MODE            ok (default) | refuse | fail | unsealed | disagree | short
+    FAKE_SCQC_MODE            ok (default) | refuse | fail | unsealed | disagree | short | two_prefixes (a second
+                              output prefix: two candidates per library) | no_joint (no deliverable)
     FAKE_SCQC_STATE_VERSION   what `describe` and STATUS.json report (default 1)
 """
 import argparse
@@ -59,8 +60,21 @@ def barcodes(part):
 def describe():
     print(json.dumps({"contract": "1.0", "name": "scqc", "version": "0.0.0-fake",
                       "state_version": STATE_VERSION, "layer": "stack", "reversible": True,
-                      "sees": ["design"], "cannot_show": ["a stand-in shows nothing"]}))
+                      "sees": ["design"], "cannot_show": ["a stand-in shows nothing"],
+                      # scQC's own escapes (engine/declare.py:78-85 at c5b1a1b); harness W042 fix 1, D
+                      "escapes": [{"what": "a DERIVED threshold", "how": "decisions.yml with value, class, "
+                                   "approved_by, verbatim", "recorded": "reports/payload.json parameters[].decided_by"},
+                                  {"what": "a REVIEW finding", "how": "proceed; the finding stays in gates[]",
+                                   "recorded": "reports/payload.json gates[]"},
+                                  {"what": "the apply step", "how": "--mode evidence runs no removal",
+                                   "recorded": "INPUTS.json described.mode"}]}))
     return 0
+
+
+#: As scQC (modules/01_ambient/ambient.py): a library supplied already denoised (`ambient_h5`) names who
+#: denoised it, how and by whom, or it is refused; CellBender itself runs on nuclei only (CELLBENDER_RUNS).
+SUPPLIED_REQUIRED = ("tool", "version", "params", "produced_by")
+CELLBENDER_RUNS = {"snrna": True, "scrna": False}
 
 
 def run(a):
@@ -94,6 +108,18 @@ def run(a):
         (res / "RUNNING.txt").unlink()
         (res / name).write_text(f"exit={code}\nstatus={status['status']}\njobid=none\n{extra}")
 
+    supplied = [(r.get("sample"), [k for k in SUPPLIED_REQUIRED if not str(r.get(f"ambient_{k}") or "").strip()])
+                for r in rows if str(r.get("ambient_h5") or "").strip()]
+    bad = [(s_, m) for s_, m in supplied if m]
+    if bad:                                      # scQC's 01_ambient refusal (plan_ambient), before any step
+        why = (f"01_ambient ({bad[0][0]}): a SUPPLIED ambient correction is missing {', '.join(bad[0][1])}; an "
+               f"object merely asserted to be denoised is an anonymous matrix")
+        status.update(status="refused", headline=why, refusal={
+            "reason": why, "fix": "name ambient_tool, ambient_version, ambient_params and ambient_produced_by"})
+        (res / "STATUS.json").write_text(json.dumps(status, indent=1))
+        seal("FAILED.txt", 2)
+        print("REFUSED\n" + why)
+        return 2
     if MODE == "refuse":
         status.update(status="refused", headline="05_quality: no valley in one library",
                       refusal={"reason": "05_quality: no valley in one library",
@@ -109,7 +135,7 @@ def run(a):
         print("scqc: RuntimeError: a task died", file=sys.stderr)
         return 1
 
-    removed_ids, total, kept = [], 0, 0
+    removed_ids, total, kept, kept_of = [], 0, 0, {}
     if a.mode == "apply":
         for r in rows:
             sample = r["sample"]
@@ -136,6 +162,8 @@ def run(a):
                                 True, *fires, removed, keep])
                     total += 1
                     kept += keep
+                    if keep:
+                        kept_of.setdefault(sample, []).append(b)
                     if removed:
                         removed_ids.append((f"{sample}|{b}", [c for c, f in zip(criteria, fires) if f],
                                             criteria))
@@ -149,6 +177,30 @@ def run(a):
         with h5py.File(res / "objects" / "cohort.deliverable.h5ad", "w") as f:
             f.create_group("obs").attrs["_index"] = "_index"
             f["obs"].create_dataset("_index", data=[str(i).encode() for i in range(kept)])
+        # scQC's other shape (adapters/scanpy_ops.py, the apply step): each library's kept barcodes
+        # in `objects/cohort_per_sample/<sample>.filtered.h5ad`, named `<sample>_<barcode>`, with
+        # scQC's `sample` column - what annotation reads (harness W041)
+        import numpy as np
+        for sample, mine in kept_of.items():
+            names = [b if b.startswith(f"{sample}_") else f"{sample}_{b}" for b in mine]
+            one = res / "objects" / "cohort_per_sample" / f"{sample}.filtered.h5ad"
+            one.parent.mkdir(parents=True, exist_ok=True)
+            with h5py.File(one, "w") as f:
+                g = f.create_group("obs")
+                g.attrs.update({"_index": "_index", "column-order": ["sample"],
+                                "encoding-type": "dataframe", "encoding-version": "0.2.0"})
+                g.create_dataset("_index", data=[n.encode() for n in names])
+                c = g.create_group("sample")
+                c.attrs.update({"encoding-type": "categorical", "encoding-version": "0.2.0", "ordered": False})
+                c.create_dataset("categories", data=[sample.encode()])
+                c.create_dataset("codes", data=np.zeros(len(names), dtype="int8"))
+        if MODE == "two_prefixes":       # two output prefixes in one run: two candidates for each
+            import shutil
+            for o in sorted((res / "objects").glob("cohort*")):
+                dst = res / "objects" / o.name.replace("cohort", "other", 1)
+                (shutil.copytree if o.is_dir() else shutil.copy)(o, dst)
+        if MODE == "no_joint":           # a run that writes no deliverable
+            (res / "objects" / "cohort.deliverable.h5ad").unlink()
     (res / "reports" / "report.json").write_text(json.dumps({"kept": kept, "total": total}))
     status.update(status="ok", headline=f"{len(rows)} libraries; deliverable written",
                   products=[{"path": "reports/report.json", "bytes": 1}])
