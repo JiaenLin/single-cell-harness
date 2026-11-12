@@ -986,18 +986,20 @@ class TheDriverHoldsItsRulesRound2(_Base):
         (refs / "ref.tsv").write_text("a\t1\n")
         for i in range(1, 5):
             (c["dir"] / f"raw{i}.h5").write_text("raw v1\n")
-        self.sheet(c, cols={"raw_h5": lambda lib: c["dir"] / f"raw{lib[1:]}.h5"})
+        # autodev W056 wave A: a folder and a file the run reads are DECLARED ones - scQC's aligner_cells (a folder,
+        # engine/steps.py:788) and cellreads_stats (adapters/nuclear_fraction.py:114); run.references is `present`
+        self.sheet(c, cols={"cellreads_stats": lambda lib: c["dir"] / f"raw{lib[1:]}.h5",
+                            "aligner_cells": lambda lib: refs.parent})
         st = stages(c)
-        st[3]["params"]["run"]["references"] = str(refs.parent)
         req, out = request(c, stages=st), self.tmp / "run"
         rc, rec = self.drive(req, out, *ANSWERS, "--by", "a tester")
         self.assertEqual((rc, rec.get("stage")), (3, "04_prof"), rec)
         files = json.loads((out / "INPUTS.json").read_text())["files"]
-        for role in ("04_prof.run.references/sub/ref.tsv", "observations.raw_h5[L1]", "02_anno.scanno"):
+        for role in ("observations.aligner_cells[L1]/sub/ref.tsv", "observations.cellreads_stats[L1]", "02_anno.scanno"):
             self.assertIn(role, files)
         self.assertFalse([k for k in files if "__pycache__" in k or k.endswith(".pyc")])
-        for f, role in [(refs / "ref.tsv", "04_prof.run.references/sub/ref.tsv"),
-                        (c["dir"] / "raw1.h5", "observations.raw_h5[L1]")]:
+        for f, role in [(refs / "ref.tsv", "observations.aligner_cells[L1]/sub/ref.tsv"),
+                        (c["dir"] / "raw1.h5", "observations.cellreads_stats[L1]")]:
             was = f.read_text()
             f.write_text("changed\n")
             rc, rec = self.drive(req, out, *CTRL)
@@ -1006,7 +1008,7 @@ class TheDriverHoldsItsRulesRound2(_Base):
             f.write_text(was)
         (refs / "new.tsv").write_text("added\n")
         rc, rec = self.drive(req, out, *CTRL)
-        self.assertIn("04_prof.run.references/sub/new.tsv", rec.get("reason", ""), rec)
+        self.assertIn("observations.aligner_cells[L1]/sub/new.tsv", rec.get("reason", ""), rec)
         (refs / "new.tsv").unlink()
         rc, rec = self.drive(req, out, *CTRL)
         self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
@@ -1144,6 +1146,11 @@ class TheDriverHoldsItsRulesRound2(_Base):
             with self.subTest(value=v):
                 self.assertEqual(rc, 2, reason)
                 self.assertIn("out of its tool's working directory" if out_of else "a relative path", reason)
+            st = stages(c)
+            st[3]["params"]["run"]["label_key"] = v
+            rc, reason = self.plan(request(c, name="text.yml", stages=st))
+            with self.subTest(text=v):
+                self.assertEqual(rc, 0, reason)
         plug = self.tmp / "adapters" / "qc@scqc"     # the first stage's adapter named by a path
         shutil.copytree(Path(__file__).resolve().parent.parent / "plugins" / "single-cell" / "qc@scqc", plug,
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))

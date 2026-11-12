@@ -69,8 +69,6 @@ owned: [cluster.h5ad, cluster.out, cluster.out_dir, cluster.split_by, cluster.st
 upstream_accepts:
   scrna: {alignment: any, ambient: any}
   snrna: {alignment: any, ambient: any}
-# The param naming the tool itself: the checkout holding it is in the run's set (autodev W049, route 14).
-tool_param: scanno
 # WHAT scAnno OPENS, DECLARED (autodev W056, design read D6): `annotate`'s five files, each from its working
 # directory and none naming another file (scAnno 9fb561c); every other flag of the four commands is text.
 files:

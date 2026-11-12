@@ -111,7 +111,11 @@ class EveryRouteIsInTheSet(M._Base):
         self.assertIn("answer[qc.decisions]", rec.get("reason", ""), rec)
         self.assertEqual(json.loads((out / "decisions.json").read_text())["qc.mode"]["by"], "the PI")
 
-    def test_a_linked_directory_a_document_the_harness_and_each_tools_checkout_are_in_the_set(self):
+    def test_a_linked_directory_the_harness_and_each_tools_checkout_are_in_the_set_and_a_documents_text_is_not(self):
+        """W049 routes 5, 10 and 14 kept: a linked folder a DECLARED column names is walked, its link followed and a
+        loop kept, and the harness and each tool's checkout are in the set. Route 13 REWRITTEN (autodev W056, design read
+        D6): scQC's registry is a leaf - scQC never opens its path column (modules/00_ingest/ingest.py:198, :132) - so
+        the registry is one role, and a path written in it is text: editing the file it names is no change of the run."""
         c = cohort(self.tmp / "c", "a")
         refs, real = self.tmp / "refs", self.tmp / "elsewhere" / "sub"
         refs.mkdir()
@@ -122,22 +126,24 @@ class EveryRouteIsInTheSet(M._Base):
         named = self.tmp / "genome" / "ref.fa"
         named.parent.mkdir()
         named.write_text(">x\nACGT\n")
-        reg = self.tmp / "registry.tsv"          # a path inside a named document (scQC's registry)
+        reg = self.tmp / "registry.tsv"          # a path inside a named document (scQC's registry): text
         reg.write_text(f"species\tbuild\tpath\nspecies_x\tref_1\t{named}\n")
+        sheet(c, cols={"aligner_cells": str(refs)})   # a column scQC opens (engine/steps.py:788): declared, a folder
         st = stages(c)
-        st[3]["params"]["run"]["references"] = str(refs)
         st[0]["params"]["registry"] = str(reg)
         req, out = request(c, stages=st), self.tmp / "run"
         rc, rec = self.drive(req, out, *ANSWERS, "--by", "a tester")
         self.assertEqual((rc, rec.get("stage")), (3, "04_prof"), rec)
         files = json.loads((out / "INPUTS.json").read_text())["files"]
-        self.assertEqual(files["04_prof.run.references/loop"].get("loop"), os.path.realpath(refs))
-        for role in ("04_prof.run.references/linked/ref.tsv", "01_qc.registry>[1.2]", "harness",
+        self.assertEqual(files["observations.aligner_cells[L1]/loop"].get("loop"), os.path.realpath(refs))
+        for role in ("observations.aligner_cells[L1]/linked/ref.tsv", "01_qc.registry", "harness",
                      "01_qc.scqc@checkout", "02_anno.scanno@checkout"):
             self.assertIn(role, files)
-        for f, role in [(real / "ref.tsv", "04_prof.run.references/linked/ref.tsv"), (named, "01_qc.registry>[1.2]")]:
+        self.assertEqual([k for k in files if k.startswith("01_qc.registry>")], [], "a registry's cell is text")
+        named.write_text("changed\n")           # text the registry holds: no file of the run's
+        for f, role in [(real / "ref.tsv", "observations.aligner_cells[L1]/linked/ref.tsv"), (reg, "01_qc.registry")]:
             was = f.read_text()
-            f.write_text("changed\n")
+            f.write_text(was + "changed\n")
             rc, rec = self.drive(req, out, *ctrl(c))
             self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
             self.assertIn(role, rec["reason"])
@@ -423,17 +429,17 @@ class TheRunsRecordIsItsStagesSeals(M._Base):
             (big / f"f{i}.txt").write_text(f"{i}\n")
         (named / "own.txt").write_text("own\n")
         os.symlink(big, named / "big")
-        st = stages(c)
-        st[3]["params"]["run"]["prefix"] = str(named)
+        st = stages(c)                           # autodev W056 wave A: a folder a DECLARED param names and pins (a
+        st[2]["params"]["scintegrate"] = str(named)   # checkout's own folder); run.prefix is `present`, never walked
         r = D.load(request(c, stages=st))
         with mock.patch.object(D, "TREE_LIMIT", 3):
             s = D.run_inputs(r, {})
-            self.assertTrue(s.get("04_prof.run.prefix/own.txt", {}).get("sha256"), "its own files are compared")
-            self.assertIn("this link alone", s["04_prof.run.prefix/big"]["unpinned"])
+            self.assertTrue(s.get("03_int.scintegrate/own.txt", {}).get("sha256"), "its own files are compared")
+            self.assertIn("this link alone", s["03_int.scintegrate/big"]["unpinned"])
             before = D.flat(s)
             (named / "own.txt").write_text("edited\n")
             d = [k for k, _a, _b in D.differ(before, D.flat(D.run_inputs(r, {})))]
-        self.assertEqual(d, ["04_prof.run.prefix/own.txt"])
+        self.assertEqual(d, ["03_int.scintegrate/own.txt"])
 
 
 class AJobStatesTheToolsItExpects(M.TheClusterPath):
@@ -882,21 +888,22 @@ class AJobStatesTheToolsItExpects(M.TheClusterPath):
         ok, lines, _ = D.expected(r, pins, {}, present=True)
         self.assertFalse(ok, lines)
         self.assertTrue(any("not_yet_made" in ln and "absent where the job runs" in ln for ln in lines), lines)
-        # a samplesheet cell written relative with a slash that names no file (a registry's species/build) is said and
-        # not missed; an absolute cell naming no file is a file absent: missed
+        # REWRITTEN (autodev W056, design read D6): a cell of a column no declaration names is TEXT, whatever it looks
+        # like - a key written like a relative path and an absolute path are neither roles nor misses; a cell of a column
+        # the first stage's tool opens (scQC's cellbender_barcodes, declared) naming no file is a file absent: missed
         sheet = Path(r["observations"])
         os.chmod(sheet, 0o644)
         rows = sheet.read_text().splitlines()
-        sheet.write_text("\n".join([rows[0] + "\trefkey\tbam"] + [x + "\tspecies_x/ref_9\t/nonexistent_w056/x.bam"
-                                                                      for x in rows[1:]]) + "\n")
+        sheet.write_text("\n".join([rows[0] + "\trefkey\tbam\tcellbender_barcodes"] + [
+            x + "\tspecies_x/ref_9\t/nonexistent_w056/x.bam\t/nonexistent_w056/barcodes.csv" for x in rows[1:]]) + "\n")
         r = D.load(request(c, stages=st))
         pins.write_text(json.dumps({"files": {k: {x: y for x, y in v.items() if x != "path"}
                                               for k, v in D.run_inputs(r, {}).items()}}))
         ok, lines, _ = D.expected(r, pins, {}, present=True)
         self.assertFalse(ok, lines)
-        self.assertTrue(any(ln.startswith("  not a file here: observations.refkey[") for ln in lines), lines)
-        self.assertFalse(any(ln.startswith("  differs: observations.refkey[") for ln in lines), lines)
-        self.assertTrue(any("/nonexistent_w056/x.bam" in ln and "absent where the job runs" in ln for ln in lines), lines)
+        self.assertFalse(any("refkey" in ln or "x.bam" in ln for ln in lines), lines)
+        self.assertTrue(any("/nonexistent_w056/barcodes.csv" in ln and "absent where the job runs" in ln for ln in lines),
+                        lines)
 
     def test_a_tool_no_stage_runs_a_commit_that_is_not_one_or_one_tool_twice_is_refused(self):
         c = cohort(self.tmp / "c", "a")

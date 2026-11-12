@@ -46,8 +46,6 @@ library_design: [integrate.design]
 
 # The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
 owned: [integrate.h5ad, integrate.out, integrate.species, integrate.assay]
-# The param naming the tool itself: the checkout holding it is in the run's set (autodev W049, route 14).
-tool_param: scintegrate
 # WHAT scIntegrate OPENS, DECLARED (autodev W056, design read D6): every other flag is text (scIntegrate 2fc7a6c).
 files:
   scintegrate: {kind: checkout}            # the checkout run.py puts on the path (python -m scintegrate.cli)

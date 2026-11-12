@@ -59,8 +59,6 @@ upstream_accepts:
 runs_upstream:
   ambient:
     - {param: cellbender, tool: CellBender, assays: [snrna]}
-# The param naming scQC itself: the checkout holding it is in the run's set (autodev W049, route 14).
-tool_param: scqc
 # WHAT scQC OPENS, DECLARED (autodev W056, design read D6; PLUGIN_FORMAT `files:`): a run depends on exactly these and
 # on the request's and the site's own files; every other flag is text (scqc_cli.py:605-647 parses them and opens
 # none). Each entry cites scQC 8106f50's line that opens it, from its working directory, the stage's run directory.

@@ -15,10 +15,12 @@ the escape its tool's `describe` declares) is never answered here and never a pl
 stops before that stage, naming it, and resumes from the answer, recorded with who gave it; an
 escape that lifts one of the tool's refusals (`unanswered: tool-default`) does not stop the run -
 unanswered, its flag is not passed, the tool's own default, and the stage's events say so.
-A run is its request and every file it reads (`run_inputs`: the samplesheet and every path in it,
-the design, every path a param or an answer names, every file under a directory named (links
-followed), every path a named document holds, the site layer, each tool's checkout and the harness's
-own code, an adapter the harness does not ship): the set is recomputed and compared at the plan, at
+A run is its request and EXACTLY THE FILES DECLARED FOR IT (`declared`, autodev W056 design read D6): by the
+request's schema (the request, its samplesheet and the column naming each library's object, the design, an
+adapter the harness does not ship), by the site's (its stack layer, the harness's own code) and by each adapter's
+`files:` (each param of its tool that names a file, a folder or its checkout, and the columns or keys of a file it
+names that its tool opens). Any other string is text, never opened or refused for its look. `run_inputs` walks that
+set (every file under a folder named, links followed): the set is recomputed and compared at the plan, at
 each stage's start and its seal, and on a resume for every sealed stage, and a generated job carries
 it and checks it with the run's answers; a seal is trusted only on the run's own record, and a seal
 that record names is never missing (the sealed stages are the first, in order). What may have run
@@ -140,11 +142,6 @@ TREE_LIMIT = 5000
 EXCLUDED = {".git": "a checkout's history, not what its tool reads (its work tree is hashed)",
             "__pycache__": "the interpreter's compiled cache, written when a tool runs",
             "*.pyc": "the same cache, as single files"}
-#: A DOCUMENT A PARAM, AN ANSWER OR THE SITE NAMES IS READ FOR THE PATHS IN IT (autodev W049, route 13):
-#: a table or a YAML/JSON file up to DOC_LIMIT bytes, one level deep (a document it names is pinned as
-#: its text). A relative path in it is pinned beside it, as the stack reads a samplesheet's.
-DOCS = {".tsv": "\t", ".txt": "\t", ".csv": ",", ".yml": None, ".yaml": None, ".json": None}
-DOC_LIMIT = 4 << 20
 #: An upstream step's tool is one plain name (autodev W049): printable ASCII once NFKC has folded it, so no
 #: zero-width, control or look-alike character can make two names read as one; a command, a note or a
 #: second tool joined by `;` or a newline is not a name.
@@ -155,13 +152,15 @@ COLUMN_FIELDS = {"tool": False, "version": False, "performed": True, "declined":
 #: What a tool accepts upstream when its declaration names no list: any plain name (autodev W049).
 ANY = "any"
 POLICY = {"hash_limit_bytes": HASH_LIMIT, "sample_bytes": SAMPLE, "tree_limit_files": TREE_LIMIT,
-          "excluded": EXCLUDED, "document_limit_bytes": DOC_LIMIT, "documents": sorted(DOCS),
+          "excluded": EXCLUDED, "declared": "the request's schema, the site's and each stage adapter's files:",
           "open": "a file over the hash limit is compared by size, modification time and its first and last "
                   "bytes, so an edit of its middle that keeps its size and modification time is not seen; a "
                   "directory over the tree limit is not compared at all; a change made and undone while one "
                   "stage's tool runs, between that stage's start and its seal, is seen only if the tool records "
-                  "what it read; a path inside a named document is pinned one level deep, a relative one beside "
-                  "that document (a tool that resolves it from elsewhere reads a file the set does not hold); a "
+                  "what it read; the set is what is declared: a file a tool opens that no declaration names (an "
+                  "environment variable, a default outside its checkout, a file derived from a named one, a child "
+                  "process's reads) is not in it, and a value no declaration names is text, never opened; a "
+                  "`present` input is there and readable, its content not compared; a `named` one is its text; a "
                   "git checkout (the harness, a tool's) is its commit and its tracked changes, not its untracked "
                   "files; records rewritten consistently everywhere are not told from true ones (no signature)"}
 #: ONE OBJECT HOLDING EVERY LIBRARY (harness W045, GAP-C90): what `object:` declares, and what it must.
@@ -297,27 +296,6 @@ def _walk(top: Path, seen: set):
     return found
 
 
-def _paths(v, base: Path | None, words: bool = False) -> list:
-    """The paths a value names, the way its reader resolves them: absolute or `~/`; with `base` (a
-    samplesheet's directory, as the stack reads a parts column), also a relative path that is there or
-    that has a `/` in it. A comma-separated list of paths is each of them. `words` (a document's values,
-    which are mostly words): a bare word is a path only when a FILE of that name is beside it."""
-    if not isinstance(v, str) or not v.strip():
-        return []
-    pieces = [x.strip() for x in v.split(",")] if "," in v else [v.strip()]
-
-    def one(x):
-        if x.startswith(("/", "~/")):
-            return Path(os.path.expanduser(x))
-        if base is not None and x and ("/" in x or ((base / x).is_file() if words else (base / x).exists())):
-            return base / x
-        return None
-    got = [one(x) for x in pieces]
-    if len(pieces) > 1 and not all(got):
-        return []                                # a list of words, not of paths
-    return [g for g in got if g is not None]
-
-
 def _git_state(d: Path, pathspec=()) -> dict | None:
     """A git work tree as the set holds it (autodev W049, routes 10 and 14): its top, its commit and a
     digest of its tracked changes against that commit (limited to `pathspec`); None outside one. Read
@@ -355,31 +333,10 @@ def _git_state(d: Path, pathspec=()) -> dict | None:
 CLEAN = hashlib.sha256(b"\0").hexdigest()
 
 
-def _document(f: Path):
-    """[(where, value)] of a table or a YAML/JSON document, or None when it is not one the driver reads."""
-    sep = DOCS.get(f.suffix.lower(), False)
-    if sep is False or f.stat().st_size > DOC_LIMIT:
-        return None
-    try:
-        if sep:
-            with open(f, newline="", encoding="utf-8") as fh:
-                rows = list(csv.reader(fh, delimiter=sep))
-            return [(f"[{i}.{j}]", v) for i, r in enumerate(rows) for j, v in enumerate(r)]
-        doc = json.loads(f.read_text(encoding="utf-8")) if f.suffix.lower() == ".json" else yamlish.load(f)
-    except Exception:                            # noqa: BLE001 - not a document: pinned as its text
-        return None
-    return list(_leaves(doc))
-
-
 def _checkout_dirs(req: dict) -> dict:
-    """{`<stage>.<tool param>@checkout`: (the path the tool param names, the directory read as its checkout)}."""
-    out = {}
-    for p in req["stages"]:
-        tool = p.get("tool_param")
-        got = _paths(dict(_leaves(p["params"])).get(tool), None) if tool else []
-        if got:
-            out[f"{p['stage']}.{tool}@checkout"] = (got[0], got[0] if got[0].is_dir() else got[0].parent)
-    return out
+    """{`<stage>.<param>@checkout`: (the path a param declared `kind: checkout` names, the directory read as its
+    checkout)} - the declaration, by the role names `tool_param` had (autodev W056, design read D6)."""
+    return {role: (got, got if got.is_dir() else got.parent) for _p, _x, role, _v, got in _checkouts(req)}
 
 
 def _checkout_state(got: Path, d: Path) -> dict:
@@ -493,7 +450,8 @@ def _values(v, e: dict, what: str, base: Path | None = None) -> list:
         elif base is not None and not _climbs(x):
             out.append(base / x)
         else:
-            raise RequestError(f"{what} is {x!r}, a relative path" + (" out of its tool's working directory" if
+            raise RequestError((f"{what}: {x!r} is a relative path" if what.startswith("--answer") else
+                                f"{what} is {x!r}, a relative path") + (" out of its tool's working directory" if
                                _climbs(x) else "") + "; its tool reads it from its own working directory (the stage's "
                                "run directory), not from the request's, and what it names there would not be pinned: "
                                "write it absolute, or ~/")
@@ -651,80 +609,45 @@ def declared(req: dict, answers: dict | None = None) -> list:
     return out
 
 
+def _present(p: Path) -> dict:
+    """A `present` input (autodev W056, D6): there and readable - its content is not compared - or absent, or not."""
+    try:
+        if p.is_dir() or p.is_file():
+            if os.access(p, os.R_OK | (os.X_OK if p.is_dir() else 0)):
+                return {"path": str(p), "present": "folder" if p.is_dir() else "file"}
+            return {"path": str(p), "unreadable": "PermissionError: not readable here"}
+    except OSError as e:
+        return {"path": str(p), "unreadable": f"{type(e).__name__}: {e}"}
+    return {"path": str(p), "absent": True}
+
+
 def run_inputs(req: dict, answers: dict | None = None, git: bool = True) -> dict:
-    """THE COMPLETE SET OF FILES A RUN READS (autodev W042 fix 2, B; W049), {role: entry}: the request,
-    its samplesheet, its design, every path-valued cell of the samplesheet (any column), every path-valued
-    stage param and ANSWER (`answer[<decision>]`: set into a stage's params at run time, read by its tool
-    as a param is), the site layer every stage's stack is composed over and every path it names, every
-    file under any directory one of them names (links followed), every path a document among them names
-    (one level), each stage's tool checkout and the harness's own code (their commit and tracked
-    changes), and every file of an adapter the harness does not ship. ONE function, so the plan, each
-    stage's start and seal, a resume and the generated job compare the same set the same way. The roles
-    are the request's own words, the same on every machine; a path is where the file was found."""
-    from .services.dataset import read_manifest
+    """THE SET OF FILES A RUN DEPENDS ON, {role: entry} (autodev W042 fix 2, B; W049; W056 design read D6): the walk over
+    `declared()` and nothing else. A `pinned` input is its digest (a folder: every file under it, links followed, said
+    over the tree limit), a `present` one whether it is there and reads, a checkout its commit and tracked changes
+    (`git=False`, a generated job where it runs: no git is run there, and each checkout is the submit recipe's record,
+    `expected`); a `named` one is its text, no role. ONE function, so the plan, each stage's start and seal, a resume and
+    the generated job compare the same set the same way. The roles are the request's own words, the same on every
+    machine; a path is where the file was found."""
     files: dict = {}
     root = Path(__file__).resolve().parent.parent
-    # route 10: its code, as it runs; `git=False` (a generated job's pins, where it runs): no git is run, and each
-    # checkout is the submit recipe's record (`expected`, autodev W056 fix 1)
-    files["harness"] = (_git_state(root, ("sch", "plugins")) if git else None) or {
-        "path": str(root), "git": None, "tracked_changes": _tree_digest(root / "sch") + _tree_digest(root / "plugins")}
-    _add(files, "request", Path(req["path"]))
-    sheet = Path(req["observations"])
-    _add(files, "observations", sheet)
-    if req.get("design"):
-        _add(files, "design", Path(req["design"]))
-    shipped = (Path(__file__).resolve().parent.parent / "plugins").resolve()
-    for p in req["stages"]:                      # an adapter the harness does not ship (named by a path, or
-        d = Path(p["dir"]).resolve()             # found on SCH_PLUGINS) is read like any input: its code too
-        if not str(d).startswith(str(shipped) + os.sep):
-            _add(files, f"{p['stage']}.plugin", d)
-    try:
-        # one object (W045) is one file, not a manifest: its parts are stage 00's output, in that stage's seal
-        _head, rows = read_manifest(sheet) if sheet.is_file() and not req.get("object") else ([], [])
-    except Exception:                            # noqa: BLE001 - the stack's own init says what is wrong
-        rows = []
-    for i, r in enumerate(rows, 1):
-        lib = str(r.get(req["keys"]["sample"]) or i).strip()
-        for col, v in r.items():
-            got = _paths(v, sheet.parent)
-            for j, f in enumerate(got):
-                _add(files, f"observations.{col}[{lib}]" + (f"#{j}" if len(got) > 1 else ""), f)
-    named = []                                   # the roles a param, an answer or the site names
-    for p in req["stages"]:
-        for path, v in _leaves(p["params"]):
-            got = _paths(v, None)
-            for j, f in enumerate(got):
-                named.append(f"{p['stage']}.{path}" + (f"#{j}" if len(got) > 1 else ""))
-                _add(files, named[-1], f)
-    for role, (got, d) in _checkout_dirs(req).items():   # route 14: the checkout around the file naming its tool
-        files[role] = _checkout_state(got, d) if git else (
-            {"path": str(got), "absent": True} if not got.exists() else
-            {"path": str(d), "git": None, "tracked_changes": "not read here: a generated job runs no git where it runs"})
-    for name in sorted(answers or {}):           # route 6: an answer is read by its tool as a param is
-        a = answers[name]
-        for path, v in _leaves(a.get("value") if isinstance(a, dict) else a):
-            got = _paths(v, None)
-            for j, f in enumerate(got):
-                named.append(f"answer[{name}]" + (f".{path}" if path else "") + (f"#{j}" if len(got) > 1 else ""))
-                _add(files, named[-1], f)
-    site = os.environ.get("SCH_SITE")            # route 11: the layer beneath every stage's stack.yml
-    if site:
-        f = Path(site) / "stack.yml"
-        _add(files, "site.stack.yml", f)
-        layer = yamlish.load(f) if f.is_file() else None
-        for path, v in _leaves(layer if isinstance(layer, dict) else {}):
-            for j, g in enumerate(got := _paths(v, None)):
-                named.append(f"site.{path}" + (f"#{j}" if len(got) > 1 else ""))
-                _add(files, named[-1], g)
-    for role in named:                           # route 13: a document's paths, one level, beside it
-        e = files.get(role) or {}
-        if not e.get("sha256"):
+    for d in declared(req, answers):
+        role, p = d["role"], Path(d["path"])
+        if d["check"] == "named":
             continue
-        f = Path(e["path"])
-        for where, v in _document(f) or []:
-            got = _paths(v, f.parent, words=True)
-            for j, g in enumerate(got):
-                _add(files, f"{role}>{where}" + (f"#{j}" if len(got) > 1 else ""), g)
+        if role == "harness":                    # route 10: its code, as it runs
+            files[role] = (_git_state(root, ("sch", "plugins")) if git else None) or {
+                "path": str(root), "git": None,
+                "tracked_changes": _tree_digest(root / "sch") + _tree_digest(root / "plugins")}
+        elif d["kind"] == "checkout":            # route 14: the checkout around the param naming its tool
+            top = p if p.is_dir() else p.parent
+            files[role] = _checkout_state(p, top) if git else (
+                {"path": str(p), "absent": True} if not p.exists() else
+                {"path": str(top), "git": None, "tracked_changes": "not read here: a generated job runs no git where it runs"})
+        elif d["check"] == "present":
+            files[role] = _present(p)
+        else:
+            _add(files, role, p)
     return files
 
 
@@ -761,6 +684,8 @@ def _digest(e: dict | None, mtime: bool = True) -> str | None:
         return "unpinned" + (f":{e['target']}" if e.get("target") else "")
     if e.get("unreadable"):
         return "unreadable"
+    if e.get("present"):                         # there and readable: its content is not compared (W056, D6)
+        return "present"
     if e.get("loop"):
         return f"loop:{e['loop']}"
     if "tracked_changes" in e:                   # a checkout: its commit and its tracked changes
@@ -1038,8 +963,7 @@ def _sheet_agrees(sheet: Path, cols: dict, up: dict, keys: dict, first: dict, re
 
 
 def _path_list(v) -> list:
-    """A declaration's one path or list of paths, as a list (W045; named apart from the driver's
-    `_paths`, which reads a param's file paths: autodev W056, the merge)."""
+    """A declaration's one param path or list of them (library_key, replicate_key: W045), as a list."""
     return [str(v)] if isinstance(v, str) else [str(x) for x in (v or [])]
 
 
@@ -1253,27 +1177,13 @@ def load(path, files: bool = True) -> dict:
                 raise RequestError(f"stages[{i}] ({m.name}): params set {got[0]}, which {m.name} sets itself from "
                                    f"the stack (its `owned:`); drop it from the stage's params")
         # WHAT ITS TOOL OPENS IS DECLARED (autodev W056, design read D6): the adapter's files:, checked by name, and each
-        # declared value text, absolute or ~/ - its tool reads a relative one from its own working directory
+        # declared value text, absolute or ~/ - A RELATIVE PATH IS READ WHERE ITS TOOL RUNS (W042 fix 2, B), the stage's
+        # run directory, where it names nothing the set holds. Any other value is text: never looked up, never refused.
         files_decl = _decl(m)
         for param, e in files_decl.items():
             found, v = _param(params, param) if param != "observations" else (False, None)
             if found:
                 _values(v, e, f"stages[{i}] ({m.name}): {param}")
-        # A RELATIVE PATH IS READ WHERE ITS TOOL RUNS (autodev W042 fix 2, B): a tool is given its params
-        # verbatim and reads a relative path from its own working directory, the stage's run directory;
-        # one that names a file beside the request would be pinned here and not be what the tool reads.
-        # That directory is the run's own and new, so a relative path names what the run made - unless it
-        # climbs out of it (`..`) or names another account's home (`~name/`): outside the run, and never
-        # pinned, so refused too.
-        for path, v in _leaves(params):
-            for x in ([y.strip() for y in v.split(",")] if isinstance(v, str) else []):
-                out_of = _climbs(x)
-                if _relative_path(x, [base]):
-                    raise RequestError(f"stages[{i}] ({m.name}): {path} is {x!r}, a relative path"
-                                       + (" out of its tool's working directory" if out_of else f" to {base / x}")
-                                       + f"; {m.name}'s tool reads its params from its own working directory (the "
-                                       f"stage's run directory), not from the request's, and what it names there "
-                                       f"would not be pinned: write it absolute, or ~/")
         decisions = []
         for d in m.data.get("decisions") or []:
             # AN ESCAPE IS NEVER A PLAIN PARAM, WHEREVER IT IS PUT (autodev W042 fix 2, D): its name is
@@ -1301,8 +1211,7 @@ def load(path, files: bool = True) -> dict:
                      "library_key": paths,
                      "resources": dict(m.data.get("resources") or {}),
                      "upstream_columns": m.data.get("upstream_columns"),
-                     "upstream_accepts": m.data.get("upstream_accepts"), "tool_param": m.data.get("tool_param"),
-                     "files": files_decl,
+                     "upstream_accepts": m.data.get("upstream_accepts"), "files": files_decl,
                      "runs_upstream": dict(m.data.get("runs_upstream") or {}),
                      "cannot_show": list(m.data.get("cannot_show") or [])})
 
@@ -1482,23 +1391,12 @@ def _climbs(x: str) -> bool:
     return bool(re.search(r"(^|/)\.\.(/|$)", x) or re.match(r"~[^/\s]+/", x))
 
 
-def _relative_path(x: str, bases) -> bool:
-    """A value its tool would read as a relative path, from its own working directory, and which names
-    something the driver would not pin there (autodev W049): one climbing out, one naming a FILE beside
-    the request (or where `sch` was run), or one with a `/` naming a directory there. A bare word naming a
-    directory is a word - a method, a kernel or a key named like a folder of results is common - and a
-    tool meant to read that folder refuses it where it runs."""
-    if not x or x.startswith(("/", "~/")):
-        return False
-    return _climbs(x) or any((b / x).is_file() or ("/" in x and (b / x).is_dir()) for b in bases)
-
-
 def answers_of(req: dict, given: list | None, by: str | None, recorded: dict | None = None) -> tuple:
     """(answers, the names answered now): the recorded answers and each `--answer NAME=VALUE` given now,
     read alike by the run, the plan and a generated job (autodev W049): a declared name, an allowed value,
-    a recorded one never rewritten, who gave it a name on one line, and a value naming a file only
-    absolute or `~/` - its tool reads a relative path from its own working directory, where the set
-    would not pin what was meant."""
+    a recorded one never rewritten, who gave it a name on one line, and the answer to a param its adapter
+    declares a file only absolute or `~/` - its tool reads a relative path from its own working directory,
+    where the set would not pin what was meant; any other answer is text (autodev W056, D6)."""
     names = {d["name"]: d for p in req["stages"] for d in p["decisions"]}
     names.update({d["name"]: d for d in req.get("decisions") or []})
     answers, new, now = dict(recorded or {}), [], {}
@@ -1509,7 +1407,6 @@ def answers_of(req: dict, given: list | None, by: str | None, recorded: dict | N
         if v is not None and not LINE.fullmatch(str(v)):
             raise RequestError(f"{what} {str(v)!r}: an answer and who gave it are one line of printable text; they "
                                f"are recorded and written into a generated job as they are")
-    bases = [Path(req["path"]).parent, Path.cwd()]
     typed = {d["name"]: (p.get("files") or {})[d["param"]] for p in req["stages"] for d in p["decisions"]
              if d["param"] in (p.get("files") or {})}   # an answer to a param declared a file is one (W056, D6)
     for a in given or []:
@@ -1533,12 +1430,6 @@ def answers_of(req: dict, given: list | None, by: str | None, recorded: dict | N
         allowed_values = names[name].get("values")
         if allowed_values and value not in allowed_values:
             raise RequestError(f"--answer {a!r}: {name} is answered {' or '.join(allowed_values)}")
-        for _path, v in _leaves(value):
-            for x in ([y.strip() for y in v.split(",")] if isinstance(v, str) else []):
-                if _relative_path(x, bases):
-                    raise RequestError(f"--answer {a!r}: {x!r} is a relative path; {name}'s tool reads it from its "
-                                       f"own working directory (the stage's run directory), not from here, and "
-                                       f"what it names there would not be pinned: write it absolute, or ~/")
         if name in typed:
             _values(value, typed[name], f"--answer {a!r}: {name}")
         if name in now and now[name] != value:   # autodev W049 fix 1: one command, one answer a decision
@@ -2100,6 +1991,21 @@ def _from_record(now: dict, rec: dict, doc: dict, dirs: dict) -> tuple:
     return now, lines, bad
 
 
+def _said_declared(req: dict, answers, now: dict) -> list:
+    """PINS.txt's lines of what the declaration says beyond digests (autodev W056, D6): each `present` input that is
+    there, each `named` one as its text, and per reader how many rows name a file in each column it declares (a
+    misspelt column reads 0 of n)."""
+    out = []
+    for d in declared(req, answers):
+        e = now.get(d["role"]) or {}
+        if d["check"] == "present" and e.get("present"):
+            out.append(f"  present: {d['role']} {e['path']} ({d['by']}: there and readable; its content is not compared)")
+        elif d["check"] == "named":
+            out.append(f"  named: {d['role']} {d['path']} ({d['by']}: recorded as its text, never looked at)")
+        out += [f"  read: {d['role']} {col}: {k} of {n} rows name a file ({by})" for col, k, n, by in d.get("read") or []]
+    return out
+
+
 def expected(req: dict, file, answers: dict | None = None, checkouts=None, present: bool = False) -> tuple:
     """(holds, lines, differences): the run's set now - with the job's answers (autodev W049) - against
     the set a job was generated for (autodev W042 fix 2, C), content only (a copy keeps no modification
@@ -2131,14 +2037,9 @@ def expected(req: dict, file, answers: dict | None = None, checkouts=None, prese
     bad = {k for k, _x, _y in d}
     here = [k for k in sorted(b) if a.get(k) in (None, "absent") and k not in bad]
     gone = [k for k in sorted(now) if present and k not in bad and (now[k].get("absent") or now[k].get("unreadable"))]
-    # a samplesheet cell written RELATIVE that names no file where the job was generated nor where it runs may be a word
-    # with a slash (a registry's species/build): said, not missed - its tool reads it; an absolute or ~/ one is a file
-    top = os.path.abspath(Path(req["observations"]).parent) if req.get("observations") else None
-    words = [k for k in gone if top and k.startswith("observations.") and now[k].get("absent") and a.get(k) in (None, "absent")
-             and os.path.commonpath([os.path.abspath(now[k]["path"]), top]) == top]
-    gone = [k for k in gone if k not in words]
     lines = [f"  pinned: {sum(1 for v in a.values() if v != 'absent')} of the run's files as the job was generated; "
              f"{len(here)} checked here only"]
+    lines += _said_declared(req, answers, now)
     lines += [f"  only here: {k} {now[k]['path']}" for k in here[:40]]
     # a tool the job states (--tool, autodev W049 fix 1): its checkout here against the commit stated, clean
     where = "here" if checkouts is None else "at submission"
@@ -2149,8 +2050,6 @@ def expected(req: dict, file, answers: dict | None = None, checkouts=None, prese
               f"{stated[k]['git']}, clean; {where} {_said_state(now.get(k))})" if k in stated else
               f"  differs: {k} {(now.get(k) or then.get(k) or {}).get('path', '')} ({x or 'not named'} when the job "
               f"was generated, {y or 'not named'} now)" for k, x, y in d]
-    lines += [f"  not a file here: {k} {now[k]['path']} (a samplesheet cell written relative, naming no file where the job "
-              f"was generated or where it runs: read as a word, such as a registry's species/build)" for k in words]
     lines += [f"  differs: {k} {now[k]['path']} (" + ("absent" if now[k].get("absent") else f"unreadable: "
               f"{now[k]['unreadable']}") + " where the job runs: its preflight finds every input present and readable "
               "before the first tool call)" for k in gone]
@@ -2413,15 +2312,9 @@ def _sh(v, what: str, path: bool = False) -> str:
 
 
 def _checkout_words(req: dict) -> dict:
-    """{checkout role: the path its tool param names, as the request writes it}: what a job's submit recipe reads
-    where the job is submitted, on that machine (`~/` is its home) - never a path of the machine generating it."""
-    out = {}
-    for p in req["stages"]:
-        tool = p.get("tool_param")
-        v = dict(_leaves(p["params"])).get(tool) if tool else None
-        if _paths(v, None):
-            out[f"{p['stage']}.{tool}@checkout"] = str(v).split(",")[0].strip()
-    return out
+    """{checkout role: the path its declared checkout param names, as the request writes it}: what a job's submit recipe
+    reads where the job is submitted, on that machine (`~/` is its home) - never a path of the machine generating it."""
+    return {role: v for _p, _x, role, v, _got in _checkouts(req)}
 
 
 # ---------------------------------------------------------------------------- the job (run 2)
@@ -2474,9 +2367,8 @@ def _stated(req: dict, tools: list | None, pins: dict) -> dict:
     cluster checkout by). A name no stage runs from a checkout, a commit that is not 40 hex digits, or one
     tool given twice is refused by name, before the job is written."""
     roles: dict = {}
-    for p in req["stages"]:
-        role = f"{p['stage']}.{p.get('tool_param')}@checkout"
-        if p.get("tool_param") and role in pins:
+    for p, _x, role, _v, _got in _checkouts(req):
+        if role in pins:
             roles.setdefault(str(p["wraps"].get("tool")), []).append(role)
     got: dict = {}
     for t in tools or []:
@@ -2560,7 +2452,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"tracked change is refused there)"
         if e.get("stated") else "absent here and not stated (--tool): checked only where the job runs"
         if e.get("absent") else f"as it is here, {e.get('git') or 'not a git checkout'} (no --tool: the job refuses "
-        f"any other)")) for p in req["stages"] if (e := pins.get(f"{p['stage']}.{p.get('tool_param')}@checkout"))]
+        f"any other)")) for p, _x, role, _v, _g in _checkouts(req) if (e := pins.get(role))]
     # by role, without where the file lies here: the roles are the same on every machine, and a path of
     # this workstation's has no place in a job that runs on another
     cf = job.get("commit_file")
@@ -2740,7 +2632,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         "--checkouts \"$RUNDIR/" + CHECKOUTS + "\" $PRESENT > \"$RUNDIR/PINS.txt\" 2>&1",
         "prc=$?",
         "set -e",
-        "grep -E '^  (pinned|only here|tool|harness|here|not compared here|not a file here):' \"$RUNDIR/PINS.txt\" || true",
+        "grep -E '^  (pinned|only here|tool|harness|here|not compared here|present|named|read):' \"$RUNDIR/PINS.txt\" || true",
         "if [ \"$prc\" -ne 0 ]; then",
         "  why=$(grep -E '^  (differs|request refused)' \"$RUNDIR/PINS.txt\" | head -n 12 | tr '\\n' ';' || true)",
         "  [ -n \"$why\" ] || why=$(tail -n 3 \"$RUNDIR/PINS.txt\" | tr '\\n' ' ' || true)",

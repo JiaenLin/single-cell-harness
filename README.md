@@ -32,20 +32,30 @@ everything downstream knows when one does.
 > declares, or, for scProfile, which has none, its parser's escapes listed by hand; an escape that lifts
 > a tool's refusal does not stop the run and is passed only as an answer, recorded with who, never as a
 > param under any spelling) until it is answered by name, and sealing each stage and the run. Every
-> file the run reads is one set (W049): the samplesheet and the paths in it, the design, each path a
-> param or an ANSWER names (`--answer qc.decisions=FILE` is pinned as a param is; a relative one is
-> refused), every file under a named directory with its links followed, each path a named table or
-> YAML/JSON document holds (one level; a relative one pinned beside it), the site layer and the paths it
-> names (a site that lays a tool's flags beneath a stage's is refused), each tool's checkout and the
-> harness's own code (their commit and tracked changes), and an adapter the harness does not ship. The
+> file the run reads is one set, and it is EXACTLY THE FILES DECLARED FOR IT (W049; W056, design read D6):
+> the request's schema's (the request, its samplesheet and the parts column naming each library's object,
+> read beside the sheet, the design, an adapter the harness does not ship), the site's (its stack layer, of
+> which no leaf is followed - a site that lays a tool's flags beneath a stage's is refused - and the
+> harness's own code) and each adapter's `files:` (PLUGIN_FORMAT: each param of its tool that names a file,
+> a folder or its checkout, the samplesheet columns its tool opens, and for a file that names files a reader
+> saying which columns or keys; an ANSWER, `--answer qc.decisions=FILE`, is typed by its decision's param).
+> Every other value - a param, a cell, a key, an answer, a leaf of the site layer - is text, never opened,
+> looked up or refused for its look; a declared value written relative is refused by name, since its tool
+> reads it from its own working directory. Each input is `pinned` (its digest: every file under a folder,
+> its links followed; a checkout, its commit and tracked changes), `present` (there and readable, its
+> content not compared: an interpreter, an environment, a folder its tool writes into) or `named` (its
+> text); `sch plan --request FILE --expect PINS.json` prints each `present` and `named` one with who declared it, and per reader how
+> many rows name a file in each column it declares (a misspelt column reads 0 of n). The
 > set is recomputed and compared at the run's start (a plain `sch plan --request FILE` computes no set:
 > only one given `--expect PINS.json` does), at each stage's start
 > and seal, on every resume (an answer given at a resume enters it then) and in a generated job's pins and
 > check, which give the run's answers; a file over 1 GiB is sampled and a directory over 5,000 files is
 > not compared (a link under a named directory to a larger one gives up that link alone, said as its own
 > entry), each said in the run's INPUTS.json. Not in the set: a checkout's untracked and ignored files (scQC's `.gitignore` keeps its
-> `env/` and `references/` there), the interpreter and the packages and executables a tool finds through
-> it or on PATH, a document's second level, a URL inside a document (recorded as an absent path). A job
+> `env/` and `references/` there), the packages and executables a tool finds through its
+> interpreter or on PATH, and whatever a tool opens that no declaration names (an environment variable, a
+> default outside its checkout, a file derived from a named one, a child process's reads): each adapter's
+> `files:` cites the line of its tool that opens each entry. A job
 > states the commit of each tool it expects (`sch run --request FILE --job JOB --tool scQC=COMMIT`, 40 hex,
 > by the adapter's tool name): that commit and a clean work tree stand for the files of the param naming
 > the tool too; without `--tool` a checkout, and the param's files, are pinned as they are where the job
