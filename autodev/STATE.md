@@ -75,12 +75,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus):** the builder of **W054's fix round 1** (Lab; its verification FAILED on two reasons beside
-  the run section, which held by construction: a read that fails inside the HDF5 library is used as values, on `main`
-  too, GAP-C127; and one bundle shape for which the deployed Studio says no record was found. Brief
-  `q_w054fix1.txt`; then a lean re-check, then Lab's deploy, D-045; nothing is deployed on a FAIL); the builder of
-  **W056** (the driver's integration, [waves/W056.md](waves/W056.md), launched 2026-11-12T04:30Z). No Fable agent is
-  running.
+- **Running now (2 Opus):** the lean RE-CHECK of **W054's fix round 1** (Lab, head `f2ee369`: one guard every value
+  read goes through, so a failed read is never used as values, GAP-C127; a found-but-unlisted record counted where
+  the deployed Studio reads; suite 512 of 512; on PASS Lab deploys, D-045; nothing is deployed on a FAIL); the
+  builder of **W056** (the driver's integration, [waves/W056.md](waves/W056.md), launched 2026-11-12T04:30Z). No Fable
+  agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
   0. **W055's second half** (scProfile, `abundance` through the maker; brief `q_w055cont.txt`, the first builder's
      clone kept). The first half is pushed at `2e5b95a`: the blind grade, a `source` stage and verb in the maker (three
@@ -88,7 +87,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
      gone. Left: the suite is red there (3 of 124), the design step (the reference level from the host: the effect's
      sign is reversed between the fixture's two shapes today; a covariate; the interaction fitted or refused by
      name), an in-run refusal still reading ok, the job's prediction. Then its verification and the dev-suite job.
-  0b. After W054's fix round: its lean re-check, then Lab's deploy, reported, not asked (D-045). After it: Studio's
+  0b. After W054's lean re-check: Lab's deploy, reported, not asked (D-045). After it: Studio's
       Run-card sentences brought in line with what a bundle now carries (a Fable designer's small pass, then a deploy).
   1. **W052 PASSED its lean re-check** (the harness at `133589d`). Waiting only for the cluster: its subset 791374, then
      the full job (4 h); on AS PREDICTED both mains move in one step (scIntegrate `2fc7a6c` first, then the harness by
