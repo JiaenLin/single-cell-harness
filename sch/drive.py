@@ -197,35 +197,54 @@ def _add(files: dict, role: str, p: Path):
     if not p.is_dir():
         files[role] = {"path": str(p), "absent": True}
         return
-    found, seen = [], {os.path.realpath(p)}
-    # A LINKED DIRECTORY IS WALKED TOO (autodev W049, route 5): what a tool reads through a link is a file
-    # it reads. Each directory is walked once, by its real path; a link back to one already walked is a
-    # loop, kept in the set as the link and its target, so retargeting it is a change.
-    for root, dirs, names in os.walk(p, followlinks=True):
-        keep = []
-        for d in sorted(x for x in dirs if x not in EXCLUDED):
-            real = os.path.realpath(os.path.join(root, d))
-            if real in seen:
-                found.append((Path(root) / d, real))
-            else:
-                seen.add(real)
-                keep.append(d)
-        dirs[:] = keep
-        found += [Path(root) / n for n in sorted(names) if not n.endswith(".pyc")]
-        if len(found) > TREE_LIMIT:
-            files[role] = {"path": str(p), "unpinned": f"more than TREE_LIMIT ({TREE_LIMIT}) files: not "
-                                                       f"hashed at every step"}
-            return
+    found = _walk(p, {os.path.realpath(p)})
+    if found is None:
+        files[role] = {"path": str(p), "unpinned": f"more than TREE_LIMIT ({TREE_LIMIT}) files: not "
+                                                   f"hashed at every step"}
+        return
     files[role] = {"path": str(p), "dir": len(found)}
     for f in found:
-        if isinstance(f, tuple):                 # a loop: the link, and where it leads
-            files[f"{role}/{f[0].relative_to(p).as_posix()}"] = {"path": str(f[0]), "loop": f[1]}
+        if isinstance(f, tuple):                 # a loop, or a linked subtree given up: the link, its target
+            link, real, kind = f
+            files[f"{role}/{link.relative_to(p).as_posix()}"] = {"path": str(link), "loop": real} if kind == "loop" \
+                else {"path": str(link), "target": real, "unpinned": f"a link to a directory of more than TREE_LIMIT "
+                      f"({TREE_LIMIT}) files: this link alone is not hashed at every step"}
             continue
         rel = f.relative_to(p).as_posix()
         try:
             files[f"{role}/{rel}"] = _entry(f) if f.is_file() else {"path": str(f), "absent": True}
         except OSError as e:
             files[f"{role}/{rel}"] = {"path": str(f), "unreadable": f"{type(e).__name__}: {e}"}
+
+
+def _walk(top: Path, seen: set):
+    """The files under a directory, walked sorted (EXCLUDED left out), or None over TREE_LIMIT of its own.
+    A LINKED DIRECTORY IS WALKED TOO (autodev W049, route 5): what a tool reads through a link is a file it
+    reads. Each directory is walked once, by its real path; a link back to one already walked is a loop,
+    kept as `(link, target, "loop")`, so retargeting it is a change. A linked directory is its own subtree
+    with its own limit (W049 fix 1): over it, only that link is given up, kept as `(link, target,
+    "unpinned")`, and the files of the directory that holds it are still compared."""
+    found, own = [], 0
+    for root, dirs, names in os.walk(top):
+        keep = []
+        for d in sorted(x for x in dirs if x not in EXCLUDED):
+            full = Path(root) / d
+            real = os.path.realpath(full)
+            if real in seen:
+                found.append((full, real, "loop"))
+                continue
+            seen.add(real)
+            if full.is_symlink():
+                sub = _walk(full, seen)
+                found += sub if sub is not None else [(full, real, "unpinned")]
+            else:
+                keep.append(d)
+        dirs[:] = keep
+        here = [Path(root) / n for n in sorted(names) if not n.endswith(".pyc")]
+        found, own = found + here, own + len(here)
+        if own > TREE_LIMIT:
+            return None
+    return found
 
 
 def _paths(v, base: Path | None, words: bool = False) -> list:
@@ -255,8 +274,9 @@ def _git_state(d: Path, pathspec=()) -> dict | None:
     with no optional lock, so two jobs reading one checkout never collide on its index."""
     import subprocess
 
-    def g(*a):
-        r = subprocess.run(["git", "--no-optional-locks", "-C", str(d), *a], capture_output=True, timeout=120)
+    def g(*a):                                   # what the work tree holds, not what git is told to see
+        r = subprocess.run(["git", "--no-optional-locks", "--no-replace-objects", "-c", "core.fsmonitor=false",
+                            "-C", str(d), *a], capture_output=True, timeout=120)
         return r.stdout if r.returncode == 0 else None
     try:
         top, head = g("rev-parse", "--show-toplevel"), g("rev-parse", "HEAD")
@@ -265,12 +285,21 @@ def _git_state(d: Path, pathspec=()) -> dict | None:
         spec = ["--", *pathspec] if pathspec else []
         st = g("status", "--porcelain=v1", "--untracked-files=no", *spec)
         diff = g("diff", "--binary", "HEAD", *spec)
+        flags = g("ls-files", "-v", *spec)
     except (OSError, subprocess.TimeoutExpired):
         return None
-    if st is None or diff is None:
+    if st is None or diff is None or flags is None:
         return None
+    # A FILE GIT IS TOLD NOT TO LOOK AT (autodev W049 fix 1, ATTACKS 22): assume-unchanged (a lower-case tag)
+    # and skip-worktree (`S`) hide a changed file from status and diff, so they are its state too
+    hidden = b"\n".join(x for x in flags.splitlines() if x[:1].islower() or x[:1] == b"S")
     return {"path": top.decode().strip(), "git": head.decode().strip(),
-            "tracked_changes": hashlib.sha256(st + b"\0" + diff).hexdigest()}
+            "tracked_changes": hashlib.sha256(st + b"\0" + diff + (b"\0" + hidden if hidden else b"")).hexdigest()}
+
+
+#: A git work tree with no tracked change, as `_git_state` digests it: what a job that states a tool's commit
+#: expects where it runs (autodev W049 fix 1).
+CLEAN = hashlib.sha256(b"\0").hexdigest()
 
 
 def _document(f: Path):
@@ -333,7 +362,9 @@ def run_inputs(req: dict, answers: dict | None = None) -> dict:
                 _add(files, named[-1], f)
         tool = p.get("tool_param")               # route 14: the checkout around the file naming its tool
         got = _paths(dict(_leaves(p["params"])).get(tool), None) if tool else []
-        if got and got[0].exists():
+        if got and not got[0].exists():          # recorded as absent, never dropped (autodev W049 fix 1)
+            files[f"{p['stage']}.{tool}@checkout"] = {"path": str(got[0]), "absent": True}
+        elif got:
             d = got[0] if got[0].is_dir() else got[0].parent
             files[f"{p['stage']}.{tool}@checkout"] = _git_state(d) or (
                 {"path": str(d), "git": None, "tracked_changes": _tree_digest(d)} if got[0].is_file() else
@@ -396,7 +427,7 @@ def _digest(e: dict | None, mtime: bool = True) -> str | None:
     if e.get("absent"):
         return "absent"
     if e.get("unpinned"):
-        return "unpinned"
+        return "unpinned" + (f":{e['target']}" if e.get("target") else "")
     if e.get("unreadable"):
         return "unreadable"
     if e.get("loop"):
@@ -974,6 +1005,17 @@ def _leaves(v, path=""):
 LINE = re.compile(r"[^\x00-\x1f\x7f\x85\u2028\u2029]+")
 
 
+#: Letters that print as nothing: a name holds at least one letter or digit that prints (autodev W049 fix 1).
+BLANK_LETTERS = frozenset("ᅟᅠㅤﾠ")
+
+
+def _a_name(v) -> bool:
+    """Who made a decision, as it is recorded: a name, so at least one letter or digit that prints - not a
+    blank, and not only zero-width, format or filler characters (autodev W049 fix 1)."""
+    import unicodedata
+    return isinstance(v, str) and any(unicodedata.category(ch)[0] in "LN" and ch not in BLANK_LETTERS for ch in v)
+
+
 def _climbs(x: str) -> bool:
     """A relative path out of its tool's working directory (`..`), or into another account's home."""
     return bool(re.search(r"(^|/)\.\.(/|$)", x) or re.match(r"~[^/\s]+/", x))
@@ -998,9 +1040,10 @@ def answers_of(req: dict, given: list | None, by: str | None, recorded: dict | N
     would not pin what was meant."""
     names = {d["name"]: d for p in req["stages"] for d in p["decisions"]}
     names.update({d["name"]: d for d in req.get("decisions") or []})
-    answers, new = dict(recorded or {}), []
-    if given and (by is None or not str(by).strip()):
-        raise RequestError("--answer needs --by: a decision is recorded with who made it, by name (a blank is no name)")
+    answers, new, now = dict(recorded or {}), [], {}
+    if given and not _a_name(by):
+        raise RequestError("--answer needs --by: a decision is recorded with who made it, by name (a blank is no name, "
+                           "nor are characters that print as nothing)")
     for what, v in [("--by", by)] + [("--answer", a) for a in given or []]:
         if v is not None and not LINE.fullmatch(str(v)):
             raise RequestError(f"{what} {str(v)!r}: an answer and who gave it are one line of printable text; they "
@@ -1024,9 +1067,17 @@ def answers_of(req: dict, given: list | None, by: str | None, recorded: dict | N
                     raise RequestError(f"--answer {a!r}: {x!r} is a relative path; {name}'s tool reads it from its "
                                        f"own working directory (the stage's run directory), not from here, and "
                                        f"what it names there would not be pinned: write it absolute, or ~/")
+        if name in now and now[name] != value:   # autodev W049 fix 1: one command, one answer a decision
+            raise RequestError(f"--answer {name} is given twice in one command ({json.dumps(now[name])} and "
+                               f"{json.dumps(value)}): a decision has one answer")
+        now[name] = value
         if name in answers and answers[name]["value"] != value:
             raise RequestError(f"{name} is already answered {json.dumps(answers[name]['value'])} by "
                                f"{answers[name]['by']}; a recorded decision is not rewritten: start a new --out")
+        if name in answers and name not in new and answers[name]["by"] != str(by).strip():
+            raise RequestError(f"{name} is recorded {json.dumps(answers[name]['value'])} by {answers[name]['by']}, "
+                               f"and given again by {str(by).strip()}: who made a recorded decision is not "
+                               f"rewritten - leave it out of this command (it is recorded), or start a new --out")
         if name not in answers:
             answers[name] = {"value": value, "by": str(by).strip(), "at": _now(), "verbatim": a}
             new.append(name)
@@ -1036,6 +1087,59 @@ def answers_of(req: dict, given: list | None, by: str | None, recorded: dict | N
 def _answer_of(role: str):
     """The decision an `answer[<name>]...` role was named by, else None."""
     return role[len("answer["):role.index("]")] if role.startswith("answer[") and "]" in role else None
+
+
+def _late(req: dict, out: Path, led, new: list):
+    """AN ANSWER REACHES ONLY A STAGE THAT HAS NOT RUN (autodev W049 fix 1; ATTACKS 13, 21, 32). What the run's
+    record says a stage was given is what that stage's seal says: an answer given now for a stage already
+    sealed - its tool ran without it - is refused by name before anything runs (a run's own decision is
+    read by every stage). A changed or re-attributed answer is refused by `answers_of`."""
+    sealed = [p["stage"] for p in req["stages"] if (out / p["stage"] / "SEALED.json").exists()
+              or ((led or {}).get("seals") or {}).get(p["stage"])]
+    owners: dict = {}
+    for p in req["stages"]:
+        for d in p["decisions"]:
+            owners.setdefault(d["name"], []).append(p["stage"])
+    for name in new:
+        hit = sealed if name in {d["name"] for d in req.get("decisions") or []} else \
+            [s for s in owners.get(name) or [] if s in sealed]
+        if hit:
+            raise RequestError(f"--answer {name}: {hit[0]} is sealed, and its tool ran without this answer (its "
+                               f"seal records {name} as not given); an answer to a stage that has run would be "
+                               f"recorded as taken and never reach its tool - start a new --out")
+
+
+def _given(p: dict, answers: dict) -> dict:
+    """A stage's params as its tool is handed them: the request's, each answered decision set into its param."""
+    params = dict(p["params"])
+    for d in p["decisions"]:
+        if d["name"] in answers:
+            params = _set(params, d["param"], answers[d["name"]]["value"])
+    return params
+
+
+def _disagree(p: dict, req: dict, seal: dict, answers: dict) -> list:
+    """[(what, the run's record, the seal's)] where what the run's record says stage `p` was given - each of
+    its decisions answered, with who answered it, and the params its tool was handed - is not what its own
+    seal says (autodev W049 fix 1): compared on every resume and at the run's seal."""
+    out = []
+    for d in [*p["decisions"], *(req.get("decisions") or [])]:
+        mine, its = answers.get(d["name"]), (seal.get("decisions") or {}).get(d["name"])
+        if mine != its:
+            out.append((d["name"], mine, its))
+    if seal.get("params") != _given(p, answers):
+        out.append(("params", _given(p, answers), seal.get("params")))
+    return out
+
+
+def _disagreed(stage: str, bad: list) -> str:
+    def w(k, v):
+        if v is None:
+            return "not given"
+        if k != "params" and isinstance(v, dict) and "value" in v:
+            return f"{json.dumps(v['value'])} by {v.get('by')}"
+        return json.dumps(v, sort_keys=True)[:160]
+    return "; ".join(f"{k}: {w(k, a)} in the run's record, {w(k, b)} in {stage}'s seal" for k, a, b in bad)
 
 
 #: What in a run directory says a run was there: a directory holding any of them and no record of its
@@ -1107,7 +1211,12 @@ def _pinned(out: Path, req: dict, rec, answers: dict, new: list) -> tuple:
                 raise RequestError(f"{s} is sealed and {gap}, before it, is not: {s} was made from what {gap} "
                                    f"handed on then, and {gap} run again would hand on other files - a run is "
                                    f"sealed in order: start a new --out")
-            _trust(out, s, rec, now)
+            seal = _trust(out, s, rec, now)
+            bad = _disagree(p, req, seal, {k: v for k, v in answers.items() if k not in new})
+            if bad:                              # autodev W049 fix 1: the record is what each seal says
+                raise RequestError(f"the run's record and {s}'s seal disagree: {_disagreed(s, bad)}. What a run "
+                                   f"says a stage was given is what that stage's seal says: restore the record, "
+                                   f"or start a new --out")
         elif (rec.get("seals") or {}).get(s):
             raise RequestError(f"the run's {INPUTS} names {s}'s seal ({str(rec['seals'][s])[:12]}) and "
                                f"{out / s / 'SEALED.json'} is not there: a missing seal is not a fresh start - "
@@ -1211,6 +1320,7 @@ def run(req: dict, out, answers_given: list | None = None, by: str | None = None
     dfile = out / "decisions.json"
     led = _ledger(out, dfile)                    # decisions.json's hash checked before its answers are read
     answers, new = answers_of(req, answers_given, by, json.loads(dfile.read_text()) if dfile.exists() else {})
+    _late(req, out, led, new)                    # before anything is written (autodev W049 fix 1)
     pins, _now_set = _pinned(out, req, led, answers, new)
     prior.write_text(json.dumps(req, indent=1, default=str) + "\n")
     dfile.write_text(json.dumps(answers, indent=1) + "\n")
@@ -1250,10 +1360,7 @@ def run(req: dict, out, answers_given: list | None = None, by: str | None = None
                        f"--answer {d['name']}=VALUE" for d in waiting) + " --by WHO"}
             _record(out, **rec)
             return WAITING, rec
-        params = dict(p["params"])
-        for d in p["decisions"]:
-            if d["name"] in answers:
-                params = _set(params, d["param"], answers[d["name"]]["value"])
+        params = _given(p, answers)
 
         def failed(why, fix, stack=None):
             rec = {"status": "failed", "stage": p["stage"], "plugin": p["plugin"], "sealed": done,
@@ -1280,9 +1387,24 @@ def run(req: dict, out, answers_given: list | None = None, by: str | None = None
             return return_
         handed = return_[1]
         done.append(p["stage"])
-    last = json.loads((out / done[-1] / "SEALED.json").read_text()) if done else {}
+    # THE RUN'S RECORD IS ITS STAGES' SEALS (autodev W049 fix 1): each stage's decisions, who answered them
+    # and the params its tool was handed, as the run records them, are what its own seal says - or no seal
+    seals = {p["stage"]: json.loads((out / p["stage"] / "SEALED.json").read_text()) for p in req["stages"]}
+    for p in req["stages"]:
+        bad = _disagree(p, req, seals[p["stage"]], answers)
+        if bad:
+            rec = {"status": "failed", "stage": p["stage"], "plugin": p["plugin"], "sealed": done,
+                   "reason": f"the run is not sealed: its record and {p['stage']}'s seal disagree: "
+                             f"{_disagreed(p['stage'], bad)}",
+                   "fix": "what a run says a stage was given is what that stage's seal says: start a new --out",
+                   "resume": resume}
+            _record(out, **rec)
+            return 2, rec
+    last = seals[done[-1]] if done else {}
     rec = {"status": "sealed", "sealed": done, "request": req["path"], "request_sha256": req["sha256"],
            "inputs": last.get("inputs") or inputs, "decisions": answers, "upstream": req["upstream"],
+           "agreed": f"the run's decisions, who answered them and the params each tool was handed are each "
+                     f"stage's own seal ({len(done)} stages, {len(answers)} answers)",
            "reports": {s: str(out / s / "report" / "report.json") for s in done}}
     (out / "SEALED.json").write_text(json.dumps({"sealed_at": _now(), **rec}, indent=1, default=str) + "\n")
     _record(out, **rec)
@@ -1365,7 +1487,7 @@ def _stage(p, sd, req, handed, params, answers, done, failed) -> tuple:
     _seal(sd, rd, {"stage": p["stage"], "plugin": p["plugin"], "hands_on": handed,
                    "report": str(sd / "report" / "report.json"), "numbers": len(rep.get("numbers") or []),
                    "request_sha256": req["sha256"], "out": str(out), "inputs": flat(now),
-                   "answers_known": sorted(answers),
+                   "answers_known": sorted(answers), "params": params,
                    "handed_sha256": {x: _digest(_entry(Path(x))) for x in
                                      [*handed["libraries"].values(), handed["joint"],
                                       str(sd / "report" / "report.json")] if x and Path(x).is_file()},
@@ -1392,6 +1514,9 @@ def expected(req: dict, file, answers: dict | None = None) -> tuple:
         return False, [f"  differs: the job's record {file} cannot be read ({e})"], [("record", None, None)]
     now = {k: v for k, v in run_inputs(req, answers).items() if k not in JOB_UNPINNED}
     then = {k: v for k, v in then.items() if k not in JOB_UNPINNED}
+    stated = {k: v for k, v in then.items() if isinstance(v, dict) and v.get("stated")}
+    # a stated tool's commit, clean, stands for the files of the param naming it (autodev W049 fix 1)
+    now = {k: v for k, v in now.items() if not any(_under(k, r) for r in stated)}
     a, b = flat(then, mtime=False), flat(now, mtime=False)
     d = differ(a, b, here_only=True)
     bad = {k for k, _x, _y in d}
@@ -1399,7 +1524,15 @@ def expected(req: dict, file, answers: dict | None = None) -> tuple:
     lines = [f"  pinned: {sum(1 for v in a.values() if v != 'absent')} of the run's files as the job was generated; "
              f"{len(here)} checked here only"]
     lines += [f"  only here: {k} {now[k]['path']}" for k in here[:40]]
-    lines += [f"  differs: {k} {(now.get(k) or then.get(k) or {}).get('path', '')} ({x or 'not named'} when the job "
+    # a tool the job states (--tool, autodev W049 fix 1): its checkout here against the commit stated, clean
+    def state(e):
+        return "not named" if not e else "absent" if e.get("absent") else "not a git checkout" if not e.get("git") \
+            else f"at {e['git']}, " + ("clean" if e.get("tracked_changes") == CLEAN else "with tracked changes")
+    lines += [f"  tool: {v['stated']} at {v['git']}, clean, as this job states ({k} {now[k]['path']})"
+              for k, v in sorted(stated.items()) if k not in bad]
+    lines += [f"  differs: {k} {(now.get(k) or {}).get('path', '')} ({stated[k]['stated']}: this job expects "
+              f"{stated[k]['git']}, clean; here {state(now.get(k))})" if k in stated else
+              f"  differs: {k} {(now.get(k) or then.get(k) or {}).get('path', '')} ({x or 'not named'} when the job "
               f"was generated, {y or 'not named'} now)" for k, x, y in d]
     return not d, lines, d
 
@@ -1435,8 +1568,43 @@ def _commit(root: Path) -> str | None:
     return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
 
 
+HEX40 = re.compile(r"[0-9a-f]{40}")
+
+
+def _under(k: str, checkout_role: str) -> bool:
+    """Whether role `k` is the param a `<stage>.<param>@checkout` role is found from, or a file under it."""
+    p = checkout_role[:-len("@checkout")]
+    return k == p or k.startswith((p + "/", p + "#", p + ">"))
+
+
+def _stated(req: dict, tools: list | None, pins: dict) -> dict:
+    """{checkout role: (tool, commit)}: each `--tool <Tool>=<40 hex>` a job is generated with (autodev W049
+    fix 1), by the name its adapter wraps (`wraps.tool`, the name `setup/autodev/gate.py --tool` moves a
+    cluster checkout by). A name no stage runs from a checkout, a commit that is not 40 hex digits, or one
+    tool given twice is refused by name, before the job is written."""
+    roles: dict = {}
+    for p in req["stages"]:
+        role = f"{p['stage']}.{p.get('tool_param')}@checkout"
+        if p.get("tool_param") and role in pins:
+            roles.setdefault(str(p["wraps"].get("tool")), []).append(role)
+    got: dict = {}
+    for t in tools or []:
+        name, sep, commit = str(t).partition("=")
+        if not sep or name not in roles:
+            raise RequestError(f"--tool {t!r}: no stage of this request runs a tool named {name!r} from a "
+                               f"checkout; its tools: {', '.join(sorted(roles)) or 'none'} (--tool TOOL=COMMIT)")
+        if not HEX40.fullmatch(commit):
+            raise RequestError(f"--tool {t!r}: a tool's commit is its 40 hexadecimal digits, in lower case, as "
+                               f"`git rev-parse HEAD` prints it - not a branch, a tag or a short one")
+        if name in got:
+            raise RequestError(f"--tool {name} is given twice: a job runs one commit of each tool")
+        got[name] = commit
+    return {r: (n, c) for n, c in got.items() for r in roles[n]}
+
+
 def job_text(req: dict, job_path, answers: list | None = None, by: str | None = None,
-             predict=None, check=None, purpose: str | None = None, where: str | None = None) -> str:
+             predict=None, check=None, purpose: str | None = None, where: str | None = None,
+             tools: list | None = None) -> str:
     """THE JOB THAT RUNS ONE REQUEST ON THE CLUSTER, generated, never hand-written (ROUTE R03 run 2).
 
     Its body is one `sch run --request ... --out $RUNDIR` with the recorded answers; every stage is
@@ -1489,7 +1657,19 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
     # THE JOB PINS THE RUN'S WHOLE SET (autodev W042 fix 2, C): B's set as it is where the job is
     # generated; what is absent here is named, and checked only where the job runs.
     pins = {k: v for k, v in run_inputs(req, given).items() if k not in JOB_UNPINNED}
+    # A JOB STATES THE COMMIT OF EACH TOOL IT EXPECTS (autodev W049 fix 1, ATTACKS 33): a checkout named by
+    # --tool is pinned as that commit and a clean work tree, and checked against them where the job runs -
+    # never against this machine's checkout, which may be absent or at another commit
+    for role, (tool, at_commit) in _stated(req, tools, pins).items():
+        pins[role] = {"path": pins[role].get("path"), "git": at_commit, "tracked_changes": CLEAN, "stated": tool}
+        for k in [k for k in pins if _under(k, role)]:   # the stated commit stands for the param's files
+            del pins[k]
     absent = [k for k, v in pins.items() if v.get("absent")]
+    said_tools = [re.sub(r"[\x00-\x1f\x7f]", "?", f"#   tool      {p['wraps'].get('tool')} ({p['stage']}): " + (
+        f"expects {e['git']}, clean (--tool; the job refuses another commit or tracked changes where it runs)"
+        if e.get("stated") else "absent here and not stated (--tool): checked only where the job runs"
+        if e.get("absent") else f"as it is here, {e.get('git') or 'not a git checkout'} (no --tool: the job refuses "
+        f"any other)")) for p in req["stages"] if (e := pins.get(f"{p['stage']}.{p.get('tool_param')}@checkout"))]
     # by role, without where the file lies here: the roles are the same on every machine, and a path of
     # this workstation's has no place in a job that runs on another
     pins_doc = json.dumps({"generated_at": _now(), "policy": POLICY,
@@ -1512,6 +1692,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"only where it runs" + (":" if absent else ""),
         *[re.sub(r"[\x00-\x1f\x7f]", "?", f"#     on the cluster only: {k} {os.path.relpath(pins[k]['path'], jobs) if not str(pins[k]['path']).startswith(str(Path.home())) else '~/' + os.path.relpath(pins[k]['path'], Path.home())}"
                  ) for k in absent],
+        *said_tools,
         f"#   stages    " + ", ".join(f"{p['stage']} {p['plugin']}" + (f" [{', '.join(f'{k}={v}' for k, v in sorted(p['resources'].items()))}]" if p.get("resources") else "") for p in req["stages"]),
         f"#   this job  {cfg.get('queue_chosen') or 'the site block queue'}",
         f"#   answers   {tail.strip() or 'none'}",
@@ -1589,7 +1770,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         "> \"$RUNDIR/PINS.txt\" 2>&1",
         "prc=$?",
         "set -e",
-        "grep -E '^  (pinned|only here)' \"$RUNDIR/PINS.txt\" || true",
+        "grep -E '^  (pinned|only here|tool):' \"$RUNDIR/PINS.txt\" || true",
         "if [ \"$prc\" -ne 0 ]; then",
         "  why=$(grep -E '^  (differs|request refused)' \"$RUNDIR/PINS.txt\" | head -n 12 | tr '\\n' ';' || true)",
         "  [ -n \"$why\" ] || why=$(tail -n 3 \"$RUNDIR/PINS.txt\" | tr '\\n' ' ' || true)",

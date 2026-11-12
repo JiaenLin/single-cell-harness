@@ -14,6 +14,8 @@ The tools are the suite's stand-ins; the drift test reads the real scQC where SC
 import importlib.util
 import json
 import os
+import shutil
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -272,6 +274,25 @@ class WhatRunsUpstreamIsTheToolsAndRule2IsOverIt(M._Base):
                 getattr(t, "id", "") == "NOT_FACTORS" for t in n.targets)][0]
             cols = {e.value for e in ast.walk(cols.value) if isinstance(e, ast.Constant) and isinstance(e.value, str)}
             tools.append(("scQC", amb.SUPPLIED_REQUIRED, amb.CELLBENDER_RUNS, amb, cols))
+            # W049 fix 1: THE COLUMNS scQC's OWN PLANNER READS (engine/graph.py main_stage, which builds each
+            # supplied library's provenance from its row and hands it to plan_ambient) - not a list beside it
+            plan = [n for n in ast.walk(ast.parse((real / "engine" / "graph.py").read_text()))
+                    if isinstance(n, ast.FunctionDef) and n.name == "main_stage"]
+            self.assertEqual(len(plan), 1, "scQC's planner (engine/graph.py main_stage) moved: follow it")
+
+            def got(node):                       # each `<row>.get("<column>")` under `node`
+                return [x.args[0].value for x in ast.walk(node) if isinstance(x, ast.Call) and getattr(
+                    x.func, "attr", "") == "get" and x.args and isinstance(x.args[0], ast.Constant)
+                    and isinstance(x.args[0].value, str)]
+            prov = [n for n in ast.walk(plan[0]) if isinstance(n, ast.Dict) and {"tool", "version"} <= {
+                getattr(k, "value", None) for k in n.keys}]
+            self.assertEqual(len(prov), 1, "the supplied library's provenance, as scQC's planner builds it")
+            up = m["upstream_columns"]["ambient"]
+            read = {k.value: got(v) for k, v in zip(prov[0].keys, prov[0].values) if isinstance(k, ast.Constant)}
+            self.assertEqual((read["tool"], read["version"]), ([up["tool"]], [up["version"]]), read)
+            self.assertLessEqual({x for v in read.values() for x in v}, {up["tool"], up["version"], *up["performed"]})
+            self.assertLessEqual({up["tool"], up["version"], *up["performed"], *up["declined"]}, set(got(plan[0])),
+                                 "every upstream column the adapter declares is one scQC's planner reads")
         for who, required, runs, amb, cols in tools:
             with self.subTest(tool=who):
                 self.assertEqual(sorted(cb["assays"]), sorted(a for a, v in runs.items() if v))
@@ -293,10 +314,233 @@ class WhatRunsUpstreamIsTheToolsAndRule2IsOverIt(M._Base):
                 self.assertEqual({m["upstream_accepts"][a]["alignment"] for a in amb.ASSAYS}, {"any"})
 
 
+def git(d, *a) -> str:
+    return subprocess.run(["git", "-C", str(d), *a], capture_output=True, text=True, check=True).stdout.strip()
+
+
+def commit(d, msg) -> str:
+    git(d, "add", "-A")
+    git(d, "-c", "user.email=t", "-c", "user.name=t", "commit", "-qm", msg)
+    return git(d, "rev-parse", "HEAD")
+
+
+class TheRunsRecordIsItsStagesSeals(M._Base):
+    """W049 fix 1, the reason the driver batch's verification failed (ATTACKS 13, 21, 32): what a run's record
+    says a stage was given is what that stage's own seal says - on every resume and at the run's seal."""
+
+    def waiting(self, c, out):
+        req = request(c)
+        rc, rec = self.drive(req, out, *ANSWERS, "--by", "a tester")
+        self.assertEqual((rc, rec["status"], rec["stage"]), (3, "waiting", "04_prof"), rec)
+        return req
+
+    def test_an_answer_to_a_sealed_stage_is_refused_before_anything_runs_and_the_seal_says_it_agrees(self):
+        c, out = cohort(self.tmp / "c", "a"), self.tmp / "run"
+        req = self.waiting(c, out)               # the verifier's late.py: 02_anno sealed, 04_prof waiting
+        before, n = (out / "decisions.json").read_bytes(), len(self.calls())
+        rc, rec = self.drive(req, out, *ctrl(c)[:2], "--answer", "anno.no_exclude=true", "--by", "a tester")
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)          # was: 0, sealed, the escape recorded
+        self.assertIn("--answer anno.no_exclude: 02_anno is sealed, and its tool ran without this answer",
+                      rec["reason"])
+        self.assertIn("start a new --out", rec["reason"])
+        self.assertEqual((len(self.calls()), (out / "decisions.json").read_bytes()), (n, before), "nothing ran")
+        rc, text = cli("run", "--request", str(req), "--out", str(out), *ctrl(c))
+        self.assertEqual(rc, 0, text)
+        self.assertIn("  agreed: the run's decisions, who answered them and the params each tool was handed are "
+                      "each stage's own seal (4 stages, 3 answers)", text)
+        top = json.loads((out / "SEALED.json").read_text())
+        for s in top["sealed"]:
+            seal = json.loads((out / s / "SEALED.json").read_text())
+            self.assertEqual({k: top["decisions"].get(k) for k in seal["decisions"]}, seal["decisions"], s)
+        self.assertNotIn("anno.no_exclude", top["decisions"])
+
+    def test_a_recorded_answer_given_again_by_another_name_is_refused(self):
+        c = cohort(self.tmp / "c", "a")
+        req = self.waiting(c, self.tmp / "by")   # whose name is recorded for an answer given earlier?
+        rc, rec = self.drive(req, self.tmp / "by", "--answer", "qc.mode=apply", *ctrl(c)[:2], "--by", "someone else")
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)          # was: sealed, the first name kept
+        self.assertIn('qc.mode is recorded "apply" by a tester, and given again by someone else', rec["reason"])
+
+    def test_one_decision_answered_twice_in_one_command_is_refused_as_such(self):
+        c = cohort(self.tmp / "c", "a")          # was: refused as "already answered", a record that is not
+        rc, rec = self.drive(request(c), self.tmp / "twice", "--answer", "qc.mode=apply", "--answer",
+                             "qc.mode=draft", "--answer", "qc.decisions=null", "--by", "a tester")
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+        self.assertIn('--answer qc.mode is given twice in one command ("apply" and "draft")', rec["reason"])
+
+    def test_an_answer_removed_with_its_record_rewritten_is_refused_by_the_sealed_stages_own_record(self):
+        c = cohort(self.tmp / "c", "a")
+        out = self.tmp / "removed"               # the record and its hash rewritten together (ATTACKS 13)
+        req = self.waiting(c, out)
+        d = json.loads((out / "decisions.json").read_text())
+        del d["qc.mode"]
+        (out / "decisions.json").write_text(json.dumps(d, indent=1) + "\n")
+        led = json.loads((out / "INPUTS.json").read_text())
+        led["decisions_sha256"] = M.sha(out / "decisions.json")
+        (out / "INPUTS.json").write_text(json.dumps(led, indent=1) + "\n")
+        n = len(self.calls())
+        rc, rec = self.drive(req, out, *ctrl(c))
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)          # was: sealed without it
+        self.assertIn("the run's record and 01_qc's seal disagree: qc.mode: not given in the run's record, "
+                      "\"apply\" by a tester in 01_qc's seal", rec["reason"])
+        self.assertEqual(len(self.calls()), n, "refused before 04_prof ran")
+
+    def test_the_runs_seal_refuses_a_record_its_stages_seals_do_not_hold(self):
+        from unittest import mock
+        import sch.drive as D
+        c, out = cohort(self.tmp / "c", "a"), self.tmp / "run"
+        req = self.waiting(c, out)
+        with mock.patch.object(D, "_late", lambda *a, **k: None, create=True):   # (i) taken away: (ii) alone
+            rc, rec = self.drive(req, out, *ctrl(c)[:2], "--answer", "anno.no_exclude=true", "--by", "a tester")
+        self.assertEqual((rc, rec["status"], rec.get("stage")), (2, "failed", "02_anno"), rec)
+        self.assertIn("the run is not sealed: its record and 02_anno's seal disagree: anno.no_exclude: true by a "
+                      "tester in the run's record, not given in 02_anno's seal", rec["reason"])
+        self.assertFalse((out / "SEALED.json").exists())
+
+    def test_a_name_of_characters_that_print_as_nothing_is_no_name(self):
+        c = cohort(self.tmp / "c", "a")
+        req = request(c)
+        rc, rec = self.drive(req, self.tmp / "r", *ANSWERS, "--by", "​")
+        self.assertEqual((rc, rec["status"]), (2, "refused"), rec)          # was: accepted, recorded by U+200B
+        self.assertIn("is no name", rec["reason"])
+        self.assertEqual(self.calls(), [])
+        for by in ("​‍", "ㅤ", "﻿", "⁠", "­", " ‌ "):
+            rc, text = cli("plan", "--request", str(req), *ANSWERS, "--by", by)
+            self.assertEqual(rc, 2, (by, text))
+        for by in ("a tester", "李雷", "José", "O'Brien", "PI-1"):   # a name that prints is one
+            rc, text = cli("plan", "--request", str(req), *ANSWERS, "--by", by)
+            self.assertEqual(rc, 0, (by, text))
+
+    def test_a_link_to_a_large_directory_gives_up_that_link_alone(self):
+        from unittest import mock
+        import sch.drive as D
+        c = cohort(self.tmp / "c", "a")
+        big, named = self.tmp / "big", self.tmp / "named"
+        big.mkdir()
+        named.mkdir()
+        for i in range(5):
+            (big / f"f{i}.txt").write_text(f"{i}\n")
+        (named / "own.txt").write_text("own\n")
+        os.symlink(big, named / "big")
+        st = stages(c)
+        st[3]["params"]["run"]["prefix"] = str(named)
+        r = D.load(request(c, stages=st))
+        with mock.patch.object(D, "TREE_LIMIT", 3):
+            s = D.run_inputs(r, {})
+            self.assertTrue(s.get("04_prof.run.prefix/own.txt", {}).get("sha256"), "its own files are compared")
+            self.assertIn("this link alone", s["04_prof.run.prefix/big"]["unpinned"])
+            before = D.flat(s)
+            (named / "own.txt").write_text("edited\n")
+            d = [k for k, _a, _b in D.differ(before, D.flat(D.run_inputs(r, {})))]
+        self.assertEqual(d, ["04_prof.run.prefix/own.txt"])
+
+
+class AJobStatesTheToolsItExpects(M.TheClusterPath):
+    """W049 fix 1, the gap blocking the cohort gate (ATTACKS 33): a job states which commit of each tool it
+    expects (`--tool`), and its pins check the checkout WHERE IT RUNS against that, never against the
+    checkout of the machine it was generated on; a checkout absent where it is named is recorded absent."""
+
+    def origin(self):
+        """scQC's stand-in as a checkout of its own: v0 (older code), v1, and a docs-only commit after it."""
+        o = self.tmp / "origin" / "scQC"
+        o.mkdir(parents=True)
+        (o / "fake_scqc.py").write_text((FIXTURES / "fake_scqc.py").read_text() + "# an older version\n")
+        git(o, "init", "-q")
+        v0 = commit(o, "v0")
+        shutil.copy(FIXTURES / "fake_scqc.py", o / "fake_scqc.py")
+        v1 = commit(o, "v1")
+        (o / "NOTES.md").write_text("docs only\n")
+        return o, v0, v1, commit(o, "v2: docs only")
+
+    def at(self, c, tool):
+        req = request(c, resources=self.SIZES)
+        doc = yamlish.load(req)
+        doc["stages"][0]["params"]["scqc"] = str(tool / "fake_scqc.py")
+        os.chmod(req, 0o644)
+        yamlish.dump(doc, req)
+        return req
+
+    def check(self, f, req, c):
+        """The job's own pins check, as its body runs it: `sch plan --request ... <answers> --expect PINS`."""
+        pins = self.tmp / f"{f.stem}.PINS.json"
+        pins.write_text(f.read_text().split("<<'SCH_PINS_END'\n")[1].split("\nSCH_PINS_END")[0])
+        return cli("plan", "--request", str(req), *M.answered(c), "--expect", str(pins))
+
+    def test_a_job_made_where_a_tool_is_absent_checks_it_where_it_runs(self):
+        c = cohort(self.tmp / "c", "a")
+        o, _v0, _v1, _v2 = self.origin()
+        tool = self.tmp / "tools" / "scQC"       # absent where the job is generated
+        req = self.at(c, tool)
+        f, _ = self.job(c, req)
+        git(self.tmp, "clone", "-q", str(o), str(tool))       # the checkout where the job runs
+        rc, text = self.check(f, req, c)
+        self.assertEqual(rc, 0, text)            # was: differs, 01_qc.scqc@checkout not named when generated
+        self.assertIn("  only here: 01_qc.scqc@checkout", text)
+        self.assertIn("#   tool      scQC (01_qc): absent here and not stated (--tool)", f.read_text())
+
+    def test_a_job_states_the_commit_it_expects_and_checks_the_checkout_where_it_runs_against_it(self):
+        c = cohort(self.tmp / "c", "a")
+        o, v0, v1, v2 = self.origin()
+        tool = self.tmp / "tools" / "scQC"
+        req = self.at(c, tool)
+        absent, _ = self.job(c, req, name="absent.pbs", extra=("--tool", f"scQC={v1}"))
+        git(self.tmp, "clone", "-q", str(o), str(tool))
+        git(tool, "checkout", "-q", "--detach", v0)           # here: older code than the commit stated
+        other, _ = self.job(c, req, name="other.pbs", extra=("--tool", f"scQC={v1}"))
+        self.assertIn(f"#   tool      scQC (01_qc): expects {v1}, clean (--tool", other.read_text())
+        git(tool, "checkout", "-q", "--detach", v1)           # where the job runs: at the commit it states
+        for f in (absent, other):
+            rc, text = self.check(f, req, c)
+            self.assertEqual(rc, 0, text)
+            self.assertIn(f"  tool: scQC at {v1}, clean, as this job states (01_qc.scqc@checkout ", text)
+        p, rundir = self.run_job(absent, "r_held")
+        self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: AS PREDICTED", p.stdout[-1500:])
+        self.assertIn(f"  tool: scQC at {v1}, clean, as this job states", p.stdout)
+        self.assertIn("VERDICT (drive): SEALED - 4 stages", p.stdout)
+        self.assertIn("  agreed: the run's decisions", (rundir / "DRIVE.log").read_text())
+
+        def missed(here):                        # anything else where it runs: MISSED, naming the tool
+            rc, text = self.check(other, req, c)
+            self.assertEqual(rc, 2, text)
+            self.assertIn("  differs: 01_qc.scqc@checkout ", text)
+            self.assertIn(f"(scQC: this job expects {v1}, clean; here {here})", text)
+        git(tool, "checkout", "-q", "--detach", v2)
+        missed(f"at {v2}, clean")
+        git(tool, "checkout", "-q", "--detach", v1)
+        (tool / "fake_scqc.py").write_text((tool / "fake_scqc.py").read_text() + "# edited\n")
+        missed(f"at {v1}, with tracked changes")
+        git(tool, "update-index", "--assume-unchanged", "fake_scqc.py")     # ATTACKS 22: git told not to look
+        missed(f"at {v1}, with tracked changes")
+        git(tool, "update-index", "--no-assume-unchanged", "fake_scqc.py")
+        git(tool, "replace", v1, commit(tool, "v3: edited"))              # ATTACKS 22: v1 read as another
+        git(tool, "checkout", "-q", "--detach", v1)
+        missed(f"at {v1}, with tracked changes")
+
+    def test_a_tool_no_stage_runs_a_commit_that_is_not_one_or_one_tool_twice_is_refused(self):
+        c = cohort(self.tmp / "c", "a")
+        req = request(c, resources=self.SIZES)
+        f, _ = self.job(c, req)
+        h = "a" * 40
+        for bad, why in ((["--tool", f"scqc={h}"], "no stage of this request runs a tool named 'scqc'"),
+                         (["--tool", f"scQC={h[:12]}"], "40 hexadecimal digits"),
+                         (["--tool", f"scQC={h.upper()}"], "40 hexadecimal digits"),
+                         (["--tool", f"scQC={h} "], "40 hexadecimal digits"),
+                         (["--tool", "scQC=main"], "40 hexadecimal digits"),
+                         (["--tool", f"scQC={h}", "--tool", f"scQC={'b' * 40}"], "given twice")):
+            g = f.parent / "bad.pbs"
+            rc, text = cli("--json", "run", "--request", str(req), "--job", str(g), *M.answered(c), *bad)
+            self.assertEqual(rc, 2, text)
+            self.assertIn(why, json.loads(text)["reason"])
+            self.assertFalse(g.exists())
+        with self.assertRaises(SystemExit):
+            cli("run", "--request", str(req), "--out", str(self.tmp / "r"), "--tool", f"scQC={h}")
+
+
 def load_tests(loader, tests, pattern):
     """Only this module's own tests: TheJobPinsEveryRoute inherits the cluster path's set-up, not its tests."""
     suite = unittest.TestSuite()
-    for cls in (EveryRouteIsInTheSet, TheJobPinsEveryRoute, WhatRunsUpstreamIsTheToolsAndRule2IsOverIt):
+    for cls in (EveryRouteIsInTheSet, TheJobPinsEveryRoute, WhatRunsUpstreamIsTheToolsAndRule2IsOverIt,
+                TheRunsRecordIsItsStagesSeals, AJobStatesTheToolsItExpects):
         suite.addTests(cls(n) for n in loader.getTestCaseNames(cls) if n in cls.__dict__)
     return suite
 

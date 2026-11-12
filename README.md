@@ -38,20 +38,28 @@ everything downstream knows when one does.
 > YAML/JSON document holds (one level; a relative one pinned beside it), the site layer and the paths it
 > names (a site that lays a tool's flags beneath a stage's is refused), each tool's checkout and the
 > harness's own code (their commit and tracked changes), and an adapter the harness does not ship. The
-> set is recomputed and compared at the run's start (a plan only with `--expect`), at each stage's start
+> set is recomputed and compared at the run's start (a plain `sch plan --request FILE` computes no set:
+> only one given `--expect PINS.json` does), at each stage's start
 > and seal, on every resume (an answer given at a resume enters it then) and in a generated job's pins and
 > check, which give the run's answers; a file over 1 GiB is sampled and a directory over 5,000 files is
-> not compared (a link under a named directory to a large one makes it so), each said in the run's
-> INPUTS.json. Not in the set: a checkout's untracked and ignored files (scQC's `.gitignore` keeps its
+> not compared (a link under a named directory to a larger one gives up that link alone, said as its own
+> entry), each said in the run's INPUTS.json. Not in the set: a checkout's untracked and ignored files (scQC's `.gitignore` keeps its
 > `env/` and `references/` there), the interpreter and the packages and executables a tool finds through
 > it or on PATH, a document's second level, a URL inside a document (recorded as an absent path). A job
-> pins each tool's checkout as it is where the job is generated: one at another commit where the job
-> runs, or absent where it was generated, reads `VERDICT (pins): MISSED`. What may have run upstream of an assay is what the first stage's tool accepts
+> states the commit of each tool it expects (`sch run --request FILE --job JOB --tool scQC=COMMIT`, 40 hex,
+> by the adapter's tool name): its pins check that tool's checkout WHERE THE JOB RUNS against it and a
+> clean work tree, which stand for the files of the param naming the tool too (a `tool:` line when it
+> holds; `VERDICT (pins): MISSED` naming the tool at another commit or with tracked changes); without
+> `--tool` a checkout, and the param's files, are pinned as they are where the job is generated, and
+> one absent there is checked only where the job runs. What may have run upstream of an assay is what the first stage's tool accepts
 > there (its adapter's `upstream_accepts:`, drift-tested against the tool's own code), with rule 2 over
 > it from the profile: no family tool performs ambient removal on single cells, and single cells
 > delivered denoised, by any remover's name, stop at the user's `upstream.ambient` (D-031), whatever
 > stage the request starts at. A seal is trusted only on the run's own
-> record, and one it names is never missing; `sch plan --request FILE`
+> record, and one it names is never missing; what the run's record says a stage was given (each decision
+> answered, who answered it, the params its tool was handed) is that stage's own seal, compared on every
+> resume and at the run's seal (its `agreed:` line), so an answer to a stage already sealed, or a recorded
+> one given again by another name, is refused by name: start a new `--out`; `sch plan --request FILE`
 > shows the plan and runs nothing (`--expect` compares the set with a generated job's). It is graded on the synthetic fixture with the
 > stand-ins. Run 2 (W042) is the cluster path: under a site file declaring `executor: pbs`, each stage
 > is a scheduler job sized by the request's `resources:` and queued by the site's `pbs.queues` (the

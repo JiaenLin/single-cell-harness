@@ -268,14 +268,14 @@ def cmd_run(a):
             try:
                 req = load(a.request, files=False)
                 rec = write_job(req, a.job, answers=a.answer, by=a.by, predict=a.predict, check=a.check,
-                                purpose=a.purpose, where=a.where)
+                                purpose=a.purpose, where=a.where, tools=a.tool)
             except RequestError as e:
                 return _drive_refused(a, e)
             _emit(a, rec, "\n".join(plan_lines(req)) + f"\n  JOB {rec['job']} ({rec['lines']} lines, md5 "
                   f"{rec['md5']})\n  nothing was run: the coordinator submits it by its recipe")
             return 0
-        if a.predict or a.check or a.purpose or a.where:
-            raise SystemExit("--predict, --check, --purpose and --where belong to sch run --request --job")
+        if a.predict or a.check or a.purpose or a.where or a.tool:
+            raise SystemExit("--predict, --check, --purpose, --where and --tool belong to sch run --request --job")
         if not a.out:
             raise SystemExit("sch run --request needs --out: the run's own directory")
         try:
@@ -290,6 +290,8 @@ def cmd_run(a):
         elif rec["status"] == "failed":
             text += f" at {rec['stage']}: {rec['reason']}\n  fix: {rec['fix']}"
         text += f"\n  sealed: {', '.join(rec['sealed']) or 'nothing yet'}"
+        if rec.get("agreed"):                    # autodev W049 fix 1: the run's record is its stages' seals
+            text += f"\n  agreed: {rec['agreed']}"
         if rec["status"] != "sealed":
             text += f"\n  resume: {rec['resume']}"
         _emit(a, rec, text)
@@ -1569,6 +1571,9 @@ def build_parser():
     p.add_argument("--purpose", help="with --job: the run key's last field")
     p.add_argument("--where", help="with --job: the job's directory as the cluster names it (the submit "
                    "recipe cds there); default the job's own directory")
+    p.add_argument("--tool", action="append", metavar="TOOL=COMMIT", help="with --job: the commit (40 hex) of "
+                   "a stage's tool, by its adapter's tool name, that the job expects where it runs: its pins check "
+                   "that checkout there, clean, against it (default: the checkout as it is here)")
     p.set_defaults(fn=cmd_run)
     p = sub.add_parser("events"); stackable(p); p.add_argument("--kind"); p.set_defaults(fn=cmd_events)
     p = sub.add_parser("plugin"); ps = p.add_subparsers(dest="sub", required=True)

@@ -520,8 +520,9 @@ class TheClusterPath(_Base):
             self.assertFalse((self.tmp / f"r_{who}").exists())
         self.assertEqual(self.calls(), [], "no tool started")
 
-    def job(self, c, req, check_ok=True, name=None):
-        """The job generated for `req`, in a stage's jobs/ directory, with its site's job.yml."""
+    def job(self, c, req, check_ok=True, name=None, extra=()):
+        """The job generated for `req`, in a stage's jobs/ directory, with its site's job.yml; `extra`: more
+        of `sch run --job`'s own options (W049 fix 1: `--tool`)."""
         import subprocess
         harness = self.tmp / "harness"
         if not harness.exists():
@@ -543,7 +544,7 @@ class TheClusterPath(_Base):
                        "else echo \"VERDICT (four reports): MISSED - $n\"; fi\n")
         f = jobs / (name or ("drive.pbs" if check_ok else "drive_missed.pbs"))
         rc, text = cli("--json", "run", "--request", str(req), "--job", str(f), "--predict", str(pred),
-                       "--check", str(chk), "--purpose", "w042", *answered(c))
+                       "--check", str(chk), "--purpose", "w042", *answered(c), *extra)
         self.assertEqual(rc, 0, text)
         return f, json.loads(text)
 
