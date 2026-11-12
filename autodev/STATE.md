@@ -75,15 +75,17 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus):** the builder of **W054** (Lab: the run section rebuilt as a closed reader, one file per
-  conversion; a live defect); the builder of **W055** (scProfile, the plugin line's first wave: `abundance` graded blind
+- **Running now (2 Opus):** the VERIFIER of **W054** (Lab: the run section rebuilt as a closed reader, one file per
+  conversion; built at `5b4b42e`, suite 496 of 496, the fixture's digest as predicted; on PASS Lab deploys without a
+  question, D-045); the builder of **W055** (scProfile, the plugin line's first wave: `abundance` graded blind
   through the maker, then the maker fixed; a DOI and a pin for `de`, `cellchat` and `abundance`). No Fable agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
   0. **W056, the driver's integration** (the batch is VERIFIED at `110417c`): merge it by hand with W052's branch (they
      conflict in the kernel's report and the scIntegrate stand-in), bring W045 (one object into parts) onto it, finish
      the first cohort's chained request and generate its job with `--tool` for all four tools, a subset first. To
      register and launch at the next free slot. A1.2, A6.3, A7.1 and A3.4 wait on this line.
-  0b. After W054: its verification, then Lab's deploy, reported, not asked (D-045).
+  0b. W054's verification is running; then Lab's deploy, reported, not asked (D-045). After it: Studio's Run-card
+      sentences brought in line with what a bundle now carries (a Fable designer's small pass, then a deploy).
   1. **W052 PASSED its lean re-check** (the harness at `133589d`). Waiting only for the cluster: its subset 791374, then
      the full job (4 h); on AS PREDICTED both mains move in one step (scIntegrate `2fc7a6c` first, then the harness by
      its train's three guards), A3.1 +0.1; the stage-3 question goes into the day's report.
