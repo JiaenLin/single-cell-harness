@@ -96,9 +96,13 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   recipe that runs only git, the shell's small tools and the submit command, by a closed list and a walking test; the
   record made by shell; proof table 32 rows; a FAIL is the wave's second and goes to a design read); the builder of
   **W055's GATE JOB** (W055 is VERIFIED: PASS; A3.2 4/4 and A4.3 3/9 count on merge).
-- **Running now (2 Fable):** the DESIGN READ **D6** of the driver's pins walk (W056's second failed check: what a
-  driven run depends on is declared, never guessed from a string's look; into [waves/W056.md](waves/W056.md)); the DESIGN
-  of **W061** (D8, [waves/W061.md](waves/W061.md)): what the hand-off states about a real object is recorded, not guessed.
+- **Running now (2 Fable):** the DESIGN READ **D6** of the driver's pins walk (W056's second failed check; into
+  [waves/W056.md](waves/W056.md)); the designer-builder of **W062** ([waves/W062.md](waves/W062.md), wave S of W061's
+  design: the Studio says of a fact only what its source lets it say; it ends the false Methods sentence for bundles
+  users already have; then one independent check and its deploy).
+- **W061's DESIGN IS WRITTEN** (D8): 23 statements the pair makes about an object, 8 guessed from a name today; after
+  W062: L1 and L2 (the lab; Opus builders: a wrong result), T and H (the integration tool writes the run's six
+  fields, the harness passing the stage and the run key by argv). A6.2 to 2 of 2 on a new stage-3 run, re-measured.
 - **scQC's docs do NOT count for A2.2 yet (W060 held):** the second draw (seed 20261113) found 1 FALSE in 12 again, a
   rule the code dropped in August and whose stale comment in the code misled three sweeps. Five Fable runs corrected
   about 140 lines. Next for it: the drawer's listed lines fixed in one small run, then the docs-only branch `ba85f8e`+
