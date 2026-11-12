@@ -65,14 +65,15 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   item 6 carry it. Stopped items' briefs are in `<scratchpad>/relaunch/q_*.txt`; their clones keep what they wrote.
 - **THE PI, 2026-11-12 (D-043): "USE PREDECIDER, REDUCE THE DECISION REQUIRED".** The order of fixes and what takes a slot
   is decided and reported, never asked. A question that is the PI's (a promotion, a threshold the data cannot decide)
-  is held for the day's report with its numbers and a recommendation; no work waits on it. A deploy of a live app
-  stays the PI's go: the permission layer refused a drafted standing rule to deploy without asking.
+  is held for the day's report with its numbers and a recommendation; no work waits on it.
+- **DEPLOYS OF STUDIO AND LAB ARE NOT ASKED since 2026-11-12 (D-045, the PI's own answer: "Deploy, and stop asking"):** once
+  an independent check says ready and the deploy workflow's own tests succeed, deploy and report right after with what
+  went live and its limits. The PI can withdraw this at any time. Service is never touched.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus + 1 Fable):** the builder of **scProfile's last small fix** (GAP-C122, clone `W047-scProfile` at
-  `95ed6bd`); the verifier of **W052's lean re-check** (the harness at `133589d`; its subset 791374 is on the cluster);
-  the Fable checker of **W053** (Studio, built at `42b20c3`: an untested gene carries no p anywhere; the volcano follows
-  the cutoff's own correction; a cutoff written in two figures). After its check: the PI's go for the deploy.
+- **Running now (2 Opus):** the builder of **scProfile's last small fix** (GAP-C122, clone `W047-scProfile` at `95ed6bd`);
+  the verifier of **W052's lean re-check** (the harness at `133589d`; its subset 791374 is on the cluster). No Fable
+  agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
   1. After W052's re-check and its subset: the full job (4 h), then BOTH mains in one step (scIntegrate `2fc7a6c` first),
      A3.1 +0.1; the stage-3 question goes into the day's report.
@@ -83,8 +84,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   5. **W050's verification** (scAnno `f456431`): brief `q_w050verify.txt`.
   6. **scIntegrate's installer** (GAP-C116), for A1.3: brief `q_w046fix2.txt`, clone `W046g-scIntegrate`.
   7. **Lab's W017 fix-up 6** (three defects live since D-038): brief `q_w017fix6.txt`, clone `W017g-lab`.
-- **Studio's `main` is `192057b` since 2026-11-12T00:32Z (D-042)**: the words-and-elements pass (W051) is live, with three
-  renames of saved names. Live and known: GAP-C124 (W053 is its fix). Lab's `main` is `ca0cc73` (D-038).
+- **Studio's `main` is `8fb0d0a` since 2026-11-12T01:39Z (D-045)**: W053 is live: an untested gene carries no p in a saved
+  DE file, the table or the volcano; the volcano follows the cutoff's own correction; a cutoff is rounded to two figures
+  before it is applied. Before it the same day: W051, the words and elements (`192057b`, D-042). Lab's `main` is
+  `ca0cc73` (D-038), with three known exotic-input defects (fix-up 6 is queued; its deploy needs no question now).
 - **scProfile's batch is NOT merged**: its DE gate (790813) read AS PREDICTED and its fix held, but the lean re-check
   failed on two record forgeries; the coordinator's attempt to merge with the gaps registered was refused by the
   permission layer and is not retried (D-044).
