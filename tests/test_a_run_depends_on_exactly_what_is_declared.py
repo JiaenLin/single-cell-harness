@@ -211,5 +211,59 @@ class TheSetIsWhatIsDeclared(M._Base):
                          ["04_prof.run.search#0", "04_prof.run.search#1"])
 
 
+class AJobSaysWhatItRuns(M.TheClusterPath):
+    """The re-check's F2 (autodev W056 wave A): a job generated with no stated commit for a tool whose checkout has a
+    tracked change printed that the checkout was clean, ran and sealed. Decided by the design's rule for `checkout`
+    (its commit and its tracked changes, pinned): it runs that change, and its header, its recipe's lines and the
+    job's own PINS lines each say so and name the digest; a sentence that says clean is true."""
+
+    def test_F2_a_tracked_change_with_no_stated_commit_is_said_with_its_digest_and_clean_only_when_clean(self):
+        from test_the_driver_follows_the_tools import commit, git
+        c = cohort(self.tmp / "c", "a")
+        o = self.tmp / "tools" / "stand-ins"     # the four stand-ins as one checkout of their own
+        shutil.copytree(M.FIXTURES, o, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        (o / ".gitignore").write_text("__pycache__/\n*.pyc\n")
+        git(o, "init", "-q")
+        v1 = commit(o, "v1")
+        req = request(c, resources=self.SIZES)
+        doc = yamlish.load(req)
+        for st, (k, rel) in zip(doc["stages"], (("scqc", "fake_scqc.py"), ("scanno", "fake_scanno.py"),
+                                                ("scintegrate", "fake_scintegrate"), ("scprofile", "fake_scprofile"))):
+            st["params"][k] = str(o / rel)
+        os.chmod(req, 0o644)
+        yamlish.dump(doc, req)
+        for name in ("clean", "tracked"):
+            if name == "tracked":                # WRONG in one respect: a tracked change when generated, no --tool
+                (o / "fake_scqc.py").write_text((o / "fake_scqc.py").read_text() + "# a tracked change\n")
+            digest = D._git_state(o)["tracked_changes"]
+            f, _ = self.job(c, req, name=f"{name}.pbs")
+            text = f.read_text()
+            head = text.split("# SUBMIT-BEGIN")[0]
+            p, rd = self.run_job(f, name)
+            self.assertIsNotNone(rd, p.stdout[-800:] + p.stderr[-800:])
+            self.assertEqual(p.stdout.strip().splitlines()[-1], "GATE: AS PREDICTED", p.stdout[-1500:])
+            pins = (rd / "PINS.txt").read_text()
+            rec = [ln.split("\t") for ln in (rd / "CHECKOUTS.tsv").read_text().splitlines()]
+            row = next(x for x in rec if x[:2] == ["checkout", "01_qc.scqc@checkout"])
+            if name == "clean":
+                self.assertEqual(digest, D.CLEAN)
+                self.assertIn("ck_made && echo CHECKOUTS-CLEAN", text)
+                self.assertNotIn("TRACKED:", text)
+                self.assertIn(f"scQC (01_qc): as it is here, at {v1}, clean (no --tool", head)
+                self.assertIn("its commit and its work tree, clean, are the submit recipe's record", pins)
+                self.assertEqual(row[4], "clean")
+            else:
+                self.assertNotEqual(digest, D.CLEAN)
+                self.assertNotIn("CHECKOUTS-CLEAN", text)
+                self.assertIn("ck_made && echo CHECKOUTS-WITH-TRACKED-CHANGES", text)
+                self.assertIn(f"TRACKED: 01_qc.scqc@checkout at {v1}, with tracked changes {digest}", text)
+                self.assertIn(f"scQC (01_qc): as it is here, at {v1}, with tracked changes {digest} (no --tool", head)
+                self.assertIn(f"01_qc.scqc@checkout {o.resolve()} (the site declares no commit file, and this job runs "
+                              f"no git where it runs: its commit and its work tree, with tracked changes {digest}, are "
+                              f"the submit recipe's record)", pins)
+                self.assertEqual(row[4], digest)
+                self.assertNotIn(", clean", head.split("scQC (01_qc):")[1].split("\n")[0])
+
+
 if __name__ == "__main__":
     unittest.main()

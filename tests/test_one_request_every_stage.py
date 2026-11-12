@@ -653,8 +653,13 @@ class TheClusterPath(_Base):
         recipe = text.split("# SUBMIT-BEGIN\n")[1].split("# SUBMIT-END")[0]
         self.assertTrue(all(ln.startswith("#   ") for ln in recipe.splitlines()), recipe)
         self.assertIn("qsub -o \"$RUNDIR/logs/\"", recipe)
-        self.assertIn("ck_made && echo CHECKOUTS-CLEAN", recipe)   # W056 fix 1: what needs git, read where git is,
-        self.assertNotIn("-m sch", recipe)                         # by the recipe's own shell (the amendment)
+        # W056 fix 1: what needs git, read where git is, by the recipe's own shell (the amendment). W056 wave A (F2):
+        # the stand-ins' checkout is this clone, which has tracked changes while a commit is made: then the job says so
+        from sch.drive import CLEAN, _git_state
+        dirty = (_git_state(FIXTURES) or {}).get("tracked_changes") not in (None, CLEAN)
+        self.assertIn("ck_made && echo CHECKOUTS-" + ("WITH-TRACKED-CHANGES" if dirty else "CLEAN"), recipe)
+        self.assertEqual("TRACKED: 01_qc.scqc@checkout" in recipe, dirty)
+        self.assertNotIn("-m sch", recipe)
         self.assertIn("CHECKOUTS_SHA256=$CK", recipe)
         body = text.split("# SUBMIT-END")[1]
         self.assertEqual([ln for ln in body.splitlines() if "git -C" in ln or "rev-parse" in ln or "git status" in ln],

@@ -59,9 +59,12 @@ everything downstream knows when one does.
 > states the commit of each tool it expects (`sch run --request FILE --job JOB --tool scQC=COMMIT`, 40 hex,
 > by the adapter's tool name): that commit and a clean work tree stand for the files of the param naming
 > the tool too; without `--tool` a checkout, and the param's files, are pinned as they are where the job
-> is generated, and one absent there is checked only where the job runs. **A generated job never runs git
+> is generated - a checkout with tracked changes WITH them, which the job's header, its recipe's lines
+> (`CHECKOUTS-WITH-TRACKED-CHANGES` and a `TRACKED:` line a checkout) and PINS.txt each say with their
+> digest, so no line says clean of it - and one absent there is checked only where the job runs, where a
+> tracked change is refused. **A generated job never runs git
 > where it runs** (a compute node may have none; harness W056): what needs git - each checkout, the
-> harness's and every tool's, at the commit the job expects with no tracked change - is read where the job
+> harness's and every tool's, at the commit the job expects with no tracked change but one it was generated with - is read where the job
 > is SUBMITTED, by its own recipe (between `SUBMIT-BEGIN` and `SUBMIT-END`), which runs git, the shell's own
 > small tools (`cd mkdir pwd date cat printf echo test [ head cut tr`, a sha256 tool) and `qsub`, nothing else:
 > no python, no tool and no compute run where a job is submitted, and the generator refuses to write a recipe

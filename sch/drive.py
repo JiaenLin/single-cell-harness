@@ -1881,6 +1881,12 @@ def _pins_sha(doc: dict) -> str:
     return hashlib.sha256(json.dumps(doc, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def _tracked(e) -> bool:
+    """A git checkout pinned WITH tracked changes - its digest, not clean (autodev W056 wave A, the re-check's F2): a
+    job generated so runs that change, and every line that speaks of the checkout says so and names the digest."""
+    return bool(e and e.get("git")) and e.get("tracked_changes") not in (None, CLEAN)
+
+
 def _said_state(e) -> str:
     return "not named" if not e else "absent" if e.get("absent") else "not a git checkout" if not e.get("git") \
         else f"at {e['git']}, " + ("clean" if e.get("tracked_changes") == CLEAN else "with tracked changes")
@@ -1978,16 +1984,18 @@ def _from_record(now: dict, rec: dict, doc: dict, dirs: dict) -> tuple:
             lines.append(f"  here: {k} {top}: not a git checkout at submission; its files are compared here")
             continue
         now[k] = {"path": r["path"], "git": r.get("git"), "tracked_changes": r.get("tracked_changes")}
+        state = "clean" if r.get("tracked_changes") == CLEAN else f"with tracked changes {r.get('tracked_changes')}"
         if not cf:
             lines.append(f"  not compared here: {k} {top} (the site declares no commit file, and this job runs no git "
-                         f"where it runs: its commit and clean work tree are the submit recipe's record)")
+                         f"where it runs: its commit and its work tree, {state}, are the submit recipe's record)")
         else:
             got = _commit_file(top, cf)
             if got != r["git"]:
                 bad.append(f"{k} {top} (git read {r['git']} at submission; here its {cf} names {got or 'nothing'}: "
                            f"the checkout moved after the job was submitted)")
             else:
-                lines.append(f"  here: {k} {top}: its {cf} names {got}, the commit git read at submission")
+                lines.append(f"  here: {k} {top}: its {cf} names {got}, the commit git read at submission" + (
+                    "" if state == "clean" else f", {state} as the submit recipe read them"))
     return now, lines, bad
 
 
@@ -2074,7 +2082,9 @@ RECIPE_BUILTINS = (":", "true", "false", "local", "return", "umask", "set", "uns
 #: The recipe's own shell (W056 fix 1, amendment): it reads each checkout with git where the job is submitted and
 #: writes CHECKOUTS, or refuses by name before anything is made. `ck_one ROLE PATH WANT WHY`: WANT is the commit the
 #: job expects, `-` (not a git checkout when the job was generated) or `any` (absent then: checked where it runs); a
-#: tracked change is refused always - read as `_git_state` reads it (its options; status, the diff against HEAD, and a
+#: tracked change is refused unless WANT carries its very digest - a job generated with that change, which then says
+#: so (CHECKOUTS-WITH-TRACKED-CHANGES and a TRACKED line naming it, autodev W056 wave A, F2) - and always under `any`;
+#: read as `_git_state` reads it (its options; status, the diff against HEAD, and a
 #: file git is told not to look at); WHY is the refusal's words. No line begins with `(` (gate.py's `recipe_of` reads
 #: such a line as a remark) and none but the last names the submit command.
 RECIPE_SHELL = (
@@ -2103,6 +2113,9 @@ RECIPE_SHELL = (
     r"""    else top=$d; at=-; k=-; said='not a git checkout'; fi""",
     r"""  fi""",
     r"""  [ "$3" = any ] || [ "$3" = "$k" ] || CK_BAD="$CK_BAD; $w $top$4; here $said""" + '"',
+    r"""  [ "$3" != any ] || [ "$s" = clean ] || [ "$s" = - ] || CK_BAD="$CK_BAD; $w $top: absent where the job was """
+    r"""generated, and here $said: a job runs a tracked change only when it was generated with it - commit or stash the """
+    r"""change, or generate the job again where the checkout is""" + '"',
     r"""  ck_row checkout "$1" "$top" "$at" "$s" "$f"; }""",
     r"""ck_files() ( umask 222 && printf '%s' "$CK_REC" > "$RUNDIR/""" + CHECKOUTS + r"""" && printf '%s\n' """
     r""""${HC:-not a git checkout}" > "$RUNDIR/TOOL_HEAD.txt" )""",
@@ -2451,8 +2464,10 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"expects {e['git']}, clean (--tool; read where the job is submitted, by its recipe: another commit or a "
         f"tracked change is refused there)"
         if e.get("stated") else "absent here and not stated (--tool): checked only where the job runs"
-        if e.get("absent") else f"as it is here, {e.get('git') or 'not a git checkout'} (no --tool: the job refuses "
-        f"any other)")) for p, _x, role, _v, _g in _checkouts(req) if (e := pins.get(role))]
+        if e.get("absent") else f"as it is here, {_said_state(e)}" + (
+            f" {e['tracked_changes']} (no --tool: the job refuses any other, and runs that change, which no commit holds)"
+            if _tracked(e) else " (no --tool: the job refuses any other)"))) for p, _x, role, _v, _g in _checkouts(req)
+        if (e := pins.get(role))]
     # by role, without where the file lies here: the roles are the same on every machine, and a path of
     # this workstation's has no place in a job that runs on another
     cf = job.get("commit_file")
@@ -2480,6 +2495,12 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
                 f"{e['git']}:{e['tracked_changes']}", f": not as it was when the job was generated ({_said_state(e)})"
             ) if e.get("git") else ("-", ": not as it was when the job was generated (not a git checkout)")
         calls.append(f"ck_one {_sh(role, 'a checkout role')} {_sh(words[role], role, path=True)} {want} {_sh(why, role)}")
+    # A SENTENCE SAYING CLEAN IS TRUE (autodev W056 wave A, the re-check's F2): a tool pinned with tracked changes (no
+    # --tool) runs that change; the recipe's line and a TRACKED line each say so and name its digest, never CLEAN
+    tracked = [(role, e) for role in sorted(_checkout_dirs(req)) if _tracked(e := pins.get(role) or {})]
+    done = ["ck_made && echo CHECKOUTS-CLEAN"] if not tracked else ["ck_made && echo CHECKOUTS-WITH-TRACKED-CHANGES"] + [
+        "echo " + _sh(f"TRACKED: {role} at {e['git']}, with tracked changes {e['tracked_changes']}, as when this job was "
+                      f"generated (no --tool): it runs that change, which no commit holds", role) for role, e in tracked]
     recipe = [
         f"cd {at}", *site_lines,
         f"HN={hn_sh}; HC=$(git -C \"$HN\" rev-parse HEAD)",
@@ -2499,7 +2520,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"ck_one harness \"$HN\" {f'{commit}:{CLEAN}' if commit else 'any'} " + _sh(f": this job expects {commit}, clean" if commit else
                                                          ": not a git checkout when the job was generated", "the harness"),
         *calls,
-        "ck_made && echo CHECKOUTS-CLEAN",
+        *done,
         f"[ -n \"$CK\" ] && {sub_sh} -o \"$RUNDIR/logs/\" -v \"RUNDIR=$RUNDIR,HARNESSHEAD=$HC,CHECKOUTS_SHA256=$CK\" {jq}"]
     bad = recipe_refused("\n".join(recipe), sub)
     if bad:
