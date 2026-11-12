@@ -45,6 +45,10 @@ SHEET_LIBRARY = "sample"
 CHUNK_VALUES = 1 << 23
 #: A library's name is a part's file name: refused, never rewritten, when it is not one.
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*")
+#: The longest file name, in bytes, the common file systems hold (ext4, xfs, apfs, NTFS by characters): a part
+#: is `<library>.h5ad`, so a library of more than NAME_MAX - 5 characters is refused by name before any write
+#: (autodev W056 fix 1: 251 characters ended in an OSError trace).
+NAME_MAX = 255
 #: The anndata on-disk encodings this step writes (anndata's spec, as anndata 0.8 onwards reads it).
 ENC = {"anndata": "0.1.0", "csr_matrix": "0.1.0", "dataframe": "0.2.0", "string-array": "0.2.0",
        "categorical": "0.2.0", "array": "0.2.0", "dict": "0.1.0", "string": "0.2.0"}
@@ -100,7 +104,8 @@ def column(frame, name, where):
     node = frame[name]
     if isinstance(node, h5py.Group):
         if "codes" in node and "categories" in node:
-            return node["codes"][()].astype(np.int64), [_decode(c) for c in node["categories"][()]]
+            return node["codes"][()].astype(np.int64), [_decode(c) for c in
+                                                         _strings_of(node["categories"], f"{where}.{name}'s levels")[()]]
         if "values" in node and "mask" in node and node["values"].dtype.kind in "OSU":
             vals, mask = node["values"][()], node["mask"][()]
             levels = sorted({_decode(v) for v, m in zip(vals, mask) if not m})
@@ -117,9 +122,47 @@ def column(frame, name, where):
     return raw, None
 
 
-def index_of(frame):
+class _Nullable:
+    """Strings anndata wrote as a `nullable-string-array` (pandas 3's default string dtype, as anndata 0.11
+    onwards writes an index or a column of it): a group of a `values` and a boolean `mask` dataset. Read in
+    slices, as a `string-array` dataset is; a masked entry names nothing, so it is refused when the group is
+    opened, before any part is written (autodev W056 fix 1, ATTACKS 49)."""
+
+    def __init__(self, node, where):
+        import numpy as np
+        self.values = node["values"]
+        mask = np.asarray(node["mask"][()], dtype=bool)
+        if mask.shape != self.values.shape:
+            raise Refused(f"{where} is a nullable-string-array whose mask ({mask.shape[0] if mask.ndim else 0}) and "
+                          f"values ({self.values.shape[0]}) differ in length", "deliver the object as anndata wrote it")
+        if mask.any():
+            first = int(np.argmax(mask))
+            raise Refused(f"{where} names nothing at {int(mask.sum())} position(s), the first at {first}: every "
+                          f"observation and every gene is named", "deliver an object whose every name is set")
+        self.shape = self.values.shape
+
+    def __getitem__(self, k):
+        return self.values[k]
+
+
+def _strings_of(node, where):
+    """A `string-array` dataset as it is, or a `nullable-string-array` group read as one (`_Nullable`)."""
+    import h5py
+    if isinstance(node, h5py.Dataset):
+        return node
+    if "values" in node and "mask" in node:
+        return _Nullable(node, where)
+    raise Refused(f"{where} is a {_decode(node.attrs.get('encoding-type', 'group'))}, which this step does not "
+                  f"read as names", "deliver its names as anndata writes them (string-array or nullable-string-array)")
+
+
+def index_of(frame, where="the object's frame"):
+    """A frame's index, by the name its `_index` attribute gives: a string-array dataset (anndata before 0.11,
+    or pandas' object dtype) or a nullable-string-array group (anndata 0.11 onwards with pandas 3's strings)."""
     name = _decode(frame.attrs.get("_index", "_index"))
-    return frame[name]
+    if name not in frame:
+        raise Refused(f"{where} holds no index {name!r}", "deliver the object as anndata wrote it")
+    return _strings_of(frame[name], f"{where}'s index")
 
 
 def unique_symbols(symbols):
@@ -270,8 +313,8 @@ def split(obj, out, params, context):
     with h5py.File(obj, "r") as f:
         slot, var, var_name = slot_of(f, counts)
         obs = f["obs"]
-        names = index_of(obs)
-        n_obs, n_var = int(names.shape[0]), int(index_of(var).shape[0])
+        names = index_of(obs, "the object's obs")
+        n_obs, n_var = int(names.shape[0]), int(index_of(var, f"the counts slot's genes ({var_name})").shape[0])
         shape = [int(v) for v in slot.attrs.get("shape", slot.attrs.get("h5sparse_shape", (-1, -1)))]
         if shape != [n_obs, n_var]:
             raise Refused(f"the counts slot {counts!r} is {shape[0]} x {shape[1]}, and the object holds "
@@ -291,15 +334,31 @@ def split(obj, out, params, context):
                               f"every observation's {c} is declared, or it is not delivered")
         present = sorted(set(int(v) for v in np.unique(lib_codes)))
         bad = [libs[i] for i in present if not SAFE_NAME.fullmatch(libs[i])]
-        lowered = [libs[i].lower() for i in present]
-        if bad or len(set(lowered)) != len(lowered):
-            raise Refused(f"library name(s) {', '.join(map(repr, bad[:5])) or '(two differing by case)'} "
-                          f"cannot name a file; a part is never renamed", "deliver file-safe library names")
+        if bad:
+            raise Refused(f"library name(s) {', '.join(map(repr, bad[:5]))} cannot name a file; a part is never "
+                          f"renamed", "deliver file-safe library names")
+        # A NAME NO FILE SYSTEM HOLDS, OR TWO THAT ONE FOLDS INTO ONE (autodev W056 fix 1): refused by name, every
+        # level named, before any write - not an OSError trace, and not one part written over another
+        long = [libs[i] for i in present if len(f"{libs[i]}.h5ad".encode("utf-8")) > NAME_MAX]
+        if long:
+            raise Refused(f"library name(s) {', '.join(f'{x!r} ({len(x)} characters)' for x in long[:3])} cannot "
+                          f"name a file: a part is <library>.h5ad, and a file system holds a name of at most "
+                          f"{NAME_MAX} bytes; a part is never renamed",
+                          f"deliver library names of at most {NAME_MAX - len('.h5ad')} characters")
+        folded = {}
+        for i in present:
+            folded.setdefault(libs[i].casefold(), []).append(libs[i])
+        clash = [v for v in folded.values() if len(v) > 1]
+        if clash:
+            raise Refused(f"library names {'; '.join(' and '.join(map(repr, v)) for v in clash[:3])} differ only "
+                          f"by case: where a file system folds case they name one file, and one part would be "
+                          f"written over another; a part is never renamed",
+                          "deliver library names that differ by more than case")
         sym_codes, sym_levels = column(var, sym_col, f"the counts slot's genes ({var_name})")
         symbols = ([sym_levels[c] if c >= 0 else "" for c in sym_codes] if sym_levels is not None
                    else [str(v) for v in sym_codes])
         written, dups = unique_symbols(symbols)
-        ids = [_decode(v) for v in index_of(var)[()]]
+        ids = [_decode(v) for v in index_of(var, f"the counts slot's genes ({var_name})")[()]]
         indptr = slot["indptr"][()].astype(np.int64)
         data_ds, ind_ds = slot["data"], slot["indices"]
         parts.mkdir(parents=True, exist_ok=False)

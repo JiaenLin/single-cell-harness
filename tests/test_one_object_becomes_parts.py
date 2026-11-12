@@ -23,6 +23,7 @@ import io
 import json
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -59,10 +60,27 @@ def _strings(g, name, vals):
     d.attrs.update({"encoding-type": "string-array", "encoding-version": "0.2.0"})
 
 
-def _frame(g, index, cats):
+def _nullable(g, name, vals):
+    """Strings as anndata 0.11 onwards writes pandas 3's default string dtype: a `nullable-string-array` group."""
+    import h5py
+    import numpy as np
+    s = g.create_group(name)
+    s.attrs.update({"encoding-type": "nullable-string-array", "encoding-version": "0.1.0"})
+    s.create_dataset("values", data=[str(v) for v in vals], dtype=h5py.string_dtype("utf-8"))
+    s.create_dataset("mask", data=np.array([v is None for v in vals], dtype=bool))
+
+
+def _frame(g, index, cats, nullable=False):
+    """`nullable`: the index and every column as anndata 0.13 with pandas 3 writes them by default (W056 fix 1,
+    ATTACKS 49): nullable-string-array groups, not string-array datasets and categoricals."""
     import numpy as np
     g.attrs.update({"encoding-type": "dataframe", "encoding-version": "0.2.0", "_index": "_index",
                     "column-order": list(cats)})
+    if nullable:
+        _nullable(g, "_index", index)
+        for name, vals in cats.items():
+            _nullable(g, name, vals)
+        return
     _strings(g, "_index", index)
     for name, vals in cats.items():
         levels = sorted(set(vals))
@@ -78,7 +96,7 @@ def _csr(g, m, kind="csr_matrix"):
         g.create_dataset(k, data=getattr(m, k))
 
 
-def atlas(dest: Path, cells: int = 240, genes: int = 40, seed: int = 7) -> dict:
+def atlas(dest: Path, cells: int = 240, genes: int = 40, seed: int = 7, nullable: bool = False, libs=None) -> dict:
     """A published object of the scale cohort's SHAPE (no value of it): every library pools three
     donors of both arms, each donor in several libraries; cells interleaved across libraries; ids as
     var_names, the symbols (two of them shared by two genes) in raw/var; integer counts in raw/X and
@@ -87,7 +105,7 @@ def atlas(dest: Path, cells: int = 240, genes: int = 40, seed: int = 7) -> dict:
     import numpy as np
     import scipy.sparse as sp
     rng = np.random.default_rng(seed)
-    libs = [f"lib{i + 1}" for i in range(N_LIB)]
+    libs = list(libs or [f"lib{i + 1}" for i in range(N_LIB)])
     pool = {lib: [f"d{(i + k) % N_DONOR + 1}" for k in range(3)] for i, lib in enumerate(libs)}
     arm = {f"d{j + 1}": ("arm_a" if j % 2 == 0 else "arm_b") for j in range(N_DONOR)}
     lib_of = [libs[int(x)] for x in rng.integers(0, N_LIB, cells)]
@@ -107,19 +125,19 @@ def atlas(dest: Path, cells: int = 240, genes: int = 40, seed: int = 7) -> dict:
         _csr(f.create_group("X"), norm)
         _frame(f.create_group("obs"), barcodes, {"library": lib_of, "donor": donor_of,
                                                  "arm": [arm[d] for d in donor_of],
-                                                 "cell_type": [f"t{n % 3}" for n in range(cells)]})
-        _frame(f.create_group("var"), ids, {"symbol": symbols})
+                                                 "cell_type": [f"t{n % 3}" for n in range(cells)]}, nullable)
+        _frame(f.create_group("var"), ids, {"symbol": symbols}, nullable)
         raw = f.create_group("raw")
         raw.attrs.update({"encoding-type": "raw", "encoding-version": "0.1.0"})
         _csr(raw.create_group("X"), counts)
-        _frame(raw.create_group("var"), ids, {"symbol": symbols})
+        _frame(raw.create_group("var"), ids, {"symbol": symbols}, nullable)
         layers = f.create_group("layers")
         layers.attrs.update({"encoding-type": "dict", "encoding-version": "0.1.0"})
         _csr(layers.create_group("by_gene"), counts.tocsc(), "csc_matrix")
     path.chmod(0o444)
     (dest / "design.csv").write_text("donor,arm\n" + "".join(f"{d},{a}\n" for d, a in arm.items()))
     (dest / "registry.tsv").write_text("species\tbuild\tpath\nspecies_x\tref_1\treferences/species_x/ref_1\n")
-    return {"dir": dest, "path": path, "counts": counts, "barcodes": barcodes, "ids": ids,
+    return {"dir": dest, "path": path, "counts": counts, "norm": norm, "barcodes": barcodes, "ids": ids,
             "symbols": symbols, "lib_of": lib_of, "donor_of": donor_of, "arm": arm, "pool": pool}
 
 
@@ -301,6 +319,102 @@ class OneObjectBecomesParts(_Base):
         self.assertEqual(list(part.var["gene_ids"]), self.a["ids"])
         self.assertTrue(part.var_names.is_unique)
         self.assertEqual(set(part.obs["arm"]), {"arm_a", "arm_b"})
+
+
+PARAMS = {"library": "library", "replicate": "donor", "counts": "raw/X", "symbols": "symbol", "carry": ["arm"],
+          "column": "matrix"}
+
+
+def same_as_the_object(case, a, rec, out):
+    """Every part is the object's rows for its library, cell for cell, in the object's order."""
+    case.assertEqual(sorted(rec["parts"]), sorted(set(a["lib_of"])))
+    for lib, p in rec["parts"].items():
+        got = read_part(out / p["path"])
+        rows = [n for n, lb in enumerate(a["lib_of"]) if lb == lib]
+        case.assertEqual(got["obs"], [a["barcodes"][n] for n in rows], lib)
+        case.assertEqual(got["gene_ids"], a["ids"], lib)
+        case.assertEqual((got["X"] != a["counts"][rows]).nnz, 0, lib)
+        case.assertEqual(got["donor"], [a["donor_of"][n] for n in rows], lib)
+
+
+class TheFieldsCurrentEncodings(_Base):
+    """W056 fix 1 (the verifier's R3, ATTACKS 49): an object written by the field's current library with its
+    defaults (anndata 0.13 with pandas 3) stores its indexes and string columns as nullable-string-array
+    groups; the step died on it with an AttributeError (the driver: "parts died: no out.json")."""
+
+    def test_an_object_whose_indexes_and_strings_are_nullable_string_arrays_splits_through_the_driver(self):
+        a, out = atlas(self.tmp / "n", nullable=True), self.tmp / "run"
+        rc, rec = self.drive(request(a), out, *ANSWERS)
+        self.assertEqual((rc, rec["status"]), (0, "sealed"), rec)
+        mod, split = step_module(), self.tmp / "split"
+        split.mkdir()
+        same_as_the_object(self, a, mod.split(a["path"], split, PARAMS, {"assay": "scrna"}), split)
+
+    def test_a_name_the_mask_marks_missing_is_refused_before_any_part(self):
+        import h5py
+        a = atlas(self.tmp / "m", nullable=True)
+        a["path"].chmod(0o644)
+        with h5py.File(a["path"], "r+") as f:
+            m = f["obs/_index/mask"]
+            m[3] = True
+        mod, out = step_module(), self.tmp / "split"
+        out.mkdir()
+        with self.assertRaises(mod.Refused) as e:
+            mod.split(a["path"], out, PARAMS, {"assay": "scrna"})
+        self.assertIn("the object's obs's index names nothing at 1 position(s), the first at 3", e.exception.reason)
+        self.assertFalse((out / "parts").exists())
+
+    @unittest.skipUnless(importlib.util.find_spec("anndata"), "anndata is not in this interpreter")
+    def test_every_input_shape_written_by_anndata_itself_with_its_defaults(self):
+        """The object as the library writes it (`write_h5ad`, every default), beside the hand-written one: the
+        counts in raw/X (a normalized X), in X, in a layer; the library a string column and a categorical."""
+        import anndata as ad
+        import h5py
+        import pandas as pd
+        a, mod = self.a, step_module()
+        enc = {}
+        for n, (lib_cat, counts) in enumerate([(False, "raw/X"), (True, "raw/X"), (False, "layers/counts"),
+                                               (True, "X")]):
+            with self.subTest(library_categorical=lib_cat, counts=counts):
+                lib = pd.Categorical(a["lib_of"]) if lib_cat else list(a["lib_of"])
+                obs = pd.DataFrame({"library": lib, "donor": list(a["donor_of"]),
+                                    "arm": pd.Categorical([a["arm"][d] for d in a["donor_of"]])},
+                                   index=list(a["barcodes"]))
+                var = pd.DataFrame({"symbol": list(a["symbols"])}, index=list(a["ids"]))
+                b = ad.AnnData(X=a["counts"].copy(), obs=obs, var=var)
+                b.layers["counts"] = a["counts"].copy()
+                b.raw = b
+                if counts != "X":
+                    b.X = a["norm"].copy()
+                path = self.tmp / f"by_anndata_{n}.h5ad"
+                b.write_h5ad(path)
+                with h5py.File(path, "r") as f:
+                    enc[n] = {k: f[k].attrs.get("encoding-type") for k in ("obs/_index", "obs/library", "var/_index",
+                                                                            "raw/var/symbol")}
+                out = self.tmp / f"split_{n}"
+                out.mkdir()
+                rec = mod.split(path, out, {**PARAMS, "counts": counts}, {"assay": "scrna"})
+                same_as_the_object(self, a, rec, out)
+        # what the library wrote, said: under pandas 3 the indexes are nullable-string-array groups
+        print(f"\n    anndata {ad.__version__ if hasattr(ad, '__version__') else '?'}, pandas {pd.__version__}: {enc[0]}",
+              file=sys.stderr)
+
+    def test_a_library_no_file_can_be_named_after_or_two_one_by_case_are_refused_by_name_before_any_write(self):
+        mod = step_module()
+        long = "L" * 251
+        for n, (libs, words) in enumerate([
+                ([long, "lib2", "lib3", "lib4", "lib5", "lib6"], f"{long!r} (251 characters) cannot name a file"),
+                (["Ab", "ab", "lib3", "lib4", "lib5", "lib6"], "library names 'Ab' and 'ab' differ only by case")]):
+            with self.subTest(words=words[:40]):
+                a, out = atlas(self.tmp / f"x{n}", libs=libs), self.tmp / f"split{n}"
+                out.mkdir()
+                with self.assertRaises(mod.Refused) as e:
+                    mod.split(a["path"], out, PARAMS, {"assay": "scrna"})
+                self.assertIn(words, e.exception.reason)
+                self.assertEqual(list(out.iterdir()), [], "nothing written")
+        a, out = atlas(self.tmp / "ok", libs=["L" * 250] + [f"lib{i}" for i in range(2, N_LIB + 1)]), self.tmp / "ok_split"
+        out.mkdir()
+        self.assertIn("L" * 250, mod.split(a["path"], out, PARAMS, {"assay": "scrna"})["parts"])
 
 
 class WhatTheObjectDoesNotHoldIsRefused(_Base):

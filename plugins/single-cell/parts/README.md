@@ -50,13 +50,23 @@ k-th repeat is written `SYMBOL-k`; a written name that is already another gene's
 ## Cost
 
 One pass over the slot in chunks; each library's rows are appended to its own file. The step holds
-one chunk and a few bytes per cell, whatever the object's size (measured, W045: 573 MB peak at 20 M
-stored values, 558 MB at 80 M; wall time linear in the stored values). The report's `cost` is the
-executor's, like any stage's; `PARTS.json` adds the step's own peak resident memory.
+one chunk and, for every cell, its library code, row length, row number and carried obs values: flat
+in the stored values, growing with the cells. Measured (W045: 573 MB peak at 20 M stored values, 558 MB
+at 80 M, chunks of 2^23 values, where the chunk dominates; wall time linear in the stored values). Per
+cell, measured on synthetic objects of the scale cohort's shape (the tests' builder, chunks of 10^6
+values), as the step's peak resident memory between two sizes: about 230 bytes per added cell from
+50,000 to 200,000 cells (84.6 to 119.2 MB), about 93 bytes from 100,000 to 400,000 cells (148.3 to
+176.1 MB; W056's builder and verifier). An inference, not a measurement: at a million cells and more
+the per-cell part is some hundreds of MB. The report's `cost` is the executor's, like any stage's;
+`PARTS.json` adds the step's own peak resident memory.
 
 ## Known limitations
 
 - Only a row-compressed (csr) counts slot streams; a dense or csc slot is refused, not loaded.
 - The parts are as large as the slot's stored values (compressed); nothing is subsampled.
 - A carried nullable integer or boolean column is refused, not converted.
+- An index or a string column is read as anndata writes it: a `string-array`, or the
+  `nullable-string-array` group anndata 0.11 onwards writes for pandas 3's strings (its defaults); a
+  name the mask marks as missing is refused. A library of more than 250 characters, or two that differ
+  only by case, is refused by name before any part is written.
 - What the publisher did before publishing (its cell call, its filters) is in every part, unseen.
