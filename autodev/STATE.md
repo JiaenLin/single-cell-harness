@@ -219,7 +219,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **793445**, the preflight of W056's regenerated subset job. 793345 (the scProfile batch's gate) read AS
+- **On PBS:** nothing. **793445, the preflight of W056's regenerated subset job: THE PINS HELD on the cluster** (as
+  predicted; none of the 18 false misses: the declared set works where the guess failed), and it read MISSED (2) in
+  the cohort's check script graded on its real references: a TAB-separated samplesheet under a .csv name read with a
+  comma reader, and a `latest` link in the reference run that makes one table match twice. Both go into the waves'
+  one fix round with the verification's findings (the verifier was told). 793345 (the scProfile batch's gate) read AS
   PREDICTED. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
