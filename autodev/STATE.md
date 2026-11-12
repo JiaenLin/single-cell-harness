@@ -103,26 +103,35 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the LEAN RE-CHECK of **W056's D6 fix round** (the branch at `90dea9a`; the round built:
-  one reader for every declared value, a value a reader could take for another file refused by name, the cohort's
-  check script reading a real run's layout, both jobs regenerated: subset md5 `8ef49ef9...`, full `194dc596...`; proof
-  table 39 rows; **the cluster preflight of the subset job read `PREFLIGHT: OK`, PBS 794434**: pins, C0 and C3 AS
-  PREDICTED). On its PASS: submit the subset run through the gate (6 h), then the full run (10 h), then the train
-  merge and A1.2; a FAIL goes to a design read. **W063's COLD ATTEMPT 2** (stage 1), a SEPARATE headless session
-  started by the coordinator from `<scratchpad>/a23/` (D-055; one Opus slot; not an agent of this session, so no
-  agent id: its folder is `a23/launch/run1_<stamp>/`, its end line `COLD: ...` or `NOT COLD`). **ATTEMPT 1 IS VOID**
-  (15:40Z to 15:56Z): the check printed NOT COLD (3) on two refused Edit calls and a Grep expression it read as a
-  path; nothing outside the pack was read, but the rule written before the launch voids it: its job
-  (`launch/run1_20261112T154032Z/handback/job.pbs`) is NOT submitted and NOT read; only its MISLED rows are used
-  (the docs ledger). The check was amended before attempt 2 (waves/W063.md, Attempts).
-  W063's set-up is BUILT and probe 1 read (tools exact, five outside reads refused; the CLI's five built-in parts
-  ruled INFO). The kit, the criteria note and every launch folder are copied to the first cohort's
-  `stages/01_qc/a23/` (survives a reboot; the scratch does not; never under this repository: the leak guard reads
-  its untracked folders too). AFTER THE ATTEMPT: read `pack_run1/out/job.pbs` before anything runs (waves/W063.md,
-  step 5), record its md5, submit it unchanged through the gate (preflight, then the run), then the grading job
-  with NEW and SINCE.
-  NEXT for an Opus slot: decoupler's blind grade (scProfile at `a2694ec`); W061's T (the integration tool records
-  the run's six fields); W067's S1.
+- **W056's D6 fix round FAILED its lean re-check at `90dea9a` (1 reason), the waves' SECOND failed check: a DESIGN
+  READ, not a patch (RULES item 22).** The reason: the walk reads scQC's samplesheet with the stack's reader, which
+  breaks a line at five characters scQC's reader does not (U+2028, U+2029, U+0085, a form feed, a vertical tab); a
+  text cell holding one and then `#` ends the row for the walk only, so that row's file is not pinned and the plan
+  exits 0 (the cohort's sheet holds no such cell; attack 33). Everything else the round built held under the
+  checker's own inputs, and **the cluster preflight read OK (PBS 794434)**. Counted, for the next builder: an
+  only-spaces scQC cell is refused though scQC reads it as empty; `cell_reads` sees `.strip` only; C9 takes the first
+  `report.json` holding "ran" (a real run also writes the stack's own report there: not measured); the wave's
+  sentence that scQC's reader is "as the stack's". **NO CHAIN JOB IS SUBMITTED YET, for a second reason: both jobs
+  pin scProfile at `b5f646a`, and stage 4 runs `de`, which before the allocation fix (`a2694ec`) reads the node's
+  core count (the open-file incident of 792123): the next builder regenerates both jobs at `a2694ec`.**
+- **Running now (1 Fable):** W056's DESIGN READ 2 (one table, two parsers: what makes a fourth difference between
+  two table parsers impossible or refused; it appends one section to waves/W056.md). On its hand-back: ONE Opus
+  builder to that design (at most 3 changes, the jobs regenerated at scProfile `a2694ec`), `proof.py`, the cluster
+  preflight, a lean re-check, then the subset (6 h) and the full run (10 h).
+- **Running now (2 Opus):** the builder of **W068** (decoupler, the second held-out plugin: graded BLIND and pushed
+  before any change, then through the maker's verbs, then its gate job; waves/W068.md); **W063's COLD ATTEMPT 2**
+  (stage 1), a SEPARATE headless session started by the coordinator from `<scratchpad>/a23/` (D-055; one Opus slot;
+  not an agent of this session, so no agent id: its folder is `a23/launch/run1_<stamp>/`, its end line `COLD: ...`
+  or `NOT COLD`). **ATTEMPT 1 IS VOID** (15:40Z to 15:56Z): the check printed NOT COLD (3) on two refused Edit calls
+  and a Grep expression it read as a path; nothing outside the pack was read, but the rule written before the
+  launch voids it: its job (`launch/run1_20261112T154032Z/handback/job.pbs`) is NOT submitted and NOT read; only its
+  MISLED rows are used (the docs ledger; about 30 rows, to file with attempt 2's). The check was amended before
+  attempt 2 (waves/W063.md, Attempts). The kit, the criteria note and every launch folder are copied to the first
+  cohort's `stages/01_qc/a23/` (survives a reboot; never under this repository: the leak guard reads its untracked
+  folders too). AFTER THE ATTEMPT: read `pack_run1/out/job.pbs` before anything runs (waves/W063.md, step 5),
+  record its md5, submit it unchanged through the gate (preflight, then the run), then the grading job with NEW and
+  SINCE. When W056's design read hands back, its builder takes the slot the cold attempt frees.
+  NEXT for an Opus slot after those: W061's T (the integration tool records the run's six fields); W067's S1.
 - **Merged 2026-11-12T14:16Z, the twelfth: scProfile `a2694ec`** (the batch **W055 + W058 + W065**, each verified PASS; the
   gate PBS 793345 AS PREDICTED at that commit): `abundance` through the maker with a declared control as its
   reference level, a covariate refused by name and an interaction named as not fitted; a source stage (three plugins
