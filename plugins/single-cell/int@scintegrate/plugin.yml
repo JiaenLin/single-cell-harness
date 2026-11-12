@@ -39,6 +39,10 @@ decisions:
     escape: "fitting on the input's PCA although withheld cells are in it"
     unanswered: tool-default
     what: "true to fit on the input's own PCA although withheld cells are in it (recorded in report.json pca)"
+# The design sheet scIntegrate reads keyed on that library column (`--design`, scintegrate/inputs.py
+# read_design: one row per batch). A request whose design is keyed on a replicate a pooled library
+# shares cannot be joined there: the driver refuses it before any tool (harness W045).
+library_design: [integrate.design]
 
 # The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
 owned: [integrate.h5ad, integrate.out, integrate.species, integrate.assay]

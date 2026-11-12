@@ -22,10 +22,11 @@ assays: [scrna, snrna]
 # What it reads and hands on (harness W041): the integrated object in, scProfile's object out.
 reads: joint
 hands_on: {joint: null}
-# The column naming each library, in the object and in the design, where scProfile takes it
-# (`run --sample-key`; it keys the design on it, scprofile/inputs.py read_design). The driver
-# writes the request's keys.sample here (harness W042, GAP-C92).
-library_key: run.sample_key
+# The column naming each REPLICATE, in the object and in the design, where scProfile takes it
+# (`run --sample-key`: it keys the design on it and pseudobulks by it, scprofile/inputs.py
+# read_design, kernels/de.py). The driver writes the request's keys.replicate here, or keys.sample
+# when none is declared (harness W042 GAP-C92; W045: a pooled library holds several replicates).
+replicate_key: run.sample_key
 # The choice scProfile leaves to the user (cannot_show, first line): the driver asks it by name.
 decisions:
   - name: control

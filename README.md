@@ -66,7 +66,11 @@ everything downstream knows when one does.
 > first queue whose ceilings hold it); every stage's report gives its cells, wall time and peak memory
 > from the scheduler's own accounting (`cost`); the request's `keys.sample` is written into every tool
 > that takes the library column; and `sch run --request FILE --job FILE` writes the job that runs the
-> request, never hand-written. Phases 5–8 and 11 are not built.
+> request, never hand-written. A cohort delivered as ONE object holding every library (W045) is
+> declared by `object: {counts, symbols, carry}` and `keys.replicate`: stage `00_parts` streams it into
+> one read-only part per library (the counts unchanged, the symbols as var_names) and the samplesheet
+> the first stage mounts; a tool flag that names the design's unit takes the replicate, not the library.
+> Phases 5–8 and 11 are not built.
 >
 > `sch conform` checks a child tool against
 > [`docs/CHILD_CONFORMANCE.md`](docs/CHILD_CONFORMANCE.md) without touching it; all four pass with
