@@ -104,8 +104,15 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
 - **Running now (2 Opus):** the builder of **W056's D6 fix round** (a declared value read as its reader reads it; the
-  cohort's check script made to read a real run; both jobs regenerated); the builder of **W063's SET-UP** (the cold
-  reproduction's kit for run 1: the pack, the criteria note, the grading job, the headless launch and its probe).
+  cohort's check script made to read a real run; both jobs regenerated; waiting on its own commit hook at 15:08Z);
+  **W063's COLD ATTEMPT 1** (stage 1), a SEPARATE headless session started by the coordinator from
+  `<scratchpad>/a23/` (D-055; one Opus slot; not an agent of this session, so no task id: its folder is
+  `a23/launch/run1_<stamp>/`, its end line `COLD: ...` or `NOT COLD`). W063's set-up is BUILT and probe 1 read
+  (tools exact, five outside reads refused; the CLI's five built-in parts ruled INFO). The kit, the criteria note and
+  every launch folder are copied to the first cohort's `stages/01_qc/a23/` (survives a reboot; the scratch does
+  not; never under this repository: the leak guard reads its untracked folders too).
+  AFTER THE ATTEMPT: read `pack_run1/out/job.pbs` before anything runs (waves/W063.md, step 5), record its md5,
+  submit it unchanged through the gate (preflight, then the run), then the grading job with NEW and SINCE.
   NEXT for an Opus slot: W056's lean re-check, then its preflight, subset and full run; decoupler's blind grade
   (scProfile at `a2694ec`); W061's T (the integration tool records the run's six fields); W067's S1.
 - **Merged 2026-11-12T14:16Z, the twelfth: scProfile `a2694ec`** (the batch **W055 + W058 + W065**, each verified PASS; the
