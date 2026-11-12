@@ -142,12 +142,12 @@ def cmd_plan(a):
             return _drive_refused(a, e)
         if a.expect:                             # the set a job was generated for (W042 fix 2, C)
             from .drive import expected
-            ok, lines, d = expected(req, a.expect, answers, checkouts=a.checkouts)
+            ok, lines, d = expected(req, a.expect, answers, checkouts=a.checkouts, present=a.present)
             _emit(a, {"status": "pinned" if ok else "differs", "lines": lines,
                       "differs": [list(x) for x in d]}, "\n".join(plan_lines(req, answers) + lines))
             return 0 if ok else 2
-        if a.checkouts:
-            raise SystemExit("sch plan: --checkouts is read with --expect (a generated job's pins, where it runs)")
+        if a.checkouts or a.present:
+            raise SystemExit("sch plan: --checkouts and --present are read with --expect (a generated job's pins, where it runs)")
         _emit(a, req, "\n".join(plan_lines(req, answers)))
         return 0
     st = _stack(a)
@@ -1573,6 +1573,8 @@ def build_parser():
     p.add_argument("--by", help="with --answer: who made the decision")
     p.add_argument("--checkouts", metavar="FILE", help="with --expect: the record a generated job's submit recipe "
                    "made where git is (sch checkouts); each checkout is compared from it and no git is run (harness W056)")
+    p.add_argument("--present", action="store_true", help="with --expect: every input must be present and readable where "
+                   "the job runs (a generated job's CHECK_ONLY preflight; harness W056)")
     p.set_defaults(fn=cmd_plan)
     p = sub.add_parser("checkouts", help="a generated job's submit recipe: read each checkout it pins with git, where "
                        "the job is submitted, into its run folder (harness W056)")

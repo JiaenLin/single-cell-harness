@@ -299,8 +299,8 @@ def _emit_scalar(v) -> str:
         return json.dumps(v)
     s = str(v)
     if s == "" or re.search(r"[:#\[\]{}\n\"']|^[-?&*!|>%@`]", s) or s.strip() != s \
-            or s in ("true", "false", "null", "~") or _SCALAR_FLOAT.match(s):
-        return json.dumps(s)
+            or s in ("true", "false", "null", "~") or _SCALAR_FLOAT.match(s) or _scalar(s, 0) != s:
+        return json.dumps(s)    # a text this reader would read back as another value (`True`) is quoted (W056 fix 1)
     return s
 
 

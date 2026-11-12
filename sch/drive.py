@@ -1220,6 +1220,15 @@ def answers_of(req: dict, given: list | None, by: str | None, recorded: dict | N
             value = json.loads(raw)
         except ValueError:
             value = raw
+            try:                                 # autodev W056 fix 1, S2 (ATTACKS 8): the record and what was passed
+                read = yamlish._scalar(raw, 0)   # are one thing - a text the stage's params format reads as a
+            except Exception:                    # boolean would be recorded as the text and reach the tool as the flag
+                read = raw
+            if isinstance(read, bool):
+                raise RequestError(f"--answer {a!r}: {raw.strip()!r} is not JSON, so it would be recorded as the text "
+                                   f"{json.dumps(raw)}, while the format of the stage's params reads it as the boolean "
+                                   f"{json.dumps(read)}: write {name}={json.dumps(read)} for the boolean, or "
+                                   f"{name}={json.dumps(raw)} (quoted, JSON) for the text")
         allowed_values = names[name].get("values")
         if allowed_values and value not in allowed_values:
             raise RequestError(f"--answer {a!r}: {name} is answered {' or '.join(allowed_values)}")
@@ -1750,12 +1759,14 @@ def _from_record(now: dict, rec: dict, doc: dict) -> tuple:
     return now, lines, bad
 
 
-def expected(req: dict, file, answers: dict | None = None, checkouts=None) -> tuple:
+def expected(req: dict, file, answers: dict | None = None, checkouts=None, present: bool = False) -> tuple:
     """(holds, lines, differences): the run's set now - with the job's answers (autodev W049) - against
     the set a job was generated for (autodev W042 fix 2, C), content only (a copy keeps no modification
     time); a file absent where the job was generated is checked here for the first time, and said.
     `checkouts` (a generated job, where it runs: autodev W056 fix 1): no git is run; each checkout is the
-    record its submit recipe made where git is, and the site's commit file is compared here."""
+    record its submit recipe made where git is, and the site's commit file is compared here. `present` (a
+    generated job's CHECK_ONLY preflight, autodev W056 fix 1, A1): every input of the set must be present and
+    readable where the job runs, a file absent where it was generated too."""
     try:
         doc = json.loads(Path(file).read_text())
         then = doc["files"]
@@ -1778,6 +1789,7 @@ def expected(req: dict, file, answers: dict | None = None, checkouts=None) -> tu
     d = differ(a, b, here_only=True)
     bad = {k for k, _x, _y in d}
     here = [k for k in sorted(b) if a.get(k) in (None, "absent") and k not in bad]
+    gone = [k for k in sorted(now) if present and k not in bad and (now[k].get("absent") or now[k].get("unreadable"))]
     lines = [f"  pinned: {sum(1 for v in a.values() if v != 'absent')} of the run's files as the job was generated; "
              f"{len(here)} checked here only"]
     lines += [f"  only here: {k} {now[k]['path']}" for k in here[:40]]
@@ -1790,7 +1802,11 @@ def expected(req: dict, file, answers: dict | None = None, checkouts=None) -> tu
               f"{stated[k]['git']}, clean; {where} {_said_state(now.get(k))})" if k in stated else
               f"  differs: {k} {(now.get(k) or then.get(k) or {}).get('path', '')} ({x or 'not named'} when the job "
               f"was generated, {y or 'not named'} now)" for k, x, y in d]
-    return not d and not extra, lines, d + [(x.split(" ", 1)[0], None, None) for x in extra]
+    lines += [f"  differs: {k} {now[k]['path']} (" + ("absent" if now[k].get("absent") else f"unreadable: "
+              f"{now[k]['unreadable']}") + " where the job runs: its preflight finds every input present and readable "
+              "before the first tool call)" for k in gone]
+    return not d and not extra and not gone, lines, d + [(x.split(" ", 1)[0], None, None) for x in extra] + [
+        (k, None, None) for k in gone]
 
 
 def submit_record(req: dict, job_file, rundir) -> tuple:
@@ -2013,6 +2029,10 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         "submission, about another run or job, or naming another commit; where it runs it compares " + (
             f"each checkout's {cf} (the site's commit file)" if cf else "nothing more: the site declares no commit file, "
             "so a checkout moved between submission and the job's start is not seen there (said in PINS.txt)"),
+        "#   preflight CHECK_ONLY=1 (qsub -v; gate.py preflight) runs everything before the first tool call - the "
+        "checkouts and pins, every input present and readable where the job runs" + (
+            ", the checks graded on their own reference runs" if check else "") + " - and stops: PREFLIGHT: OK or "
+        "PREFLIGHT: MISSED (n), one line per miss before it; no stage runs, nothing is sealed",
         f"#   inputs    {len(pins) - len(absent)} files the run reads, pinned as generated, its answers' among them (the "
         f"job refuses another set: `sch plan --request REQUEST --answer ... --expect PINS.json`); {len(absent)} checked "
         f"only where it runs" + (":" if absent else ""),
@@ -2045,9 +2065,23 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"EXPECT_HARNESS={q(commit or '')}",
         f"CHECK={rel(check) if check else q('')}",
         "VERDICTS=\"$RUNDIR/VERDICTS.txt\"",
+        # CHECK_ONLY (autodev W056 fix 1, A1): a verdict is recorded; a preflight prints its misses once, at its end
+        "say() { if [ \"${CHECK_ONLY:-}\" = 1 ]; then cat >> \"$VERDICTS\"; else tee -a \"$VERDICTS\"; fi; }",
         "finish() { s=$?",
         "  set +e",
         "  rm -rf \"$RUNDIR/cache\" 2>/dev/null",
+        "  if [ \"${CHECK_ONLY:-}\" = 1 ]; then   # THE PREFLIGHT: no stage ran; nothing is sealed; no GATE line",
+        "    n=$(grep -c '^VERDICT.*MISSED' \"$VERDICTS\" 2>/dev/null || true); n=${n:-0}",
+        "    if [ \"$s\" -ne 0 ] && [ \"$n\" -eq 0 ]; then echo \"VERDICT (preflight): MISSED - the job stopped with exit $s "
+        "before its preflight ended (see its log)\" >> \"$VERDICTS\"; n=1; fi",
+        "    if [ \"$n\" -eq 0 ]; then pf=\"PREFLIGHT: OK\"; else pf=\"PREFLIGHT: MISSED ($n)\"; s=1; fi",
+        "    grep '^VERDICT.*MISSED' \"$VERDICTS\" 2>/dev/null",
+        "    { echo \"exit=$s\"; echo \"jobid=${PBS_JOBID:-none}\"; echo \"harnesshead=${HARNESSHEAD:-unknown}\"; hostname",
+        "      date -u +%Y-%m-%dT%H:%M:%SZ; cat \"$VERDICTS\" 2>/dev/null; echo \"$pf\"; } > \"$RUNDIR/PREFLIGHT.txt\"",
+        "    find \"$RUNDIR\" -type f -not -path \"$RUNDIR/logs/*\" -exec chmod a-w {} +",
+        "    echo \"$pf\"",
+        "    exit \"$s\"",
+        "  fi",
         "  miss=''",
         f"  for w in \"$RUNDIR/DRIVE.json\" \"$RUNDIR/SEALED.json\" {reports}; do",
         "    [ -s \"$w\" ] || miss=\"$miss ${w#$RUNDIR/}\"",
@@ -2102,17 +2136,34 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"check_pin 'site stack.yml' \"$SCH_SITE/stack.yml\" {_sha(site / 'stack.yml')}",
         f"check_pin 'site job.yml' \"$SCH_SITE/job.yml\" {_sha(site / 'job.yml')}",
         "cat > \"$RUNDIR/PINS.json\" <<'SCH_PINS_END'", pins_doc, "SCH_PINS_END",
+        "PRESENT=''; [ \"${CHECK_ONLY:-}\" != 1 ] || PRESENT=--present   # a preflight: every input present and readable",
         "set +e",
         "PYTHONPATH=\"$HARNESS\" \"$PY\" -m sch plan --request \"$REQUEST\"" + tail + " --expect \"$RUNDIR/PINS.json\" "
-        "--checkouts \"$RUNDIR/" + CHECKOUTS + "\" > \"$RUNDIR/PINS.txt\" 2>&1",
+        "--checkouts \"$RUNDIR/" + CHECKOUTS + "\" $PRESENT > \"$RUNDIR/PINS.txt\" 2>&1",
         "prc=$?",
         "set -e",
         "grep -E '^  (pinned|only here|tool|harness|here|not compared here):' \"$RUNDIR/PINS.txt\" || true",
         "if [ \"$prc\" -ne 0 ]; then",
         "  why=$(grep -E '^  (differs|request refused)' \"$RUNDIR/PINS.txt\" | head -n 12 | tr '\\n' ';' || true)",
         "  [ -n \"$why\" ] || why=$(tail -n 3 \"$RUNDIR/PINS.txt\" | tr '\\n' ' ' || true)",
-        "  echo \"VERDICT (pins): MISSED - the files this job was generated for differ: $why\" | tee -a \"$VERDICTS\"",
+        "  if [ \"${CHECK_ONLY:-}\" = 1 ] && grep -qE '^  (differs|request refused)' \"$RUNDIR/PINS.txt\"; then   # one line a miss",
+        "    grep -E '^  (differs|request refused)' \"$RUNDIR/PINS.txt\" | while IFS= read -r ln; do echo \"VERDICT (pins): MISSED - ${ln#  }\" | say; done",
+        "  else echo \"VERDICT (pins): MISSED - the files this job was generated for differ: $why\" | tee -a \"$VERDICTS\"; fi",
         "  exit 2",
+        "fi",
+        # THE PREFLIGHT (autodev W056 fix 1, A1; BRIEFS 0b): everything before the first tool call, then stop
+        "if [ \"${CHECK_ONLY:-}\" = 1 ]; then",
+        "  echo \"VERDICT (pins): AS PREDICTED - the checkouts and every input as this job was generated, present and readable here\" | say",
+        *(["  set +e",
+           "  CHECK_ONLY=1 RUNDIR=\"$RUNDIR\" REQUEST=\"$REQUEST\" PY=\"$PY\" HARNESS=\"$HARNESS\" bash \"$CHECK\" \"$RUNDIR\" > \"$RUNDIR/PREFLIGHT_CHECKS.txt\" 2>&1",
+           "  crc=$?",
+           "  set -e",
+           "  grep '^VERDICT' \"$RUNDIR/PREFLIGHT_CHECKS.txt\" >> \"$VERDICTS\" || true",
+           "  grep -q '^VERDICT' \"$RUNDIR/PREFLIGHT_CHECKS.txt\" || echo \"VERDICT (checks): MISSED - $CHECK graded no line on its "
+           "reference runs with CHECK_ONLY=1 (see PREFLIGHT_CHECKS.txt)\" | say",
+           "  [ \"$crc\" -eq 0 ] || echo \"VERDICT (checks): MISSED - the checks exited $crc with CHECK_ONLY=1 (see "
+           "PREFLIGHT_CHECKS.txt)\" | say"] if check else []),
+        "  exit 0",
         "fi",
         "echo \"=== the chained run: $(date -u +%Y-%m-%dT%H:%M:%SZ) ===\"",
         "set +e",
@@ -2126,7 +2177,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         "if [ -n \"$CHECK\" ]; then",
         "  echo \"=== the checks: $CHECK ===\"",
         "  set +e",
-        "  RUNDIR=\"$RUNDIR\" PY=\"$PY\" HARNESS=\"$HARNESS\" bash \"$CHECK\" \"$RUNDIR\" > \"$RUNDIR/CHECKS.txt\" 2>&1",
+        "  RUNDIR=\"$RUNDIR\" REQUEST=\"$REQUEST\" PY=\"$PY\" HARNESS=\"$HARNESS\" bash \"$CHECK\" \"$RUNDIR\" > \"$RUNDIR/CHECKS.txt\" 2>&1",
         "  crc=$?",
         "  set -e",
         "  cat \"$RUNDIR/CHECKS.txt\"",
@@ -2136,7 +2187,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         "if grep -q '^VERDICT.*MISSED' \"$VERDICTS\"; then exit 1; fi",
         "exit 0",
     ]
-    return "\n".join(out) + "\n"
+    return "\n".join(ln.replace('| tee -a "$VERDICTS"', "| say") for ln in out) + "\n"
 
 
 def write_job(req: dict, job_path, **kw) -> dict:

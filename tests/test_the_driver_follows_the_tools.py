@@ -613,6 +613,105 @@ class AJobStatesTheToolsItExpects(M.TheClusterPath):
                 self.assertFalse((rd / "01_qc").exists(), "nothing ran")
                 head(v1)
 
+    def _held(self, c, name, check_text=None, inputs_present=False):
+        """The four stand-ins as one checkout at v1 carrying the site's HEAD.txt, named by the request, and the job
+        generated stating v1 for each tool with the site's commit file (as the R0 test builds them)."""
+        o = self.tmp / "origin" / "stand-ins"
+        shutil.copytree(FIXTURES, o, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        (o / ".gitignore").write_text("HEAD.txt\n__pycache__/\n*.pyc\n")
+        git(o, "init", "-q")
+        v1 = commit(o, "v1")
+        (o / "NOTES.md").write_text("docs only\n")
+        v2 = commit(o, "v2: docs only")
+        tool = self.tmp / "tools" / "stand-ins"
+        git(self.tmp, "clone", "-q", str(o), str(tool))
+        git(tool, "checkout", "-q", "--detach", v1)
+        (tool / "HEAD.txt").write_text(v1 + "\n")
+        req = request(c, resources=self.SIZES)
+        doc = yamlish.load(req)
+        for st, (k, rel) in zip(doc["stages"], (("scqc", "fake_scqc.py"), ("scanno", "fake_scanno.py"),
+                                                ("scintegrate", "fake_scintegrate"), ("scprofile", "fake_scprofile"))):
+            st["params"][k] = str(tool / rel)
+        if inputs_present:                       # the stand-in cohort's declared references made real: every input
+            (c["dir"] / "references" / "species_x" / "ref_1").mkdir(parents=True, exist_ok=True)   # is present
+            tree, prefix = self.tmp / "refs" / "tree.json", self.tmp / "prefix"
+            tree.parent.mkdir(parents=True, exist_ok=True)
+            tree.write_text("{}\n")
+            prefix.mkdir()
+            doc["stages"][1]["params"]["annotate"]["tree"] = str(tree)
+            doc["stages"][3]["params"]["run"]["prefix"] = str(prefix)
+        os.chmod(req, 0o644)
+        yamlish.dump(doc, req)
+        states = [x for t in ("scQC", "scAnno", "scIntegrate", "scProfile") for x in ("--tool", f"{t}={v1}")]
+        f, _ = self.job(c, req, name=name, extra=states, commit_file="HEAD.txt", check_text=check_text)
+        return f, tool, v1, v2
+
+    def test_W056_A1_CHECK_ONLY_runs_everything_before_the_first_tool_and_stops_on_one_PREFLIGHT_line(self):
+        """A1 (BRIEFS 0b; gate.py preflight): with CHECK_ONLY=1 the job runs its checkouts and pins, every input
+        present and readable where it runs, and its checks graded on their own reference runs, then stops: one line
+        per miss, the last `PREFLIGHT: OK` or `PREFLIGHT: MISSED (n)`; no tool starts, no stage folder, nothing sealed,
+        and no GATE line (gate.py's grade would take a GATE line as the verdict). A correct set-up reads OK; the
+        reference run absent, and a checkout's commit moved after submission, each read MISSED naming the thing."""
+        import shlex
+        c = cohort(self.tmp / "c", "a")
+        ref = self.tmp / "refs" / "the_reference_run"
+        ref.mkdir(parents=True)
+        (ref / "report.json").write_text("{}\n")
+        check = ("#!/bin/bash\nREF=" + shlex.quote(str(ref)) + "\n"
+                 "if [ \"${CHECK_ONLY:-}\" = 1 ]; then\n"
+                 "  if [ -r \"$REF/report.json\" ]; then echo \"VERDICT (four reports): AS PREDICTED - its reference run "
+                 "$REF reads\"\n  else echo \"VERDICT (four reports): MISSED - its reference run $REF is absent\"; fi\n"
+                 "  exit 0\nfi\nn=$(ls \"$1\"/0*/report/report.json | wc -l | tr -d ' ')\n"
+                 "if [ \"$n\" -eq 4 ]; then echo \"VERDICT (four reports): AS PREDICTED - $n\"\n"
+                 "else echo \"VERDICT (four reports): MISSED - $n\"; fi\n")
+        f, tool, v1, v2 = self._held(c, "pre.pbs", check, inputs_present=True)
+        self.assertIn("#   preflight CHECK_ONLY=1", f.read_text())
+        away = ref.with_name("moved_away")
+
+        def preflight(then=None):
+            def between(rd):
+                if then:
+                    then()
+                return {"CHECK_ONLY": "1"}
+            return between
+        for name, then, words in (
+                ("ok", None, None),
+                ("no_reference", lambda: ref.rename(away), f"its reference run {ref} is absent"),
+                ("pulled", lambda: (tool / "HEAD.txt").write_text(v2 + "\n"), "the checkout moved after the job was submitted")):
+            with self.subTest(preflight=name):
+                p, rd = self.run_job(f, f"pre_{name}", preflight(then))
+                self.assertIsNotNone(rd, p.stderr[-800:])
+                out = p.stdout.strip().splitlines()
+                misses = [ln for ln in out if ln.startswith("VERDICT") and "MISSED" in ln]
+                self.assertEqual(out[-1], "PREFLIGHT: OK" if not words else f"PREFLIGHT: MISSED ({len(misses)})",
+                                 p.stdout[-2000:] + p.stderr[-800:])
+                self.assertEqual((p.returncode, bool(misses)), (0, False) if not words else (1, True), out)
+                self.assertTrue(all(words in m for m in misses), misses)
+                self.assertEqual([ln for ln in out if ln.startswith("GATE:")], [], "a preflight prints no GATE line")
+                self.assertIn(out[-1], (rd / "PREFLIGHT.txt").read_text())
+                self.assertEqual([x for x in ("SEALED.txt", "FAILED.txt", "01_qc", "DRIVE.json") if (rd / x).exists()], [])
+                self.assertEqual(self.calls(), [], "no tool started")
+                if away.exists():
+                    away.rename(ref)
+                (tool / "HEAD.txt").write_text(v1 + "\n")
+
+    def test_W056_A1_a_preflight_refuses_an_input_absent_where_it_was_generated_and_where_it_runs(self):
+        """A1: the pins compare a file absent where the job was generated as absent (checked only where it runs);
+        a preflight (`sch plan --expect --present`) refuses it absent there too, by name, before any tool."""
+        import sch.drive as D
+        c = cohort(self.tmp / "c", "a")
+        st = stages(c)
+        st[3]["params"]["run"]["prefix"] = str(self.tmp / "not_yet_made")
+        r = D.load(request(c, stages=st))
+        pins = self.tmp / "PINS.json"
+        pins.write_text(json.dumps({"files": {k: {x: y for x, y in v.items() if x != "path"}
+                                              for k, v in D.run_inputs(r, {}).items()}}))
+        ok, lines, _ = D.expected(r, pins, {})
+        self.assertTrue(ok, lines)
+        ok, lines, _ = D.expected(r, pins, {}, present=True)
+        self.assertFalse(ok, lines)
+        self.assertTrue(any("not_yet_made" in ln and "absent where the job runs" in ln for ln in lines), lines)
+
     def test_a_tool_no_stage_runs_a_commit_that_is_not_one_or_one_tool_twice_is_refused(self):
         c = cohort(self.tmp / "c", "a")
         req = request(c, resources=self.SIZES)

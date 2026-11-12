@@ -566,10 +566,10 @@ class TheClusterPath(_Base):
         self.assertEqual([p.name for p in d.iterdir() if p.is_symlink()], [], "a wrapper, never a link")
         return str(d)
 
-    def job(self, c, req, check_ok=True, name=None, extra=(), commit_file=None):
+    def job(self, c, req, check_ok=True, name=None, extra=(), commit_file=None, check_text=None):
         """The job generated for `req`, in a stage's jobs/ directory, with its site's job.yml, by the harness under
         test's own generator; `extra`: more of `sch run --job`'s own options (W049 fix 1: `--tool`); `commit_file`:
-        the site's (W056 fix 1)."""
+        the site's (W056 fix 1); `check_text`: the check script, instead of the four-reports one."""
         import subprocess
         harness = self.harness()
         # this interpreter may keep its packages in the user's site, which a job hides by default
@@ -581,7 +581,7 @@ class TheClusterPath(_Base):
         jobs.mkdir(parents=True, exist_ok=True)
         pred.write_text("(1) the chained run seals, four stages from one request.\n")
         want = 4 if check_ok else 5              # a check that cannot hold, to see the GATE miss
-        chk.write_text("#!/bin/bash\nn=$(ls \"$1\"/0*/report/report.json | wc -l | tr -d ' ')\n"
+        chk.write_text(check_text or "#!/bin/bash\nn=$(ls \"$1\"/0*/report/report.json | wc -l | tr -d ' ')\n"
                        f"if [ \"$n\" -eq {want} ]; then echo \"VERDICT (four reports): AS PREDICTED - $n\"\n"
                        "else echo \"VERDICT (four reports): MISSED - $n\"; fi\n")
         f = jobs / (name or ("drive.pbs" if check_ok else "drive_missed.pbs"))
@@ -1212,6 +1212,25 @@ class TheDriverHoldsItsRulesRound2(_Base):
         self.assertEqual(rc, 2, why)
         self.assertIn("ambient_version='0.3.2'", why)
         self.assertEqual(self.calls(), [])
+
+    def test_W056_S2_an_answer_the_params_format_reads_as_a_boolean_is_refused_and_a_text_stays_a_text(self):
+        """S2 (ATTACKS 8: a record that is not what was passed). `True` is not JSON: it was recorded as the text
+        'True', the stage's params format read it back as the boolean, and the flag reached the tool under a record
+        saying text. Refused by name before any tool, with both ways forward; and that format now writes such a
+        text quoted, so a text reaches a tool as the text it was recorded as."""
+        from sch import yamlish
+        c = cohort(self.tmp / "c", "a")
+        for raw in ("True", "False"):
+            rc, rec = self.drive(request(c), self.tmp / f"run_{raw}", *answered(c), "--answer",
+                                 f"int.keep_input_pca={raw}", "--by", "a tester")
+            self.assertEqual((rc, rec["status"]), (2, "refused"), rec)
+            self.assertIn(f"write int.keep_input_pca={raw.lower()} for the boolean", rec["reason"])
+        self.assertEqual(self.calls(), [], "no tool started")
+        for ok in ("true", '"True"'):            # the boolean, and the text written as JSON: each accepted
+            rc, text = cli("plan", "--request", str(request(c)), "--answer", f"int.keep_input_pca={ok}", "--by", "a tester")
+            self.assertEqual(rc, 0, text)
+        doc = {"a": "True", "b": "False", "c": True}
+        self.assertEqual(yamlish.loads(yamlish.dumps(doc)), doc, "a text reads back as the same text")
 
     def test_A3_single_cells_denoised_elsewhere_stop_the_run_at_the_users_decision(self):
         c = cohort(self.tmp / "c", "a", assay="scrna", extra=PROVENANCE)

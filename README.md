@@ -61,7 +61,14 @@ everything downstream knows when one does.
 > site declares one (`commit_file:` in the site's `job.yml`; a `here:` line). A site declaring none: the job
 > runs on the record alone and says, per checkout, `not compared here` and why - a checkout moved between
 > submission and the job's start is then not seen. Either way a tracked file edited between submission and
-> the job's start, its commit unchanged, is not seen where the job runs: only git sees it. What may have run upstream of an assay is what the first stage's tool accepts
+> the job's start, its commit unchanged, is not seen where the job runs: only git sees it. **A job run with
+> `CHECK_ONLY=1`** (`qsub -v`; the program's ten-minute `gate.py preflight`) runs everything before its first
+> tool call - the checkouts and pins, every input present and readable where it runs (`sch plan --expect ...
+> --present`), and its check script with `CHECK_ONLY=1` and `REQUEST` in its environment, which grades each
+> line that has a reference run on that reference - and stops: one line per miss, then `PREFLIGHT: OK` or
+> `PREFLIGHT: MISSED (n)`; no stage runs, nothing is sealed, and no `GATE:` line is printed. An `--answer`
+> that is not JSON but which the request's format reads as a boolean (`True`, `False`) is refused by name: the
+> record and what the tool is given are one value (W056). What may have run upstream of an assay is what the first stage's tool accepts
 > there (its adapter's `upstream_accepts:`, drift-tested against the tool's own code), with rule 2 over
 > it from the profile: no family tool performs ambient removal on single cells, and single cells
 > delivered denoised, by any remover's name, stop at the user's `upstream.ambient` (D-031), whatever
