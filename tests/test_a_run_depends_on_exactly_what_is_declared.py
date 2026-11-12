@@ -217,6 +217,49 @@ class AJobSaysWhatItRuns(M.TheClusterPath):
     (its commit and its tracked changes, pinned): it runs that change, and its header, its recipe's lines and the
     job's own PINS lines each say so and name the digest; a sentence that says clean is true."""
 
+    # Wave C, change 5: a declared input absent where a job is generated was written in its header as the path it
+    # resolved to THERE - the generating machine's cloud folder and its account's name (5 lines of the first cohort's
+    # subset job, 1 of its full job). Now each is written as the request, its samplesheet or its document gives it, and
+    # the file a relative one is read beside; a path that is only where the job was generated is not written.
+    MARKER = "W056MARKERFOLDER"
+
+    def generate(self, home: Path, c: dict, req: Path, name: str) -> str:
+        was = os.environ.get("HOME")
+        os.environ["HOME"] = str(home)           # the generating machine's home holds the marked folder
+        try:
+            f, _out = self.job(c, req, name=name, extra=("--where", "~/the/jobs/there"))
+        finally:
+            if was is None:
+                os.environ.pop("HOME", None)
+            else:
+                os.environ["HOME"] = was
+        return f.read_text()
+
+    def test_C5_a_job_generated_in_a_marked_folder_holds_no_word_of_it_and_says_each_input_as_given(self):
+        home = self.tmp / "home"
+        c = cohort(home / self.MARKER / "c", "a")
+        st = stages(c)
+        st[1]["params"]["annotate"]["tree"] = "/nonexistent-w056c/refs/tree.json"   # absolute, absent here
+        st[3]["params"]["run"]["prefix"] = "~/w056c-prefix"                          # the home's, absent here
+        rows = (c["dir"] / "samplesheet.tsv").read_text().splitlines()
+        head = rows[0].split("\t")
+        lib = rows[1].split("\t")[0]
+        # the request's own parts column, read beside the sheet: one cell relative and absent here, the others as written
+        cells = ["libs/absent_part.h5ad"] + [r.split("\t")[head.index("ambient_h5")] for r in rows[2:]]
+        (c["dir"] / "sheet_relative.tsv").write_text("\n".join([rows[0] + "\tparts_here"] + [
+            r + "\t" + x for r, x in zip(rows[1:], cells)]) + "\n")
+        req = request(c, stages=st, observations="sheet_relative.tsv", design="absent_design.csv", parts="parts_here")
+        text = self.generate(home, c, req, "marked.pbs")
+        self.assertEqual([ln for ln in text.splitlines() if self.MARKER in ln], [], "a line naming the marked folder")
+        for line in ("design absent_design.csv (beside the request)",
+                     f"observations.parts_here[{lib}] libs/absent_part.h5ad (beside the samplesheet)",
+                     "02_anno.annotate.tree /nonexistent-w056c/refs/tree.json", "04_prof.run.prefix ~/w056c-prefix"):
+            self.assertIn(f"#     on the cluster only: {line}\n", text)
+        req = request(c, name="request_sheet_there.yml", stages=st, observations="sheet_on_the_cluster.tsv")
+        text = self.generate(home, c, req, "marked_sheet_there.pbs")       # the samplesheet itself on the cluster only
+        self.assertEqual([ln for ln in text.splitlines() if self.MARKER in ln], [], "a line naming the marked folder")
+        self.assertIn("#     on the cluster only: observations sheet_on_the_cluster.tsv (beside the request)\n", text)
+
     def test_F2_a_tracked_change_with_no_stated_commit_is_said_with_its_digest_and_clean_only_when_clean(self):
         from test_the_driver_follows_the_tools import commit, git
         c = cohort(self.tmp / "c", "a")

@@ -428,11 +428,12 @@ def _param(params: dict, path: str) -> tuple:
     return (True, block[rest]) if isinstance(block, dict) and rest in block else (False, None)
 
 
-def _values(v, e: dict, what: str, base: Path | None = None) -> list:
+def _values(v, e: dict, what: str, base: Path | None = None, texts: list | None = None) -> list:
     """The paths ONE DECLARED value names (autodev W056, D6): it is text - one path, or each piece where its entry
     declares `list` - absolute or `~/` (the running user's home); a relative one is read beside the file naming it
     where its reader says `relative_to: file` (`base`), and refused by name otherwise: its tool reads it from its own
-    working directory, where nothing the set holds is. None, false or empty names nothing."""
+    working directory, where nothing the set holds is. None, false or empty names nothing. `texts`, when given, gets
+    each path's piece as written, in order (a job's header says an input as it is given, autodev W056 wave C)."""
     if v is None or v is False or v == "":
         return []
     if not isinstance(v, str):
@@ -443,6 +444,8 @@ def _values(v, e: dict, what: str, base: Path | None = None) -> list:
     for x in (v.split(e["list"]) if e.get("list") else [v]):
         if not x:
             continue
+        if texts is not None and (x.startswith(("/", "~/")) or (base is not None and not _climbs(x))):
+            texts.append(x)
         if x.startswith("/"):
             out.append(Path(x))
         elif x.startswith("~/"):
@@ -478,11 +481,16 @@ def _cells(f: Path, r: dict) -> list:
     return [(a, w, v) for w, v in _leaves(doc) for a, pat in pats if pat.fullmatch(w)]
 
 
-def _item(out: list, role: str, p: Path, e: dict, by: str) -> dict:
+def _item(out: list, role: str, p: Path, e: dict, by: str, text: str | None = None, beside: str | None = None) -> dict:
     """One declared input into `out`; a FILE whose entry names a reader is read for the inputs it names - only where it
-    is a file, each by the reader's `each` (depth is what `names` nests, not a number)."""
+    is a file, each by the reader's `each` (depth is what `names` nests, not a number). `text`: the value as written
+    (and `beside`: the file a relative one is read beside), which a job's header says (autodev W056 wave C)."""
     it = {"role": role, "path": str(p), "kind": str(e.get("kind") or "file"), "check": str(e.get("check") or "pinned"),
           "by": by}
+    if text is not None:
+        it["text"] = text
+        if beside and not text.startswith(("/", "~/")):
+            it["beside"] = beside
     out.append(it)
     r = e.get("names")
     if r and it["check"] != "named" and p.is_file():
@@ -501,11 +509,12 @@ def _named_by(out: list, role: str, f: Path, r: dict, by: str) -> list:
     base = f.parent if r["relative_to"] == "file" else None
     counts = {a: [0, 0] for a in r["at"]}
     for a, where, v in got:
-        paths = _values(v, r["each"], f"{role} {f}: {where} ({by})", base)
+        texts: list = []
+        paths = _values(v, r["each"], f"{role} {f}: {where} ({by})", base, texts)
         counts[a][0] += bool(paths)
         counts[a][1] += 1
         for j, p in enumerate(paths):
-            _item(out, f"{role}>{where}" + (f"#{j}" if len(paths) > 1 else ""), p, r["each"], by)
+            _item(out, f"{role}>{where}" + (f"#{j}" if len(paths) > 1 else ""), p, r["each"], by, texts[j], role)
     return [(a, k, n, by) for a, (k, n) in counts.items()]
 
 
@@ -531,10 +540,12 @@ def _sheet_cells(out: list, req: dict, sheet: Path, readers: list) -> list:
         by, k = " and ".join(b for _r, b in decls), 0
         for i, row in enumerate(rows, 1):
             lib = str(row.get(req["keys"]["sample"]) or i).strip()
-            paths = _values(row.get(col), each, f"observations {sheet}: {col}[{lib}] ({by})", base)
+            texts: list = []
+            paths = _values(row.get(col), each, f"observations {sheet}: {col}[{lib}] ({by})", base, texts)
             k += bool(paths)
             for j, f in enumerate(paths):
-                _item(out, f"observations.{col}[{lib}]" + (f"#{j}" if len(paths) > 1 else ""), f, each, by)
+                _item(out, f"observations.{col}[{lib}]" + (f"#{j}" if len(paths) > 1 else ""), f, each, by, texts[j],
+                      "the samplesheet")
         reads.append((col, k, len(rows), by))
     return reads
 
@@ -563,10 +574,12 @@ def declared(req: dict, answers: dict | None = None) -> list:
     root = Path(__file__).resolve().parent.parent
     out.append({"role": "harness", "path": str(root), "kind": "checkout", "check": "pinned", "by": DECLARED["harness"]})
     _item(out, "request", Path(req["path"]), {"kind": "file"}, DECLARED["request"])
-    sheet = Path(req["observations"])
-    obs = _item(out, "observations", sheet, {"kind": "file"}, DECLARED["observations"])
+    sheet, said = Path(req["observations"]), req.get("given") or {}
+    obs = _item(out, "observations", sheet, {"kind": "file"}, DECLARED["observations"], said.get("observations"),
+                "the request")
     if req.get("design"):
-        _item(out, "design", Path(req["design"]), {"kind": "file"}, DECLARED["design"])
+        _item(out, "design", Path(req["design"]), {"kind": "file"}, DECLARED["design"], said.get("design"),
+              "the request")
     first = req["stages"][0] if req["stages"] else {}
     readers = [] if req.get("object") else [({"format": "table", "at": [str(req["parts"])], "relative_to": "file",
                                                "each": {"kind": "file"}}, "the request's schema (parts)")]
@@ -585,27 +598,29 @@ def declared(req: dict, answers: dict | None = None) -> list:
             found, v = _param(p["params"], param) if param != "observations" else (False, None)
             if not found:
                 continue
-            by = f"{p['plugin']} files.{param}"
-            paths = _values(v, e, f"{p['stage']} ({p['plugin']}): {param}")
+            by, texts = f"{p['plugin']} files.{param}", []
+            paths = _values(v, e, f"{p['stage']} ({p['plugin']}): {param}", None, texts)
             if e.get("kind") == "checkout":
                 for f in paths[:1]:              # the param's own file or folder, and the checkout holding it
-                    _item(out, f"{p['stage']}.{param}", f, {"kind": "path"}, by)
+                    _item(out, f"{p['stage']}.{param}", f, {"kind": "path"}, by, texts[0])
                     out.append({"role": f"{p['stage']}.{param}@checkout", "path": str(f), "kind": "checkout",
-                                "check": "pinned", "by": by})
+                                "check": "pinned", "by": by, "text": texts[0]})
                 continue
             for j, f in enumerate(paths):
-                _item(out, f"{p['stage']}.{param}" + (f"#{j}" if len(paths) > 1 else ""), f, e, by)
+                _item(out, f"{p['stage']}.{param}" + (f"#{j}" if len(paths) > 1 else ""), f, e, by, texts[j])
         for dd in p["decisions"]:
             if dd["name"] in (answers or {}) and dd["param"] in decl:
                 a = answers[dd["name"]]
                 e = decl[dd["param"]]
-                paths = _values(a.get("value") if isinstance(a, dict) else a, e, f"--answer {dd['name']}")
+                texts = []
+                paths = _values(a.get("value") if isinstance(a, dict) else a, e, f"--answer {dd['name']}", None, texts)
                 for j, f in enumerate(paths):
                     _item(out, f"answer[{dd['name']}]" + (f"#{j}" if len(paths) > 1 else ""), f, e,
-                          f"{p['plugin']} files.{dd['param']} (the decision {dd['name']})")
+                          f"{p['plugin']} files.{dd['param']} (the decision {dd['name']})", texts[j])
     site = os.environ.get("SCH_SITE")
     if site:
-        _item(out, "site.stack.yml", Path(site) / "stack.yml", {"kind": "file"}, DECLARED["site.stack.yml"])
+        _item(out, "site.stack.yml", Path(site) / "stack.yml", {"kind": "file"}, DECLARED["site.stack.yml"],
+              os.path.join(site, "stack.yml"))
     return out
 
 
@@ -1303,6 +1318,8 @@ def load(path, files: bool = True) -> dict:
                                f"{', '.join(prev['hands_on']) or 'nothing'}{how}")
     req = {"path": str(src), "sha256": _sha(src), "observations": where("observations"),
             "design": where("design") if doc.get("design") else None, "parts": str(doc["parts"]),
+            "given": {"observations": str(doc["observations"]), **({"design": str(doc["design"])} if doc.get(
+                "design") else {})},
             "keys": {str(k): str(v) for k, v in keys.items()}, "object": obj,
             "context": {str(k): str(v) for k, v in ctx.items()}, "upstream": up, "stages": plan,
             "decisions": run_decisions,
@@ -2398,6 +2415,15 @@ def _stated(req: dict, tools: list | None, pins: dict) -> dict:
     return {r: (n, c) for n, c in got.items() for r in roles[n]}
 
 
+def _as_given(d: dict | None) -> str:
+    """An input absent where a job is generated, as its header says it (autodev W056 wave C): the value as the
+    request, its sheet or its document gives it, and the file a relative one is read beside - never the path it
+    resolves to on the generating machine, whose folders the job has no use for."""
+    if not d or d.get("text") is None:
+        return "(declared; its value is the request's)"
+    return d["text"] + (f" (beside {d['beside']})" if d.get("beside") else "")
+
+
 def job_text(req: dict, job_path, answers: list | None = None, by: str | None = None,
              predict=None, check=None, purpose: str | None = None, where: str | None = None,
              tools: list | None = None) -> str:
@@ -2460,6 +2486,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         for k in [k for k in pins if _under(k, role)]:   # the stated commit stands for the param's files
             del pins[k]
     absent = [k for k, v in pins.items() if v.get("absent")]
+    said = {d["role"]: d for d in declared(req, given)}   # each input as the request, its sheet or its document gives it
     said_tools = [re.sub(r"[\x00-\x1f\x7f]", "?", f"#   tool      {p['wraps'].get('tool')} ({p['stage']}): " + (
         f"expects {e['git']}, clean (--tool; read where the job is submitted, by its recipe: another commit or a "
         f"tracked change is refused there)"
@@ -2553,8 +2580,7 @@ def job_text(req: dict, job_path, answers: list | None = None, by: str | None = 
         f"#   inputs    {len(pins) - len(absent)} files the run reads, pinned as generated, its answers' among them (the "
         f"job refuses another set: `sch plan --request REQUEST --answer ... --expect PINS.json`); {len(absent)} checked "
         f"only where it runs" + (":" if absent else ""),
-        *[re.sub(r"[\x00-\x1f\x7f]", "?", f"#     on the cluster only: {k} {os.path.relpath(pins[k]['path'], jobs) if not str(pins[k]['path']).startswith(str(Path.home())) else '~/' + os.path.relpath(pins[k]['path'], Path.home())}"
-                 ) for k in absent],
+        *[re.sub(r"[\x00-\x1f\x7f]", "?", f"#     on the cluster only: {k} " + _as_given(said.get(k))) for k in absent],
         *said_tools,
         f"#   stages    " + ", ".join(f"{p['stage']} {p['plugin']}" + (f" [{', '.join(f'{k}={v}' for k, v in sorted(p['resources'].items()))}]" if p.get("resources") else "") for p in req["stages"]),
         f"#   this job  {cfg.get('queue_chosen') or 'the site block queue'}",

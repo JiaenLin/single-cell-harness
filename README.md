@@ -63,7 +63,9 @@ everything downstream knows when one does.
 > is generated - a checkout with tracked changes WITH them, which the job's header, its recipe's lines
 > (`CHECKOUTS-WITH-TRACKED-CHANGES` and a `TRACKED:` line a checkout) and PINS.txt each say with their
 > digest, so no line says clean of it - and one absent there is checked only where the job runs, where a
-> tracked change is refused. **A generated job never runs git
+> tracked change is refused. A declared input absent where the job is generated is named in its header as the
+> request, its samplesheet or its document gives it (and the file a relative one is read beside), never as the
+> path it resolves to on the generating machine (harness W056 wave C). **A generated job never runs git
 > where it runs** (a compute node may have none; harness W056): what needs git - each checkout, the
 > harness's and every tool's, at the commit the job expects with no tracked change but one it was generated with - is read where the job
 > is SUBMITTED, by its own recipe (between `SUBMIT-BEGIN` and `SUBMIT-END`), which runs git, the shell's own
