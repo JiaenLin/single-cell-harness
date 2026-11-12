@@ -11,7 +11,7 @@ does not, because a home path in it is a site leak (`tests/test_portability.py`)
 
 ## 0. The block every brief carries (added 2026-11-10)
 
-Every agent below is launched with `model: "opus"` and `effort: "max"` (RULES tier II, the PI 2026-11-10), except a UI designer: `model: "fable"`, no effort set (the PI 2026-11-11: "use fable 5.2 level designer to design all ui"; RULES 2026-11-11 item 13).
+Every agent below is launched with `model: "opus"` and `effort: "max"` (RULES tier II, the PI 2026-11-10), except a UI designer: `model: "fable"`, no effort set (the PI 2026-11-11: "use fable 5.2 level designer to design all ui"; RULES 2026-11-11 item 13). Since 2026-11-12 (the PI: "use more fable for development design and directions"; RULES items 21 and 22) a DESIGN agent and the DIRECTION reviewer are Fable agents too (section 5), and a wave that is not a small fix is built to a design written before it.
 
 ```
 THE PRE-DECIDER (<HARNESS>/autodev/PRE_DECIDER.md): you decide what the rules decide. A question for the
@@ -21,48 +21,79 @@ without the form is not forwarded. A cohort fact is looked up and measured, and 
 stated limit. Declining an outward or irreversible action is the default.
 THE SCORE: this wave moves <test ids> by <predicted delta> (GOALS.md "Layer 3, scored"); say in the
 hand-back what it measured.
-THE CAP: one wave, one hand-back, within about 1.5 M output tokens including verification; at 2 fix
-rounds the residue is a gap, not a third round. Push your branch after every commit.
+THE CAP: one wave, one hand-back, within about 1.5 M output tokens including verification; ONE fix round
+(RULES item 22): a second failed check goes to a design read, never to another patch. Push your branch after
+every commit.
 ```
 
 Added 2026-11-11 (RULES, the block of that date), part of the block for every builder and verifier:
 
 ```
-SIZE: this run is sized for about 150 tool calls. Keep tool output short (tail, head, cut, a line range); read only
-the lines a change touches. At about 150 calls: commit, push, hand back what is done, and return the rest as a
-follow-up. That is a normal hand-back.
-THREADS: this workstation is shared by several agents. Before any test or tool, export OMP_NUM_THREADS=2
-OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2, and run one suite at a time.
-SELF-ATTACK: before hand-back, read <HARNESS>/autodev/ATTACKS.md (one screen: the attacks that broke a wave here) and run
-every one that applies against your own change. Say in the hand-back which you ran and what each showed.
-REMOVED NUMBERS (only when your wave removes a cohort's values from a tool): before hand-back run
-`python3 -I <HARNESS>/setup/autodev/survivors.py <your clone> <base> HEAD`, then again with `--words` and with `--near`,
-and read every line each prints: a number your diff removed that is still at the head, a count written in words, a
-number you added that is a removed one rounded. Say for each kind what it is (the method's, synthetic, a date or
-version) and give the tool's last line in the hand-back. Three waves failed verification on survivors on 2026-11-11.
-SEARCH (only when your wave has to find a rule, a design or a hypothesis, not for ordinary engineering): write down what
-you expect BEFORE you try anything; try at least 2 candidates at the cheapest test that can tell them apart; keep the
-current one unless the challenger is strictly better on the registered measure; record every candidate tried and its
-result in <HARNESS>/autodev/pools/<wave>.tsv and say in the hand-back how many the winner was chosen from.
-WALLTIME: a job asks for the time its model's run measured, with a margin, never a queue's maximum (two 15- and 30-minute
-jobs asking for 24 h tripped the subset rule on 2026-11-11).
-SUBSET: a job you write that asks for more than 2 hours comes with `<name>.subset.pbs`: the same steps on a declared
-subset, its own prediction, minutes long. The coordinator runs it first.
+SIZE: a builder's run is sized for about 150 tool calls, a verification for about 110, a lean re-check for about 50.
+Keep tool output short (tail, head, cut, a line range); read only the lines a change touches. At the size: commit,
+push, hand back what is done, and return the rest as a follow-up. That is a normal hand-back.
+THREADS: export OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 NUMBA_NUM_THREADS=2
+before any test or tool, and run one suite at a time (other agents share this workstation).
+SELF-ATTACK: THE PROOF TABLE (since 2026-11-12, RULES item 22; it replaces "say which attacks you ran"). In the wave
+file, one row per thing this wave adds that JUDGES: a test, a refusal, a check script's line, a job's graded line, a
+prediction, a sentence a deployed app will show. Columns: the judge | a RIGHT input and what the judge printed | a WRONG
+input that differs in that one respect and what it printed | who made the inputs (by hand; the real tool's or
+library's writer; the deployed build). A judge is done when its WRONG row fails only that judge and one RIGHT row came
+from the real writer. A job's rows are two fake run folders graded by the job's own check on the workstation. A
+prediction's row shows its arithmetic from the tool's code. A field a deployed app reads has one row per state of the
+field, each opened in the deployed build. `python3 -I <HARNESS>/setup/autodev/proof.py <wave file>` must print
+`PROOF: n rows, 0 incomplete` before you hand back; no verifier is launched without it. Then read
+<HARNESS>/autodev/ATTACKS.md (one screen: what the table does not catch) and run what applies.
 THE WAVE FILE you append to is inside the harness repository and its leak guard reads it: write no site path into it (a dated
 scratch folder, a scheduler job id with its host suffix, a queue name). Say "a dated scratch folder on the cluster".
 GAPS: name at most 3 new gaps, and only ones that block a ROUTE item (<HARNESS>/autodev/ROUTE.md) or are a wrong
 result in a promoted output. Put every other observation in the wave file's as-built note.
-A NEW JOB FILE carries its submit recipe as shell lines between `# SUBMIT-BEGIN` and `# SUBMIT-END` in its header
-(each line prefixed `#   `; it creates RUNDIR and ends with the qsub of this file), and its last act is to print one
-line, `GATE: AS PREDICTED` or `GATE: MISSED (n)`, into the run's log beside its VERDICT lines.
-ORDER (RULES 2026-11-11, item 4): build, preflight, verify, then one gate at the head that merges. Write a
-reproduction job when the wave changes a promoted path or adds a cluster path; the coordinator submits it.
+ORDER (RULES 2026-11-11 item 4, and item 22): a design where one is named, build, the proof table, the cluster preflight,
+ONE verification, then one gate at the head that merges.
+```
+
+### 0a. What every registration and every fix-round brief carries (since 2026-11-12, RULES item 22)
+
+Written by the design agent where a design is named, by the coordinator otherwise:
+
+```
+THE CLASS. One sentence naming the set this change must hold for, as a rule and not as cases ("every file a tool reads
+between the plan and the seal", not "the request and the design sheet"). The ONE place in the code that defines the set.
+The ONE test that walks the set from that place, so a new member needs no new test. What is outside, as counted limits.
+A fix round's brief restates THE CLASS before the failing case: if the failure showed a set stated by cases, the fix is
+the rule. A registration that can only list cases goes to a design read first.
+THE SIZE. One route item; at most three numbered changes; a change that writes a cluster job is a wave of its own
+(or the wave's last change, with its preflight).
+```
+
+### 0b. Blocks a brief carries only when they apply (moved out of the block every brief carries, 2026-11-12)
+
+```
+REMOVED NUMBERS (a wave that removes a cohort's values from a tool): before hand-back run
+`python3 -I <HARNESS>/setup/autodev/survivors.py <your clone> <base> HEAD`, then again with `--words` and with `--near`,
+and read every line each prints. Say for each kind what it is and give the tool's last line in the hand-back.
+SEARCH (a wave that has to find a rule, a design or a hypothesis, not ordinary engineering): write down what you expect
+BEFORE you try anything; try at least 2 candidates at the cheapest test that can tell them apart; keep the current one
+unless the challenger is strictly better on the registered measure; record every candidate tried and its result in
+<HARNESS>/autodev/pools/<wave>.tsv and say in the hand-back how many the winner was chosen from.
+A NEW JOB FILE (a wave that writes a cluster job) carries its submit recipe as shell lines between `# SUBMIT-BEGIN` and
+`# SUBMIT-END` in its header (each line prefixed `#   `; it creates RUNDIR and ends with the qsub of this file), and its
+last act is to print one line, `GATE: AS PREDICTED` or `GATE: MISSED (n)`. It honours `CHECK_ONLY=1`: it then runs
+everything it does before its first tool call (its pins, every input and reference run present and readable where the
+job runs, its check script graded on the reference runs themselves) and stops with `PREFLIGHT: OK` or
+`PREFLIGHT: MISSED (n)`; the coordinator runs that for ten minutes (`gate.py preflight`) before the real submission.
+A job never needs a program the place it runs lacks (a compute node has no git). WALLTIME: the time its model's run
+measured, with a margin, never a queue's maximum. SUBSET: a job that asks for more than 2 hours comes with
+`<name>.subset.pbs`: the same steps on a declared subset, its own prediction (with its arithmetic: a subset is not
+predicted identical to a full run for a tool that pools its inputs), minutes long. Write a reproduction job when the
+wave changes a promoted path or adds a cluster path; the coordinator submits it.
 ```
 
 For the auditor (2b) the block adds: write one row per test into `autodev/ledger/scores.tsv` (stamp, pass, test_id,
 score, numerator, denominator, evidence), by the formulas in GOALS.md; the verdict is HAPPY when the mean is at least 0.9
 and no test is below 0.5. For the verifier (2a) it adds: one verification per merge batch per repository, the fix-only
-re-check on a fix-up, at most 2 rounds.
+re-check on a fix-up, ONE fix round (a second failed check goes to a design read, RULES item 22); a verification is
+about 110 calls and starts from the builder's proof table.
 
 ## 1. Development builder
 
@@ -141,6 +172,15 @@ Check:
     cohort's value a user of another cohort would see or get, or that a test's pass depends on. COUNT and report, do not
     fail on: a count in words in a comment or a developer document, a synthetic value of a removed one's magnitude, files
     never read whole. If such a line misleads a user, class it as a failure and say why.
+(10) Added 2026-11-12: WHAT FAILS A WAVE (the PI, 2026-11-11: "do not block anything if unnecessary"). FAIL only on: a
+    wrong result a user can get by a route the tools or the docs offer; rule 1 or rule 2; a sentence shown to a user that
+    is false; a check, a gate line or a record that can read success on a miss; the registration's acceptance check not
+    met. COUNT and report with a severity, and do not fail on: a defect that is on `main` too and that this wave neither
+    causes nor makes reachable; a route that needs a hand-made file or a deliberate hand edit of a record and changes no
+    user's output; wording. Name for each FAIL reason which of the five it is.
+(11) Added 2026-11-12: start from the builder's PROOF TABLE (the wave file): re-run its WRONG rows, then build your own
+    states for the judges the wave's claim rests on. A judge with no WRONG row, or whose RIGHT rows are all hand-made, is
+    where to look first.
 Verdict: PASS or FAIL, with each reason and its evidence, in at most 30 lines.
 ```
 
@@ -222,3 +262,21 @@ and efficient"). One pass. Fix at once. Log each action in autodev/ledger/housek
 Report only what changed: per lane, what is running, the last merge and the blocker; then the fixes;
 then the decisions needed.
 ```
+
+## 5. Design agent and direction reviewer (Fable 5.2; RULES item 21; `model: "fable"`, no effort set)
+
+A DESIGN agent is read-only on every repository and writes ONE section, "Design", into a registered wave file before
+any builder exists: the problem from the root; THE CLASS (the closed set, the one place that defines it, the one test
+that walks it); the design by construction; one other design and what it gives up; the build as waves of at most three
+numbered changes, each with its acceptance check and the rows its proof table must hold; the attacks the builder must
+run; what the design gives up. It cites a file and line for every claim about what the code does and labels every
+inference. About 60 calls. Which waves get one: the direction review's design queue; in general a new wave of size M or
+more, a redesign, a change to a contract between two tools or with a deployed app, a fix round after a second failed
+check. Which do not: re-checks, verifications, cold reproductions, installers on an existing pattern, docs sweeps,
+cohort jobs, a held-out plugin before its blind grade.
+
+The DIRECTION reviewer (once a day in FULL mode, and after three failed verifications in a day) writes
+`autodev/audits/DIRECTION_<date>.md`: the ordered queue for the next 12 Opus slots; the design queue; why the period's
+verifications failed, by kind, with at most five changes; the loop's shape on the measured numbers; what waits on the
+PI. The coordinator applies it and records in STATE.md what it did not apply and why.
+

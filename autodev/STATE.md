@@ -84,20 +84,56 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   failed fix-ups). Next in line if their re-checks fail again: scProfile's maker record; the driver's pinned set.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus):** the builder of **W056's fix round 1** (the driver's integration; its verification found
-  the merges, the escape fix and W045's split SOUND and FAILED on: the check script's project root, a subset predicted
-  identical though scQC pools libraries, the parts step dying on an anndata-written object; and its subset job 791723
-  MISSED before any tool ran: the generated job needs git where a job runs. Brief `q_w056fix1.txt`; then a lean re-check
-  and the subset again); the builder of **W055's second half** (scProfile, `abundance` through the maker, from
-  `2e5b95a`; launched 2026-11-12T06:30Z).
-- **Running now (2 Fable):** the DIRECTION reviewer (RULES item 21b; launched 2026-11-12T06:50Z); the independent
-  CHECKER of **W057** (Studio, built by its designer at `ece0be4`: the Run card's words true for bundles written before
-  and after W054, told apart by the fields present; a ragged table refused; on PASS the Studio deploys, D-045).
-- **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
-  0. After W056's verification and W055's second half: their re-checks or fix rounds first (a wave in flight before a
-     new one).
-  5. **W050's verification** (scAnno `f456431`): brief `q_w050verify.txt`.
-  6. **scIntegrate's installer** (GAP-C116), for A1.3: brief `q_w046fix2.txt`, clone `W046g-scIntegrate`.
+- **Running now (2 Opus):** the builder of **W056's fix round 1** (the driver's integration: no git where a job runs,
+  the check script's root, the subset's prediction, an anndata-written object; a CHECK_ONLY branch asked of it mid-run;
+  brief `q_w056fix1.txt`); the builder of **W058** (scProfile, ROUTE R31: a lock for every group and platform, the
+  cluster build job with its preflight; stacked on W055's head `55a60d5`; brief `q_w058build.txt`).
+- **Running now (2 Fable):** the design agent **D1** (the cohort-run skill, [waves/W059.md](waves/W059.md)); the
+  independent CHECKER of **W057** (Studio at `ece0be4`; on PASS the Studio deploys, D-045).
+- **QUEUED for an Opus slot, in this order** (the direction review of 2026-11-12, D-049; launch the next only when
+  fewer than 2 Opus agents run; a failed check takes the next slots; every registration carries THE CLASS and THE
+  SIZE, every hand-back a proof table checked by `proof.py`):
+  1. **W056's lean re-check** when its fix round hands back. Beside it on the cluster, in order: `gate.py preflight`
+     of the regenerated subset job (ten minutes), the subset, the first cohort's full chained run, the merge (A1.2 8/10).
+  2. **W055's ONE verification** (scProfile at `55a60d5`; about 110 calls, BRIEFS 2a checks 10 and 11; A3.2's fourth
+     quarter is its judgement). Its dev-suite job waits for W058's built environments.
+  3. **Cold reproduction 1** (ROUTE R11): the first cohort's stage 1 from the record and the docs alone, by a fresh
+     agent; the coordinator submits its job. A2.3 +0.25. Its hand-back lists every doc line that misled it.
+  4. **The grade wave** (scProfile, stacked on W055 and W058): decoupler, scenic and velocity graded BLIND in one run
+     with the maker unchanged between them, each grade recorded first; then only their comment hits (the prose verb) and
+     their sources (the source stage). A4.3 to 6/9; conform green, so A4.1 can count on the dev-suite job; scProfile's
+     0.1 of A3.1. The last three plugins stay the before-and-after test. THE PI IS TOLD (the reading "one at a time"
+     was the pre-decider's): a word before this starts keeps it one at a time.
+  5. **One lean verification of the scProfile batch** (W058 and the grade wave).
+  6. **W050's lean verification** (scAnno `f456431`; brief `q_w050verify.txt`; the second cohort's stage 4 needs it).
+  7. **W059's builder** (the cohort-run skill, to design D1), after W056 merges. Its verification IS item 8.
+  8. **The cold-agent trial on the second cohort**: its chained run from one request, one planted failure declared
+     before it starts. One run is R14 + R21 + R35 and A7.1's trial (A7.1 up to 5/5, A1.1 +3/8, A3.1 +0.19).
+  9. **R08's data-layer builder** (the harness's local UI, to design D2; the Fable designer builds what is seen). A6.1.
+  10. **Cold reproduction 2** (stage 2). A2.3 reaches its bar.
+  11. **R09 run 1** (hypothesis records, to design D3). A5.2 to 0.5.
+  MOVED DOWN (each is 0.2 or less for a builder and a verifier, on a test already over its bar): scIntegrate's installer
+  (GAP-C116; brief `q_w046fix2.txt`), R05, R33, R13's run 3. NO Opus slot for Studio or Lab unless a user can get a
+  wrong result.
+- **THE FABLE QUEUE (no Opus slot; at most 2 at once):** D1 running. Then, in this order: a **docs-truth sweep** of one
+  settled repository a run (Lab, scQC, scAnno; the Studio after W057 deploys): the false lines with the corrected text
+  on a docs-only branch, then a seeded draw of 12 claims by ANOTHER agent writes the row (A2.2 +0.125 a repository);
+  **D4** (R36's draw rule, design only); **D2** (R08: where a local UI reads a cluster run's state; what turns plain
+  language into a request); **D3** (R09: a follow-up as a typed request fragment); **D5** (the maker's missing sites,
+  GAP-C128, after the grade wave's grades); **D6** (the driver's generated check) only if W056's re-check fails.
+- **CLUSTER ONLY, when free:** A6.2's missing half is a MEASUREMENT (the first cohort's real final object through
+  Lab's converter, opened in the deployed Studio: +0.5): to do once W057 is live; the scale cohort's parts and a
+  two-library stage-1 subset the hour W056 merges; a full stage-4 run of the first cohort at scProfile's `main` after
+  W055 merges (for the PI's promotion).
+- **NOT APPLIED from the direction review (D-049):** a daily restart of the coordinator's session (the PI's to do;
+  recommended: this session's context reads were 338 M on 2026-11-11, as much as 16 builder runs); `passrate.py`'s
+  extra line.
+- **FOR THE DAY'S REPORT (the PI's):** re-promote the first cohort's stage 3 from a run at `main` and submit its
+  reproduction the same day (recommended); promote stage 4 from the first full run after W055 merges, not the earlier
+  one (recommended); does A1.2's step 2 ("declared upstream by name") count when W056 merges (recommended: yes, +0.1);
+  the scale cohort's residual-doublet threshold, only with the subset's numbers; the second cohort's tree shown as a
+  walk table (not ready). Told, not asked: three blind grades in one run; check 10 in the verifier's brief; docs sweeps
+  by Fable reviewers; up to 2 Fable agents.
 - **Lab's `main` is `fdb8888` since 2026-11-12T06:26Z (D-047, the standing go D-045)**: W054 is live: the converter opens
   only the file it is given; a run record gives six short strings and nothing else; a dataset whose read fails is never
   used as values (live Lab before this wrote silent garbage from a damaged or LZF-compressed part: GAP-C127); an LZF file

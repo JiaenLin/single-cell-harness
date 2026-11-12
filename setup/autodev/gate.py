@@ -127,6 +127,56 @@ def passed_subset(sibling, tools, watch=None):
     return False
 
 
+def passed_preflight(job_name, md5, tools, watch=None):
+    """Has this exact job file (by md5) read PREFLIGHT: OK at these tool commits? Reads the watch list's history."""
+    watch = watch or WATCH
+    want = {n: c for n, c in tools if c != "keep"}
+    if not watch.is_file():
+        return False
+    for line in watch.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("# graded PREFLIGHT: OK"):
+            continue
+        cells = line.split(": ", 2)[-1].split("\t")
+        if len(cells) < 5 or cells[4].strip() != f"preflight:{md5}:{job_name}":
+            continue
+        used = dict(p.split("=", 1) for p in cells[3].split(",") if "=" in p)
+        if all(used.get(n) == c for n, c in want.items()):
+            return True
+    return False
+
+
+def preflight_rule(job_name, text, md5, tools, no_preflight):
+    """A job that can check itself (a CHECK_ONLY branch) and asks for more than 30 minutes goes in only after its
+    ten-minute preflight read OK for the same file and tool commits (the direction review of 2026-11-12, change 3)."""
+    if "CHECK_ONLY" not in text:
+        return "The job has no CHECK_ONLY branch (written before 2026-11-12); no preflight was possible."
+    if walltime_hours(text) * 60 <= 30:
+        return "Asks for 30 minutes or less; no preflight is required."
+    if passed_preflight(job_name, md5, tools):
+        return "Its preflight read PREFLIGHT: OK for this file and these tool commits."
+    if no_preflight:
+        return f"Submitted WITHOUT a passed preflight: {no_preflight}"
+    sys.exit("REFUSED: this job has a CHECK_ONLY branch and asks for more than 30 minutes; run `gate.py preflight` with the "
+             "same arguments first, grade it, then submit (or pass --no-preflight with the reason)")
+
+
+def preflight_recipe(recipe, job_name):
+    """The submit recipe with its qsub turned into a ten-minute CHECK_ONLY run of the same file."""
+    out, done = [], False
+    for line in recipe:
+        if not done and re.search(r"\bqsub\b", line) and job_name in line:
+            if re.search(r"\s-v\s+\S+", line):
+                line = re.sub(r"(\s-v\s+)(\S+)", lambda m: m.group(1) + m.group(2) + ",CHECK_ONLY=1", line, count=1)
+            else:
+                line = line.replace("qsub", "qsub -v CHECK_ONLY=1", 1)
+            line = line.replace("qsub", "qsub -l walltime=00:10:00", 1)
+            done = True
+        out.append(line)
+    if not done:
+        sys.exit("the recipe's qsub line was not found; no preflight")
+    return out
+
+
 def subset_rule(job, text, tools, no_subset):
     """Returns the sentence the RUNLOG carries; exits when the rule refuses."""
     if job.name.endswith(".subset.pbs"):
@@ -233,7 +283,15 @@ def submit(args):
         sys.exit("the job file has CR line ends")
     md5 = hashlib.md5(data).hexdigest()
     recipe = recipe_of(data.decode("utf-8"), args.job, args.set)
-    subset_note = subset_rule(job, data.decode("utf-8"), tools, args.no_subset)
+    pre = args.cmd == "preflight"
+    if pre:
+        if "CHECK_ONLY" not in data.decode("utf-8"):
+            sys.exit("REFUSED: this job has no CHECK_ONLY branch; under a ten-minute limit it would start its real work")
+        recipe = preflight_recipe(recipe, args.job)
+        subset_note = "A ten-minute CHECK_ONLY run of the job file itself: everything before its first tool call."
+    else:
+        subset_note = subset_rule(job, data.decode("utf-8"), tools, args.no_subset)
+        subset_note += " " + preflight_rule(args.job, data.decode("utf-8"), md5, tools, args.no_preflight)
     refuse_if_in_use(tools)
     rdir = f'{env["R_PROJECTS"]}/{args.project}/stages/{args.stage}/jobs'
     script = ["set -e", f'cd "{rdir}"',
@@ -256,16 +314,16 @@ def submit(args):
         sys.exit(f"NOT SUBMITTED (rc={rc}):\n{out[-1500:]}")
     used = ",".join(f"{n}={c}" for n, c in re.findall(r"^TOOL (\S+)=([0-9a-f]{40})", out, flags=re.M))
     with open(WATCH, "a", encoding="utf-8") as handle:
-        handle.write(f"{jobid.group(1)}\t{rundir.group(1)}\t{args.wave}\t{used}\t{args.job}\n")
+        handle.write(f"{jobid.group(1)}\t{rundir.group(1)}\t{args.wave}\t{used}\t{('preflight:' + md5 + ':') if pre else ''}{args.job}\n")
     validate = (re.search(r"^VALIDATE (.*)$", out, flags=re.M) or [None, "?"])[1]
     rel = rundir.group(1).split(f"/{args.project}/", 1)[-1]
     runlog(env, args.project, args.stage,
-           f"\n## {stamp()} — {args.wave}: `jobs/{args.job}` submitted (gate.py)\n\n"
+           f"\n## {stamp()} — {args.wave}: `jobs/{args.job}` {'PREFLIGHT (CHECK_ONLY=1, ten minutes) ' if pre else ''}submitted (gate.py)\n\n"
            f"- The job file: md5 `{md5}`, equal on both sides; the validator: {validate}.\n"
            f"- The tool checkouts, each clean on its HEAD.txt: {used.replace(',', ', ') or 'none named'}.\n"
            f"- Subset before full: {subset_note}\n"
            f"- **PBS `{jobid.group(1)}`**, run `{rel}`. The prediction is the job header's, written before submission.\n")
-    print(f"SUBMITTED {jobid.group(1)} wave={args.wave} run={rel} tools={used}")
+    print(f"{'PREFLIGHT ' if pre else ''}SUBMITTED {jobid.group(1)} wave={args.wave} run={rel} tools={used}")
 
 
 def grade(args):
@@ -277,7 +335,8 @@ def grade(args):
     head = dict(p.split("=", 1) for p in lines[0].split(" ") if "=" in p)
     body = [l.rstrip() for l in lines[1:] if l.strip() and not l.strip().startswith("RECORD")]
     gate_line = next((l for l in body if l.startswith("GATE:")), None)
-    verdict = args.verdict or (gate_line[5:].strip() if gate_line else None)
+    pre_line = next((l.strip() for l in body if l.strip().startswith("PREFLIGHT:")), None)
+    verdict = args.verdict or (gate_line[5:].strip() if gate_line else pre_line)
     if not verdict:
         print("\n".join(body))
         sys.exit("\nthis job prints no GATE: line; read the lines above against its header and pass --verdict")
@@ -332,7 +391,14 @@ def main():
     s.add_argument("--tool", action="append")
     s.add_argument("--set", action="append")
     s.add_argument("--no-subset", dest="no_subset", help="the reason a long job goes in without a passed subset job")
+    s.add_argument("--no-preflight", dest="no_preflight", help="the reason a job with a CHECK_ONLY branch goes in without a passed preflight")
     s.add_argument("--go", action="store_true")
+    pf = sub.add_parser("preflight", help="a ten-minute CHECK_ONLY=1 run of the job file itself, before the real submission")
+    for name in ("--wave", "--project", "--stage", "--job"):
+        pf.add_argument(name, required=True)
+    pf.add_argument("--tool", action="append")
+    pf.add_argument("--set", action="append")
+    pf.add_argument("--go", action="store_true")
     g = sub.add_parser("grade")
     g.add_argument("jobid")
     g.add_argument("--status", required=True, choices=["gating", "verifying", "failed", "held"])
@@ -342,7 +408,7 @@ def main():
     c.add_argument("--tool", action="append", required=True)
     c.add_argument("--go", action="store_true")
     args = parser.parse_args()
-    {"submit": submit, "grade": grade, "checkout": checkout}[args.cmd](args)
+    {"submit": submit, "preflight": submit, "grade": grade, "checkout": checkout}[args.cmd](args)
 
 
 if __name__ == "__main__":

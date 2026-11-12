@@ -259,6 +259,47 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 gate.subset_rule(job, job.read_text(), [("T", a)], None)
 
+    def test_a_long_job_that_can_check_itself_needs_its_preflight(self):
+        """The direction review of 2026-11-12, change 3: ten minutes of CHECK_ONLY before hours of a job; and the proof table's check."""
+        import importlib.util
+        import subprocess
+        import sys
+        import tempfile
+        spec = importlib.util.spec_from_file_location("gate", ROOT / "setup" / "autodev" / "gate.py")
+        gate = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gate)
+        a, b, md5 = "a" * 40, "b" * 40, "0" * 32
+        long_job = "#!/bin/bash\n#PBS -l walltime=06:00:00\nif [ -n \"${CHECK_ONLY:-}\" ]; then echo PREFLIGHT: OK; exit 0; fi\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            watch = pathlib.Path(tmp) / "watch.tsv"
+            watch.write_text(f"# graded PREFLIGHT: OK t: 1.x\t/r\tW1\tT={a}\tpreflight:{md5}:j.pbs\n"
+                             f"# graded PREFLIGHT: MISSED (2) t: 2.x\t/r\tW1\tT={a}\tpreflight:{md5}:k.pbs\n", encoding="utf-8")
+            self.assertTrue(gate.passed_preflight("j.pbs", md5, [("T", a)], watch))
+            self.assertFalse(gate.passed_preflight("j.pbs", "1" * 32, [("T", a)], watch), "another file's preflight does not count")
+            self.assertFalse(gate.passed_preflight("j.pbs", md5, [("T", b)], watch), "a preflight at another commit does not count")
+            self.assertFalse(gate.passed_preflight("k.pbs", md5, [("T", a)], watch), "a preflight that missed does not count")
+            gate.WATCH = watch
+            self.assertIn("PREFLIGHT: OK", gate.preflight_rule("j.pbs", long_job, md5, [("T", a)], None))
+            with self.assertRaises(SystemExit):
+                gate.preflight_rule("k.pbs", long_job, md5, [("T", a)], None)
+            self.assertIn("WITHOUT", gate.preflight_rule("k.pbs", long_job, md5, [("T", a)], "the reason"))
+            self.assertIn("no CHECK_ONLY branch", gate.preflight_rule("old.pbs", "#!/bin/bash\n#PBS -l walltime=06:00:00\n", md5, [("T", a)], None))
+            self.assertIn("30 minutes or less", gate.preflight_rule("s.pbs", long_job.replace("06:00:00", "00:20:00"), md5, [("T", a)], None))
+            recipe = gate.preflight_recipe(["cd x", "qsub -o logs/ -v RUNDIR=$RUNDIR,H=$HC j.pbs"], "j.pbs")
+            self.assertEqual(recipe[1], "qsub -l walltime=00:10:00 -o logs/ -v RUNDIR=$RUNDIR,H=$HC,CHECK_ONLY=1 j.pbs")
+            self.assertEqual(gate.preflight_recipe(["qsub j.pbs"], "j.pbs"), ["qsub -l walltime=00:10:00 -v CHECK_ONLY=1 j.pbs"])
+            proof = ROOT / "setup" / "autodev" / "proof.py"
+            wave = pathlib.Path(tmp) / "W.md"
+            table = "# W\n\n## Proof table\n\n| judge | RIGHT | WRONG | who |\n|---|---|---|---|\n| t1 | a: ok | b: FAIL | by hand |\n"
+            for text, code, last in ((table, 0, "PROOF: 1 rows, 0 incomplete"),
+                                     (table + "| t2 | a: ok | - | the writer |\n", 1, "PROOF: 2 rows, 1 incomplete"),
+                                     ("# W\n\nno table\n", 1, None)):
+                wave.write_text(text, encoding="utf-8")
+                run = subprocess.run([sys.executable, "-I", str(proof), str(wave)], capture_output=True, text=True)
+                self.assertEqual(run.returncode, code, run.stdout)
+                if last:
+                    self.assertEqual(run.stdout.strip().splitlines()[-1], last)
+
     def test_the_gate_runner_names_no_site(self):
         """gate.py reads its site facts from the git-ignored site.env, and its dry run needs no network."""
         text = (ROOT / "setup" / "autodev" / "gate.py").read_text(encoding="utf-8")

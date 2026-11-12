@@ -13,7 +13,7 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-VERDICT = re.compile(r"^verifier\b[^:]{0,60}:\s*(PASS|FAIL)")
+VERDICT = re.compile(r"^(?:verifier|verification|its check)\b[^:]{0,60}:\s*(PASS|FAIL|READY)")  # widened 2026-11-12: three outcomes began otherwise
 
 
 def first_verdicts(path, since="0000"):
@@ -31,7 +31,7 @@ def first_verdicts(path, since="0000"):
         if m:
             seen.add(cells[1])
             if built.get(cells[1], "0000") >= since:
-                out.append((cells[0][:10], cells[1], m.group(1)))
+                out.append((cells[0][:10], cells[1], "PASS" if m.group(1) == "READY" else m.group(1)))
     return out
 
 

@@ -30,7 +30,7 @@ while read -r job dir; do
   elif [ -f "\$dir/FAILED.txt" ]; then echo "FAILED"
   elif ! qstat "\$job" >/dev/null 2>&1; then echo "GONE"; qstat -x -f "\$job" 2>/dev/null | grep -E "Exit_status|job_state|comment" | sed 's/^ *//'
   fi
-  grep -h "VERDICT\|RECORD\|MISS\|PREDICT\|GATE:\|exit=" "\$dir/SEALED.txt" "\$dir/FAILED.txt" "\$dir"/logs/*.OU 2>/dev/null | sort -u
+  grep -h "VERDICT\|RECORD\|MISS\|PREDICT\|PREFLIGHT:\|GATE:\|exit=" "\$dir/SEALED.txt" "\$dir/FAILED.txt" "\$dir"/logs/*.OU 2>/dev/null | sort -u
 done <<WL
 $watch
 WL

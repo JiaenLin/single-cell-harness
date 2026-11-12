@@ -285,6 +285,18 @@ names; nothing in tiers I to III changes.
     the failed one; (d) the pool keeps every candidate tried with its result, and a result chosen from several is
     reported with how many were tried. For an analysis result that last line is what keeps a search from being a
     fishing trip: the tools never search analysis choices for an effect.
+22. **The loop's shape** (the direction review of 2026-11-12, [audits/DIRECTION_20261112.md](audits/DIRECTION_20261112.md),
+    applied the same day; tier IV, adjustable). Measured: 4 of 16 waves passed their first check, a wave cost 4.4 Opus
+    runs, and of 52 blocking reasons 15 were a set stated by its cases and 13 a judge never shown right and wrong. So a
+    wave is: a design read where the design queue names one (item 21a); a build of at most THREE numbered changes whose
+    registration states THE CLASS and THE SIZE (BRIEFS 0a); a PROOF TABLE in the hand-back, checked by
+    `setup/autodev/proof.py` before any verifier is launched; for a cluster job, `gate.py preflight` (ten minutes of
+    CHECK_ONLY) before the real submission; ONE verification of about 110 calls under BRIEFS 2a check 10 (what fails a
+    wave: the PI's "do not block anything if unnecessary"); at most ONE fix round with a lean re-check; a second failed
+    check goes to a design read (item 21c), never to another patch. No Opus slot goes to Studio or Lab unless a user can
+    get a wrong result; their checks are Fable checks. **Wrong if**, by 2026-11-19 and read with `passrate.py`: fewer
+    than four of the first eight such waves pass their first check; or Opus runs per merged wave stay at four or more; or
+    a wave merged under check 10 is later shown to give a wrong result (one case reopens the bound).
 21. **Design and direction are Fable's; building and verifying are Opus's** (the PI, 2026-11-12: "use more fable for
     development design and directions"). The coordinator's reading, adjustable:
     (a) DESIGN. Before a builder starts a wave that is not a small fix (a new wave of size M or larger; a redesign;
