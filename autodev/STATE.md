@@ -71,9 +71,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   went live and its limits. The PI can withdraw this at any time. Service is never touched.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus):** the builder of **scProfile's last small fix** (GAP-C122, clone `W047-scProfile` at `95ed6bd`);
-  the builder of **W049's fix round 1** (the driver: an answer for a sealed stage refused; a job states the tools it
-  expects). No Fable agent is running.
+- **Running now (2 Opus):** the verifier of **scProfile's last lean re-check** (the batch at `5c1a3ff`: a record is read only
+  when its bytes are what the maker writes; its DE gate 791483 is on the cluster); the builder of **W049's fix round 1**
+  (the driver). No Fable agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
   1. **W052 PASSED its lean re-check** (the harness at `133589d`). Waiting only for the cluster: its subset 791374, then
      the full job (4 h); on AS PREDICTED both mains move in one step (scIntegrate `2fc7a6c` first, then the harness by
@@ -99,9 +99,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
 - **On PBS:** **791471**, the FULL first-cohort stage 3 through the harness at W052's fix head `133589d` and scIntegrate
-  `2fc7a6c` (asks 4 h; the previous run took about 2 h 40 m). Its subset 791374 read AS PREDICTED on every line. On AS
-  PREDICTED both mains move in one step. Checkouts on the cluster: the harness `133589d`; scQC at `main`; scAnno
-  `f456431`; scIntegrate `2fc7a6c`; scProfile `95ed6bd`.
+  `2fc7a6c` (asks 4 h; on AS PREDICTED both mains move in one step); **791483**, the DE gate at the scProfile batch's
+  head `5c1a3ff`. Checkouts on the cluster: the harness `133589d`; scQC at `main`; scAnno `f456431`; scIntegrate
+  `2fc7a6c`; scProfile `5c1a3ff`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
