@@ -48,6 +48,10 @@ library_design: [integrate.design]
 owned: [integrate.h5ad, integrate.out, integrate.species, integrate.assay]
 # The param naming the tool itself: the checkout holding it is in the run's set (autodev W049, route 14).
 tool_param: scintegrate
+# WHAT scIntegrate OPENS, DECLARED (autodev W056, design read D6): every other flag is text (scIntegrate 2fc7a6c).
+files:
+  scintegrate: {kind: checkout}            # the checkout run.py puts on the path (python -m scintegrate.cli)
+  integrate.design: {kind: file}           # scintegrate/inputs.py:200, from scintegrate/cli.py:115; no column is a path
 wraps:
   tool: scIntegrate
   version: "0.7.0"

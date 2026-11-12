@@ -61,6 +61,28 @@ runs_upstream:
     - {param: cellbender, tool: CellBender, assays: [snrna]}
 # The param naming scQC itself: the checkout holding it is in the run's set (autodev W049, route 14).
 tool_param: scqc
+# WHAT scQC OPENS, DECLARED (autodev W056, design read D6; PLUGIN_FORMAT `files:`): a run depends on exactly these and
+# on the request's and the site's own files; every other flag is text (scqc_cli.py:605-647 parses them and opens
+# none). Each entry cites scQC 8106f50's line that opens it, from its working directory, the stage's run directory.
+files:
+  scqc: {kind: checkout}                   # scqc_cli.py, which run.py runs (:135, :148)
+  registry: {kind: file}                   # modules/00_ingest/ingest.py:193 reads it; its path column (:198) is never
+                                           # opened (only `ref not in registry`, :132): a leaf, its cells text
+  decisions: {kind: file}                  # engine/decisions.py:60 (apply mode); no key of it names a file
+  python: {kind: path, check: present}     # an interpreter: adapters/matrix.py:1575, adapters/scanpy_ops.py:2192
+  rscript: {kind: path, check: present}    # adapters/doublets.py:1266
+  cellbender: {kind: path, check: present} # adapters/cellbender.py:755
+  celescope: {kind: path, check: present}  # the align route: adapters/celescope.py:1112
+  cellranger: {kind: path, check: present} # the align route: adapters/cellranger.py:841
+  # the samplesheet's cells scQC opens, each as written, from its working directory: matrix (ingest.py:162),
+  # ambient_h5 (engine/steps.py:496, :508), aligner_cells (steps.py:788), cellbender_barcodes (adapters/
+  # cellbender.py:1284, steps.py:793), cellreads_stats (adapters/nuclear_fraction.py:114), fastq_r1 (the align
+  # route: adapters/celescope.py:1049), ambient_log and ambient_metrics (steps.py:655). `reference` is a registry
+  # key (ingest.py:132) and, on the align route only, a folder (steps.py:1135): not declared, a stated limit
+  observations:
+    names: {format: table, relative_to: none, each: {kind: path},
+            at: [matrix, ambient_h5, aligner_cells, cellbender_barcodes, cellreads_stats, fastq_r1, ambient_log,
+                 ambient_metrics]}
 # The flags this adapter sets itself (run.py OWNED, tied by a test): refused when the plan is made.
 owned: [project, samplesheet]
 wraps:

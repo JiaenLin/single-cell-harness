@@ -1133,15 +1133,17 @@ class TheDriverHoldsItsRulesRound2(_Base):
 
     def test_B6_a_path_out_of_its_tools_directory_is_refused_and_an_adapter_not_shipped_is_pinned(self):
         c = cohort(self.tmp / "c", "a")
-        for v, refused in (("../../../../../c/design.csv", True), ("x/../../design.csv", True),
-                           ("~nobody/design.csv", True), ("made_by_the_run/x.tsv", False), ("~ condition", False)):
+        # autodev W056 wave A (design read D6): `run.references` is DECLARED a folder (prof's files:), so any relative
+        # value of it is refused by name - one climbing out of its tool's directory says so; the last two were accepted
+        # before (a relative path names what the run made). The same values in a param no declaration names are text.
+        for v, out_of in (("../../../../../c/design.csv", True), ("x/../../design.csv", True),
+                          ("~nobody/design.csv", True), ("made_by_the_run/x.tsv", False), ("~ condition", False)):
             st = stages(c)
             st[3]["params"]["run"]["references"] = v
             rc, reason = self.plan(request(c, name="rel.yml", stages=st))
             with self.subTest(value=v):
-                self.assertEqual(rc, 2 if refused else 0, reason)
-                if refused:
-                    self.assertIn("out of its tool's working directory", reason)
+                self.assertEqual(rc, 2, reason)
+                self.assertIn("out of its tool's working directory" if out_of else "a relative path", reason)
         plug = self.tmp / "adapters" / "qc@scqc"     # the first stage's adapter named by a path
         shutil.copytree(Path(__file__).resolve().parent.parent / "plugins" / "single-cell" / "qc@scqc", plug,
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))

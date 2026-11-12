@@ -45,3 +45,6 @@ cannot_show:
   - The library and the replicate are the columns the request names; a library column that does not name the physical library, or a replicate column that does not name the biological unit, is carried through as declared.
   - A gene symbol is the column the request names; the k-th repeat of a symbol is written SYMBOL-k by the stated rule, so a symbol shared by two genes is two names here, and which gene a tool's marker list meant is not decided.
   - Counts that are integers are not therefore raw; an object whose integer counts were already filtered or capped is passed on as it is.
+# What the parts step opens is the request's one object, declared by the request's schema (autodev W056, D6);
+# its params (counts, symbols, carry, chunk_values, column) are names, never paths.
+files: {}

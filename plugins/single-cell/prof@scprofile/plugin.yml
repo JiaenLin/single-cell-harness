@@ -56,6 +56,16 @@ owned: [run.h5ad, run.out, run.design, run.assay, run.organism]
 
 # The param naming the tool itself: the checkout holding it is in the run's set (autodev W049, route 14).
 tool_param: scprofile
+# WHAT scProfile OPENS, DECLARED (autodev W056, design read D6; scProfile b5f646a): each from its working directory.
+# `present`: there and readable, its content not compared - an environment it runs, or a folder it writes into.
+files:
+  scprofile: {kind: checkout}              # the checkout run.py puts on the path (python -m scprofile.cli)
+  run.prefix: {kind: dir, check: present}  # its environments: <prefix>/<group>/bin/python, scprofile/runner.py:777,
+                                           # :107, launched at :1514
+  run.references: {kind: dir, check: present}   # scprofile/refs.py:160; `run` writes a .sha256 beside each file (:88)
+  run.reuse_from: {kind: dir, check: present}   # earlier runs: scprofile/cli.py:490, landscape.py:143; licences are
+                                                # written into them (licence.py:352)
+  run.search: {kind: dir, check: present, list: ","}   # scprofile/cli.py:424, provenance.py:326 (is_dir, resolved)
 wraps:
   tool: scProfile
   version: "0.1.0"

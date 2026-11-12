@@ -71,6 +71,16 @@ upstream_accepts:
   snrna: {alignment: any, ambient: any}
 # The param naming the tool itself: the checkout holding it is in the run's set (autodev W049, route 14).
 tool_param: scanno
+# WHAT scAnno OPENS, DECLARED (autodev W056, design read D6): `annotate`'s five files, each from its working
+# directory and none naming another file (scAnno 9fb561c); every other flag of the four commands is text.
+files:
+  scanno: {kind: checkout}                 # bin/scanno, which run.py runs
+  annotate.tree: {kind: file}              # scanno/cli.py:555 (JSON: children, patterns, members; no path)
+  annotate.store: {kind: file}             # scanno/cli.py:515 (np.load), read at :578
+  annotate.db: {kind: file}                # scanno/corpus.py:80 (SQLite, read-only), from scanno/cli.py:493
+  annotate.scope: {kind: file}             # scanno/cli.py:616: only `nodes`, `removed_labels`, `n_samples` are read
+                                           # (force.py:164-168, cli.py:631-632); its labels and tree lines are text
+  annotate.l1_tree: {kind: file}           # scanno/cli.py:649
 wraps:
   tool: scAnno
   version: "0.12.0"

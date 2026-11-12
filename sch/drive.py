@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
 import json
 import os
 import re
@@ -64,6 +65,26 @@ FIELDS = {
                  "the queue is the site's, chosen from these by the site file's pbs.queues",
 }
 REQUIRED = ("request", "observations", "parts", "keys", "context", "upstream", "stages")
+#: THE FILES A DRIVEN RUN DEPENDS ON ARE EXACTLY THE FILES DECLARED FOR IT (autodev W056, design read D6; ARCHITECTURE
+#: C2, dependencies are declared, never discovered): by the request's schema and the site's (DECLARED) and by each
+#: stage adapter's `files:` (PLUGIN_FORMAT) - {param: {kind, check, list, names}}, and `observations: {names}` for the
+#: samplesheet's columns its tool opens. A string nothing declares is TEXT, whatever it looks like: never resolved,
+#: looked up, opened, pinned or refused for its look. `declared()` is the one place; `run_inputs` walks it.
+KINDS = ("file", "dir", "path", "checkout")       # `path`: a file or a folder, as found; `checkout`: a tool's own code
+CHECKS = ("pinned", "present", "named")           # its digest compared | there and readable | recorded as its text
+ENTRY = ("kind", "check", "list", "names")
+READER = ("format", "at", "relative_to", "each")  # which columns (by header) or key paths ([*]: every element) name
+FORMATS = ("table", "json", "yaml")               # files, and from where a relative one is read
+RELATIVE = ("file", "none")                       # beside the file naming it | its tool's working directory: refused
+DECLARED = {
+    "request": "the request's schema: the request, a file",
+    "observations": "the request's schema: the samplesheet, a file (with object:, the one .h5ad); its parts column "
+                    "names each library's object, beside the sheet, as the stack reads it (services/dataset.py)",
+    "design": "the request's schema: the design sheet, a file",
+    "<stage>.plugin": "the request's schema: a stage's adapter the harness does not ship, a folder (its code too)",
+    "site.stack.yml": "the site's schema: the layer beneath every stage's stack, a file; no leaf of it is followed",
+    "harness": "the site's schema: the harness's own code, a checkout (its sch/ and plugins/)",
+}
 WAITING = 3          # the exit status of a run stopped at a user's decision
 SHAPES = ("libraries", "joint")
 #: What an unanswered decision does (autodev W042 fix 1, D): `stop` - the run stops before its stage
@@ -374,6 +395,260 @@ def _nogit_state(got: Path, d: Path) -> dict:
     1): its files' digest, or, when the param names the directory itself, that directory walked as the param's."""
     return ({"path": str(d), "git": None, "tracked_changes": _tree_digest(d)} if got.is_file() else
             {"path": str(d), "git": None, "tracked_changes": "the directory itself, walked as the param"})
+
+
+# ---------------------------------------------------------------------------- what a run depends on, declared
+def _entry_ok(e, where: str, sheet: bool = False):
+    """One `files:` entry, or a reader's `each`, checked by name (autodev W056, design read D6)."""
+    if not isinstance(e, dict):
+        raise RequestError(f"{where} is not a mapping of " + ("names (its reader)" if sheet else ", ".join(ENTRY)))
+    bad = sorted(set(map(str, e)) - ({"names"} if sheet else set(ENTRY)))
+    if bad:
+        raise RequestError(f"{where}: {', '.join(bad)} is not a word of " + (
+            "the samplesheet's entry (names: its reader)" if sheet else f"a files: entry ({', '.join(ENTRY)})"))
+    if not sheet:
+        kind, check = str(e.get("kind")), str(e.get("check") or "pinned")
+        if kind not in KINDS:
+            raise RequestError(f"{where}: kind {e.get('kind')!r} is not one of {', '.join(KINDS)}")
+        if check not in CHECKS:
+            raise RequestError(f"{where}: check {e.get('check')!r} is not one of {', '.join(CHECKS)}")
+        if e.get("list") is not None and not (isinstance(e["list"], str) and len(e["list"]) == 1):
+            raise RequestError(f"{where}: list {e['list']!r} is not the one character joining several paths")
+        if e.get("names") is not None and kind != "file":
+            raise RequestError(f"{where}: names: reads the paths a file names, and a {kind} is not one")
+        if kind == "checkout" and (e.get("list") is not None or check != "pinned"):
+            raise RequestError(f"{where}: a checkout is its commit and its tracked changes: no check, list or names")
+    if e.get("names") is not None:
+        _reader_ok(e["names"], f"{where}.names")
+
+
+def _reader_ok(r, where: str):
+    """A reader, checked by name (autodev W056, D6): {format, at, relative_to, each}, each word declared."""
+    if not isinstance(r, dict):
+        raise RequestError(f"{where} is not a reader ({', '.join(READER)})")
+    bad = sorted(set(map(str, r)) - set(READER))
+    absent = [k for k in READER if r.get(k) in (None, "", [], {})]
+    if bad or absent:
+        raise RequestError(f"{where}: " + (f"{', '.join(bad)} is not a word of a reader" if bad else
+                                           f"declares no {', '.join(absent)}") + f" ({', '.join(READER)})")
+    if str(r["format"]) not in FORMATS:
+        raise RequestError(f"{where}: format {r['format']!r} is not one of {', '.join(FORMATS)}")
+    if not isinstance(r["at"], list) or not all(isinstance(x, str) and x for x in r["at"]):
+        raise RequestError(f"{where}: at: is not a list of columns (by their header) or key paths")
+    if str(r["relative_to"]) not in RELATIVE:
+        raise RequestError(f"{where}: relative_to {r['relative_to']!r} is not one of {', '.join(RELATIVE)}")
+    _entry_ok(r["each"], f"{where}.each")
+
+
+def _decl(m) -> dict:
+    """A stage adapter's `files:` (autodev W056, D6), refused by name when it is missing (`{}` is a statement, a missing
+    key is not), holds a word no declaration has, or declares a param the adapter sets itself (its `owned:`)."""
+    f = m.data.get("files")
+    if f is None:
+        raise RequestError(f"{m.name} declares no files: - each param of its tool that names a file, a folder or its "
+                           f"checkout, {{kind, check, list, names}}, and observations: {{names: <reader>}} for the "
+                           f"samplesheet's columns its tool opens (PLUGIN_FORMAT); `files: {{}}` when none. What a run "
+                           f"depends on is what is declared, never guessed from how a value looks")
+    if not isinstance(f, dict):
+        raise RequestError(f"{m.name}: files: is not a mapping of params")
+    owned = {_key(x) for x in m.data.get("owned") or []}
+    for param, e in f.items():
+        if _key(param) in owned:
+            raise RequestError(f"{m.name}: files.{param}: {param} is a flag {m.name} sets itself (its owned:): what "
+                               f"it names is the stack's, not the request's")
+        _entry_ok(e, f"{m.name}: files.{param}", str(param) == "observations")
+    return {str(k): v for k, v in f.items()}
+
+
+def _param(params: dict, path: str) -> tuple:
+    """(True, its value) where a stage's params set the param `path` (`flag` or `cmd.flag`), else (False, None)."""
+    head, _, rest = str(path).partition(".")
+    if head not in params:
+        return False, None
+    if not rest:
+        return True, params[head]
+    block = params[head]
+    return (True, block[rest]) if isinstance(block, dict) and rest in block else (False, None)
+
+
+def _values(v, e: dict, what: str, base: Path | None = None) -> list:
+    """The paths ONE DECLARED value names (autodev W056, D6): it is text - one path, or each piece where its entry
+    declares `list` - absolute or `~/` (the running user's home); a relative one is read beside the file naming it
+    where its reader says `relative_to: file` (`base`), and refused by name otherwise: its tool reads it from its own
+    working directory, where nothing the set holds is. None, false or empty names nothing."""
+    if v is None or v is False or v == "":
+        return []
+    if not isinstance(v, str):
+        raise RequestError(f"{what} is {v!r}, which is not text: it is declared a {e.get('kind') or 'file'} (its "
+                           f"adapter's files:), so its value is one path" + (
+                               f", or several joined by {e['list']!r}" if e.get("list") else ""))
+    out = []
+    for x in (v.split(e["list"]) if e.get("list") else [v]):
+        if not x:
+            continue
+        if x.startswith("/"):
+            out.append(Path(x))
+        elif x.startswith("~/"):
+            out.append(Path(os.path.expanduser(x)))
+        elif base is not None and not _climbs(x):
+            out.append(base / x)
+        else:
+            raise RequestError(f"{what} is {x!r}, a relative path" + (" out of its tool's working directory" if
+                               _climbs(x) else "") + "; its tool reads it from its own working directory (the stage's "
+                               "run directory), not from the request's, and what it names there would not be pinned: "
+                               "write it absolute, or ~/")
+    return out
+
+
+def _cells(f: Path, r: dict) -> list:
+    """[(at, where, value)] of a file's declared columns or keys, as its tool reads them (autodev W056, D6): a table by
+    its header, exactly (the delimiter its suffix says, else its header's: a TAB or a comma; a byte-order mark, CRLF
+    and a quoted cell holding a newline read as the csv module reads them), each row `<column>[<row>]`, a column it
+    lacks an empty cell a row; a JSON or YAML document by its key paths (`[*]` for every element)."""
+    if r["format"] == "table":
+        text = f.read_text(encoding="utf-8-sig")
+        sep = {".csv": ",", ".tsv": "\t", ".txt": "\t"}.get(f.suffix.lower())
+        if sep is None:
+            top = text.split("\n", 1)[0]
+            sep = "\t" if top.count("\t") >= top.count(",") else ","
+        rows = list(csv.reader(io.StringIO(text, newline=""), delimiter=sep))
+        head = rows[0] if rows else []
+        return [(a, f"{a}[{i}]", (row[head.index(a)] if head.index(a) < len(row) else "") if a in head else "")
+                for a in r["at"] for i, row in enumerate(rows[1:], 1)]
+    doc = json.loads(f.read_text(encoding="utf-8")) if r["format"] == "json" else yamlish.load(f)
+    pats = [(a, re.compile(re.escape(a).replace(r"\[\*\]", r"\[\d+\]"))) for a in r["at"]]
+    return [(a, w, v) for w, v in _leaves(doc) for a, pat in pats if pat.fullmatch(w)]
+
+
+def _item(out: list, role: str, p: Path, e: dict, by: str) -> dict:
+    """One declared input into `out`; a FILE whose entry names a reader is read for the inputs it names - only where it
+    is a file, each by the reader's `each` (depth is what `names` nests, not a number)."""
+    it = {"role": role, "path": str(p), "kind": str(e.get("kind") or "file"), "check": str(e.get("check") or "pinned"),
+          "by": by}
+    out.append(it)
+    r = e.get("names")
+    if r and it["check"] != "named" and p.is_file():
+        it["read"] = _named_by(out, role, p, r, by)
+    return it
+
+
+def _named_by(out: list, role: str, f: Path, r: dict, by: str) -> list:
+    """[(column or key, rows naming a file, rows, who declared it)] of a reader over the file `f`, each input it names
+    into `out` as `<role>><column>[<row>]` or `<role>><key path>`: a misspelt column reads 0 of n."""
+    try:
+        got = _cells(f, r)
+    except Exception as x:                       # noqa: BLE001 - not what it is declared to be: said, by name
+        raise RequestError(f"{role} {f}: {by} reads it as a {r['format']} naming files ({', '.join(r['at'])}), and it "
+                           f"does not read as one ({type(x).__name__}: {x})") from None
+    base = f.parent if r["relative_to"] == "file" else None
+    counts = {a: [0, 0] for a in r["at"]}
+    for a, where, v in got:
+        paths = _values(v, r["each"], f"{role} {f}: {where} ({by})", base)
+        counts[a][0] += bool(paths)
+        counts[a][1] += 1
+        for j, p in enumerate(paths):
+            _item(out, f"{role}>{where}" + (f"#{j}" if len(paths) > 1 else ""), p, r["each"], by)
+    return [(a, k, n, by) for a, (k, n) in counts.items()]
+
+
+def _sheet_cells(out: list, req: dict, sheet: Path, readers: list) -> list:
+    """The request's samplesheet as the stack reads it (services/dataset.py read_manifest): each cell of a column a
+    reader declares - the request's parts column, beside the sheet; the first stage's tool's columns, as its adapter
+    declares them - as `observations.<column>[<library>]`. A column declared twice is one role, read the stricter way."""
+    from .services.dataset import read_manifest
+    try:
+        _head, rows = read_manifest(sheet)
+    except Exception:                            # noqa: BLE001 - the stack's own init says what is wrong
+        return []
+    cols: dict = {}
+    for r, by in readers:
+        for a in r["at"]:
+            cols.setdefault(str(a), []).append((r, by))
+    reads = []
+    for col, decls in cols.items():
+        base = sheet.parent if all(r["relative_to"] == "file" for r, _b in decls) else None
+        each = {**decls[0][0]["each"], "check": min((str(r["each"].get("check") or "pinned") for r, _b in decls),
+                                                    key=CHECKS.index),
+                "names": next((r["each"]["names"] for r, _b in decls if r["each"].get("names")), None)}
+        by, k = " and ".join(b for _r, b in decls), 0
+        for i, row in enumerate(rows, 1):
+            lib = str(row.get(req["keys"]["sample"]) or i).strip()
+            paths = _values(row.get(col), each, f"observations {sheet}: {col}[{lib}] ({by})", base)
+            k += bool(paths)
+            for j, f in enumerate(paths):
+                _item(out, f"observations.{col}[{lib}]" + (f"#{j}" if len(paths) > 1 else ""), f, each, by)
+        reads.append((col, k, len(rows), by))
+    return reads
+
+
+def _checkouts(req: dict) -> list:
+    """[(stage, param, `<stage>.<param>@checkout`, its value as the request writes it, its path)]: each param a stage's
+    adapter declares `kind: checkout` - its tool's own code (autodev W056, D6; it was `tool_param`)."""
+    out = []
+    for p in req["stages"]:
+        for param, e in (p.get("files") or {}).items():
+            found, v = _param(p["params"], param) if (e or {}).get("kind") == "checkout" else (False, None)
+            got = _values(v, e, f"{p['stage']} ({p['plugin']}): {param}") if found else []
+            if got:
+                out.append((p, param, f"{p['stage']}.{param}@checkout", str(v), got[0]))
+    return out
+
+
+def declared(req: dict, answers: dict | None = None) -> list:
+    """THE ONE PLACE (autodev W056, design read D6): every input a driven run depends on, as declared, [{role, path,
+    kind, check, by, read}] - by the request's schema and the site's (DECLARED) and by each stage adapter's `files:`,
+    and nothing else: a string no declaration names is text. A file a declared reader names is read from the file
+    naming it, so the roles inside it are a function of that file's pinned bytes and of the declaration. An answer is
+    its decision's param's value, so that param's entry types it. Refused by name: a declared value that is not text,
+    or relative where its reader resolves nothing beside a file."""
+    out: list = []
+    root = Path(__file__).resolve().parent.parent
+    out.append({"role": "harness", "path": str(root), "kind": "checkout", "check": "pinned", "by": DECLARED["harness"]})
+    _item(out, "request", Path(req["path"]), {"kind": "file"}, DECLARED["request"])
+    sheet = Path(req["observations"])
+    obs = _item(out, "observations", sheet, {"kind": "file"}, DECLARED["observations"])
+    if req.get("design"):
+        _item(out, "design", Path(req["design"]), {"kind": "file"}, DECLARED["design"])
+    first = req["stages"][0] if req["stages"] else {}
+    readers = [] if req.get("object") else [({"format": "table", "at": [str(req["parts"])], "relative_to": "file",
+                                               "each": {"kind": "file"}}, "the request's schema (parts)")]
+    mine = ((first.get("files") or {}).get("observations") or {}).get("names")
+    if mine and readers and first.get("reads") == "libraries":
+        readers.append((mine, f"{first['plugin']} files.observations"))
+    if readers and sheet.is_file():
+        obs["read"] = _sheet_cells(out, req, sheet, readers)
+    shipped = (root / "plugins").resolve()
+    for p in req["stages"]:
+        d = Path(p["dir"]).resolve()
+        if not str(d).startswith(str(shipped) + os.sep):
+            _item(out, f"{p['stage']}.plugin", d, {"kind": "dir"}, DECLARED["<stage>.plugin"])
+        decl = p.get("files") or {}
+        for param, e in decl.items():
+            found, v = _param(p["params"], param) if param != "observations" else (False, None)
+            if not found:
+                continue
+            by = f"{p['plugin']} files.{param}"
+            paths = _values(v, e, f"{p['stage']} ({p['plugin']}): {param}")
+            if e.get("kind") == "checkout":
+                for f in paths[:1]:              # the param's own file or folder, and the checkout holding it
+                    _item(out, f"{p['stage']}.{param}", f, {"kind": "path"}, by)
+                    out.append({"role": f"{p['stage']}.{param}@checkout", "path": str(f), "kind": "checkout",
+                                "check": "pinned", "by": by})
+                continue
+            for j, f in enumerate(paths):
+                _item(out, f"{p['stage']}.{param}" + (f"#{j}" if len(paths) > 1 else ""), f, e, by)
+        for dd in p["decisions"]:
+            if dd["name"] in (answers or {}) and dd["param"] in decl:
+                a = answers[dd["name"]]
+                e = decl[dd["param"]]
+                paths = _values(a.get("value") if isinstance(a, dict) else a, e, f"--answer {dd['name']}")
+                for j, f in enumerate(paths):
+                    _item(out, f"answer[{dd['name']}]" + (f"#{j}" if len(paths) > 1 else ""), f, e,
+                          f"{p['plugin']} files.{dd['param']} (the decision {dd['name']})")
+    site = os.environ.get("SCH_SITE")
+    if site:
+        _item(out, "site.stack.yml", Path(site) / "stack.yml", {"kind": "file"}, DECLARED["site.stack.yml"])
+    return out
 
 
 def run_inputs(req: dict, answers: dict | None = None, git: bool = True) -> dict:
@@ -977,6 +1252,13 @@ def load(path, files: bool = True) -> dict:
             if got:
                 raise RequestError(f"stages[{i}] ({m.name}): params set {got[0]}, which {m.name} sets itself from "
                                    f"the stack (its `owned:`); drop it from the stage's params")
+        # WHAT ITS TOOL OPENS IS DECLARED (autodev W056, design read D6): the adapter's files:, checked by name, and each
+        # declared value text, absolute or ~/ - its tool reads a relative one from its own working directory
+        files_decl = _decl(m)
+        for param, e in files_decl.items():
+            found, v = _param(params, param) if param != "observations" else (False, None)
+            if found:
+                _values(v, e, f"stages[{i}] ({m.name}): {param}")
         # A RELATIVE PATH IS READ WHERE ITS TOOL RUNS (autodev W042 fix 2, B): a tool is given its params
         # verbatim and reads a relative path from its own working directory, the stage's run directory;
         # one that names a file beside the request would be pinned here and not be what the tool reads.
@@ -1020,6 +1302,7 @@ def load(path, files: bool = True) -> dict:
                      "resources": dict(m.data.get("resources") or {}),
                      "upstream_columns": m.data.get("upstream_columns"),
                      "upstream_accepts": m.data.get("upstream_accepts"), "tool_param": m.data.get("tool_param"),
+                     "files": files_decl,
                      "runs_upstream": dict(m.data.get("runs_upstream") or {}),
                      "cannot_show": list(m.data.get("cannot_show") or [])})
 
@@ -1109,12 +1392,15 @@ def load(path, files: bool = True) -> dict:
                    f"{cond[nxt['reads']]!r}") if cond.get(nxt["reads"]) else ""
             raise RequestError(f"{nxt['plugin']} reads {nxt['reads']}; {prev['plugin']} hands on "
                                f"{', '.join(prev['hands_on']) or 'nothing'}{how}")
-    return {"path": str(src), "sha256": _sha(src), "observations": where("observations"),
+    req = {"path": str(src), "sha256": _sha(src), "observations": where("observations"),
             "design": where("design") if doc.get("design") else None, "parts": str(doc["parts"]),
             "keys": {str(k): str(v) for k, v in keys.items()}, "object": obj,
             "context": {str(k): str(v) for k, v in ctx.items()}, "upstream": up, "stages": plan,
             "decisions": run_decisions,
             "drive_resources": {str(k): str(v) for k, v in dict(res.get(DRIVE) or {}).items()}}
+    if files:                                    # a cell of a column a tool opens from its own directory, written
+        declared(req)                            # relative, is refused here, by name (autodev W056, D6)
+    return req
 
 
 def plan_lines(req: dict, answers: dict | None = None) -> list:
@@ -1224,6 +1510,8 @@ def answers_of(req: dict, given: list | None, by: str | None, recorded: dict | N
             raise RequestError(f"{what} {str(v)!r}: an answer and who gave it are one line of printable text; they "
                                f"are recorded and written into a generated job as they are")
     bases = [Path(req["path"]).parent, Path.cwd()]
+    typed = {d["name"]: (p.get("files") or {})[d["param"]] for p in req["stages"] for d in p["decisions"]
+             if d["param"] in (p.get("files") or {})}   # an answer to a param declared a file is one (W056, D6)
     for a in given or []:
         name, sep, raw = str(a).partition("=")
         if not sep or name not in names:
@@ -1251,6 +1539,8 @@ def answers_of(req: dict, given: list | None, by: str | None, recorded: dict | N
                     raise RequestError(f"--answer {a!r}: {x!r} is a relative path; {name}'s tool reads it from its "
                                        f"own working directory (the stage's run directory), not from here, and "
                                        f"what it names there would not be pinned: write it absolute, or ~/")
+        if name in typed:
+            _values(value, typed[name], f"--answer {a!r}: {name}")
         if name in now and now[name] != value:   # autodev W049 fix 1: one command, one answer a decision
             raise RequestError(f"--answer {name} is given twice in one command ({json.dumps(now[name])} and "
                                f"{json.dumps(value)}): a decision has one answer")
