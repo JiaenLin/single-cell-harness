@@ -118,20 +118,23 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   two table parsers impossible or refused; it appends one section to waves/W056.md). On its hand-back: ONE Opus
   builder to that design (at most 3 changes, the jobs regenerated at scProfile `a2694ec`), `proof.py`, the cluster
   preflight, a lean re-check, then the subset (6 h) and the full run (10 h).
-- **Running now (2 Opus):** the builder of **W068** (decoupler, the second held-out plugin: graded BLIND and pushed
-  before any change, then through the maker's verbs, then its gate job; waves/W068.md); **W063's COLD ATTEMPT 2**
-  (stage 1), a SEPARATE headless session started by the coordinator from `<scratchpad>/a23/` (D-055; one Opus slot;
-  not an agent of this session, so no agent id: its folder is `a23/launch/run1_<stamp>/`, its end line `COLD: ...`
-  or `NOT COLD`). **ATTEMPT 1 IS VOID** (15:40Z to 15:56Z): the check printed NOT COLD (3) on two refused Edit calls
-  and a Grep expression it read as a path; nothing outside the pack was read, but the rule written before the
-  launch voids it: its job (`launch/run1_20261112T154032Z/handback/job.pbs`) is NOT submitted and NOT read; only its
-  MISLED rows are used (the docs ledger; about 30 rows, to file with attempt 2's). The check was amended before
-  attempt 2 (waves/W063.md, Attempts). The kit, the criteria note and every launch folder are copied to the first
-  cohort's `stages/01_qc/a23/` (survives a reboot; never under this repository: the leak guard reads its untracked
-  folders too). AFTER THE ATTEMPT: read `pack_run1/out/job.pbs` before anything runs (waves/W063.md, step 5),
-  record its md5, submit it unchanged through the gate (preflight, then the run), then the grading job with NEW and
-  SINCE. When W056's design read hands back, its builder takes the slot the cold attempt frees.
-  NEXT for an Opus slot after those: W061's T (the integration tool records the run's six fields); W067's S1.
+- **Running now (1 Opus):** the builder of **W068** (decoupler, the second held-out plugin: graded BLIND and pushed
+  before any change, then through the maker's verbs, then its gate job; waves/W068.md). The second Opus slot is for
+  W056's builder when its design read hands back. NEXT after those: W061's T; W067's S1.
+- **W063, the cold reproduction of stage 1: THE COLD RUN IS ON THE CLUSTER (PBS 794590, submitted
+  2026-11-12T16:28:23Z, unchanged, through the gate; run folder `runs/scqc/01_qc/20261112T162823Z__scqc-f57bc6e__01_qc__repro-w048g`).**
+  Attempt 2 (16:02Z to 16:19Z) read `COLD: 80 calls, 0 outside`; its job is md5 `bbbd8e0a...`, stored as the first
+  cohort's `stages/01_qc/jobs/job.pbs`; its own preflight (794570) read 112 OK and 1 reported miss (`qstat -B`).
+  **Attempt 1 is VOID** (two refused Edit calls and a Grep expression the check read as a path; the rule written
+  before it voids it; its job never submitted or read). WHEN 794590 SEALS: `gate.py preflight` of
+  `a23_grade_stage1.pbs` (stage 01_qc) with `--set NEW=<that run folder> --set SINCE=2026-11-12T16:28:23Z`, then
+  its submission with the same sets, graded with `--verdict "<its A23 line>"` (waves/W063.md, step 7). **Expected
+  and written down before the run: C1 will miss** (the job copies the registry into its new folder and the tool's
+  run key holds that path, so the digest differs: GAP-C137); C2 (the kept barcodes of ten libraries) and C3 are
+  the measurement. The criteria are not touched. A2.3 does not move on a NOT REPRODUCED line; whether "the same
+  kept set under a key that changed with the folder" counts is the auditor's and the PI's, for the day's report.
+  The kit, the criteria note and every launch folder (both attempts' transcripts and hand-backs) are in the first
+  cohort's `stages/01_qc/a23/` (survives a reboot). The cluster's scQC checkout is at `f57bc6e` while 794590 lives.
 - **Merged 2026-11-12T14:16Z, the twelfth: scProfile `a2694ec`** (the batch **W055 + W058 + W065**, each verified PASS; the
   gate PBS 793345 AS PREDICTED at that commit): `abundance` through the maker with a declared control as its
   reference level, a covariate refused by name and an interaction named as not fitted; a source stage (three plugins
