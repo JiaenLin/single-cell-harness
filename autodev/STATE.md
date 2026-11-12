@@ -112,9 +112,12 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   instances not ok, not 8 of 8. The gate did not pass: W055 and W058 (both verified) wait. **W065 is registered**
   ([waves/W065.md](waves/W065.md): the host gives every plugin its allocation; abundance's fields declared; the job
   predicted again) and takes the NEXT free Opus slot. THE DEV SUITE IS NOT SUBMITTED AGAIN BEFORE IT.
-- **Running now (2 Fable):** the independent CHECKER of **W062** (the Studio at `7e350a2`; on PASS it deploys, D-045);
-  the THIRD DRAW on scQC's docs branch `16f1c32` (seed 20261114; the second draw's lines are fixed; none false: scQC
-  counts for A2.2 and the branch merges on it).
+- **Running now (1 Fable):** the independent CHECKER of **W062** (the Studio at `7e350a2`; on PASS it deploys, D-045).
+- **scQC's `main` is `16f1c32` since 2026-11-12T10:45Z (D-052): a docs-only merge** (about 150 corrected lines from
+  three sweeps; no executed file changed, so every gate at `8106f50` stands). It does NOT count for A2.2: each of three
+  seeded draws found one false claim in twelve, each in a line no sweep had touched. **W060 is held**: seven Fable runs
+  for one repository is not the cheap point the direction review assumed; the rest is GAP-C134 and GAP-C130 for
+  scQC's next builder.
 - **D9 IS WRITTEN** ([waves/W063.md](waves/W063.md), "Design"): the protocol of a cold reproduction: a closed record
   pack, the tool at the record's commit, a comparison sealed before the attempt, and the attempt run as a SEPARATE
   headless session (a subagent of this session is not cold). Runs in order: stage 1 (27 min), stage 4, stage 2, stage 3;
@@ -163,9 +166,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   MOVED DOWN (each is 0.2 or less for a builder and a verifier, on a test already over its bar): scIntegrate's installer
   (GAP-C116; brief `q_w046fix2.txt`), R05, R33, R13's run 3. NO Opus slot for Studio or Lab unless a user can get a
   wrong result.
-- **THE FABLE QUEUE (no Opus slot; at most 2 at once):** D1 done; the first sweep running. Then, in this order: the
-  sweep's DRAW; W057's completion check; a **docs-truth sweep** of one settled repository a run (scAnno, Lab; the
-  Studio after W057 deploys): the false lines with the corrected text
+- **THE FABLE QUEUE (no Opus slot; at most 2 at once):** D1, D6, D8, D9 written. Docs sweeps are HELD (W060: measured
+  cost). Next, in this order: W062's check (running); **D5** with GAP-C131 (the maker's missing sites and how the
+  fixture tier counts a partial), which W065's gate will need; then: a **docs-truth sweep** only of the smallest
+  documentation (measure the sizes first): the false lines with the corrected text
   on a docs-only branch, then a seeded draw of 12 claims by ANOTHER agent writes the row (A2.2 +0.125 a repository);
   **D4** (R36's draw rule, design only); **D2** (R08: where a local UI reads a cluster run's state; what turns plain
   language into a request); **D3** (R09: a follow-up as a typed request fragment); **D5** (the maker's missing sites,
