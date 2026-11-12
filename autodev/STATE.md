@@ -69,16 +69,15 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   stays the PI's go: the permission layer refused a drafted standing rule to deploy without asking.
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
-- **Running now (2 Opus):** the builder of **W053** (Studio, from its `main` `192057b`: an untested gene carries no p in a
-  saved DE file, on screen or in the volcano; the volcano's line under an FDR cutoff); the builder of **scProfile's last
-  small fix** (GAP-C122, in clone `W047-scProfile` at `95ed6bd`). No Fable agent is running.
+- **Running now (2 Opus + 1 Fable):** the builder of **scProfile's last small fix** (GAP-C122, clone `W047-scProfile` at
+  `95ed6bd`); the verifier of **W052's lean re-check** (the harness at `133589d`; its subset 791374 is on the cluster);
+  the Fable checker of **W053** (Studio, built at `42b20c3`: an untested gene carries no p anywhere; the volcano follows
+  the cutoff's own correction; a cutoff written in two figures). After its check: the PI's go for the deploy.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
-  1. **W052's lean re-check** (the harness, fix round 1 built at `133589d`: a mount's recorded identity is compared on
-     every reopening and a mismatch refused by name). Its subset 791374 is on the cluster; the full job follows it;
-     then BOTH mains in one step (scIntegrate `2fc7a6c` first), A3.1 +0.1; the stage-3 question goes into the day's report.
+  1. After W052's re-check and its subset: the full job (4 h), then BOTH mains in one step (scIntegrate `2fc7a6c` first),
+     A3.1 +0.1; the stage-3 question goes into the day's report.
   2. After scProfile's fix: its lean re-check, the DE gate again, the merge on a PASS (D-044), then the plugin line,
      abundance first (A4.1, A4.3, A3.2).
-  3. After W053: a short check (Fable, by looking and reading), then the PI's go for the deploy.
   4. **W049's fix round 1** (the driver): brief `q_w049fix1.txt`. Then its re-check, W045 brought onto it, the first
      cohort's chained run as the gate.
   5. **W050's verification** (scAnno `f456431`): brief `q_w050verify.txt`.
