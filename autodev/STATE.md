@@ -76,15 +76,17 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
   cohort-value class).
 - **Running now (2 Opus):** the VERIFIER of **W054** (Lab: the run section rebuilt as a closed reader, one file per
-  conversion; built at `5b4b42e`, suite 496 of 496, the fixture's digest as predicted; on PASS Lab deploys without a
-  question, D-045); the builder of **W055** (scProfile, the plugin line's first wave: `abundance` graded blind
-  through the maker, then the maker fixed; a DOI and a pin for `de`, `cellchat` and `abundance`). No Fable agent is running.
+  conversion; built at `5b4b42e`; on PASS Lab deploys without a question, D-045); the builder of **W056** (the
+  driver's integration, [waves/W056.md](waves/W056.md): from W052's branch at `133589d`, the verified driver merged
+  by hand, W045 brought on, the first cohort's chained request finished, its subset and full jobs generated; launched
+  2026-11-12T04:30Z). No Fable agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
-  0. **W056, the driver's integration** (the batch is VERIFIED at `110417c`): REGISTERED 2026-11-12
-     ([waves/W056.md](waves/W056.md); brief `q_w056build.txt`): from W052's branch at `133589d`, the driver merged by
-     hand, W045 brought on, the first cohort's chained request finished (its label-column unknown is a design the
-     builder decides and labels), the subset and full jobs generated with `--tool` for all four tools. It launches
-     at the next free Opus slot. A1.2, A6.3, A7.1 and A3.4 wait on this line.
+  0. **W055's second half** (scProfile, `abundance` through the maker; brief `q_w055cont.txt`, the first builder's
+     clone kept). The first half is pushed at `2e5b95a`: the blind grade, a `source` stage and verb in the maker (three
+     plugins with a DOI that resolves and an exact pin), the fixture tier accepting no refusal, abundance's leak hits
+     gone. Left: the suite is red there (3 of 124), the design step (the reference level from the host: the effect's
+     sign is reversed between the fixture's two shapes today; a covariate; the interaction fitted or refused by
+     name), an in-run refusal still reading ok, the job's prediction. Then its verification and the dev-suite job.
   0b. W054's verification is running; then Lab's deploy, reported, not asked (D-045). After it: Studio's Run-card
       sentences brought in line with what a bundle now carries (a Fable designer's small pass, then a deploy).
   1. **W052 PASSED its lean re-check** (the harness at `133589d`). Waiting only for the cluster: its subset 791374, then
