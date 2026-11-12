@@ -103,24 +103,23 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **W056's D6 fix round FAILED its lean re-check at `90dea9a` (1 reason), the waves' SECOND failed check: a DESIGN
-  READ, not a patch (RULES item 22).** The reason: the walk reads scQC's samplesheet with the stack's reader, which
-  breaks a line at five characters scQC's reader does not (U+2028, U+2029, U+0085, a form feed, a vertical tab); a
-  text cell holding one and then `#` ends the row for the walk only, so that row's file is not pinned and the plan
-  exits 0 (the cohort's sheet holds no such cell; attack 33). Everything else the round built held under the
-  checker's own inputs, and **the cluster preflight read OK (PBS 794434)**. Counted, for the next builder: an
-  only-spaces scQC cell is refused though scQC reads it as empty; `cell_reads` sees `.strip` only; C9 takes the first
-  `report.json` holding "ran" (a real run also writes the stack's own report there: not measured); the wave's
-  sentence that scQC's reader is "as the stack's". **NO CHAIN JOB IS SUBMITTED YET, for a second reason: both jobs
-  pin scProfile at `b5f646a`, and stage 4 runs `de`, which before the allocation fix (`a2694ec`) reads the node's
-  core count (the open-file incident of 792123): the next builder regenerates both jobs at `a2694ec`.**
-- **Running now (1 Fable):** W056's DESIGN READ 2 (one table, two parsers: what makes a fourth difference between
-  two table parsers impossible or refused; it appends one section to waves/W056.md). On its hand-back: ONE Opus
-  builder to that design (at most 3 changes, the jobs regenerated at scProfile `a2694ec`), `proof.py`, the cluster
-  preflight, a lean re-check, then the subset (6 h) and the full run (10 h).
-- **Running now (1 Opus):** the builder of **W068** (decoupler, the second held-out plugin: graded BLIND and pushed
-  before any change, then through the maker's verbs, then its gate job; waves/W068.md). The second Opus slot is for
-  W056's builder when its design read hands back. NEXT after those: W061's T; W067's S1.
+- **W056: DESIGN READ 2 IS WRITTEN and its builder is running** (waves/W056.md, "Design read 2 (D6): one table, two
+  parsers" and "Round after design read 2"). The D6 fix round failed its lean re-check at `90dea9a` on one reason
+  (the stack's reader and scQC's break a sheet into lines differently, so a rare cell left a file unpinned; attack
+  33), the waves' second failed check, so no patch (RULES item 22). THE DESIGN: a table the walk takes a declared
+  value from is in a CANONICAL FORM of seven clauses checked on the bytes before anything is parsed (its cells are
+  then its bytes split at LF and at the header's one delimiter, for every reader), or the plan refuses naming the
+  file, the line and the property. The coordinator's rulings: CR LF stays refused this round (GAP-C140: a converter
+  the user runs and CR LF admitted, after the merge); both jobs regenerated at scProfile `a2694ec` (**no chain job
+  before that: stage 4's `de` at `b5f646a` reads the node's core count**); C9 takes the one report holding the key.
+  ON ITS HAND-BACK: `proof.py`; sync `stages/00_driver` to the cluster (tar, md5 compare); `gate.py preflight` of the
+  subset job (tools: the new head, scQC `8106f50`, scAnno `9fb561c`, scIntegrate `2fc7a6c`, scProfile `a2694ec`;
+  the gate will not move scQC's checkout while the cold run 794590 lives); ONE lean re-check (Opus, its own inputs);
+  then the subset (6 h), the full run (10 h), the train merge, A1.2 to 8 of 10. A third failed check stops the wave
+  for the PI's day report.
+- **Running now (2 Opus):** W056's builder (above); the builder of **W068** (decoupler, the second held-out plugin:
+  graded BLIND and pushed before any change, then through the maker's verbs, then its gate job; waves/W068.md).
+  No Fable agent is running. NEXT for an Opus slot: W056's lean re-check; W061's T; W067's S1.
 - **W063, the cold reproduction of stage 1: THE COLD RUN IS ON THE CLUSTER (PBS 794590, submitted
   2026-11-12T16:28:23Z, unchanged, through the gate; run folder `runs/scqc/01_qc/20261112T162823Z__scqc-f57bc6e__01_qc__repro-w048g`).**
   Attempt 2 (16:02Z to 16:19Z) read `COLD: 80 calls, 0 outside`; its job is md5 `bbbd8e0a...`, stored as the first
