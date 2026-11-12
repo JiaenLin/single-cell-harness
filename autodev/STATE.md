@@ -103,9 +103,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (1 Opus):** the VERIFIER of **W056's waves A, B and C** (told of the preflight's result). The second
-  slot: W064's fix round 1 (launching). NEXT: W056's one fix round (the check script's two reads, with the
-  verification's findings); W063's set-up; W061's T and H; decoupler's blind grade after D5.
+- **Running now (2 Opus):** the VERIFIER of **W056's waves A, B and C** (told of the preflight's result); the builder
+  of **W064's fix round 1** (the lab: a null is not a value; a total says what was summed; a failed read states no
+  fact). NEXT for an Opus slot: W056's one fix round (the check script's two reads, with the verification's
+  findings); W063's set-up; W061's T and H; decoupler's blind grade.
 - **Merged 2026-11-12T14:16Z, the twelfth: scProfile `a2694ec`** (the batch **W055 + W058 + W065**, each verified PASS; the
   gate PBS 793345 AS PREDICTED at that commit): `abundance` through the maker with a declared control as its
   reference level, a covariate refused by name and an interaction named as not fitted; a source stage (three plugins
@@ -113,7 +114,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   and a plugin takes its allocation, not the machine, at every place the host starts one. **A3.2 is 4/4; the tally is
   8.14 of 20 (mean 0.407).** `de` passes the dev suite on the cluster. GAP-C88, C133 and 054 closed; GAP-C135 opened
   (what a plugin's own child processes read).
-- **Running now (0 Fable).**
+- **Running now (1 Fable):** the DESIGN of **W067** (D5, [waves/W067.md](waves/W067.md)): what the maker cannot yet
+  say (a level order, an added statement, the model frame: GAP-C128) and what the fixture tier grades for a plugin whose
+  honest result is partial (GAP-C131), from the three recorded blind grades.
 - **W064's independent check FAILED on two small facts** (a log record's base of none stated as "base 0, as
   recorded"; a total said summed from X that was the sum of its log); the design holds everywhere else. NOT deployed:
   nothing false is live (the Studio words the old lab's guesses as unsourced). **Fix round 1 is registered in
