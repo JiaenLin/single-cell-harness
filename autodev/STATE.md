@@ -80,10 +80,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   question, D-045); the builder of **W055** (scProfile, the plugin line's first wave: `abundance` graded blind
   through the maker, then the maker fixed; a DOI and a pin for `de`, `cellchat` and `abundance`). No Fable agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
-  0. **W056, the driver's integration** (the batch is VERIFIED at `110417c`): merge it by hand with W052's branch (they
-     conflict in the kernel's report and the scIntegrate stand-in), bring W045 (one object into parts) onto it, finish
-     the first cohort's chained request and generate its job with `--tool` for all four tools, a subset first. To
-     register and launch at the next free slot. A1.2, A6.3, A7.1 and A3.4 wait on this line.
+  0. **W056, the driver's integration** (the batch is VERIFIED at `110417c`): REGISTERED 2026-11-12
+     ([waves/W056.md](waves/W056.md); brief `q_w056build.txt`): from W052's branch at `133589d`, the driver merged by
+     hand, W045 brought on, the first cohort's chained request finished (its label-column unknown is a design the
+     builder decides and labels), the subset and full jobs generated with `--tool` for all four tools. It launches
+     at the next free Opus slot. A1.2, A6.3, A7.1 and A3.4 wait on this line.
   0b. W054's verification is running; then Lab's deploy, reported, not asked (D-045). After it: Studio's Run-card
       sentences brought in line with what a bundle now carries (a Fable designer's small pass, then a deploy).
   1. **W052 PASSED its lean re-check** (the harness at `133589d`). Waiting only for the cluster: its subset 791374, then
