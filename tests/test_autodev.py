@@ -290,6 +290,13 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
             self.assertEqual(recipe[2], "qsub -l walltime=00:10:00 -o logs/ -v RUNDIR=$RUNDIR,H=$HC,CHECK_ONLY=1 j.pbs")
             self.assertEqual(gate.preflight_recipe(["qsub j.pbs"], "j.pbs")[1], "qsub -l walltime=00:10:00 -v CHECK_ONLY=1 j.pbs")
             own = gate.preflight_recipe(['qsub -v R=$R,CHECK_ONLY="${CHECK_ONLY:-0}" j.pbs'], "j.pbs")[1]
+            # a recipe that names the job in a variable and submits "$JOB": its last qsub line is the one
+            var = gate.preflight_recipe(['JOB="${JOB:-$PWD/j.pbs}"', 'echo qsub is next',
+                                         'qsub -v "R=$R,CHECK_ONLY=${CHECK_ONLY:-0}" -o "$R/logs/" "$JOB"'], "j.pbs")
+            self.assertEqual(var[3], 'qsub -l walltime=00:10:00 -v "R=$R,CHECK_ONLY=${CHECK_ONLY:-0}" -o "$R/logs/" "$JOB"')
+            self.assertEqual(var[1:3], ['JOB="${JOB:-$PWD/j.pbs}"', 'echo qsub is next'])
+            with self.assertRaises(SystemExit):   # a recipe that never names the job has no qsub line to turn
+                gate.preflight_recipe(['qsub "$JOB"'], "j.pbs")
             self.assertEqual(own, 'qsub -l walltime=00:10:00 -v R=$R,CHECK_ONLY="${CHECK_ONLY:-0}" j.pbs', "a recipe that passes the variable itself is left to")
             proof = ROOT / "setup" / "autodev" / "proof.py"
             wave = pathlib.Path(tmp) / "W.md"

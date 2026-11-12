@@ -163,8 +163,14 @@ def preflight_rule(job_name, text, md5, tools, no_preflight):
 def preflight_recipe(recipe, job_name):
     """The submit recipe with its qsub turned into a ten-minute CHECK_ONLY run of the same file."""
     out, done = ["export CHECK_ONLY=1"], False   # a recipe may read it (a run key that says preflight)
-    for line in recipe:
-        if not done and re.search(r"\bqsub\b", line) and job_name in line:
+    # The qsub line is the one that names the job; a recipe that names the job once in a variable and submits
+    # "$JOB" (a cold reproduction's job, 2026-11-12) has no such line: then it is the recipe's LAST qsub line
+    # (recipe_of ends a recipe at its qsub, and has checked that the recipe as a whole names the job).
+    named = [i for i, l in enumerate(recipe) if re.search(r"\bqsub\b", l) and job_name in l]
+    plain = [i for i, l in enumerate(recipe) if re.search(r"^\s*qsub\b", l)]
+    target = named[0] if named else (plain[-1] if plain and job_name in " ".join(recipe) else None)
+    for i, line in enumerate(recipe):
+        if not done and i == target:
             if "CHECK_ONLY" in line:
                 pass                                 # the recipe passes the variable on itself
             elif re.search(r"\s-v\s+\S+", line):
