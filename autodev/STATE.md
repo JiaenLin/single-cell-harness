@@ -98,10 +98,13 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **W055's GATE JOB is written and its PREFLIGHT is on the cluster (PBS 792083)**: a prediction true to the code (de
   passes; abundance's agree fails on 3 figure lines; cellchat's fixture lines fail as `partial`, GAP-C131); proof table
   31 rows. On OK the run (asks 1 h); on AS PREDICTED scProfile's `main` moves to `c135097` and A3.2 is 4/4.
-- **Running now (2 Fable):** the DESIGN READ **D6** of the driver's pins walk (W056's second failed check; into
-  [waves/W056.md](waves/W056.md)); the designer-builder of **W062** ([waves/W062.md](waves/W062.md), wave S of W061's
-  design: the Studio says of a fact only what its source lets it say; it ends the false Methods sentence for bundles
-  users already have; then one independent check and its deploy).
+- **Running now (2 Fable):** the designer-builder of **W062** (the Studio says of a fact only what its source lets it
+  say); the DESIGN of **W063** (D9, [waves/W063.md](waves/W063.md)): the protocol of a cold reproduction (A2.3, 0 of 4).
+- **D6 IS WRITTEN** ([waves/W056.md](waves/W056.md), "Design read (D6)"): the files a driven run depends on are exactly
+  the files DECLARED for it (the request, the site, each adapter's `files:` key with a reader for a file that names
+  files); any other string is text, however it looks. Fix round 1 stands. Three waves: A (declarations and the walk),
+  B (the stand-ins and a drift test), C (both jobs regenerated; the preflight reads OK with the predicted role list).
+  **W056-A takes the next free Opus slot**; then W061's L1 (the lab's facts).
 - **W061's DESIGN IS WRITTEN** (D8): 23 statements the pair makes about an object, 8 guessed from a name today; after
   W062: L1 and L2 (the lab; Opus builders: a wrong result), T and H (the integration tool writes the run's six
   fields, the harness passing the stage and the run key by argv). A6.2 to 2 of 2 on a new stage-3 run, re-measured.
