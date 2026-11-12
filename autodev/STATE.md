@@ -95,9 +95,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Running now (2 Opus):** the CONTINUATION of **W056's fix round 1** (brief `q_w056fix1b.txt`: the clean-up made
   unable to follow a symlink and the no-git PATH rebuilt as wrapper scripts BEFORE any test; then the round as briefed,
   with the CHECK_ONLY branch and a proof table); the builder of **W058** (scProfile, ROUTE R31; told the tools are back).
-- **Running now (2 Fable):** the design agent **D1** (the cohort-run skill, [waves/W059.md](waves/W059.md)); the
-  designer's WORDING ROUND on **W057** (four points from its check, which ended incomplete when node stopped; then a
-  Fable check completes what was not run: hand-made bundles, a phone's width, the ragged tables, the tests on `main`).
+- **Running now (2 Fable):** the docs-truth SWEEP of scQC ([waves/W060.md](waves/W060.md), ROUTE R39: a docs-only
+  branch, then another agent's seeded draw of 12 claims); the designer's WORDING ROUND on **W057** (four points; then a
+  Fable check completes what the first could not run). **D1 is written** ([waves/W059.md](waves/W059.md), "Design": 31
+  end states of a driven run, one act each; the skill as two documents and five verbs; the planted failure declared
+  by a sealed note): two builds after W056 merges, then the trial.
 - **QUEUED for an Opus slot, in this order** (the direction review of 2026-11-12, D-049; launch the next only when
   fewer than 2 Opus agents run; a failed check takes the next slots; every registration carries THE CLASS and THE
   SIZE, every hand-back a proof table checked by `proof.py`):
@@ -123,8 +125,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   MOVED DOWN (each is 0.2 or less for a builder and a verifier, on a test already over its bar): scIntegrate's installer
   (GAP-C116; brief `q_w046fix2.txt`), R05, R33, R13's run 3. NO Opus slot for Studio or Lab unless a user can get a
   wrong result.
-- **THE FABLE QUEUE (no Opus slot; at most 2 at once):** D1 running. Then, in this order: a **docs-truth sweep** of one
-  settled repository a run (Lab, scQC, scAnno; the Studio after W057 deploys): the false lines with the corrected text
+- **THE FABLE QUEUE (no Opus slot; at most 2 at once):** D1 done; the first sweep running. Then, in this order: the
+  sweep's DRAW; W057's completion check; a **docs-truth sweep** of one settled repository a run (scAnno, Lab; the
+  Studio after W057 deploys): the false lines with the corrected text
   on a docs-only branch, then a seeded draw of 12 claims by ANOTHER agent writes the row (A2.2 +0.125 a repository);
   **D4** (R36's draw rule, design only); **D2** (R08: where a local UI reads a cluster run's state; what turns plain
   language into a request); **D3** (R09: a follow-up as a typed request fragment); **D5** (the maker's missing sites,
