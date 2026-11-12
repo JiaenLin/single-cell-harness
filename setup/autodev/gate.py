@@ -162,10 +162,12 @@ def preflight_rule(job_name, text, md5, tools, no_preflight):
 
 def preflight_recipe(recipe, job_name):
     """The submit recipe with its qsub turned into a ten-minute CHECK_ONLY run of the same file."""
-    out, done = [], False
+    out, done = ["export CHECK_ONLY=1"], False   # a recipe may read it (a run key that says preflight)
     for line in recipe:
         if not done and re.search(r"\bqsub\b", line) and job_name in line:
-            if re.search(r"\s-v\s+\S+", line):
+            if "CHECK_ONLY" in line:
+                pass                                 # the recipe passes the variable on itself
+            elif re.search(r"\s-v\s+\S+", line):
                 line = re.sub(r"(\s-v\s+)(\S+)", lambda m: m.group(1) + m.group(2) + ",CHECK_ONLY=1", line, count=1)
             else:
                 line = line.replace("qsub", "qsub -v CHECK_ONLY=1", 1)

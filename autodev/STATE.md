@@ -93,20 +93,20 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
 - **Running now (2 Opus):** the CONTINUATION of **W056's fix round 1** (brief `q_w056fix1b.txt`: the clean-up made
-  unable to follow a symlink and the no-git PATH rebuilt as wrapper scripts BEFORE any test; then the round as briefed,
-  with the CHECK_ONLY branch and a proof table); the builder of **W058** (scProfile, ROUTE R31; told the tools are back).
-- **Running now (2 Fable):** the docs-truth SWEEP of scQC ([waves/W060.md](waves/W060.md), ROUTE R39: a docs-only
-  branch, then another agent's seeded draw of 12 claims); the designer's WORDING ROUND on **W057** (four points; then a
-  Fable check completes what the first could not run). **D1 is written** ([waves/W059.md](waves/W059.md), "Design": 31
-  end states of a driven run, one act each; the skill as two documents and five verbs; the planted failure declared
-  by a sealed note): two builds after W056 merges, then the trial.
+  unable to follow a symlink BEFORE any test; then the round as briefed, with the CHECK_ONLY branch and a proof table);
+  the VERIFIER of **W055** (scProfile at `55a60d5`; its one verification, checks 10 and 11).
+- **Running now (2 Fable):** W057's COMPLETION CHECK (Studio at `e475703`, after the designer's four-point wording
+  round; on PASS the Studio deploys, D-045); the DRAW on scQC's docs-truth branch `69644c1` (seed 20261112, 12 claims;
+  none false: the branch merges and A2.2 counts scQC).
+- **W058 is BUILT** (scProfile `0d963b9`: a lock for every group and platform, two groups had none; proof table 14 rows,
+  0 incomplete). Its ten-minute PREFLIGHT is on the cluster (PBS 791915); on OK its build job goes in (1 h 30 min);
+  it is verified with the scProfile batch (item 5).
 - **QUEUED for an Opus slot, in this order** (the direction review of 2026-11-12, D-049; launch the next only when
   fewer than 2 Opus agents run; a failed check takes the next slots; every registration carries THE CLASS and THE
   SIZE, every hand-back a proof table checked by `proof.py`):
   1. **W056's lean re-check** when its fix round hands back. Beside it on the cluster, in order: `gate.py preflight`
      of the regenerated subset job (ten minutes), the subset, the first cohort's full chained run, the merge (A1.2 8/10).
-  2. **W055's ONE verification** (scProfile at `55a60d5`; about 110 calls, BRIEFS 2a checks 10 and 11; A3.2's fourth
-     quarter is its judgement). Its dev-suite job waits for W058's built environments.
+  2. (running) W055's ONE verification. Its dev-suite job waits for W058's built environments.
   3. **Cold reproduction 1** (ROUTE R11): the first cohort's stage 1 from the record and the docs alone, by a fresh
      agent; the coordinator submits its job. A2.3 +0.25. Its hand-back lists every doc line that misled it.
   4. **The grade wave** (scProfile, stacked on W055 and W058): decoupler, scenic and velocity graded BLIND in one run
@@ -164,7 +164,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** nothing. **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+- **On PBS:** **791915**, W058's PREFLIGHT (ten minutes). Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
   where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the

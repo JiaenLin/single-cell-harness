@@ -286,8 +286,11 @@ class TheHarnessPackageIsWhole(unittest.TestCase):
             self.assertIn("no CHECK_ONLY branch", gate.preflight_rule("old.pbs", "#!/bin/bash\n#PBS -l walltime=06:00:00\n", md5, [("T", a)], None))
             self.assertIn("30 minutes or less", gate.preflight_rule("s.pbs", long_job.replace("06:00:00", "00:20:00"), md5, [("T", a)], None))
             recipe = gate.preflight_recipe(["cd x", "qsub -o logs/ -v RUNDIR=$RUNDIR,H=$HC j.pbs"], "j.pbs")
-            self.assertEqual(recipe[1], "qsub -l walltime=00:10:00 -o logs/ -v RUNDIR=$RUNDIR,H=$HC,CHECK_ONLY=1 j.pbs")
-            self.assertEqual(gate.preflight_recipe(["qsub j.pbs"], "j.pbs"), ["qsub -l walltime=00:10:00 -v CHECK_ONLY=1 j.pbs"])
+            self.assertEqual(recipe[0], "export CHECK_ONLY=1")
+            self.assertEqual(recipe[2], "qsub -l walltime=00:10:00 -o logs/ -v RUNDIR=$RUNDIR,H=$HC,CHECK_ONLY=1 j.pbs")
+            self.assertEqual(gate.preflight_recipe(["qsub j.pbs"], "j.pbs")[1], "qsub -l walltime=00:10:00 -v CHECK_ONLY=1 j.pbs")
+            own = gate.preflight_recipe(['qsub -v R=$R,CHECK_ONLY="${CHECK_ONLY:-0}" j.pbs'], "j.pbs")[1]
+            self.assertEqual(own, 'qsub -l walltime=00:10:00 -v R=$R,CHECK_ONLY="${CHECK_ONLY:-0}" j.pbs', "a recipe that passes the variable itself is left to")
             proof = ROOT / "setup" / "autodev" / "proof.py"
             wave = pathlib.Path(tmp) / "W.md"
             table = "# W\n\n## Proof table\n\n| judge | RIGHT | WRONG | who |\n|---|---|---|---|\n| t1 | a: ok | b: FAIL | by hand |\n"
