@@ -103,20 +103,16 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the VERIFIER of **W065** (its gate job read AS PREDICTED; the scProfile batch merges on
-  its PASS); the VERIFIER of **W056's waves A, B and C** (the declared set, the drift test against each tool, both jobs
-  regenerated at `4f5a3a1`; the subset job's preflight is on the cluster, PBS 793445, and must read OK with exactly
-  the 42 predicted roles).
-  NEXT for an Opus slot: W064's fix round 1; W063's set-up; W061's T and H.
-- **W058 is VERIFIED: PASS** (`0d963b9`, the verifier's docs pen `fe881a1`; GAP-C88 closed by measurement); it merges
-  after W055, on which it is stacked.
-- **W055's GATE JOB RAN AND MISSED (6) (PBS 792123, 120 GB): three findings only the cluster could show.** (1) `de`'s
-  fixture tiers FAIL: on a node of 256 cores, inside 8, its parallel library started workers for the MACHINE: 63 GB, a
-  time-out, and the node's open-file table exhausted (GAP-C133; on `main` too; the cause of the first run's memory
-  kill). (2) abundance's agree has 5 lines, 2 of them monitoring fields it does not declare. (3) cellchat: 8 of 9
-  instances not ok, not 8 of 8. The gate did not pass: W055 and W058 (both verified) wait. **W065 is registered**
-  ([waves/W065.md](waves/W065.md): the host gives every plugin its allocation; abundance's fields declared; the job
-  predicted again) and takes the NEXT free Opus slot. THE DEV SUITE IS NOT SUBMITTED AGAIN BEFORE IT.
+- **Running now (1 Opus):** the VERIFIER of **W056's waves A, B and C** (told of the preflight's result). The second
+  slot: W064's fix round 1 (launching). NEXT: W056's one fix round (the check script's two reads, with the
+  verification's findings); W063's set-up; W061's T and H; decoupler's blind grade after D5.
+- **Merged 2026-11-12T14:16Z, the twelfth: scProfile `a2694ec`** (the batch **W055 + W058 + W065**, each verified PASS; the
+  gate PBS 793345 AS PREDICTED at that commit): `abundance` through the maker with a declared control as its
+  reference level, a covariate refused by name and an interaction named as not fitted; a source stage (three plugins
+  with a DOI that resolves and an exact pin); the fixture tier accepts no refusal; a lock for every group and platform;
+  and a plugin takes its allocation, not the machine, at every place the host starts one. **A3.2 is 4/4; the tally is
+  8.14 of 20 (mean 0.407).** `de` passes the dev suite on the cluster. GAP-C88, C133 and 054 closed; GAP-C135 opened
+  (what a plugin's own child processes read).
 - **Running now (0 Fable).**
 - **W064's independent check FAILED on two small facts** (a log record's base of none stated as "base 0, as
   recorded"; a total said summed from X that was the sum of its log); the design holds everywhere else. NOT deployed:
@@ -242,7 +238,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
-- **The tally: 7.89 of 20** (mean 0.395; 7.79 on the evening of 2026-11-11, 0.271 at audit pass 0004): A3.1 0.61 moved on 2026-11-12 (scIntegrate's merge); A1.1 5/8, A1.2 7/10, A1.3 3/5, A2.1 3/4, A3.2 3/4, A6.2 1/2 the day before. Nine tests are still under 0.5: A2.2, A2.3, A3.4, A4.1, A4.2, A4.3, A5.2, A6.1, A7.1.
+- **The tally: 8.14 of 20** (mean 0.407; 7.79 on the evening of 2026-11-11, 0.271 at audit pass 0004): on 2026-11-12 A3.1 0.61 (scIntegrate's merge) and A3.2 4/4 (scProfile's batch); A1.1 5/8, A1.2 7/10, A1.3 3/5, A2.1 3/4, A3.2 3/4, A6.2 1/2 the day before. Nine tests are still under 0.5: A2.2, A2.3, A3.4, A4.1, A4.2, A4.3, A5.2, A6.1, A7.1.
 - **Merged 2026-11-11, five batches before those:** scIntegrate `b148030` (W012 + W025), scProfile `6f970e5` (W013 + W032 + W023), scQC `46ffe90`
   (W020), scAnno `779fd08` (W038), and **the harness `a677e8f` (W029 + W034)**: its train's three jobs all AS PREDICTED at the
   merged commit (stages 1, 2 and 3; PBS 788583, 788586, 788587), the merged tree's runtime files equal the gated head's, the
