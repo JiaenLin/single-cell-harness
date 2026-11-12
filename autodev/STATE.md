@@ -61,32 +61,36 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   stayed in its clone. No agent was resumed (an agent resumes on the session's model): each was launched fresh with its
   brief from `<scratchpad>/relaunch/` and told to read its predecessor's clone and wave-file plan first. Today's meter
   before the stop: 16.3 M output tokens, 46 launches.
-- **THE CAP IS TWO OPUS AGENTS since 2026-11-11T14:09:43Z (D-039).** The PI: "reduce opus agent number to 2 , continue fable
-  designer to improve UI design, check all elements such as work count, wording and other element design". Four running
-  Opus agents were stopped at once; their briefs are in `<scratchpad>/relaunch/q_*.txt` and their clones keep what they
-  wrote. The heartbeat's prompt and RULES item 6 carry the cap.
-- **Running now (2 Opus + 1 Fable):**
-  - Opus 5.5 max: the verifier of **the scProfile batch's fix**, a lean re-check (head `95ed6bd`: the rewrite verb refuses a
-    tampered copy and writes a trace the check validates; every record field held to its form); the verifier of **W052** (the harness at `26db35d`: scIntegrate `2fc7a6c` mounts and its
-    old main is refused by name; the stand-in agrees with the tool; its subset job 790835 is on the cluster).
-  - Fable 5.2: the reviewer of **W051's run 6** (the Studio's words, built at `192057b`: the seven moved claims rewritten
-    against their code lines; three breaking renames of saved files for the PI to accept): the final check. Then the
-    PI's go for a re-deploy.
-- **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary".** Applied: W048's last round
-  narrowed while it runs; scIntegrate's merge decoupled from its installer's defect; the queue re-ordered.
+- **THE CAP IS TWO OPUS AGENTS (D-039), beside at most one Fable designer or reviewer.** The heartbeat's prompt and RULES
+  item 6 carry it. Stopped items' briefs are in `<scratchpad>/relaunch/q_*.txt`; their clones keep what they wrote.
+- **THE PI, 2026-11-12 (D-043): "USE PREDECIDER, REDUCE THE DECISION REQUIRED".** The order of fixes and what takes a slot
+  is decided and reported, never asked. A question that is the PI's (a promotion, a threshold the data cannot decide)
+  is held for the day's report with its numbers and a recommendation; no work waits on it. A deploy of a live app
+  stays the PI's go: the permission layer refused a drafted standing rule to deploy without asking.
+- **THE PI, 2026-11-11 (D-041): "keep the bound as set. do not block anything if unnecessary"** (D-040's bound on the
+  cohort-value class).
+- **Running now (2 Opus):** the builder of **W053** (Studio, from its `main` `192057b`: an untested gene carries no p in a
+  saved DE file, on screen or in the volcano; the volcano's line under an FDR cutoff; the PI: "Fix it next"); the
+  builder of **W052's fix round 1** (the harness: a mount's recorded state version is compared on load, so a stack
+  mounted before a bump is refused by name instead of served stale). No Fable agent is running.
 - **QUEUED for an Opus slot, in this order** (launch the next only when fewer than 2 Opus agents run):
-  0. (running) the scProfile batch's fix round; then a LEAN re-check of its two reasons, the gate (the DE job and the
-     dev-suite job at the head), the merge, then the plugin line, abundance first (A4.1, A4.3, A3.2).
-  1. (running) **W052**; then its verification, the job, BOTH mains in one step (scIntegrate `2fc7a6c` first), A3.1 +0.1,
-     and the PI's stage-3 question.
-  2. **W049's fix round 1** (the driver: an answer for a sealed stage refused; a job states the tools it expects):
-     brief `q_w049fix1.txt`. Then its re-check, W045 brought onto it, the first cohort's chained run as the gate.
-  3. **W050's verification** (scAnno `f456431`; job 790463 read GATE: AS PREDICTED beside the model job's own 4 untraced
-     differences): brief `q_w050verify.txt`.
-  4. **scIntegrate's installer** (GAP-C116: build scIB's LISI helper and run it in the strict check; the subset draws
-     withheld cells; three residues), a follow-up for A1.3: brief `q_w046fix2.txt`, clone `W046g-scIntegrate` (uncommitted
-     work kept), to be re-based on scIntegrate's `main` after the merge.
-  5. **Lab's W017 fix-up 6** (the three defects live since D-038): brief `q_w017fix6.txt`, clone `W017g-lab`.
+  1. **scProfile's last small fix** (GAP-C122: a repeated JSON key refused when a record is read; a version literal held
+     to its form; the confirm verb checks before it writes; five sentences made true), in clone `W047-scProfile` at
+     `95ed6bd`; then a lean re-check, the DE gate again, the merge on a PASS (D-044), and the plugin line, abundance
+     first (A4.1, A4.3, A3.2).
+  2. After W052's fix round: its lean re-check, the subset and the full job re-pinned, BOTH mains in one step
+     (scIntegrate `2fc7a6c` first), A3.1 +0.1; the stage-3 question goes into the day's report.
+  3. After W053: a short check (Fable, by looking and reading), then the PI's go for the deploy.
+  4. **W049's fix round 1** (the driver): brief `q_w049fix1.txt`. Then its re-check, W045 brought onto it, the first
+     cohort's chained run as the gate.
+  5. **W050's verification** (scAnno `f456431`): brief `q_w050verify.txt`.
+  6. **scIntegrate's installer** (GAP-C116), for A1.3: brief `q_w046fix2.txt`, clone `W046g-scIntegrate`.
+  7. **Lab's W017 fix-up 6** (three defects live since D-038): brief `q_w017fix6.txt`, clone `W017g-lab`.
+- **Studio's `main` is `192057b` since 2026-11-12T00:32Z (D-042)**: the words-and-elements pass (W051) is live, with three
+  renames of saved names. Live and known: GAP-C124 (W053 is its fix). Lab's `main` is `ca0cc73` (D-038).
+- **scProfile's batch is NOT merged**: its DE gate (790813) read AS PREDICTED and its fix held, but the lean re-check
+  failed on two record forgeries; the coordinator's attempt to merge with the gaps registered was refused by the
+  permission layer and is not retried (D-044).
 - **The route's first sufficiency check is done** ([audits/ROUTE_SUFFICIENCY_20261111.md](audits/ROUTE_SUFFICIENCY_20261111.md)):
   as written the route ended 0.0006 short of HAPPY with its two planned stops. Applied to ROUTE.md: six additions (R04,
   R06, R07, R35 and R45 widened; R46 and R47 new), R40 struck, three PI steps added. Projected now: 19.05 with the stops.
@@ -94,10 +98,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **790835**, the subset of the first cohort's stage 3 through the harness at both new heads (W052 + scIntegrate
-  `2fc7a6c`); the full job (4 h) follows it. **790813** (the DE gate at the scProfile batch's head `95ed6bd`) landed AS
-  PREDICTED: the batch merges when its lean re-check passes. Checkouts on the cluster: the harness `26db35d`; scQC at
-  `main`; scAnno `f456431`; scIntegrate `2fc7a6c`; scProfile `95ed6bd`.
+- **On PBS:** nothing. Today's last: 790835 (the harness subset at W052's first head) and 790813 (scProfile's DE gate at
+  `95ed6bd`), both AS PREDICTED. Checkouts on the cluster: the harness `26db35d`; scQC at `main`; scAnno `f456431`;
+  scIntegrate `2fc7a6c`; scProfile `95ed6bd`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
