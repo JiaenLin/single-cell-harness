@@ -92,14 +92,15 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (1 Opus):** the builder of **W056's WAVE A** (the design read D6; brief `q_w056A.txt`). The second
-  slot: W061's L1 (the lab's facts table; a live wrong result) is next, to be registered from the design.
+- **Running now (2 Opus):** the builder of **W056's WAVE A** (the design read D6; brief `q_w056A.txt`); the builder of
+  **W064** ([waves/W064.md](waves/W064.md), wave L1 of W061's design: the lab states a fact only with its source; it
+  deploys only after W062 is live).
 - **W058 is VERIFIED: PASS** (`0d963b9`, the verifier's docs pen `fe881a1`; GAP-C88 closed by measurement); it merges
   after W055, on which it is stacked.
 - **W055's GATE JOB MISSED (8) on NO graded output (PBS 792091):** each plugin's suite process was killed at the job's
   own memory request (32 GB of 32 GB, exit 137, after 12.5 minutes); the request was the build job's and the suite had
   never run on the cluster. Resubmitted as a dated copy with 120 GB (`dev_suite_w055.r1.pbs`; the prediction stands):
-  its preflight is PBS 792117, then the run. If it is killed again at 120 GB the suite has a runaway on the cluster and
+  its preflight (792117) read OK and the run is PBS 792123. If it is killed again at 120 GB the suite has a runaway on the cluster and
   that is a finding of its own.
 - **Running now (2 Fable):** the designer-builder of **W062** (the Studio says of a fact only what its source lets it
   say); the DESIGN of **W063** (D9, [waves/W063.md](waves/W063.md)): the protocol of a cold reproduction (A2.3, 0 of 4).
@@ -190,7 +191,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **792117**, the preflight of W055's gate job as resubmitted with 120 GB. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+- **On PBS:** **792123**, W055's gate job with 120 GB (its preflight 792117 read OK). Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
   where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the
