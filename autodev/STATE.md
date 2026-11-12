@@ -92,19 +92,20 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus):** the lean RE-CHECK of **W056's fix round 1 with its amendment** (head `d9347d1`; told of the
-  preflight's miss; whatever it says, the pins walk goes to the design read D6); the VERIFIER of **W058** (scProfile's
-  group locks at `0d963b9`; its build job read AS PREDICTED).
-- **W055's GATE JOB is written and its PREFLIGHT is on the cluster (PBS 792083)**: a prediction true to the code (de
-  passes; abundance's agree fails on 3 figure lines; cellchat's fixture lines fail as `partial`, GAP-C131); proof table
-  31 rows. On OK the run (asks 1 h); on AS PREDICTED scProfile's `main` moves to `c135097` and A3.2 is 4/4.
+- **Running now (2 Opus):** the builder of **W056's WAVE A** (the design read D6: the declarations, the walk over
+  them with the look-based code deleted, and the re-check's one slip; brief `q_w056A.txt`; the lean re-check FAILED on
+  the walk's guess and that slip, and found every other part of the fix round closed and holding); the VERIFIER of
+  **W058** (scProfile's group locks at `0d963b9`).
+- **W055's GATE JOB IS RUNNING: PBS 792091** (asks 1 h), after its preflight read OK (792083). Its prediction is true
+  to the code (de passes; abundance's agree fails on 3 figure lines; cellchat's fixture lines fail as `partial`,
+  GAP-C131). On AS PREDICTED scProfile's `main` moves to `c135097` and A3.2 is 4/4.
 - **Running now (2 Fable):** the designer-builder of **W062** (the Studio says of a fact only what its source lets it
   say); the DESIGN of **W063** (D9, [waves/W063.md](waves/W063.md)): the protocol of a cold reproduction (A2.3, 0 of 4).
 - **D6 IS WRITTEN** ([waves/W056.md](waves/W056.md), "Design read (D6)"): the files a driven run depends on are exactly
   the files DECLARED for it (the request, the site, each adapter's `files:` key with a reader for a file that names
   files); any other string is text, however it looks. Fix round 1 stands. Three waves: A (declarations and the walk),
   B (the stand-ins and a drift test), C (both jobs regenerated; the preflight reads OK with the predicted role list).
-  **W056-A takes the next free Opus slot**; then W061's L1 (the lab's facts).
+  W056-A is building; W061's L1 (the lab's facts) takes the next free Opus slot.
 - **W061's DESIGN IS WRITTEN** (D8): 23 statements the pair makes about an object, 8 guessed from a name today; after
   W062: L1 and L2 (the lab; Opus builders: a wrong result), T and H (the integration tool writes the run's six
   fields, the harness passing the stage and the run key by argv). A6.2 to 2 of 2 on a new stage-3 run, re-measured.
@@ -187,14 +188,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** nothing. **792052, the PREFLIGHT of W056's regenerated subset job, read MISSED (18) in two minutes**
-  (the first miss a preflight caught: hours of a 6 h job saved): the recipe, the record of the checkouts and the
-  no-git run all held on the cluster; all 18 misses are strings INSIDE files a param names read as paths (13 labels
-  of the annotation scope that hold a slash, 4 lines of its drawn tree, 1 registry cell naming a reference by key).
-  The walk decides what is a path by the look of a string. With the first verification's FAIL this is the wave's
-  SECOND failed check: no patch; **D6, a Fable design read of the driver's pins walk, takes the next Fable slot**
-  (what is a path is declared by the adapter, field by field, or it is not followed). The lean re-check, running, was
-  told. THE scProfile CHECKOUT is one: W055's gate job (at `c135097`) goes next. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+- **On PBS:** **792091**, W055's dev-suite gate job (asks 1 h). 792052 (W056's subset preflight) read MISSED (18): see D6. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
   where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the
