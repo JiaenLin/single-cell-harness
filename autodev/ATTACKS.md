@@ -53,6 +53,7 @@ ledger. Of the 9 new waves verified that day, 5 failed first verification, on ca
 | 41 | A strict reader that refuses, with no way forward, a correct file written again by something other than its writer | Rewrite the file with the same content (key order, indent, line ends, a final newline) and read the refusal: does it say what to do? | the scProfile batch (the byte-exact record reader) |
 | 42 | A check that compares what ONE command holds with the record, while another command writes the same record | Start two commands on one output at the same moment with different inputs; read what the surviving record says and what ran | the driver (two resumes on one run folder) |
 | 43 | A record of what a step was handed that is a copy of the plan | Make the step drop or change what it passes on; the record must be taken from what was really passed (the argv), or say that it is the plan | the driver (a seal recording planned params) |
+| 44 | A reader library that hands back its buffer when a read fails (h5wasm drops H5Dread's status): a corrupted compressed chunk, or an opaque-typed array, comes back as plausible numbers, deterministic and unnamed, while a fix keyed on one trigger (a refused open) passes | Overwrite 8 bytes inside one chunk of a gzip embedding, of X/data and of obs codes, and give an embedding a non-numeric type; compare every value with the source, on the base too | W054 (pre-existing on Lab main) |
 
 ## Inbox (a verifier appends here; one line each: the defect, the attack, the wave)
 
