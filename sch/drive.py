@@ -274,9 +274,12 @@ def _git_state(d: Path, pathspec=()) -> dict | None:
     with no optional lock, so two jobs reading one checkout never collide on its index."""
     import subprocess
 
-    def g(*a):                                   # what the work tree holds, not what git is told to see
+    def g(*a):                                   # what the work tree holds, not what git is told to see:
+        # no replace objects, no fsmonitor, and a file's change of status time read as a change, whatever the
+        # checkout's own config says (a same-size, same-mtime edit is otherwise clean; autodev W049 fix 1)
         r = subprocess.run(["git", "--no-optional-locks", "--no-replace-objects", "-c", "core.fsmonitor=false",
-                            "-C", str(d), *a], capture_output=True, timeout=120)
+                            "-c", "core.trustctime=true", "-c", "core.checkStat=default", "-C", str(d), *a],
+                           capture_output=True, timeout=120)
         return r.stdout if r.returncode == 0 else None
     try:
         top, head = g("rev-parse", "--show-toplevel"), g("rev-parse", "HEAD")

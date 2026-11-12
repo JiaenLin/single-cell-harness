@@ -17,6 +17,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import unittest
 from pathlib import Path
 
@@ -512,6 +513,18 @@ class AJobStatesTheToolsItExpects(M.TheClusterPath):
         git(tool, "update-index", "--assume-unchanged", "fake_scqc.py")     # ATTACKS 22: git told not to look
         missed(f"at {v1}, with tracked changes")
         git(tool, "update-index", "--no-assume-unchanged", "fake_scqc.py")
+        git(tool, "checkout", "-q", "--", "fake_scqc.py")               # ATTACKS 22: a stat cache trusted
+        git(tool, "config", "core.trustctime", "false")                  # less by the checkout's own config,
+        git(tool, "config", "core.checkStat", "minimal")                 # and an edit keeping size and mtime
+        time.sleep(1.1)
+        git(tool, "update-index", "--refresh")
+        f = tool / "fake_scqc.py"
+        st, text = f.stat(), f.read_text()
+        f.write_text(text.replace("import", "imporT", 1))
+        os.utime(f, ns=(st.st_atime_ns, st.st_mtime_ns))
+        self.assertEqual(git(tool, "status", "--porcelain"), "", "git itself is told to see nothing")
+        missed(f"at {v1}, with tracked changes")
+        f.write_text(text + "# edited\n")
         git(tool, "replace", v1, commit(tool, "v3: edited"))              # ATTACKS 22: v1 read as another
         git(tool, "checkout", "-q", "--detach", v1)
         missed(f"at {v1}, with tracked changes")
