@@ -100,10 +100,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   restored the modes from a manifest (`<scratchpad>/incident_20261112_exec_bits.tsv`: 387 files, 8 more through hard
   links, none left; Cellar files to 0555 as Homebrew sets them, the rest to 0755). BRIEFS block 0 now carries THE
   MACHINE; the continuation fixes the clean-up first. The PI was told in the same turn.
-- **Running now (2 Opus), relaunched fresh after the reboot:** the builder of **W056's WAVE A** (the design read D6;
-  brief `q_w056A.txt`, re-saved; nothing pushed yet at 10:51Z); the builder of **W064** (wave L1 of W061's design; its
-  branch is pushed and moving, `38cb8bd` at 10:51Z; it deploys after an independent check, W062 being live).
-  NEXT for an Opus slot: **W065** (GAP-C133).
+- **Running now (2 Opus):** the builder of **W056's WAVE A** (the design read D6; relaunched after the reboot); the
+  builder of **W065** ([waves/W065.md](waves/W065.md), GAP-C133: the host gives every plugin its allocation;
+  abundance's monitoring fields declared; the gate job predicted again; stacked on W058 with W055's docs commit).
+  NEXT for an Opus slot: W063's set-up (the cold reproduction's pack, criteria and launcher), then W061's T and H.
 - **W058 is VERIFIED: PASS** (`0d963b9`, the verifier's docs pen `fe881a1`; GAP-C88 closed by measurement); it merges
   after W055, on which it is stacked.
 - **W055's GATE JOB RAN AND MISSED (6) (PBS 792123, 120 GB): three findings only the cluster could show.** (1) `de`'s
@@ -113,9 +113,11 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   instances not ok, not 8 of 8. The gate did not pass: W055 and W058 (both verified) wait. **W065 is registered**
   ([waves/W065.md](waves/W065.md): the host gives every plugin its allocation; abundance's fields declared; the job
   predicted again) and takes the NEXT free Opus slot. THE DEV SUITE IS NOT SUBMITTED AGAIN BEFORE IT.
-- **Running now (1 Fable):** the DESIGN of **W066** (D4, [waves/W066.md](waves/W066.md)): the draw rule for never-seen
-  tools (A4.2), written before any draw. After it: D5 with GAP-C131 when the scProfile batch has merged; D2 and D3
-  when the driver's request and plan are settled (W056).
+- **Running now (1 Fable):** the independent CHECKER of **W064** (the lab at `a854c8f`: a fact stated only with its
+  source; name-guesses 10 to 0; proof table 29 rows; on PASS the lab deploys, D-045).
+- **D4 IS WRITTEN** ([waves/W066.md](waves/W066.md), "Design"): the draw rule for never-seen tools: a frame from the
+  catalogue's own fields, seven closed exclusion reasons, a seed nobody types, the plugin compared with the tool run
+  alone. Its small script and the conversions wait for the maker to be stable.
 - **scQC's `main` is `16f1c32` since 2026-11-12T10:45Z (D-052): a docs-only merge** (about 150 corrected lines from
   three sweeps; no executed file changed, so every gate at `8106f50` stands). It does NOT count for A2.2: each of three
   seeded draws found one false claim in twelve, each in a line no sweep had touched. **W060 is held**: seven Fable runs
