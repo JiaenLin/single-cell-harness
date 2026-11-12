@@ -220,7 +220,9 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **793323**, the preflight of W065's gate job. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+- **On PBS:** nothing. **793345, the scProfile batch's gate job at `a2694ec`, read AS PREDICTED** (sealed in ten minutes
+  inside 8 cores: de PASSES the dev suite on the cluster; abundance's agree fails on exactly its 3 known lines; cellchat
+  as predicted). The batch (W055 and W058 verified; W065's verification running) merges on W065's PASS. Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
   where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the
