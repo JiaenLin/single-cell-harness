@@ -100,9 +100,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   RESIDUE SWEEP of scQC's docs (the first draw found 1 FALSE in 12, a claim about "every" criterion the sweep had not
   touched: scQC does not count yet; now a ledger a claim, every quantified claim against the code's whole set; then a
   second draw).
-- **W058 is BUILT** (scProfile `0d963b9`; proof table 14 rows). Its first PREFLIGHT read OK (PBS 791915, under two
-  minutes); the real submission then stopped at a recipe line that fails under `set -e` outside a preflight: corrected
-  as a dated copy (`scprofile_isolated_groups_build.r1.pbs`), preflighted again (PBS 791924); on OK the build goes in.
+- **W058 is BUILT** (scProfile `0d963b9`; proof table 14 rows) and its BUILD JOB IS ON THE CLUSTER: **PBS 791942**
+  (two isolated groups' environments from their locks, each selftest; asks 1 h 30 min), after two preflights read OK
+  (791915 on the original file; 791924 on the dated copy whose recipe line was corrected). On AS PREDICTED: W055's
+  dev-suite job can read those environments.
 - **QUEUED for an Opus slot, in this order** (the direction review of 2026-11-12, D-049; launch the next only when
   fewer than 2 Opus agents run; a failed check takes the next slots; every registration carries THE CLASS and THE
   SIZE, every hand-back a proof table checked by `proof.py`):
@@ -166,7 +167,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **791915**, W058's PREFLIGHT (ten minutes). Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
+- **On PBS:** **791942**, W058's environment build (1 h 30 min). Earlier: **791723 (W056's subset of the chained run) MISSED (1) in its first minute, before any tool ran:**
   the generated job checks each tool's commit with git, and a compute node has no git, so every tool read as "not a git
   checkout". A defect of the driver's generated pin check (read each tool's `HEAD.txt` in the job; the clean check
   where git exists, at submission): it goes into W056's fix round with what its verifier reports (already in the
