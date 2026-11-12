@@ -98,9 +98,10 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
 - **Next harness slots, in order:** W045 (one object into per-library parts, built on the old driver) brought onto W049's
   head; the adapter's state version 2 and the scIntegrate stand-in (GAP-C109), to land with scIntegrate's batch; if the
   driver batch passes, its gate: the first cohort's chained request finished and its generated job, a subset first.
-- **On PBS:** **791374**, the subset of the first cohort's stage 3 through the harness at W052's fix head `133589d` and
-  scIntegrate `2fc7a6c`. Checkouts on the cluster: the harness `133589d`; scQC at `main`; scAnno `f456431`; scIntegrate
-  `2fc7a6c`; scProfile `95ed6bd`.
+- **On PBS:** **791471**, the FULL first-cohort stage 3 through the harness at W052's fix head `133589d` and scIntegrate
+  `2fc7a6c` (asks 4 h; the previous run took about 2 h 40 m). Its subset 791374 read AS PREDICTED on every line. On AS
+  PREDICTED both mains move in one step. Checkouts on the cluster: the harness `133589d`; scQC at `main`; scAnno
+  `f456431`; scIntegrate `2fc7a6c`; scProfile `95ed6bd`.
 - **Merged 2026-11-11, the seventh: scAnno `9fb561c`** (W044's leak fixes, split from its failed tree rule, D-028): scAnno's
   own files carry no cohort or site string under either cohort's generated lists (38 hits to 0). A3.1 is 0.41.
 - **Merged 2026-11-11, the sixth: the harness `1d1031b` (W036, `prof@scprofile`).** The first cohort's stage 4 through the harness read AS PREDICTED (PBS 789593) at the commit that merged. **All four of that cohort's stages now run through the harness on `main`.**
