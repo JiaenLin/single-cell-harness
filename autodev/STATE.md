@@ -115,7 +115,14 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   and a plugin takes its allocation, not the machine, at every place the host starts one. **A3.2 is 4/4; the tally is
   8.14 of 20 (mean 0.407).** `de` passes the dev suite on the cluster. GAP-C88, C133 and 054 closed; GAP-C135 opened
   (what a plugin's own child processes read).
-- **Running now (1 Fable):** the lean RE-CHECK of **W064's fix round 1** (the lab at `537cfaa`; on PASS it deploys).
+- **Deployed 2026-11-12T15:10Z: the lab at `537cfaa` (W064, D-054 under D-045)**, a fast-forward from `fdb8888` (7
+  commits); its lean re-check PASSED (a Fable reviewer; suite 621 of 621; 12 bundles through 9 tabs of the Studio at
+  `db78d6e`, 0 page errors); the Pages workflow ran 15:09:20Z to 15:10:43Z, success. Live now: no fact about an object
+  is decided from a name; a method is stated only where the object records it; a linear matrix is summed as stored;
+  a damaged counts layer is said to be unreadable. **Limits live:** a BOOLEAN at `uns/log1p/base` reads "base 1" or
+  "base 0" (a hand-edited object only; GAP-C136, the first item of the lab's L2); the Studio's QC line names the
+  matrix, not the inverse transform; a split object's counts are said to be dropped, not carried (L2, GAP-C132's
+  open part). **No Fable agent is running.**
 - **D5 IS WRITTEN** ([waves/W067.md](waves/W067.md), "Design"): the maker's worksheet finds a site by how a library is
   called, not by what is decided; the design gives a closed list of 8 decisions and three answer forms, and lets a
   plugin declare through the maker, before any run, the end each fixture instance must reach (graded exactly). Waves:
@@ -198,7 +205,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   the scale cohort's residual-doublet threshold, only with the subset's numbers; the second cohort's tree shown as a
   walk table (not ready). Told, not asked: three blind grades in one run; check 10 in the verifier's brief; docs sweeps
   by Fable reviewers; up to 2 Fable agents.
-- **Lab's `main` is `fdb8888` since 2026-11-12T06:26Z (D-047, the standing go D-045)**: W054 is live: the converter opens
+- **Lab's `main` is `537cfaa` since 2026-11-12T15:10Z (W064, D-054; see above); it was `fdb8888` from 06:26Z (D-047)**: W054 is live: the converter opens
   only the file it is given; a run record gives six short strings and nothing else; a dataset whose read fails is never
   used as values (live Lab before this wrote silent garbage from a damaged or LZF-compressed part: GAP-C127); an LZF file
   is told to be written again with gzip. Limits live: "over its budget" said of a record left out after a long value;
