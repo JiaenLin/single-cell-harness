@@ -70,6 +70,11 @@ The graded results are in both cohorts' `stages/01_qc/RUNLOG.md` and in ADR-0027
 >   re-check, the subset, the full run; (3) W068's continuation; then W061's T and W067's S1. No Fable agent is
 >   owed. The day's report to the PI (the batched questions below, and the site notes' rows from the cold
 >   attempts) is owed at resume.
+> - **2026-11-14, while paused: the PI reported a bug in the live lab and it is FIXED AND LIVE (W069, D-057).** The
+>   lab refused a Seurat 5 object ("does not hold an S4 object"): its .rds reader miscounted a package namespace and
+>   never read the object's class, and no Seurat v5 layer was usable. The coordinator built the fix itself; an
+>   independent check failed the first commit (3 reasons), the fix round passed its re-check; **the lab's `main` is
+>   `32c8d3a` since 2026-11-14T02:18Z**. Nothing else was resumed. Left: GAP-C142 (the lab's next wave).
 > - **Volatile:** the session's scratch folder (the builders' clones, `a23/`) is emptied by a reboot. Everything
 >   needed is pushed or in this repository, or (the cold reproduction's kit, criteria and both attempts'
 >   transcripts) in the first cohort's `stages/01_qc/a23/`.
@@ -251,7 +256,7 @@ Rewritten whole at 2026-11-11T10:23:25Z (the earlier text, of 09:05, had gone st
   the scale cohort's residual-doublet threshold, only with the subset's numbers; the second cohort's tree shown as a
   walk table (not ready). Told, not asked: three blind grades in one run; check 10 in the verifier's brief; docs sweeps
   by Fable reviewers; up to 2 Fable agents.
-- **Lab's `main` is `537cfaa` since 2026-11-12T15:10Z (W064, D-054; see above); it was `fdb8888` from 06:26Z (D-047)**: W054 is live: the converter opens
+- **Lab's `main` is `32c8d3a` since 2026-11-14T02:18Z (W069, D-057: a current Seurat object opens; see the PAUSED block); it was `537cfaa` from 2026-11-12T15:10Z (W064, D-054) and `fdb8888` from 06:26Z (D-047)**: W054 is live: the converter opens
   only the file it is given; a run record gives six short strings and nothing else; a dataset whose read fails is never
   used as values (live Lab before this wrote silent garbage from a damaged or LZF-compressed part: GAP-C127); an LZF file
   is told to be written again with gzip. Limits live: "over its budget" said of a record left out after a long value;
